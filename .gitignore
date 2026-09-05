@@ -1,1 +1,43 @@
+# Documents
 documents/
+
+# Unity generated folders
+[Lld]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+[Aa]sset[Ss]/[Ss]teaming[Aa]ssets/[Aa]a/*
+
+# Visual Studio / Visual Studio Code / JetBrains Rider / Fleet
+.vs/
+.idea/
+.vscode/
+.fleet/
+*.csproj
+*.unityproj
+*.sln
+*.slnx
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.sln.docstates
+*.DotSettings.user
+riderModule.iml
+
+# OS generated files
+.DS_Store
+.DS_Store?
+ehthumbs.db
+Thumbs.db
