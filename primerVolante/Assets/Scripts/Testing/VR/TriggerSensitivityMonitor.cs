@@ -87,6 +87,11 @@ namespace PrimerVolante.VR
                 var inputModule = eventSystem.GetComponent<UnityEngine.XR.Interaction.Toolkit.UI.XRUIInputModule>();
                 if (inputModule == null)
                 {
+                    var existingModule = eventSystem.GetComponent<UnityEngine.EventSystems.BaseInputModule>();
+                    if (existingModule != null)
+                    {
+                        DestroyImmediate(existingModule);
+                    }
                     eventSystem.gameObject.AddComponent<UnityEngine.XR.Interaction.Toolkit.UI.XRUIInputModule>();
                 }
             }
@@ -281,7 +286,6 @@ namespace PrimerVolante.VR
 
             // Material / Font
             Font defaultFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            if (defaultFont == null) defaultFont = Resources.GetBuiltinResource<Font>("Arial.ttf");
 
             // Panel Principal
             GameObject mainPanel = CreateUIObject("MainPanel", transform);
