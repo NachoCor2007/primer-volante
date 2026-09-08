@@ -81,7 +81,7 @@ namespace PrimerVolante.VR
 
         private void EnsureXRUIInputModule()
         {
-            var eventSystem = Object.FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>();
+            var eventSystem = Object.FindAnyObjectByType<UnityEngine.EventSystems.EventSystem>();
             if (eventSystem != null)
             {
                 var inputModule = eventSystem.GetComponent<UnityEngine.XR.Interaction.Toolkit.UI.XRUIInputModule>();
