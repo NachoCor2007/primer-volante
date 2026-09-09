@@ -6,8 +6,9 @@ using UnityEngine.XR;
 namespace PrimerVolante.VR
 {
     /// <summary>
-    /// Controlador cinemático-híbrido de movimiento longitudinal de vehículo para VR.
-    /// Maneja Aceleración (Gatillo Derecho) y Frenado (Gatillo Izquierdo).
+    /// Controlador cinemático-híbrido de movimiento y dirección de vehículo para VR.
+    /// Maneja Aceleración (Gatillo Derecho), Frenado (Gatillo Izquierdo) y Giro por Volante (VRSteeringWheel).
+    /// Evita explosiones físicas ignorando colisiones internas con el XROrigin del jugador.
     /// </summary>
     [ExecuteAlways]
     [RequireComponent(typeof(Rigidbody))]
@@ -44,12 +45,18 @@ namespace PrimerVolante.VR
         [Tooltip("Orientación del eje frontal del vehículo.")]
         [SerializeField] private ForwardDirection m_ForwardAxis = ForwardDirection.TransformForward;
 
-        [Header("Enganche de Dirección (Futuro)")]
-        [Tooltip("Componente de volante opcional para enganche futuro de dirección.")]
+        [Header("Parámetros de Dirección por Volante")]
+        [Tooltip("Componente de volante VR para dirección.")]
         [SerializeField] private VRSteeringWheel m_SteeringWheel;
 
-        [Header("Debugging / Logs de Gatillos")]
-        [Tooltip("Si se activa, imprime mensajes en la Consola de Unity al presionar los gatillos.")]
+        [Tooltip("Velocidad máxima de giro de la carrocería en grados por segundo.")]
+        [SerializeField] private float m_MaxTurnSpeed = 45f;
+
+        [Tooltip("Si se activa, el coche solo gira si tiene velocidad de avance.")]
+        [SerializeField] private bool m_ScaleTurnWithSpeed = true;
+
+        [Header("Debugging / Logs de Gatillos y Dirección")]
+        [Tooltip("Si se activa, imprime mensajes en la Consola de Unity al presionar los gatillos o girar el volante.")]
         [SerializeField] private bool m_EnableDebugLogs = true;
 
         [Tooltip("Frecuencia máxima de impresión de logs en segundos.")]
@@ -86,7 +93,7 @@ namespace PrimerVolante.VR
         public float BrakeValue => m_BrakeValue;
 
         /// <summary>
-        /// Referencia al volante asignado (preparado para dirección).
+        /// Referencia al volante asignado para dirección.
         /// </summary>
         public VRSteeringWheel SteeringWheel
         {
@@ -124,10 +131,12 @@ namespace PrimerVolante.VR
             {
                 m_Rigidbody.isKinematic = false;
                 m_Rigidbody.useGravity = true;
+                m_Rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
                 m_Rigidbody.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
             }
 
             EnsureCollider();
+            IgnoreInternalChildCollisions();
 
             if (m_SteeringWheel == null)
             {
@@ -136,7 +145,23 @@ namespace PrimerVolante.VR
 
             if (Application.isPlaying && m_EnableDebugLogs)
             {
-                Debug.Log($"[VehicleController] 🚗 Inicializado en '{gameObject.name}'. Rigidbody (isKinematic={m_Rigidbody?.isKinematic}), Collider: {GetComponent<Collider>()?.GetType().Name}");
+                Debug.Log($"[VehicleController] 🚗 Inicializado en '{gameObject.name}'. Rigidbody (Interpolate=OK), Volante: {(m_SteeringWheel != null ? "Conectado" : "No asignado")}");
+            }
+        }
+
+        private void IgnoreInternalChildCollisions()
+        {
+            Collider mainCol = GetComponent<Collider>();
+            if (mainCol == null) return;
+
+            Collider[] childCols = GetComponentsInChildren<Collider>(true);
+            foreach (var childCol in childCols)
+            {
+                if (childCol != null && childCol != mainCol)
+                {
+                    // Ignorar colisión interna con cualquier colisionador en los hijos (como el XROrigin o el jugador)
+                    Physics.IgnoreCollision(mainCol, childCol, true);
+                }
             }
         }
 
@@ -234,7 +259,6 @@ namespace PrimerVolante.VR
             m_ThrottleValue = ReadTriggerValue(m_RightTriggerAction, m_DefaultRightAction, XRNode.RightHand);
             m_BrakeValue = ReadTriggerValue(m_LeftTriggerAction, m_DefaultLeftAction, XRNode.LeftHand);
 
-            // Loggeo en Consola de Unity incluyendo posición 3D actual
             if (m_EnableDebugLogs && Time.time - m_LastLogTime >= m_LogInterval)
             {
                 if (m_BrakeValue > 0.01f)
@@ -244,7 +268,13 @@ namespace PrimerVolante.VR
                 }
                 else if (m_ThrottleValue > 0.01f)
                 {
-                    Debug.Log($"[VehicleController] 🏎️ ACELERADOR: {m_ThrottleValue * 100f:F1}% | Vel: {CurrentSpeedKmh:F1} km/h | Pos: {transform.position} | Forward: {GetForwardVector()}");
+                    float steeringVal = m_SteeringWheel != null ? m_SteeringWheel.SteeringValue : 0f;
+                    Debug.Log($"[VehicleController] 🏎️ ACELERADOR: {m_ThrottleValue * 100f:F1}% | Giro: {steeringVal * 100f:F0}% | Vel: {CurrentSpeedKmh:F1} km/h | Pos: {transform.position}");
+                    m_LastLogTime = Time.time;
+                }
+                else if (m_SteeringWheel != null && Mathf.Abs(m_SteeringWheel.SteeringValue) > 0.05f)
+                {
+                    Debug.Log($"[VehicleController] 🔄 GIRO VOLANTE: {m_SteeringWheel.SteeringValue * 100f:F0}% | Vel: {CurrentSpeedKmh:F1} km/h");
                     m_LastLogTime = Time.time;
                 }
             }
@@ -258,19 +288,16 @@ namespace PrimerVolante.VR
 
             if (m_BrakeValue > 0.01f)
             {
-                // Aplicar desaceleración de freno
                 float decel = m_BrakeForce * m_BrakeValue;
                 m_CurrentSpeedMs = Mathf.MoveTowards(m_CurrentSpeedMs, 0f, decel * Time.fixedDeltaTime);
             }
             else if (m_ThrottleValue > 0.01f)
             {
-                // Aplicar aceleración proporcional
                 float targetSpeed = maxSpeedMs * m_ThrottleValue;
                 m_CurrentSpeedMs = Mathf.MoveTowards(m_CurrentSpeedMs, targetSpeed, m_AccelerationRate * Time.fixedDeltaTime);
             }
             else
             {
-                // Desaceleración pasiva por inercia / freno de motor
                 m_CurrentSpeedMs = Mathf.MoveTowards(m_CurrentSpeedMs, 0f, m_IdleDeceleration * Time.fixedDeltaTime);
             }
 
@@ -279,25 +306,30 @@ namespace PrimerVolante.VR
             if (m_Rigidbody != null)
             {
                 m_Rigidbody.WakeUp();
+
+                // 1. Aplicar Giro de Dirección basado en VRSteeringWheel y velocidad de avance
+                if (m_SteeringWheel != null && Mathf.Abs(m_SteeringWheel.SteeringValue) > 0.001f)
+                {
+                    float speedFactor = m_ScaleTurnWithSpeed ? Mathf.Clamp01(m_CurrentSpeedMs / maxSpeedMs) : 1f;
+                    float turnAmount = m_MaxTurnSpeed * m_SteeringWheel.SteeringValue * speedFactor * Time.fixedDeltaTime;
+
+                    Quaternion turnRotation = Quaternion.Euler(0f, turnAmount, 0f);
+                    m_Rigidbody.MoveRotation(m_Rigidbody.rotation * turnRotation);
+                }
+
+                // 2. Aplicar Desplazamiento Longitudinal
                 Vector3 moveDir = GetForwardVector();
-                Vector3 deltaMove = moveDir * (m_CurrentSpeedMs * Time.fixedDeltaTime);
 
                 if (m_Rigidbody.isKinematic)
                 {
-                    // Si el Rigidbody es cinemático, desplazar directamente con MovePosition
+                    Vector3 deltaMove = moveDir * (m_CurrentSpeedMs * Time.fixedDeltaTime);
                     m_Rigidbody.MovePosition(m_Rigidbody.position + deltaMove);
                 }
                 else
                 {
-                    // Aplicar velocidad lineal + MovePosition de respaldo para garantizar desplazamiento
                     Vector3 forwardVel = moveDir * m_CurrentSpeedMs;
                     Vector3 currentVel = m_Rigidbody.linearVelocity;
                     m_Rigidbody.linearVelocity = new Vector3(forwardVel.x, currentVel.y, forwardVel.z);
-
-                    if (m_CurrentSpeedMs > 0.01f)
-                    {
-                        m_Rigidbody.MovePosition(m_Rigidbody.position + deltaMove);
-                    }
                 }
             }
         }

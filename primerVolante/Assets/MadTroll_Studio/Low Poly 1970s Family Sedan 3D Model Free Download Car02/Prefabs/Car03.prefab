@@ -299,6 +299,37 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!1 &1661067381789311172
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7541312701510757924}
+  m_Layer: 0
+  m_Name: DriverSeat
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7541312701510757924
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1661067381789311172}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.286, y: -0.08, z: -0.17}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 182913933870618331}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2241141503261213258
 GameObject:
   m_ObjectHideFlags: 0
@@ -878,6 +909,7 @@ GameObject:
   - component: {fileID: 2141738593387924309}
   - component: {fileID: 1522575313528587586}
   - component: {fileID: 1773056173735588375}
+  - component: {fileID: 7623448975697113110}
   m_Layer: 0
   m_Name: SteeringWheel_Pivot
   m_TagString: Untagged
@@ -1048,11 +1080,11 @@ MonoBehaviour:
   m_ThrowVelocityScale: 1.5
   m_ThrowAngularVelocityScale: 1
   m_ForceGravityOnDetach: 0
-  m_UnparentTransformOnGrab: 1
+  m_UnparentTransformOnGrab: 0
   m_RetainTransformParent: 1
   m_StartingSingleGrabTransformers: []
   m_StartingMultipleGrabTransformers: []
-  m_AddDefaultGrabTransformers: 1
+  m_AddDefaultGrabTransformers: 0
   m_FarAttachMode: 0
   m_LimitLinearVelocity: 0
   m_LimitAngularVelocity: 0
@@ -1071,9 +1103,30 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.VRSteeringWheel
   m_MaxSteeringAngle: 450
-  m_ReturnToCenter: 1
   m_ReturnSpeed: 200
+  m_ReturnToCenter: 1
   m_SteeringValue: 0
+--- !u!65 &7623448975697113110
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5025776053992582046}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.45, y: 0.45, z: 0.15}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &8165867267057368251
 GameObject:
   m_ObjectHideFlags: 0
@@ -1116,6 +1169,7 @@ Transform:
   - {fileID: 8849233173628458766}
   - {fileID: 3634288668063875732}
   - {fileID: 1420678753614223833}
+  - {fileID: 7541312701510757924}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!54 &3940320693120318280
@@ -1142,7 +1196,7 @@ Rigidbody:
   m_ImplicitTensor: 1
   m_UseGravity: 1
   m_IsKinematic: 0
-  m_Interpolate: 0
+  m_Interpolate: 1
   m_Constraints: 80
   m_CollisionDetection: 0
 --- !u!114 &5292788850694008568
@@ -1189,6 +1243,8 @@ MonoBehaviour:
   m_IdleDeceleration: 3
   m_ForwardAxis: 0
   m_SteeringWheel: {fileID: 1773056173735588375}
+  m_MaxTurnSpeed: 45
+  m_ScaleTurnWithSpeed: 1
   m_EnableDebugLogs: 1
   m_LogInterval: 0.25
 --- !u!65 &1444301050889936149
@@ -1210,8 +1266,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1.9709625, y: 1.4713464, z: 4.50654}
-  m_Center: {x: 0.074391365, y: 0.7356725, z: -0.44886592}
+  m_Size: {x: 1.9709625, y: 1.4713464, z: 4.5065384}
+  m_Center: {x: 0.074391365, y: 0.7356725, z: -0.4488678}
 --- !u!1 &8885628148570487137
 GameObject:
   m_ObjectHideFlags: 0
