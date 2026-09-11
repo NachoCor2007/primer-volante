@@ -55,6 +55,10 @@ namespace PrimerVolante.VR
         [Tooltip("Si se activa, el coche solo gira si tiene velocidad de avance.")]
         [SerializeField] private bool m_ScaleTurnWithSpeed = true;
 
+        [Header("Palanca de Cambios")]
+        [Tooltip("Palanca de cambios VR (se autodetecta si es hijo del coche).")]
+        [SerializeField] private VRGearShifter m_GearShifter;
+
         [Header("Debugging / Logs de Gatillos y Dirección")]
         [Tooltip("Si se activa, imprime mensajes en la Consola de Unity al presionar los gatillos o girar el volante.")]
         [SerializeField] private bool m_EnableDebugLogs = true;
@@ -71,6 +75,8 @@ namespace PrimerVolante.VR
         private Rigidbody m_Rigidbody;
         private InputAction m_DefaultLeftAction;
         private InputAction m_DefaultRightAction;
+        
+        private GearState m_CurrentGear = GearState.Park;
 
         /// <summary>
         /// Velocidad actual del vehículo en km/h.
@@ -99,6 +105,20 @@ namespace PrimerVolante.VR
         {
             get => m_SteeringWheel;
             set => m_SteeringWheel = value;
+        }
+
+        /// <summary>
+        /// Marcha actual (Drive, Reverse, Neutral, Park)
+        /// </summary>
+        public GearState CurrentGear
+        {
+            get => m_CurrentGear;
+            set => m_CurrentGear = value;
+        }
+
+        public void SetGear(GearState newGear)
+        {
+            m_CurrentGear = newGear;
         }
 
         public Vector3 GetForwardVector()
@@ -141,6 +161,18 @@ namespace PrimerVolante.VR
             if (m_SteeringWheel == null)
             {
                 m_SteeringWheel = GetComponentInChildren<VRSteeringWheel>();
+            }
+
+            if (m_GearShifter == null)
+            {
+                m_GearShifter = GetComponentInChildren<VRGearShifter>();
+            }
+
+            if (m_GearShifter != null)
+            {
+                m_GearShifter.OnGearChanged.RemoveListener(SetGear);
+                m_GearShifter.OnGearChanged.AddListener(SetGear);
+                m_CurrentGear = m_GearShifter.currentGear;
             }
 
             if (Application.isPlaying && m_EnableDebugLogs)
@@ -269,7 +301,7 @@ namespace PrimerVolante.VR
                 else if (m_ThrottleValue > 0.01f)
                 {
                     float steeringVal = m_SteeringWheel != null ? m_SteeringWheel.SteeringValue : 0f;
-                    Debug.Log($"[VehicleController] 🏎️ ACELERADOR: {m_ThrottleValue * 100f:F1}% | Giro: {steeringVal * 100f:F0}% | Vel: {CurrentSpeedKmh:F1} km/h | Pos: {transform.position}");
+                    Debug.Log($"[VehicleController] 🏎️ ACELERADOR ({m_CurrentGear}): {m_ThrottleValue * 100f:F1}% | Giro: {steeringVal * 100f:F0}% | Vel: {CurrentSpeedKmh:F1} km/h | Pos: {transform.position}");
                     m_LastLogTime = Time.time;
                 }
                 else if (m_SteeringWheel != null && Mathf.Abs(m_SteeringWheel.SteeringValue) > 0.05f)
@@ -291,14 +323,16 @@ namespace PrimerVolante.VR
                 float decel = m_BrakeForce * m_BrakeValue;
                 m_CurrentSpeedMs = Mathf.MoveTowards(m_CurrentSpeedMs, 0f, decel * Time.fixedDeltaTime);
             }
-            else if (m_ThrottleValue > 0.01f)
+            else if (m_ThrottleValue > 0.01f && (m_CurrentGear == GearState.Drive || m_CurrentGear == GearState.Reverse))
             {
                 float targetSpeed = maxSpeedMs * m_ThrottleValue;
                 m_CurrentSpeedMs = Mathf.MoveTowards(m_CurrentSpeedMs, targetSpeed, m_AccelerationRate * Time.fixedDeltaTime);
             }
             else
             {
-                m_CurrentSpeedMs = Mathf.MoveTowards(m_CurrentSpeedMs, 0f, m_IdleDeceleration * Time.fixedDeltaTime);
+                // Frenar bruscamente en Park, o inercia en Neutral/Drive
+                float decel = (m_CurrentGear == GearState.Park) ? m_BrakeForce : m_IdleDeceleration;
+                m_CurrentSpeedMs = Mathf.MoveTowards(m_CurrentSpeedMs, 0f, decel * Time.fixedDeltaTime);
             }
 
             m_CurrentSpeedMs = Mathf.Max(0f, m_CurrentSpeedMs);
@@ -310,8 +344,10 @@ namespace PrimerVolante.VR
                 // 1. Aplicar Giro de Dirección basado en VRSteeringWheel y velocidad de avance
                 if (m_SteeringWheel != null && Mathf.Abs(m_SteeringWheel.SteeringValue) > 0.001f)
                 {
+                    // Si va en reversa, la rotación global se invierte visualmente
+                    float directionSign = (m_CurrentGear == GearState.Reverse) ? -1f : 1f;
                     float speedFactor = m_ScaleTurnWithSpeed ? Mathf.Clamp01(m_CurrentSpeedMs / maxSpeedMs) : 1f;
-                    float turnAmount = m_MaxTurnSpeed * m_SteeringWheel.SteeringValue * speedFactor * Time.fixedDeltaTime;
+                    float turnAmount = m_MaxTurnSpeed * m_SteeringWheel.SteeringValue * speedFactor * directionSign * Time.fixedDeltaTime;
 
                     Quaternion turnRotation = Quaternion.Euler(0f, turnAmount, 0f);
                     m_Rigidbody.MoveRotation(m_Rigidbody.rotation * turnRotation);
@@ -319,6 +355,10 @@ namespace PrimerVolante.VR
 
                 // 2. Aplicar Desplazamiento Longitudinal
                 Vector3 moveDir = GetForwardVector();
+                if (m_CurrentGear == GearState.Reverse)
+                {
+                    moveDir = -moveDir;
+                }
 
                 if (m_Rigidbody.isKinematic)
                 {
