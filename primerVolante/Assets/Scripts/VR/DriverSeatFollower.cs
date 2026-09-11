@@ -1,4 +1,5 @@
 using UnityEngine;
+using Unity.XR.CoreUtils;
 
 namespace PrimerVolante.VR
 {
@@ -16,6 +17,12 @@ namespace PrimerVolante.VR
         [Tooltip("Si se activa, el jugador se mantiene continuamente alineado al asiento.")]
         [SerializeField] private bool m_FollowSeat = true;
 
+        [Header("Ajustes de Posición")]
+        [Tooltip("Offset relativo al asiento del conductor (para afinar la altura o posición de la vista).")]
+        [SerializeField] private Vector3 m_SeatOffset = new Vector3(0f, 1.2f, 0f);
+
+        private XROrigin m_XROrigin;
+
         public Transform DriverSeat
         {
             get => m_DriverSeat;
@@ -26,6 +33,22 @@ namespace PrimerVolante.VR
         {
             get => m_FollowSeat;
             set => m_FollowSeat = value;
+        }
+
+        public Vector3 SeatOffset
+        {
+            get => m_SeatOffset;
+            set => m_SeatOffset = value;
+        }
+
+        private void Awake()
+        {
+            m_XROrigin = GetComponent<XROrigin>();
+        }
+
+        private void Start()
+        {
+            FollowSeatPosition();
         }
 
         private void Update()
@@ -42,8 +65,22 @@ namespace PrimerVolante.VR
         {
             if (m_FollowSeat && m_DriverSeat != null)
             {
-                transform.position = m_DriverSeat.position;
+                transform.position = m_DriverSeat.position + m_DriverSeat.rotation * m_SeatOffset;
                 transform.rotation = m_DriverSeat.rotation;
+
+                // Corrige el bug del XR Interaction Simulator / XR Device Simulator en Unity:
+                // Unity ejecuta CameraFloorOffsetObject.transform.position = Vector3.zero (en coordenadas de mundo),
+                // lo que desfasa el Camera Offset en el valor inverso exacto del XROrigin (ej. x: -2.374, y: 0.09, z: 7.39)
+                // y envía la cámara al origen del mundo (0, 0, 0).
+                Transform offsetTransform = m_XROrigin != null && m_XROrigin.CameraFloorOffsetObject != null
+                    ? m_XROrigin.CameraFloorOffsetObject.transform
+                    : transform.Find("Camera Offset");
+
+                if (offsetTransform != null && offsetTransform.localPosition != Vector3.zero)
+                {
+                    offsetTransform.localPosition = Vector3.zero;
+                    offsetTransform.localRotation = Quaternion.identity;
+                }
             }
         }
 
@@ -52,7 +89,7 @@ namespace PrimerVolante.VR
         /// </summary>
         public void SnapToSeat()
         {
-            LateUpdate();
+            FollowSeatPosition();
         }
     }
 }
