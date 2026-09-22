@@ -1,81 +1,98 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.XR.Interaction.Toolkit;
-using System.Collections;
+using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 namespace PrimerVolante.VR
 {
+    /// <summary>
+    /// Estados de la transmisión de la palanca de cambios:
+    /// P (Parking), R (Reverse), N (Neutral) y D (Drive).
+    /// </summary>
     public enum GearState
     {
-        Park,
-        Reverse,
-        Neutral,
-        Drive
+        P = 0,
+        R = 1,
+        N = 2,
+        D = 3,
+
+        // Alias para compatibilidad con VehicleController
+        Park = P,
+        Reverse = R,
+        Neutral = N,
+        Drive = D
     }
 
     [System.Serializable]
     public class GearStateEvent : UnityEvent<GearState> { }
 
-    [RequireComponent(typeof(UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable))]
+    /// <summary>
+    /// Palanca de cambios física e interactiva en Realidad Virtual.
+    /// Movimiento restringido a un solo eje local con imanes (snapping) en P, R, N y D.
+    /// Requiere agarre continuo mediante XRGrabInteractable.
+    /// </summary>
+    [RequireComponent(typeof(XRGrabInteractable))]
+    [RequireComponent(typeof(Rigidbody))]
+    [RequireComponent(typeof(Collider))]
     public class VRGearShifter : MonoBehaviour
     {
-        [Header("Gear Settings")]
-        public GearState currentGear = GearState.Park;
-        
-        [Tooltip("Eje local sobre el que rota la palanca (X por defecto).")]
+        [Header("Estado Actual")]
+        [Tooltip("Estado actual de la palanca de cambios.")]
+        public GearState currentGear = GearState.P;
+
+        [Header("Eje y Límites de Movimiento")]
+        [Tooltip("Eje local sobre el que rota la palanca (X local hacia adelante y hacia atrás).")]
         public Vector3 rotationAxis = Vector3.right;
 
-        [Header("Ángulos de los Cambios (Limites)")]
-        [Tooltip("Ángulo de la palanca hacia adelante (Parking)")]
-        public float parkAngle = 40f;
-        [Tooltip("Ángulo intermedio-adelante (Reversa)")]
-        public float reverseAngle = 15f;
-        [Tooltip("Ángulo intermedio-atrás (Neutral)")]
-        public float neutralAngle = -10f;
-        [Tooltip("Ángulo de la palanca hacia atrás (Drive)")]
-        public float driveAngle = -35f;
+        [Tooltip("Límite máximo hacia adelante en grados, correspondiente a Parking (P).")]
+        public float forwardLimit = 40f;
 
-        [Header("Comportamiento")]
-        [Tooltip("Velocidad a la que la palanca se imanta a la posición más cercana al soltarla")]
-        public float snapSpeed = 10f;
+        [Tooltip("Límite máximo hacia atrás / hacia el usuario en grados, correspondiente a Drive (D).")]
+        public float backwardLimit = -35f;
+
+        [Header("Sistema de Imanes (Snapping)")]
+        [Tooltip("Rango de tolerancia (en grados) para atracción magnética y enganche.")]
+        public float snapThreshold = 6f;
+
+        [Tooltip("Velocidad de interpolación suave al soltar o engancharse en un cambio.")]
+        public float snapSpeed = 12f;
 
         [Header("Eventos")]
-        public GearStateEvent OnGearChanged;
+        [Tooltip("Evento disparado cada vez que cambia el estado de la palanca.")]
+        public GearStateEvent OnGearChanged = new GearStateEvent();
 
-        private UnityEngine.XR.Interaction.Toolkit.Interactables.XRBaseInteractable m_Interactable;
+        public GearState CurrentGear => currentGear;
+
+        private XRBaseInteractable m_Interactable;
+        private Rigidbody m_Rigidbody;
         private bool m_IsGrabbed = false;
         private Coroutine m_SnapRoutine;
-        
-        // Variables para el agarre suave (sin saltos bruscos)
+        private Quaternion m_ZeroRotation;
+
+        // Variables auxiliares para seguimiento suave de mano
         private float m_GrabStartLeverAngle;
         private float m_GrabStartHandAngle;
-        
-        // Rotación "Cero" de la palanca (para evitar problemas de Gimbal Lock)
-        private Quaternion m_ZeroRotation;
 
         private void Awake()
         {
-            m_Interactable = GetComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRBaseInteractable>();
-            
-            // EVITAR QUE CAIGA AL SUELO: Forzamos el Rigidbody a ser cinemático
-            Rigidbody rb = GetComponent<Rigidbody>();
-            if (rb != null)
+            m_Interactable = GetComponent<XRBaseInteractable>();
+            m_Rigidbody = GetComponent<Rigidbody>();
+
+            if (m_Rigidbody != null)
             {
-                rb.useGravity = false;
-                rb.isKinematic = true;
+                m_Rigidbody.isKinematic = true;
+                m_Rigidbody.useGravity = false;
             }
-            
-            // La posición exacta en la que pusiste la palanca en Unity es nuestro "Cero" (0 grados).
-            // A partir de ahí, se sumarán o restarán los grados de las marchas.
+
             m_ZeroRotation = transform.localRotation;
 
-            // Si el usuario sigue usando XRGrabInteractable, configuramos las físicas
-            var grab = m_Interactable as UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable;
+            var grab = m_Interactable as XRGrabInteractable;
             if (grab != null)
             {
-                grab.trackPosition = false; 
-                grab.trackRotation = true; // Se requiere true en algunas versiones de XRI para que el agarre no se suelte
-                grab.movementType = UnityEngine.XR.Interaction.Toolkit.Interactables.XRBaseInteractable.MovementType.Kinematic;
+                grab.trackPosition = false;
+                grab.trackRotation = false;
+                grab.movementType = XRBaseInteractable.MovementType.Instantaneous;
                 grab.throwOnDetach = false;
                 grab.forceGravityOnDetach = false;
             }
@@ -86,40 +103,8 @@ namespace PrimerVolante.VR
 
         private void Start()
         {
-            // Imantar a la posición inicial al comenzar
+            // Ubicar en la rotación exacta del cambio inicial al comenzar
             SetRotationToGear(currentGear);
-            
-            m_LastGearEditor = currentGear;
-            m_LastPark = parkAngle;
-            m_LastRev = reverseAngle;
-            m_LastNeu = neutralAngle;
-            m_LastDrive = driveAngle;
-        }
-
-        private GearState m_LastGearEditor;
-        private float m_LastPark, m_LastRev, m_LastNeu, m_LastDrive;
-
-        private void Update()
-        {
-            // Esto permite probar los ángulos y cambiar la marcha desde el Inspector en vivo mientras juegas
-            if (!m_IsGrabbed)
-            {
-                if (m_LastGearEditor != currentGear || m_LastPark != parkAngle || m_LastRev != reverseAngle || m_LastNeu != neutralAngle || m_LastDrive != driveAngle)
-                {
-                    if (m_SnapRoutine != null) StopCoroutine(m_SnapRoutine);
-                    SetRotationToGear(currentGear);
-                    
-                    if (m_LastGearEditor != currentGear) {
-                        OnGearChanged?.Invoke(currentGear);
-                    }
-
-                    m_LastGearEditor = currentGear;
-                    m_LastPark = parkAngle;
-                    m_LastRev = reverseAngle;
-                    m_LastNeu = neutralAngle;
-                    m_LastDrive = driveAngle;
-                }
-            }
         }
 
         private void OnDestroy()
@@ -137,130 +122,170 @@ namespace PrimerVolante.VR
             if (m_SnapRoutine != null)
             {
                 StopCoroutine(m_SnapRoutine);
+                m_SnapRoutine = null;
             }
-            
-            // Guardar en qué ángulo estaba la palanca exactamente
+
             m_GrabStartLeverAngle = GetCurrentAngle();
-            
-            // Calcular en qué ángulo está la mano al momento de agarrar
+
             var interactor = args.interactorObject;
-            Vector3 handWorldPos = interactor.transform.position;
-            Vector3 dirToHand = handWorldPos - transform.position;
-            
-            if (dirToHand.sqrMagnitude > 0.0001f)
+            if (interactor != null)
             {
-                // Convertir la dirección de la mano al espacio "Cero" de la palanca
-                Quaternion parentRot = transform.parent != null ? transform.parent.rotation : Quaternion.identity;
-                Quaternion zeroWorldRot = parentRot * m_ZeroRotation;
-                Vector3 localDir = Quaternion.Inverse(zeroWorldRot) * dirToHand;
-                
-                m_GrabStartHandAngle = 0f;
-                if (rotationAxis == Vector3.right) m_GrabStartHandAngle = Mathf.Atan2(localDir.z, localDir.y) * Mathf.Rad2Deg;
-                else if (rotationAxis == Vector3.up) m_GrabStartHandAngle = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
-                else if (rotationAxis == Vector3.forward) m_GrabStartHandAngle = Mathf.Atan2(localDir.y, localDir.x) * Mathf.Rad2Deg;
+                Vector3 handWorldPos = interactor.transform.position;
+                Vector3 dirToHand = handWorldPos - transform.position;
+
+                if (dirToHand.sqrMagnitude > 0.0001f)
+                {
+                    Quaternion parentRot = transform.parent != null ? transform.parent.rotation : Quaternion.identity;
+                    Quaternion zeroWorldRot = parentRot * m_ZeroRotation;
+                    Vector3 localDir = Quaternion.Inverse(zeroWorldRot) * dirToHand;
+
+                    m_GrabStartHandAngle = CalculateHandAngle(localDir);
+                }
             }
         }
 
         private void OnRelease(SelectExitEventArgs args)
         {
             m_IsGrabbed = false;
-            
-            // Determinar cuál es el cambio más cercano al soltar
+
             float currentAngle = GetCurrentAngle();
             GearState closestGear = GetClosestGear(currentAngle);
-            
+
             if (closestGear != currentGear)
             {
                 currentGear = closestGear;
                 OnGearChanged?.Invoke(currentGear);
-                Debug.Log($"[VRGearShifter] Cambio insertado: {currentGear}");
+                Debug.Log($"[VRGearShifter] {gameObject.name} soltado y enganchado en {currentGear}");
             }
 
-            // Iniciar animación de encaje (imán)
+            if (m_SnapRoutine != null) StopCoroutine(m_SnapRoutine);
             m_SnapRoutine = StartCoroutine(SnapToGear(closestGear));
         }
 
         private void LateUpdate()
         {
-            if (m_IsGrabbed && m_Interactable.interactorsSelecting.Count > 0)
+            if (m_IsGrabbed && m_Interactable != null && m_Interactable.interactorsSelecting.Count > 0)
             {
-                // Obtener la posición de la mano (o láser)
                 var interactor = m_Interactable.interactorsSelecting[0];
                 Vector3 handWorldPos = interactor.transform.position;
-                
-                // Calcular la dirección desde la base de la palanca hacia la mano
                 Vector3 dirToHand = handWorldPos - transform.position;
-                
+
                 if (dirToHand.sqrMagnitude > 0.0001f)
                 {
-                    // Convertir la dirección de la mano al espacio "Cero" de la palanca
                     Quaternion parentRot = transform.parent != null ? transform.parent.rotation : Quaternion.identity;
                     Quaternion zeroWorldRot = parentRot * m_ZeroRotation;
                     Vector3 localDir = Quaternion.Inverse(zeroWorldRot) * dirToHand;
-                    
-                    float currentHandAngle = 0f;
-                    
-                    if (rotationAxis == Vector3.right) 
-                        currentHandAngle = Mathf.Atan2(localDir.z, localDir.y) * Mathf.Rad2Deg;
-                    else if (rotationAxis == Vector3.up) 
-                        currentHandAngle = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
-                    else if (rotationAxis == Vector3.forward) 
-                        currentHandAngle = Mathf.Atan2(localDir.y, localDir.x) * Mathf.Rad2Deg;
 
-                    // Cuánto rotó la mano desde el momento del agarre
+                    float currentHandAngle = CalculateHandAngle(localDir);
                     float deltaAngle = Mathf.DeltaAngle(m_GrabStartHandAngle, currentHandAngle);
-                    
-                    // Sumárselo a donde estaba la palanca
-                    float targetAngle = m_GrabStartLeverAngle + deltaAngle;
+                    float rawTargetAngle = m_GrabStartLeverAngle + deltaAngle;
 
-                    // Limitar a los máximos permitidos
-                    float maxAngle = Mathf.Max(parkAngle, driveAngle);
-                    float minAngle = Mathf.Min(parkAngle, driveAngle);
-                    float clampedAngle = Mathf.Clamp(targetAngle, minAngle, maxAngle);
-                    
-                    // Aplicar
-                    ApplyRotation(clampedAngle);
+                    float minAllowed = Mathf.Min(forwardLimit, backwardLimit);
+                    float maxAllowed = Mathf.Max(forwardLimit, backwardLimit);
+                    float clampedAngle = Mathf.Clamp(rawTargetAngle, minAllowed, maxAllowed);
+
+                    // Sistema de imanes mientras se sostiene (Snapping en rango de tolerancia)
+                    float finalAngle = ApplyMagneticSnapping(clampedAngle);
+
+                    ApplyRotation(finalAngle);
                 }
             }
         }
 
-        private float GetCurrentAngle()
+        private float CalculateHandAngle(Vector3 localDir)
         {
-            // Usamos Quaternions para comparar rotaciones sin sufrir de "Gimbal Lock" (los ejes locos de Unity)
-            Quaternion diff = Quaternion.Inverse(m_ZeroRotation) * transform.localRotation;
-            diff.ToAngleAxis(out float angle, out Vector3 axis);
-            
-            if (Vector3.Dot(axis, rotationAxis) < 0)
+            if (rotationAxis == Vector3.right)
+                return Mathf.Atan2(localDir.z, localDir.y) * Mathf.Rad2Deg;
+            if (rotationAxis == Vector3.up)
+                return Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
+            if (rotationAxis == Vector3.forward)
+                return Mathf.Atan2(localDir.y, localDir.x) * Mathf.Rad2Deg;
+
+            return Mathf.Atan2(localDir.z, localDir.y) * Mathf.Rad2Deg;
+        }
+
+        private float ApplyMagneticSnapping(float angle)
+        {
+            GearState[] gears = { GearState.P, GearState.R, GearState.N, GearState.D };
+            foreach (var g in gears)
             {
-                angle = -angle;
+                float targetAngle = GetAngleForGear(g);
+                float diff = Mathf.Abs(Mathf.DeltaAngle(angle, targetAngle));
+
+                if (diff <= snapThreshold)
+                {
+                    float factor = 1f - (diff / snapThreshold);
+                    float snappedAngle = Mathf.LerpAngle(angle, targetAngle, factor * 0.4f);
+
+                    if (currentGear != g)
+                    {
+                        currentGear = g;
+                        OnGearChanged?.Invoke(currentGear);
+                        Debug.Log($"[VRGearShifter] {gameObject.name} magnetizado a {currentGear}");
+                    }
+                    return snappedAngle;
+                }
             }
-            
-            if (angle > 180f) angle -= 360f;
-            if (angle < -180f) angle += 360f;
+
+            // Si está fuera de los umbrales de imán, actualizar el estado más cercano
+            GearState closest = GetClosestGear(angle);
+            if (closest != currentGear)
+            {
+                currentGear = closest;
+                OnGearChanged?.Invoke(currentGear);
+            }
+
             return angle;
         }
 
-        private GearState GetClosestGear(float angle)
+        /// <summary>
+        /// Retorna el ángulo correspondiente para cada cambio:
+        /// P en forwardLimit, D en backwardLimit, y R y N distribuidos equitativamente en el medio.
+        /// </summary>
+        public float GetAngleForGear(GearState gear)
         {
-            GearState closest = GearState.Park;
+            switch (gear)
+            {
+                case GearState.P:
+                    return forwardLimit;
+                case GearState.R:
+                    return Mathf.Lerp(forwardLimit, backwardLimit, 1f / 3f);
+                case GearState.N:
+                    return Mathf.Lerp(forwardLimit, backwardLimit, 2f / 3f);
+                case GearState.D:
+                    return backwardLimit;
+                default:
+                    return forwardLimit;
+            }
+        }
+
+        public GearState GetClosestGear(float angle)
+        {
+            GearState[] allGears = { GearState.P, GearState.R, GearState.N, GearState.D };
+            GearState closest = GearState.P;
             float minDiff = float.MaxValue;
 
-            float[] angles = { parkAngle, reverseAngle, neutralAngle, driveAngle };
-            GearState[] states = { GearState.Park, GearState.Reverse, GearState.Neutral, GearState.Drive };
-
-            for (int i = 0; i < angles.Length; i++)
+            foreach (var g in allGears)
             {
-                float diff = Mathf.Abs(Mathf.DeltaAngle(angle, angles[i]));
+                float targetAngle = GetAngleForGear(g);
+                float diff = Mathf.Abs(Mathf.DeltaAngle(angle, targetAngle));
                 if (diff < minDiff)
                 {
                     minDiff = diff;
-                    closest = states[i];
+                    closest = g;
                 }
             }
             return closest;
         }
 
-        private void SetRotationToGear(GearState gear)
+        public void SetGear(GearState gear)
+        {
+            currentGear = gear;
+            if (m_SnapRoutine != null) StopCoroutine(m_SnapRoutine);
+            m_SnapRoutine = StartCoroutine(SnapToGear(gear));
+        }
+
+        public void SetRotationToGear(GearState gear)
         {
             float targetAngle = GetAngleForGear(gear);
             ApplyRotation(targetAngle);
@@ -271,34 +296,38 @@ namespace PrimerVolante.VR
             transform.localRotation = m_ZeroRotation * Quaternion.AngleAxis(angle, rotationAxis);
         }
 
-        private float GetAngleForGear(GearState gear)
+        private float GetCurrentAngle()
         {
-            switch (gear)
+            Quaternion diff = Quaternion.Inverse(m_ZeroRotation) * transform.localRotation;
+            diff.ToAngleAxis(out float angle, out Vector3 axis);
+
+            if (Vector3.Dot(axis, rotationAxis) < 0)
             {
-                case GearState.Park: return parkAngle;
-                case GearState.Reverse: return reverseAngle;
-                case GearState.Neutral: return neutralAngle;
-                case GearState.Drive: return driveAngle;
-                default: return parkAngle;
+                angle = -angle;
             }
+
+            if (angle > 180f) angle -= 360f;
+            if (angle < -180f) angle += 360f;
+            return angle;
         }
 
-        private IEnumerator SnapToGear(GearState gear)
+        private IEnumerator SnapToGear(GearState targetGear)
         {
-            float targetAngle = GetAngleForGear(gear);
+            float targetAngle = GetAngleForGear(targetGear);
             while (true)
             {
                 float currentAngle = GetCurrentAngle();
                 float newAngle = Mathf.LerpAngle(currentAngle, targetAngle, Time.deltaTime * snapSpeed);
                 ApplyRotation(newAngle);
 
-                if (Mathf.Abs(Mathf.DeltaAngle(newAngle, targetAngle)) < 0.5f)
+                if (Mathf.Abs(Mathf.DeltaAngle(newAngle, targetAngle)) < 0.2f)
                 {
-                    SetRotationToGear(gear); // Fijar exactamente en el ángulo final
+                    ApplyRotation(targetAngle);
                     break;
                 }
                 yield return null;
             }
+            m_SnapRoutine = null;
         }
     }
 }

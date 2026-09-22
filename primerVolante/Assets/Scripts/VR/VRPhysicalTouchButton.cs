@@ -33,11 +33,11 @@ namespace PrimerVolante.VR
         [SerializeField] private bool m_IgnoreVehicleColliders = true;
 
         [Header("Eventos")]
-        [Tooltip("Evento disparado al cambiar a estado Presionado.")]
-        [SerializeField] private UnityEvent m_OnPressed;
+        [Tooltip("Evento disparado al pasar al estado Presionado.")]
+        public UnityEvent OnPressed = new UnityEvent();
 
-        [Tooltip("Evento disparado al cambiar a estado Idle.")]
-        [SerializeField] private UnityEvent m_OnReleased;
+        [Tooltip("Evento disparado al volver al estado Idle.")]
+        public UnityEvent OnReleased = new UnityEvent();
 
         private Vector3 m_OriginalLocalPosition;
         private readonly HashSet<Collider> m_ActiveColliders = new HashSet<Collider>();
@@ -63,9 +63,6 @@ namespace PrimerVolante.VR
             }
         }
 
-        public UnityEvent OnPressed => m_OnPressed;
-        public UnityEvent OnReleased => m_OnReleased;
-
         private void Awake()
         {
             m_OriginalLocalPosition = transform.localPosition;
@@ -73,6 +70,23 @@ namespace PrimerVolante.VR
             {
                 m_PressOffset = Vector3.forward * m_PressDepth;
             }
+
+            // Conectar la lógica de Debug.Log como respuesta a los UnityEvents
+            if (OnPressed == null) OnPressed = new UnityEvent();
+            if (OnReleased == null) OnReleased = new UnityEvent();
+
+            OnPressed.AddListener(HandleOnPressedLog);
+            OnReleased.AddListener(HandleOnReleasedLog);
+        }
+
+        private void HandleOnPressedLog()
+        {
+            Debug.Log($"{gameObject.name} está ahora Presionado");
+        }
+
+        private void HandleOnReleasedLog()
+        {
+            Debug.Log($"{gameObject.name} está ahora Idle");
         }
 
         private void OnTriggerEnter(Collider other)
@@ -114,14 +128,12 @@ namespace PrimerVolante.VR
             {
                 Vector3 offset = m_PressOffset != Vector3.zero ? m_PressOffset : Vector3.forward * m_PressDepth;
                 transform.localPosition = m_OriginalLocalPosition + offset;
-                Debug.Log($"{gameObject.name} está ahora {m_CurrentState}");
-                m_OnPressed?.Invoke();
+                OnPressed?.Invoke();
             }
             else
             {
                 transform.localPosition = m_OriginalLocalPosition;
-                Debug.Log($"{gameObject.name} está ahora {m_CurrentState}");
-                m_OnReleased?.Invoke();
+                OnReleased?.Invoke();
             }
         }
 
