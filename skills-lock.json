@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "unity-cli": {
+      "source": "unity-technologies/skills",
+      "sourceType": "github",
+      "skillPath": "skills/unity-cli/SKILL.md",
+      "computedHash": "7b842a2c08301161c42154d95939ba6501f2f75e4817e3b196cb52d540e53d68"
+    },
+    "unity-developer": {
+      "source": "rmyndharis/antigravity-skills",
+      "sourceType": "github",
+      "skillPath": "skills/unity-developer/SKILL.md",
+      "computedHash": "c6187682ca8edc8bdf87bc96bc4a28b7117dab7f1f2ea92275690f4e62dae921"
+    },
+    "unity-scriptableobjects": {
+      "source": "gamedev-skills/awesome-gamedev-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/unity/unity-scriptableobjects/SKILL.md",
+      "computedHash": "5e30fd4e71f4ee7abd8c56ff4ad01dea47f1b6c645be97d84e7465adb09b93ca"
+    }
+  }
+}
