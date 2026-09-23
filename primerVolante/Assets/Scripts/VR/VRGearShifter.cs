@@ -30,7 +30,7 @@ namespace PrimerVolante.VR
     /// <summary>
     /// Palanca de cambios física e interactiva en Realidad Virtual.
     /// Movimiento restringido a un solo eje local con imanes (snapping) en P, R, N y D.
-    /// Requiere agarre continuo mediante XRGrabInteractable.
+    /// Requiere agarre continuo mediante XRGrabInteractable sin perder su jerarquía (parenting).
     /// </summary>
     [RequireComponent(typeof(XRGrabInteractable))]
     [RequireComponent(typeof(Rigidbody))]
@@ -40,6 +40,10 @@ namespace PrimerVolante.VR
         [Header("Estado Actual")]
         [Tooltip("Estado actual de la palanca de cambios.")]
         public GearState currentGear = GearState.P;
+
+        [Header("Estado Anterior")]
+        [Tooltip("Estado anterior de la palanca de cambios.")]
+        [SerializeField] private GearState estadoAnterior = GearState.P;
 
         [Header("Eje y Límites de Movimiento")]
         [Tooltip("Eje local sobre el que rota la palanca (X local hacia adelante y hacia atrás).")]
@@ -63,12 +67,17 @@ namespace PrimerVolante.VR
         public GearStateEvent OnGearChanged = new GearStateEvent();
 
         public GearState CurrentGear => currentGear;
+        public GearState EstadoAnterior => estadoAnterior;
 
         private XRBaseInteractable m_Interactable;
         private Rigidbody m_Rigidbody;
         private bool m_IsGrabbed = false;
         private Coroutine m_SnapRoutine;
         private Quaternion m_ZeroRotation;
+
+        // Jerarquía y posición local para evitar perder parenting al agarrar
+        private Transform m_OriginalParent;
+        private Vector3 m_InitialLocalPosition;
 
         // Variables auxiliares para seguimiento suave de mano
         private float m_GrabStartLeverAngle;
@@ -85,26 +94,25 @@ namespace PrimerVolante.VR
                 m_Rigidbody.useGravity = false;
             }
 
+            m_OriginalParent = transform.parent;
+            m_InitialLocalPosition = transform.localPosition;
             m_ZeroRotation = transform.localRotation;
+            estadoAnterior = currentGear;
 
-            var grab = m_Interactable as XRGrabInteractable;
-            if (grab != null)
+            ConfigureGrabInteractable();
+
+            if (m_Interactable != null)
             {
-                grab.trackPosition = false;
-                grab.trackRotation = false;
-                grab.movementType = XRBaseInteractable.MovementType.Instantaneous;
-                grab.throwOnDetach = false;
-                grab.forceGravityOnDetach = false;
+                m_Interactable.selectEntered.AddListener(OnGrab);
+                m_Interactable.selectExited.AddListener(OnRelease);
             }
-
-            m_Interactable.selectEntered.AddListener(OnGrab);
-            m_Interactable.selectExited.AddListener(OnRelease);
         }
 
         private void Start()
         {
-            // Ubicar en la rotación exacta del cambio inicial al comenzar
-            SetRotationToGear(currentGear);
+            estadoAnterior = currentGear;
+            float targetAngle = GetAngleForGear(currentGear);
+            ApplyRotation(targetAngle);
         }
 
         private void OnDestroy()
@@ -116,6 +124,54 @@ namespace PrimerVolante.VR
             }
         }
 
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            ConfigureGrabInteractable();
+        }
+#endif
+
+        private void ConfigureGrabInteractable()
+        {
+            var grab = GetComponent<XRGrabInteractable>();
+            if (grab != null)
+            {
+                grab.trackPosition = false;
+                grab.trackRotation = false;
+                grab.movementType = XRBaseInteractable.MovementType.Instantaneous;
+                grab.throwOnDetach = false;
+                grab.forceGravityOnDetach = false;
+                grab.unparentTransformOnGrab = false;
+                grab.retainTransformParent = true;
+            }
+        }
+
+        /// <summary>
+        /// Asigna un nuevo estado de cambio a la palanca.
+        /// El Debug.Log SOLO se ejecuta una única vez en el frame exacto en que cambia de estado.
+        /// </summary>
+        private bool SetGearState(GearState newGear)
+        {
+            if (newGear != currentGear)
+            {
+                estadoAnterior = currentGear;
+                currentGear = newGear;
+                OnGearChanged?.Invoke(currentGear);
+                Debug.Log($"[VRGearShifter] {gameObject.name}: Cambio de marcha de {estadoAnterior} a {currentGear}");
+                return true;
+            }
+            return false;
+        }
+
+        private void EnsureHierarchyAndLocalTransform()
+        {
+            if (m_OriginalParent != null && transform.parent != m_OriginalParent)
+            {
+                transform.SetParent(m_OriginalParent, false);
+            }
+            transform.localPosition = m_InitialLocalPosition;
+        }
+
         private void OnGrab(SelectEnterEventArgs args)
         {
             m_IsGrabbed = true;
@@ -125,20 +181,29 @@ namespace PrimerVolante.VR
                 m_SnapRoutine = null;
             }
 
+            EnsureHierarchyAndLocalTransform();
+
             m_GrabStartLeverAngle = GetCurrentAngle();
 
             var interactor = args.interactorObject;
             if (interactor != null)
             {
-                Vector3 handWorldPos = interactor.transform.position;
-                Vector3 dirToHand = handWorldPos - transform.position;
+                Transform parentT = transform.parent != null ? transform.parent : m_OriginalParent;
+                Vector3 dirToHandLocal;
 
-                if (dirToHand.sqrMagnitude > 0.0001f)
+                if (parentT != null)
                 {
-                    Quaternion parentRot = transform.parent != null ? transform.parent.rotation : Quaternion.identity;
-                    Quaternion zeroWorldRot = parentRot * m_ZeroRotation;
-                    Vector3 localDir = Quaternion.Inverse(zeroWorldRot) * dirToHand;
+                    Vector3 handLocalPos = parentT.InverseTransformPoint(interactor.transform.position);
+                    dirToHandLocal = handLocalPos - transform.localPosition;
+                }
+                else
+                {
+                    dirToHandLocal = interactor.transform.position - transform.position;
+                }
 
+                if (dirToHandLocal.sqrMagnitude > 0.0001f)
+                {
+                    Vector3 localDir = Quaternion.Inverse(m_ZeroRotation) * dirToHandLocal;
                     m_GrabStartHandAngle = CalculateHandAngle(localDir);
                 }
             }
@@ -148,46 +213,53 @@ namespace PrimerVolante.VR
         {
             m_IsGrabbed = false;
 
-            float currentAngle = GetCurrentAngle();
-            GearState closestGear = GetClosestGear(currentAngle);
+            EnsureHierarchyAndLocalTransform();
 
-            if (closestGear != currentGear)
-            {
-                currentGear = closestGear;
-                OnGearChanged?.Invoke(currentGear);
-                Debug.Log($"[VRGearShifter] {gameObject.name} soltado y enganchado en {currentGear}");
-            }
+            float currentAngle = GetCurrentAngle();
+            GearState targetGear = GetClosestGear(currentAngle);
 
             if (m_SnapRoutine != null) StopCoroutine(m_SnapRoutine);
-            m_SnapRoutine = StartCoroutine(SnapToGear(closestGear));
+            m_SnapRoutine = StartCoroutine(SnapToGear(targetGear));
         }
 
         private void LateUpdate()
         {
             if (m_IsGrabbed && m_Interactable != null && m_Interactable.interactorsSelecting.Count > 0)
             {
+                EnsureHierarchyAndLocalTransform();
+
                 var interactor = m_Interactable.interactorsSelecting[0];
-                Vector3 handWorldPos = interactor.transform.position;
-                Vector3 dirToHand = handWorldPos - transform.position;
-
-                if (dirToHand.sqrMagnitude > 0.0001f)
+                if (interactor != null)
                 {
-                    Quaternion parentRot = transform.parent != null ? transform.parent.rotation : Quaternion.identity;
-                    Quaternion zeroWorldRot = parentRot * m_ZeroRotation;
-                    Vector3 localDir = Quaternion.Inverse(zeroWorldRot) * dirToHand;
+                    Transform parentT = transform.parent != null ? transform.parent : m_OriginalParent;
+                    Vector3 dirToHandLocal;
 
-                    float currentHandAngle = CalculateHandAngle(localDir);
-                    float deltaAngle = Mathf.DeltaAngle(m_GrabStartHandAngle, currentHandAngle);
-                    float rawTargetAngle = m_GrabStartLeverAngle + deltaAngle;
+                    if (parentT != null)
+                    {
+                        Vector3 handLocalPos = parentT.InverseTransformPoint(interactor.transform.position);
+                        dirToHandLocal = handLocalPos - transform.localPosition;
+                    }
+                    else
+                    {
+                        dirToHandLocal = interactor.transform.position - transform.position;
+                    }
 
-                    float minAllowed = Mathf.Min(forwardLimit, backwardLimit);
-                    float maxAllowed = Mathf.Max(forwardLimit, backwardLimit);
-                    float clampedAngle = Mathf.Clamp(rawTargetAngle, minAllowed, maxAllowed);
+                    if (dirToHandLocal.sqrMagnitude > 0.0001f)
+                    {
+                        Vector3 localDir = Quaternion.Inverse(m_ZeroRotation) * dirToHandLocal;
+                        float currentHandAngle = CalculateHandAngle(localDir);
+                        float deltaAngle = Mathf.DeltaAngle(m_GrabStartHandAngle, currentHandAngle);
+                        float rawTargetAngle = m_GrabStartLeverAngle + deltaAngle;
 
-                    // Sistema de imanes mientras se sostiene (Snapping en rango de tolerancia)
-                    float finalAngle = ApplyMagneticSnapping(clampedAngle);
+                        float minAllowed = Mathf.Min(forwardLimit, backwardLimit);
+                        float maxAllowed = Mathf.Max(forwardLimit, backwardLimit);
+                        float clampedAngle = Mathf.Clamp(rawTargetAngle, minAllowed, maxAllowed);
 
-                    ApplyRotation(finalAngle);
+                        // Sistema de imanes mientras se sostiene (Snapping en rango de tolerancia)
+                        float finalAngle = ApplyMagneticSnapping(clampedAngle);
+
+                        ApplyRotation(finalAngle);
+                    }
                 }
             }
         }
@@ -217,22 +289,9 @@ namespace PrimerVolante.VR
                     float factor = 1f - (diff / snapThreshold);
                     float snappedAngle = Mathf.LerpAngle(angle, targetAngle, factor * 0.4f);
 
-                    if (currentGear != g)
-                    {
-                        currentGear = g;
-                        OnGearChanged?.Invoke(currentGear);
-                        Debug.Log($"[VRGearShifter] {gameObject.name} magnetizado a {currentGear}");
-                    }
+                    SetGearState(g);
                     return snappedAngle;
                 }
-            }
-
-            // Si está fuera de los umbrales de imán, actualizar el estado más cercano
-            GearState closest = GetClosestGear(angle);
-            if (closest != currentGear)
-            {
-                currentGear = closest;
-                OnGearChanged?.Invoke(currentGear);
             }
 
             return angle;
@@ -280,7 +339,6 @@ namespace PrimerVolante.VR
 
         public void SetGear(GearState gear)
         {
-            currentGear = gear;
             if (m_SnapRoutine != null) StopCoroutine(m_SnapRoutine);
             m_SnapRoutine = StartCoroutine(SnapToGear(gear));
         }
@@ -289,6 +347,7 @@ namespace PrimerVolante.VR
         {
             float targetAngle = GetAngleForGear(gear);
             ApplyRotation(targetAngle);
+            SetGearState(gear);
         }
 
         private void ApplyRotation(float angle)
@@ -316,6 +375,8 @@ namespace PrimerVolante.VR
             float targetAngle = GetAngleForGear(targetGear);
             while (true)
             {
+                EnsureHierarchyAndLocalTransform();
+
                 float currentAngle = GetCurrentAngle();
                 float newAngle = Mathf.LerpAngle(currentAngle, targetAngle, Time.deltaTime * snapSpeed);
                 ApplyRotation(newAngle);
@@ -327,6 +388,9 @@ namespace PrimerVolante.VR
                 }
                 yield return null;
             }
+
+            // Al terminar de acomodar la palanca en el imán, asignar el nuevo estado de forma limpia
+            SetGearState(targetGear);
             m_SnapRoutine = null;
         }
     }

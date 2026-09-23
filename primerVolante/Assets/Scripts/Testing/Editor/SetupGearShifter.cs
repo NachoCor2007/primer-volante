@@ -162,6 +162,8 @@ namespace PrimerVolante.Testing.Editor
                 grab.movementType = XRBaseInteractable.MovementType.Instantaneous;
                 grab.throwOnDetach = false;
                 grab.forceGravityOnDetach = false;
+                grab.unparentTransformOnGrab = false;
+                grab.retainTransformParent = true;
 
                 // 7. Configurar VRGearShifter
                 sb.AppendLine("\n--- 7. Configurando VRGearShifter ---");
