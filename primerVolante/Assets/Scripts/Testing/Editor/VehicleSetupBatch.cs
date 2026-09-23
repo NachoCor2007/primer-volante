@@ -47,12 +47,12 @@ namespace PrimerVolante.Testing.Editor
             
             SetupVehicleComponent();
 
-            VehicleController existingCtrl = Object.FindFirstObjectByType<VehicleController>();
+            VehicleController existingCtrl = Object.FindAnyObjectByType<VehicleController>();
             GameObject vehicleTarget = existingCtrl != null ? existingCtrl.gameObject : null;
 
             if (vehicleTarget == null)
             {
-                VRSteeringWheel steeringWheel = Object.FindFirstObjectByType<VRSteeringWheel>();
+                VRSteeringWheel steeringWheel = Object.FindAnyObjectByType<VRSteeringWheel>();
                 if (steeringWheel != null)
                 {
                     Transform curr = steeringWheel.transform;
@@ -165,7 +165,7 @@ namespace PrimerVolante.Testing.Editor
             GameObject xrOrigin = GameObject.Find("XR Origin (XR Rig)") ?? GameObject.Find("XR Origin") ?? GameObject.Find("XROrigin") ?? GameObject.Find("XR Rig");
             if (xrOrigin == null)
             {
-                var originComponent = Object.FindFirstObjectByType<Unity.XR.CoreUtils.XROrigin>();
+                var originComponent = Object.FindAnyObjectByType<Unity.XR.CoreUtils.XROrigin>();
                 if (originComponent != null)
                 {
                     xrOrigin = originComponent.gameObject;
