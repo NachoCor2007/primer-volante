@@ -59,6 +59,10 @@ namespace PrimerVolante.VR
         [Tooltip("Palanca de cambios VR (se autodetecta si es hijo del coche).")]
         [SerializeField] private VRGearShifter m_GearShifter;
 
+        [Header("Palanca de Guiño")]
+        [Tooltip("Palanca de guiño VR (se autodetecta si es hijo del coche).")]
+        [SerializeField] private VRTurnSignal m_TurnSignal;
+
         [Header("Debugging / Logs de Gatillos y Dirección")]
         [Tooltip("Si se activa, imprime mensajes en la Consola de Unity al presionar los gatillos o girar el volante.")]
         [SerializeField] private bool m_EnableDebugLogs = true;
@@ -78,6 +82,7 @@ namespace PrimerVolante.VR
 
         private GearState m_CurrentGear = GearState.Park;
         private bool m_EngineRunning = false;
+        private TurnSignalState m_CurrentTurnSignal = TurnSignalState.Off;
 
         /// <summary>
         /// Velocidad actual del vehículo en km/h.
@@ -120,6 +125,16 @@ namespace PrimerVolante.VR
         public void SetGear(GearState newGear)
         {
             m_CurrentGear = newGear;
+        }
+
+        /// <summary>
+        /// Estado actual del guiño (Off/Left/Right), listo para ser leído por el futuro panel del tablero.
+        /// </summary>
+        public TurnSignalState CurrentTurnSignal => m_CurrentTurnSignal;
+
+        public void SetTurnSignal(TurnSignalState newState)
+        {
+            m_CurrentTurnSignal = newState;
         }
 
         /// <summary>
@@ -201,6 +216,18 @@ namespace PrimerVolante.VR
                 m_GearShifter.OnGearChanged.RemoveListener(SetGear);
                 m_GearShifter.OnGearChanged.AddListener(SetGear);
                 m_CurrentGear = m_GearShifter.currentGear;
+            }
+
+            if (m_TurnSignal == null)
+            {
+                m_TurnSignal = GetComponentInChildren<VRTurnSignal>();
+            }
+
+            if (m_TurnSignal != null)
+            {
+                m_TurnSignal.OnTurnSignalChanged.RemoveListener(SetTurnSignal);
+                m_TurnSignal.OnTurnSignalChanged.AddListener(SetTurnSignal);
+                m_CurrentTurnSignal = m_TurnSignal.CurrentSignal;
             }
 
             if (Application.isPlaying && m_EnableDebugLogs)

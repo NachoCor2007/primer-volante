@@ -1011,6 +1011,62 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: ec27730881642644eb3dbb4f6fa103d1, type: 3}
+--- !u!21 &1859044617
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Universal Render Pipeline/Unlit
+  m_Shader: {fileID: 4800000, guid: 650dd9526735d5b46b79224bc6e94025, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap:
+    RenderType: Opaque
+  disabledShaderPasses:
+  - MOTIONVECTORS
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _BaseMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MainTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _AddPrecomputedVelocity: 0
+    - _AlphaClip: 0
+    - _AlphaToMask: 0
+    - _Blend: 0
+    - _BlendOp: 0
+    - _Cull: 2
+    - _Cutoff: 0.5
+    - _DstBlend: 0
+    - _DstBlendAlpha: 0
+    - _QueueOffset: 0
+    - _SampleGI: 0
+    - _SrcBlend: 1
+    - _SrcBlendAlpha: 1
+    - _Surface: 0
+    - _XRMotionVectorsPass: 1
+    - _ZWrite: 1
+    m_Colors:
+    - _BaseColor: {r: 1, g: 0.5, b: 0, a: 1}
+    - _Color: {r: 1, g: 0.5, b: 0, a: 1}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1
 --- !u!4 &7186478415765144070 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3902099925107984209, guid: a4fb468bf32ef3a4b8cd0cfcbe6b85b9, type: 3}
@@ -1028,6 +1084,22 @@ PrefabInstance:
       propertyPath: m_InteractionManager
       value: 
       objectReference: {fileID: 1003676656}
+    - target: {fileID: 1221618149903076799, guid: a4fb468bf32ef3a4b8cd0cfcbe6b85b9, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 1859044617}
+    - target: {fileID: 2145855418826263244, guid: a4fb468bf32ef3a4b8cd0cfcbe6b85b9, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 1859044617}
+    - target: {fileID: 2283902607934821438, guid: a4fb468bf32ef3a4b8cd0cfcbe6b85b9, type: 3}
+      propertyPath: m_InteractionManager
+      value: 
+      objectReference: {fileID: 1003676656}
+    - target: {fileID: 2364488184950065959, guid: a4fb468bf32ef3a4b8cd0cfcbe6b85b9, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 1859044617}
     - target: {fileID: 2837077416508066696, guid: a4fb468bf32ef3a4b8cd0cfcbe6b85b9, type: 3}
       propertyPath: m_InteractionManager
       value: 
@@ -1036,6 +1108,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Car05
       objectReference: {fileID: 0}
+    - target: {fileID: 3724795909390526227, guid: a4fb468bf32ef3a4b8cd0cfcbe6b85b9, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 1859044617}
     - target: {fileID: 6631202488475238318, guid: a4fb468bf32ef3a4b8cd0cfcbe6b85b9, type: 3}
       propertyPath: m_LocalPosition.x
       value: 5.63
@@ -1075,18 +1151,6 @@ PrefabInstance:
     - target: {fileID: 6631202488475238318, guid: a4fb468bf32ef3a4b8cd0cfcbe6b85b9, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6919712143790386166, guid: a4fb468bf32ef3a4b8cd0cfcbe6b85b9, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -0.3136
-      objectReference: {fileID: 0}
-    - target: {fileID: 6919712143790386166, guid: a4fb468bf32ef3a4b8cd0cfcbe6b85b9, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0.8934
-      objectReference: {fileID: 0}
-    - target: {fileID: 6919712143790386166, guid: a4fb468bf32ef3a4b8cd0cfcbe6b85b9, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0.2155
       objectReference: {fileID: 0}
     - target: {fileID: 6981033098401776428, guid: a4fb468bf32ef3a4b8cd0cfcbe6b85b9, type: 3}
       propertyPath: m_InteractionManager
