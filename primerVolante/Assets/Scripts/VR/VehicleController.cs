@@ -75,8 +75,9 @@ namespace PrimerVolante.VR
         private Rigidbody m_Rigidbody;
         private InputAction m_DefaultLeftAction;
         private InputAction m_DefaultRightAction;
-        
+
         private GearState m_CurrentGear = GearState.Park;
+        private bool m_EngineRunning = false;
 
         /// <summary>
         /// Velocidad actual del vehículo en km/h.
@@ -119,6 +120,33 @@ namespace PrimerVolante.VR
         public void SetGear(GearState newGear)
         {
             m_CurrentGear = newGear;
+        }
+
+        /// <summary>
+        /// Indica si el motor está encendido. Con el motor apagado, el vehículo ignora el acelerador
+        /// y se frena en seco (velocidad y dirección de avance quedan a cero de inmediato).
+        /// </summary>
+        public bool IsEngineRunning => m_EngineRunning;
+
+        /// <summary>
+        /// Enciende o apaga el motor. Al apagarlo, detiene el vehículo instantáneamente.
+        /// </summary>
+        public void SetEngineRunning(bool running)
+        {
+            if (m_EngineRunning == running) return;
+
+            m_EngineRunning = running;
+
+            if (!m_EngineRunning)
+            {
+                m_CurrentSpeedMs = 0f;
+
+                if (m_Rigidbody != null)
+                {
+                    m_Rigidbody.linearVelocity = Vector3.zero;
+                    m_Rigidbody.angularVelocity = Vector3.zero;
+                }
+            }
         }
 
         public Vector3 GetForwardVector()
@@ -324,7 +352,12 @@ namespace PrimerVolante.VR
 
             float maxSpeedMs = m_MaxSpeedKmh / 3.6f;
 
-            if (m_BrakeValue > 0.01f)
+            if (!m_EngineRunning)
+            {
+                // Motor apagado: el vehículo no responde al acelerador y permanece detenido.
+                m_CurrentSpeedMs = 0f;
+            }
+            else if (m_BrakeValue > 0.01f)
             {
                 float decel = m_BrakeForce * m_BrakeValue;
                 m_CurrentSpeedMs = Mathf.MoveTowards(m_CurrentSpeedMs, 0f, decel * Time.fixedDeltaTime);
@@ -348,7 +381,7 @@ namespace PrimerVolante.VR
                 m_Rigidbody.WakeUp();
 
                 // 1. Aplicar Giro de Dirección basado en VRSteeringWheel y velocidad de avance
-                if (m_SteeringWheel != null && Mathf.Abs(m_SteeringWheel.SteeringValue) > 0.001f)
+                if (m_EngineRunning && m_SteeringWheel != null && Mathf.Abs(m_SteeringWheel.SteeringValue) > 0.001f)
                 {
                     // Si va en reversa, la rotación global se invierte visualmente
                     float directionSign = (m_CurrentGear == GearState.Reverse) ? -1f : 1f;

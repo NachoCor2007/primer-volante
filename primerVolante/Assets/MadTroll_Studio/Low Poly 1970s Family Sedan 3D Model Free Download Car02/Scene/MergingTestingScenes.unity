@@ -377,7 +377,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 06903aee7deb3cf47a42dd077a75d25d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.DriverSeatFollower
-  m_DriverSeat: {fileID: 2035387787}
+  m_DriverSeat: {fileID: 7186478415765144070}
   m_FollowSeat: 1
 --- !u!1001 &706971752
 PrefabInstance:
@@ -1011,12 +1011,12 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: ec27730881642644eb3dbb4f6fa103d1, type: 3}
---- !u!4 &2035387787 stripped
+--- !u!4 &7186478415765144070 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3902099925107984209, guid: a4fb468bf32ef3a4b8cd0cfcbe6b85b9, type: 3}
-  m_PrefabInstance: {fileID: 798157452582399010}
+  m_PrefabInstance: {fileID: 8649822672958360922}
   m_PrefabAsset: {fileID: 0}
---- !u!1001 &798157452582399010
+--- !u!1001 &8649822672958360922
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -1092,7 +1092,7 @@ SceneRoots:
   - {fileID: 961739753}
   - {fileID: 203844589}
   - {fileID: 1508096597}
-  - {fileID: 798157452582399010}
+  - {fileID: 8649822672958360922}
   - {fileID: 1003676657}
   - {fileID: 1603674471}
   - {fileID: 122873878}
