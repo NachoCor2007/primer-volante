@@ -269,17 +269,23 @@ namespace PrimerVolante.VR
 
         private void SetupDefaultActionsIfNeeded()
         {
-            if (m_LeftTriggerAction.action == null)
+            if (m_LeftTriggerAction.action == null || m_LeftTriggerAction.action.bindings.Count == 0)
             {
-                m_DefaultLeftAction = new InputAction("LeftTriggerDefault", InputActionType.Value, "<XRController>{LeftHand}/trigger");
-                m_DefaultLeftAction.AddBinding("<XRController>{LeftHand}/activate");
+                if (m_DefaultLeftAction == null)
+                {
+                    m_DefaultLeftAction = new InputAction("LeftTriggerDefault", InputActionType.Value, "<XRController>{LeftHand}/trigger");
+                    m_DefaultLeftAction.AddBinding("<XRController>{LeftHand}/activate");
+                }
                 m_DefaultLeftAction.Enable();
             }
 
-            if (m_RightTriggerAction.action == null)
+            if (m_RightTriggerAction.action == null || m_RightTriggerAction.action.bindings.Count == 0)
             {
-                m_DefaultRightAction = new InputAction("RightTriggerDefault", InputActionType.Value, "<XRController>{RightHand}/trigger");
-                m_DefaultRightAction.AddBinding("<XRController>{RightHand}/activate");
+                if (m_DefaultRightAction == null)
+                {
+                    m_DefaultRightAction = new InputAction("RightTriggerDefault", InputActionType.Value, "<XRController>{RightHand}/trigger");
+                    m_DefaultRightAction.AddBinding("<XRController>{RightHand}/activate");
+                }
                 m_DefaultRightAction.Enable();
             }
         }
