@@ -66,6 +66,10 @@ namespace PrimerVolante.VR
         [Tooltip("Evento disparado cada vez que cambia el estado de la palanca.")]
         public GearStateEvent OnGearChanged = new GearStateEvent();
 
+        [Header("Restricción de Freno / Motor")]
+        [Tooltip("Controlador del vehículo, para consultar freno, velocidad y motor. Se autodetecta en los padres si se deja vacío.")]
+        [SerializeField] private VehicleController m_VehicleController;
+
         public GearState CurrentGear => currentGear;
         public GearState EstadoAnterior => estadoAnterior;
 
@@ -85,6 +89,9 @@ namespace PrimerVolante.VR
 
         private void Awake()
         {
+            if (m_VehicleController == null)
+                m_VehicleController = GetComponentInParent<VehicleController>();
+
             m_Interactable = GetComponent<XRBaseInteractable>();
             m_Rigidbody = GetComponent<Rigidbody>();
 
@@ -218,6 +225,16 @@ namespace PrimerVolante.VR
             float currentAngle = GetCurrentAngle();
             GearState targetGear = GetClosestGear(currentAngle);
 
+            // GetClosestGear no conoce las restricciones: justo en la frontera entre dos cambios
+            // puede desempatar hacia el lado bloqueado. Si el cambio elegido exige cruzar un tope
+            // actualmente cerrado, nos quedamos en el cambio actual (rebote) en vez de cruzarlo.
+            (float min, float max) = ComputeAllowedAngleRange();
+            float targetAngle = GetAngleForGear(targetGear);
+            if (targetAngle < min - 0.01f || targetAngle > max + 0.01f)
+            {
+                targetGear = currentGear;
+            }
+
             if (m_SnapRoutine != null) StopCoroutine(m_SnapRoutine);
             m_SnapRoutine = StartCoroutine(SnapToGear(targetGear));
         }
@@ -251,8 +268,7 @@ namespace PrimerVolante.VR
                         float deltaAngle = Mathf.DeltaAngle(m_GrabStartHandAngle, currentHandAngle);
                         float rawTargetAngle = m_GrabStartLeverAngle + deltaAngle;
 
-                        float minAllowed = Mathf.Min(forwardLimit, backwardLimit);
-                        float maxAllowed = Mathf.Max(forwardLimit, backwardLimit);
+                        (float minAllowed, float maxAllowed) = ComputeAllowedAngleRange();
                         float clampedAngle = Mathf.Clamp(rawTargetAngle, minAllowed, maxAllowed);
 
                         // Sistema de imanes mientras se sostiene (Snapping en rango de tolerancia)
@@ -316,6 +332,72 @@ namespace PrimerVolante.VR
                 default:
                     return forwardLimit;
             }
+        }
+
+        private bool IsEngineOn()
+        {
+            return m_VehicleController != null && m_VehicleController.IsEngineRunning;
+        }
+
+        /// <summary>
+        /// Freno a fondo y auto completamente detenido: condición para cruzar P&lt;-&gt;R&lt;-&gt;N.
+        /// </summary>
+        private bool IsBrakeAndStoppedOk()
+        {
+            return m_VehicleController != null
+                && m_VehicleController.BrakeValue >= 1f
+                && m_VehicleController.CurrentSpeedKmh <= 0f;
+        }
+
+        /// <summary>
+        /// Calcula el rango de ángulo físicamente alcanzable, imponiendo un tope duro en las
+        /// fronteras P|R y R|N cuando no se cumple freno+detenido, y colapsando todo el recorrido
+        /// a Park si el motor está apagado. La frontera N|D nunca se restringe.
+        /// Sin VehicleController asignado, no se aplica ninguna restricción (fail-open).
+        ///
+        /// El lado del muro en el que está "encajada" la palanca se decide por <see cref="currentGear"/>
+        /// (el cambio ya confirmado), no por el ángulo físico instantáneo: el ángulo decodificado de
+        /// vuelta desde el cuaternión (GetCurrentAngle) puede quedar a una fracción de grado del punto
+        /// medio exacto por redondeo de punto flotante, lo que con una comparación basada en ángulo
+        /// podía hacer creer —justo al tocar el muro— que ya se había cruzado al otro lado.
+        /// </summary>
+        private (float min, float max) ComputeAllowedAngleRange()
+        {
+            float min = Mathf.Min(forwardLimit, backwardLimit);
+            float max = Mathf.Max(forwardLimit, backwardLimit);
+
+            if (m_VehicleController == null) return (min, max);
+
+            float angleP = GetAngleForGear(GearState.P);
+
+            if (!IsEngineOn())
+            {
+                // Motor apagado: la palanca queda clavada en Park.
+                return (angleP, angleP);
+            }
+
+            if (IsBrakeAndStoppedOk()) return (min, max);
+
+            float angleR = GetAngleForGear(GearState.R);
+            float angleN = GetAngleForGear(GearState.N);
+            float angleD = GetAngleForGear(GearState.D);
+            float boundaryPR = (angleP + angleR) * 0.5f;
+            float boundaryRN = (angleR + angleN) * 0.5f;
+
+            switch (currentGear)
+            {
+                case GearState.P:
+                    return Segment(angleP, boundaryPR);
+                case GearState.R:
+                    return Segment(boundaryPR, boundaryRN);
+                default: // Neutral o Drive: zona libre entre ambos, topada solo del lado de Reverse.
+                    return Segment(angleD, boundaryRN);
+            }
+        }
+
+        private static (float min, float max) Segment(float a, float b)
+        {
+            return (Mathf.Min(a, b), Mathf.Max(a, b));
         }
 
         public GearState GetClosestGear(float angle)

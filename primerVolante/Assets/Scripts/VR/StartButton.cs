@@ -5,8 +5,8 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 namespace PrimerVolante.VR
 {
     /// <summary>
-    /// Botón de arranque/apagado del motor. Alterna VehicleController.IsEngineRunning
-    /// y sólo permite el cambio de estado si la palanca de cambios está en Park o Neutral.
+    /// Botón de arranque/apagado del motor. Alterna VehicleController.IsEngineRunning.
+    /// Tanto para arrancar como para apagar exige la palanca en Park y el freno a fondo.
     /// </summary>
     public class StartButton : MonoBehaviour
     {
@@ -74,7 +74,8 @@ namespace PrimerVolante.VR
         }
 
         /// <summary>
-        /// Intenta alternar el estado del motor. Bloqueado si se intenta encender fuera de Park/Neutral.
+        /// Intenta alternar el estado del motor. Tanto encender como apagar requieren
+        /// la palanca en Park y el freno pisado a fondo.
         /// </summary>
         public void ToggleEngine()
         {
@@ -86,11 +87,38 @@ namespace PrimerVolante.VR
             }
 
             bool wantsToStart = !m_VehicleController.IsEngineRunning;
-            if (wantsToStart && !IsGearSafeToStart())
+
+            if (wantsToStart)
             {
-                if (m_EnableDebugLogs)
-                    Debug.Log($"[StartButton:{gameObject.name}] Encendido bloqueado: la palanca debe estar en Park o Neutral (actual: {m_VehicleController.CurrentGear}).");
-                return;
+                if (!IsGearSafeToStart())
+                {
+                    if (m_EnableDebugLogs)
+                        Debug.Log($"[StartButton:{gameObject.name}] Encendido bloqueado: la palanca debe estar en Park (actual: {m_VehicleController.CurrentGear}).");
+                    return;
+                }
+
+                if (m_VehicleController.BrakeValue < 1f)
+                {
+                    if (m_EnableDebugLogs)
+                        Debug.Log($"[StartButton:{gameObject.name}] Encendido bloqueado: hay que pisar el freno a fondo.");
+                    return;
+                }
+            }
+            else
+            {
+                if (m_VehicleController.CurrentGear != GearState.Park)
+                {
+                    if (m_EnableDebugLogs)
+                        Debug.Log($"[StartButton:{gameObject.name}] Apagado bloqueado: la palanca debe estar en Park (actual: {m_VehicleController.CurrentGear}).");
+                    return;
+                }
+
+                if (m_VehicleController.BrakeValue < 1f)
+                {
+                    if (m_EnableDebugLogs)
+                        Debug.Log($"[StartButton:{gameObject.name}] Apagado bloqueado: hay que pisar el freno a fondo.");
+                    return;
+                }
             }
 
             m_VehicleController.SetEngineRunning(wantsToStart);
@@ -102,8 +130,7 @@ namespace PrimerVolante.VR
 
         private bool IsGearSafeToStart()
         {
-            GearState gear = m_VehicleController.CurrentGear;
-            return gear == GearState.Park || gear == GearState.Neutral;
+            return m_VehicleController.CurrentGear == GearState.Park;
         }
 
         private void UpdateVisual()
