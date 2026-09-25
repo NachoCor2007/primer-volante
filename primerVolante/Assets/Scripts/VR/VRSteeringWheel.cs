@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
@@ -51,6 +52,11 @@ namespace PrimerVolante.VR
         /// Ángulo actual del volante en grados.
         /// </summary>
         public float CurrentAngle => m_CurrentAngle;
+
+        /// <summary>
+        /// Indica si el volante está siendo agarrado por un interactor VR.
+        /// </summary>
+        public bool IsGrabbed => (m_GrabInteractable != null && m_GrabInteractable.isSelected) || m_ActiveInteractor != null;
 
         private void Awake()
         {
@@ -172,7 +178,7 @@ namespace PrimerVolante.VR
             }
 
             // 2. Procesar el ángulo del volante en LateUpdate, DESPUÉS de que DriverSeatFollower (Order=50) haya actualizado XROrigin
-            if (m_GrabInteractable != null && m_GrabInteractable.isSelected && m_ActiveInteractor != null && m_ActiveInteractor.transform != null)
+            if (IsGrabbed && m_ActiveInteractor != null && m_ActiveInteractor.transform != null)
             {
                 float currentHandAngle = CalculateHandAngle(m_ActiveInteractor.transform);
                 float stepDelta = -Mathf.DeltaAngle(m_LastHandAngle, currentHandAngle);
@@ -180,9 +186,29 @@ namespace PrimerVolante.VR
 
                 m_CurrentAngle = Mathf.Clamp(m_CurrentAngle + stepDelta, -m_MaxSteeringAngle, m_MaxSteeringAngle);
             }
-            else if (m_ReturnToCenter && m_CurrentAngle != 0f)
+            else
             {
-                m_CurrentAngle = Mathf.MoveTowards(m_CurrentAngle, 0f, m_ReturnSpeed * Time.deltaTime);
+                // Soporte Gamepad (DualShock 4 / genérico) y Teclado como capa de testing
+                float inputSteer = 0f;
+                if (Gamepad.current != null)
+                {
+                    inputSteer = Gamepad.current.leftStick.x.ReadValue();
+                }
+                if (Keyboard.current != null)
+                {
+                    if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed) inputSteer = -1f;
+                    else if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed) inputSteer = 1f;
+                }
+
+                if (Mathf.Abs(inputSteer) > 0.05f)
+                {
+                    float targetAngle = inputSteer * m_MaxSteeringAngle;
+                    m_CurrentAngle = Mathf.MoveTowards(m_CurrentAngle, targetAngle, m_ReturnSpeed * 2f * Time.deltaTime);
+                }
+                else if (m_ReturnToCenter && m_CurrentAngle != 0f)
+                {
+                    m_CurrentAngle = Mathf.MoveTowards(m_CurrentAngle, 0f, m_ReturnSpeed * Time.deltaTime);
+                }
             }
 
             m_SteeringValue = m_MaxSteeringAngle > 0 ? Mathf.Clamp(m_CurrentAngle / m_MaxSteeringAngle, -1f, 1f) : 0f;

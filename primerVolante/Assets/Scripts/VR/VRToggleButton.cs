@@ -84,22 +84,37 @@ namespace PrimerVolante.VR
         /// </summary>
         public void ToggleButton()
         {
-            _isToggled = !_isToggled;
+            SetToggled(!_isToggled, invokeEvents: true);
+        }
+
+        /// <summary>
+        /// Establece el estado del botón y actualiza su material visual.
+        /// </summary>
+        public void SetToggled(bool toggled, bool invokeEvents = true)
+        {
+            if (_isToggled == toggled) return;
+            _isToggled = toggled;
+
+            if (_instancedMaterial == null && targetRenderer != null)
+                _instancedMaterial = targetRenderer.material;
 
             if (_instancedMaterial != null)
                 _instancedMaterial.color = _isToggled ? toggledColor : idleColor;
 
-            if (_isToggled)
+            if (invokeEvents)
             {
-                if (enableVerboseLogs)
-                    Debug.Log($"[VRToggleButton:{gameObject.name}] 🟢 Botón ENCENDIDO");
-                OnToggledOn?.Invoke();
-            }
-            else
-            {
-                if (enableVerboseLogs)
-                    Debug.Log($"[VRToggleButton:{gameObject.name}] 🔴 Botón APAGADO");
-                OnToggledOff?.Invoke();
+                if (_isToggled)
+                {
+                    if (enableVerboseLogs)
+                        Debug.Log($"[VRToggleButton:{gameObject.name}] 🟢 Botón ENCENDIDO");
+                    OnToggledOn?.Invoke();
+                }
+                else
+                {
+                    if (enableVerboseLogs)
+                        Debug.Log($"[VRToggleButton:{gameObject.name}] 🔴 Botón APAGADO");
+                    OnToggledOff?.Invoke();
+                }
             }
         }
 

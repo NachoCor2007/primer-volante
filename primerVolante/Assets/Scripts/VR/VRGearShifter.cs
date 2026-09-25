@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.InputSystem;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
@@ -239,6 +240,99 @@ namespace PrimerVolante.VR
             m_SnapRoutine = StartCoroutine(SnapToGear(targetGear));
         }
 
+        private void Update()
+        {
+            if (m_IsGrabbed) return;
+
+            bool shiftDown = false;
+            bool shiftUp = false;
+
+            if (Gamepad.current != null)
+            {
+                if (Gamepad.current.dpad.down.wasPressedThisFrame || Gamepad.current.rightShoulder.wasPressedThisFrame)
+                {
+                    shiftDown = true;
+                }
+                if (Gamepad.current.dpad.up.wasPressedThisFrame || Gamepad.current.leftShoulder.wasPressedThisFrame)
+                {
+                    shiftUp = true;
+                }
+            }
+
+            if (Keyboard.current != null)
+            {
+                if (Keyboard.current.pageDownKey.wasPressedThisFrame || Keyboard.current.digit2Key.wasPressedThisFrame)
+                {
+                    shiftDown = true;
+                }
+                if (Keyboard.current.pageUpKey.wasPressedThisFrame || Keyboard.current.digit1Key.wasPressedThisFrame)
+                {
+                    shiftUp = true;
+                }
+            }
+
+            if (shiftDown)
+            {
+                // Bajar marcha (P -> R -> N -> D)
+                int nextIndex = (int)currentGear + 1;
+                if (nextIndex <= (int)GearState.D)
+                {
+                    GearState target = (GearState)nextIndex;
+                    if (CanShiftTo(target))
+                    {
+                        SetGear(target);
+                    }
+                }
+                else
+                {
+                    Debug.Log($"[VRGearShifter] Ya se encuentra en la marcha más baja ({currentGear}).");
+                }
+            }
+            else if (shiftUp)
+            {
+                // Subir marcha (D -> N -> R -> P)
+                int prevIndex = (int)currentGear - 1;
+                if (prevIndex >= (int)GearState.P)
+                {
+                    GearState target = (GearState)prevIndex;
+                    if (CanShiftTo(target))
+                    {
+                        SetGear(target);
+                    }
+                }
+                else
+                {
+                    Debug.Log($"[VRGearShifter] Ya se encuentra en la marcha más alta ({currentGear}).");
+                }
+            }
+        }
+
+        private bool CanShiftTo(GearState targetGear)
+        {
+            if (!IsEngineOn())
+            {
+                Debug.LogWarning($"[VRGearShifter] ⚠️ No se puede cambiar a {targetGear}: El motor está apagado.");
+                return false;
+            }
+
+            // Transición libre entre N y D sin requerir freno total
+            bool isNDTransition = (currentGear == GearState.N && targetGear == GearState.D) ||
+                                  (currentGear == GearState.D && targetGear == GearState.N);
+
+            if (!isNDTransition)
+            {
+                if (!IsBrakeAndStoppedOk())
+                {
+                    float brakePct = m_VehicleController != null ? m_VehicleController.BrakeValue * 100f : 0f;
+                    float speed = m_VehicleController != null ? m_VehicleController.CurrentSpeedKmh : 0f;
+                    Debug.LogWarning($"[VRGearShifter] ⚠️ No se puede cambiar de {currentGear} a {targetGear}: Se requiere pisar el freno a fondo y que el vehículo esté detenido. (Freno: {brakePct:F0}%, Vel: {speed:F1} km/h)");
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         private void LateUpdate()
         {
             if (m_IsGrabbed && m_Interactable != null && m_Interactable.interactorsSelecting.Count > 0)
@@ -345,8 +439,8 @@ namespace PrimerVolante.VR
         private bool IsBrakeAndStoppedOk()
         {
             return m_VehicleController != null
-                && m_VehicleController.BrakeValue >= 1f
-                && m_VehicleController.CurrentSpeedKmh <= 0f;
+                && m_VehicleController.BrakeValue >= 0.8f
+                && m_VehicleController.CurrentSpeedKmh <= 0.2f;
         }
 
         /// <summary>

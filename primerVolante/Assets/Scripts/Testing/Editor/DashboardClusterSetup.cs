@@ -51,7 +51,11 @@ namespace PrimerVolante.Testing.Editor
         public static void SetupDashboardInScene()
         {
             Debug.Log($"[DashboardClusterSetup] 🎬 Configurando escena: {SCENE_PATH}...");
-            var scene = EditorSceneManager.OpenScene(SCENE_PATH, OpenSceneMode.Single);
+            var scene = EditorSceneManager.GetActiveScene();
+            if (scene.path != SCENE_PATH)
+            {
+                scene = EditorSceneManager.OpenScene(SCENE_PATH, OpenSceneMode.Single);
+            }
 
             // Buscar Car06 en la escena
             GameObject car = GameObject.Find("Car06");
@@ -141,7 +145,7 @@ namespace PrimerVolante.Testing.Editor
             tlRect.sizeDelta = new Vector2(50f, 40f);
             TextMeshProUGUI tlText = turnLeftObj.AddComponent<TextMeshProUGUI>();
             if (fontAsset != null) tlText.font = fontAsset;
-            tlText.text = "◀";
+            tlText.text = "<";
             tlText.fontSize = 32f;
             tlText.fontStyle = FontStyles.Bold;
             tlText.alignment = TextAlignmentOptions.Center;
@@ -157,7 +161,7 @@ namespace PrimerVolante.Testing.Editor
             trRect.sizeDelta = new Vector2(50f, 40f);
             TextMeshProUGUI trText = turnRightObj.AddComponent<TextMeshProUGUI>();
             if (fontAsset != null) trText.font = fontAsset;
-            trText.text = "▶";
+            trText.text = ">";
             trText.fontSize = 32f;
             trText.fontStyle = FontStyles.Bold;
             trText.alignment = TextAlignmentOptions.Center;
@@ -291,6 +295,42 @@ namespace PrimerVolante.Testing.Editor
             }
 
             so.ApplyModifiedProperties();
+
+            // 10. Cablear botón de balizas (HazardButton) con VehicleController
+            if (vehicleController != null)
+            {
+                VRToggleButton[] toggles = carRoot.GetComponentsInChildren<VRToggleButton>(true);
+                foreach (var toggle in toggles)
+                {
+                    if (toggle.gameObject.name.Contains("Hazard"))
+                    {
+                        for (int i = toggle.OnToggledOn.GetPersistentEventCount() - 1; i >= 0; i--)
+                        {
+                            UnityEditor.Events.UnityEventTools.RemovePersistentListener(toggle.OnToggledOn, i);
+                        }
+                        for (int i = toggle.OnToggledOff.GetPersistentEventCount() - 1; i >= 0; i--)
+                        {
+                            UnityEditor.Events.UnityEventTools.RemovePersistentListener(toggle.OnToggledOff, i);
+                        }
+
+                        UnityEditor.Events.UnityEventTools.AddBoolPersistentListener(
+                            toggle.OnToggledOn,
+                            vehicleController.SetHazardActive,
+                            true
+                        );
+
+                        UnityEditor.Events.UnityEventTools.AddBoolPersistentListener(
+                            toggle.OnToggledOff,
+                            vehicleController.SetHazardActive,
+                            false
+                        );
+
+                        EditorUtility.SetDirty(toggle);
+                        Debug.Log($"[DashboardClusterSetup] 🔘 Conectados eventos OnToggledOn/Off de {toggle.gameObject.name} a VehicleController.SetHazardActive.");
+                        break;
+                    }
+                }
+            }
 
             Debug.Log($"[DashboardClusterSetup] 🚀 Tablero diegético configurado y cableado exitosamente en {carRoot.name}!");
             return canvasObj;

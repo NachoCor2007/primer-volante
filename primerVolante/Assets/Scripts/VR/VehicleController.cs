@@ -81,8 +81,15 @@ namespace PrimerVolante.VR
         private InputAction m_DefaultRightAction;
 
         private GearState m_CurrentGear = GearState.Park;
-        private bool m_EngineRunning = false;
+
+        [Header("Estado del Motor")]
+        [SerializeField] private bool m_EngineRunning = false;
+
         private TurnSignalState m_CurrentTurnSignal = TurnSignalState.Off;
+
+        [Header("Balizas / Luces de Emergencia")]
+        [SerializeField] private bool m_HazardsActive = false;
+        [SerializeField] private VRToggleButton m_HazardButton;
 
         /// <summary>
         /// Velocidad actual del vehículo en km/h.
@@ -135,6 +142,43 @@ namespace PrimerVolante.VR
         public void SetTurnSignal(TurnSignalState newState)
         {
             m_CurrentTurnSignal = newState;
+        }
+
+        /// <summary>
+        /// Indica si las balizas (luces de emergencia) están activas.
+        /// </summary>
+        public bool IsHazardActive => m_HazardsActive;
+
+        public void SetHazardActive(bool active)
+        {
+            if (m_HazardsActive == active) return;
+            m_HazardsActive = active;
+
+            if (m_HazardButton != null && m_HazardButton.IsToggled != active)
+            {
+                m_HazardButton.SetToggled(active, invokeEvents: false);
+            }
+        }
+
+        public void ToggleHazard()
+        {
+            SetHazardActive(!m_HazardsActive);
+        }
+
+        /// <summary>
+        /// Alterna el guiño (Left o Right). Si ya estaba en el estado indicado, lo pasa a Off.
+        /// </summary>
+        public void ToggleTurnSignal(TurnSignalState state)
+        {
+            if (m_TurnSignal != null && m_TurnSignal.IsGrabbed) return;
+
+            TurnSignalState targetState = (m_CurrentTurnSignal == state) ? TurnSignalState.Off : state;
+            SetTurnSignal(targetState);
+
+            if (m_TurnSignal != null)
+            {
+                m_TurnSignal.SetSignalAnimated(targetState);
+            }
         }
 
         /// <summary>
@@ -228,6 +272,18 @@ namespace PrimerVolante.VR
                 m_TurnSignal.OnTurnSignalChanged.RemoveListener(SetTurnSignal);
                 m_TurnSignal.OnTurnSignalChanged.AddListener(SetTurnSignal);
                 m_CurrentTurnSignal = m_TurnSignal.CurrentSignal;
+            }
+
+            if (m_HazardButton == null)
+            {
+                foreach (var toggle in GetComponentsInChildren<VRToggleButton>(true))
+                {
+                    if (toggle.gameObject.name.Contains("Hazard"))
+                    {
+                        m_HazardButton = toggle;
+                        break;
+                    }
+                }
             }
 
             if (Application.isPlaying && m_EnableDebugLogs)
@@ -352,6 +408,64 @@ namespace PrimerVolante.VR
             m_ThrottleValue = ReadTriggerValue(m_RightTriggerAction, m_DefaultRightAction, XRNode.RightHand);
             m_BrakeValue = ReadTriggerValue(m_LeftTriggerAction, m_DefaultLeftAction, XRNode.LeftHand);
 
+            // Capa de soporte Gamepad (DualShock 4 / genérico) y Teclado como testing en Editor
+            if (Gamepad.current != null)
+            {
+                m_ThrottleValue = Mathf.Max(m_ThrottleValue, Gamepad.current.rightTrigger.ReadValue());
+                m_BrakeValue = Mathf.Max(m_BrakeValue, Gamepad.current.leftTrigger.ReadValue());
+
+                if (Gamepad.current.buttonSouth.wasPressedThisFrame)
+                {
+                    HandleEngineToggleRequest();
+                }
+            }
+
+            if (Keyboard.current != null)
+            {
+                if (Keyboard.current.wKey.isPressed || Keyboard.current.upArrowKey.isPressed)
+                {
+                    m_ThrottleValue = Mathf.Max(m_ThrottleValue, 1f);
+                }
+                if (Keyboard.current.sKey.isPressed || Keyboard.current.downArrowKey.isPressed)
+                {
+                    m_BrakeValue = Mathf.Max(m_BrakeValue, 1f);
+                }
+                if (Keyboard.current.eKey.wasPressedThisFrame)
+                {
+                    HandleEngineToggleRequest();
+                }
+            }
+
+#if UNITY_EDITOR || DEBUG
+            if (Keyboard.current != null)
+            {
+                if (Keyboard.current.zKey.wasPressedThisFrame)
+                {
+                    ToggleTurnSignal(TurnSignalState.Left);
+                }
+                if (Keyboard.current.cKey.wasPressedThisFrame)
+                {
+                    ToggleTurnSignal(TurnSignalState.Right);
+                }
+                if (Keyboard.current.hKey.wasPressedThisFrame)
+                {
+                    ToggleHazard();
+                }
+            }
+
+            if (Gamepad.current != null)
+            {
+                if (Gamepad.current.dpad.left.wasPressedThisFrame)
+                {
+                    ToggleTurnSignal(TurnSignalState.Left);
+                }
+                if (Gamepad.current.dpad.right.wasPressedThisFrame)
+                {
+                    ToggleTurnSignal(TurnSignalState.Right);
+                }
+            }
+#endif
+
             if (m_EnableDebugLogs && Time.time - m_LastLogTime >= m_LogInterval)
             {
                 if (m_BrakeValue > 0.01f)
@@ -370,6 +484,44 @@ namespace PrimerVolante.VR
                     Debug.Log($"[VehicleController] 🔄 GIRO VOLANTE: {m_SteeringWheel.SteeringValue * 100f:F0}% | Vel: {CurrentSpeedKmh:F1} km/h");
                     m_LastLogTime = Time.time;
                 }
+            }
+        }
+
+        private void HandleEngineToggleRequest()
+        {
+            if (m_EngineRunning)
+            {
+                // Para apagar exige palanca en Park y freno pisado
+                if (m_CurrentGear != GearState.Park)
+                {
+                    Debug.LogWarning($"[VehicleController] ⚠️ Apagado bloqueado: la palanca debe estar en Park (actual: {m_CurrentGear}).");
+                    return;
+                }
+                if (m_BrakeValue < 0.8f)
+                {
+                    Debug.LogWarning($"[VehicleController] ⚠️ Apagado bloqueado: hay que pisar el freno a fondo (actual: {m_BrakeValue * 100f:F0}%).");
+                    return;
+                }
+
+                SetEngineRunning(false);
+                Debug.Log("[VehicleController] 🛑 Motor apagado mediante Gamepad/Teclado.");
+            }
+            else
+            {
+                // Para encender exige palanca en Park y freno a fondo
+                if (m_CurrentGear != GearState.Park)
+                {
+                    Debug.LogWarning($"[VehicleController] ⚠️ Encendido bloqueado: la palanca debe estar en Park (actual: {m_CurrentGear}).");
+                    return;
+                }
+                if (m_BrakeValue < 0.8f)
+                {
+                    Debug.LogWarning($"[VehicleController] ⚠️ Encendido bloqueado: hay que pisar el freno a fondo (actual: {m_BrakeValue * 100f:F0}%).");
+                    return;
+                }
+
+                SetEngineRunning(true);
+                Debug.Log("[VehicleController] 🟢 Motor encendido con éxito mediante Gamepad/Teclado.");
             }
         }
 
@@ -408,12 +560,22 @@ namespace PrimerVolante.VR
                 m_Rigidbody.WakeUp();
 
                 // 1. Aplicar Giro de Dirección basado en VRSteeringWheel y velocidad de avance
-                if (m_EngineRunning && m_SteeringWheel != null && Mathf.Abs(m_SteeringWheel.SteeringValue) > 0.001f)
+                float steeringValue = 0f;
+                if (m_SteeringWheel != null)
+                {
+                    steeringValue = m_SteeringWheel.SteeringValue;
+                }
+                else if (Gamepad.current != null)
+                {
+                    steeringValue = Gamepad.current.leftStick.x.ReadValue();
+                }
+
+                if (m_EngineRunning && Mathf.Abs(steeringValue) > 0.001f)
                 {
                     // Si va en reversa, la rotación global se invierte visualmente
                     float directionSign = (m_CurrentGear == GearState.Reverse) ? -1f : 1f;
                     float speedFactor = m_ScaleTurnWithSpeed ? Mathf.Clamp01(m_CurrentSpeedMs / maxSpeedMs) : 1f;
-                    float turnAmount = m_MaxTurnSpeed * m_SteeringWheel.SteeringValue * speedFactor * directionSign * Time.fixedDeltaTime;
+                    float turnAmount = m_MaxTurnSpeed * steeringValue * speedFactor * directionSign * Time.fixedDeltaTime;
 
                     Quaternion turnRotation = Quaternion.Euler(0f, turnAmount, 0f);
                     m_Rigidbody.MoveRotation(m_Rigidbody.rotation * turnRotation);

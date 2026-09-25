@@ -64,6 +64,11 @@ namespace PrimerVolante.VR
 
         public TurnSignalState CurrentSignal => currentSignal;
 
+        /// <summary>
+        /// Indica si la palanca de guiño está actualmente agarrada por un interactor VR.
+        /// </summary>
+        public bool IsGrabbed => m_IsGrabbed;
+
         private XRBaseInteractable m_Interactable;
         private Rigidbody m_Rigidbody;
         private bool m_IsGrabbed = false;
@@ -284,6 +289,18 @@ namespace PrimerVolante.VR
         {
             if (m_SnapRoutine != null) StopCoroutine(m_SnapRoutine);
             m_SnapRoutine = StartCoroutine(SnapToState(TurnSignalState.Off));
+        }
+
+        /// <summary>
+        /// Cambia el estado de la palanca de forma animada (snapping) hacia el estado indicado.
+        /// No tiene efecto si la palanca está agarrada físicamente en VR.
+        /// </summary>
+        public void SetSignalAnimated(TurnSignalState targetState)
+        {
+            if (m_IsGrabbed) return;
+            SetSignalState(targetState);
+            if (m_SnapRoutine != null) StopCoroutine(m_SnapRoutine);
+            m_SnapRoutine = StartCoroutine(SnapToState(targetState));
         }
 
         private float CalculateHandAngle(Vector3 localDir)

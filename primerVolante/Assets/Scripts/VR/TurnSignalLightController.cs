@@ -25,6 +25,7 @@ namespace PrimerVolante.VR
         private bool m_BlinkOn;
         private float m_BlinkTimer;
         private TurnSignalState m_LastAppliedSignal = TurnSignalState.Off;
+        private bool m_LastHazardActive = false;
 
         private void Awake()
         {
@@ -37,16 +38,19 @@ namespace PrimerVolante.VR
             if (m_VehicleController == null) return;
 
             TurnSignalState signal = m_VehicleController.CurrentTurnSignal;
+            bool hazard = m_VehicleController.IsHazardActive;
 
-            if (signal != m_LastAppliedSignal)
+            if (signal != m_LastAppliedSignal || hazard != m_LastHazardActive)
             {
                 m_LastAppliedSignal = signal;
+                m_LastHazardActive = hazard;
                 m_BlinkTimer = 0f;
                 m_BlinkOn = true;
                 ApplyBlinkState();
             }
 
-            if (signal == TurnSignalState.Off) return;
+            bool isActive = hazard || (signal != TurnSignalState.Off);
+            if (!isActive) return;
 
             float halfPeriod = m_BlinkFrequencyHz > 0f ? 0.5f / m_BlinkFrequencyHz : 0f;
             if (halfPeriod <= 0f) return;
@@ -62,8 +66,9 @@ namespace PrimerVolante.VR
 
         private void ApplyBlinkState()
         {
-            bool leftOn = m_LastAppliedSignal == TurnSignalState.Left && m_BlinkOn;
-            bool rightOn = m_LastAppliedSignal == TurnSignalState.Right && m_BlinkOn;
+            bool isHazard = m_VehicleController != null && m_VehicleController.IsHazardActive;
+            bool leftOn = (isHazard || m_LastAppliedSignal == TurnSignalState.Left) && m_BlinkOn;
+            bool rightOn = (isHazard || m_LastAppliedSignal == TurnSignalState.Right) && m_BlinkOn;
 
             SetLights(m_LeftLights, leftOn);
             SetLights(m_RightLights, rightOn);

@@ -59,6 +59,11 @@ namespace PrimerVolante.VR
             UpdateVisual();
         }
 
+        private void Update()
+        {
+            UpdateVisual();
+        }
+
         private void OnDestroy()
         {
             if (m_Interactable != null)
@@ -97,7 +102,7 @@ namespace PrimerVolante.VR
                     return;
                 }
 
-                if (m_VehicleController.BrakeValue < 1f)
+                if (m_VehicleController.BrakeValue < 0.8f)
                 {
                     if (m_EnableDebugLogs)
                         Debug.Log($"[StartButton:{gameObject.name}] Encendido bloqueado: hay que pisar el freno a fondo.");
@@ -113,7 +118,7 @@ namespace PrimerVolante.VR
                     return;
                 }
 
-                if (m_VehicleController.BrakeValue < 1f)
+                if (m_VehicleController.BrakeValue < 0.8f)
                 {
                     if (m_EnableDebugLogs)
                         Debug.Log($"[StartButton:{gameObject.name}] Apagado bloqueado: hay que pisar el freno a fondo.");

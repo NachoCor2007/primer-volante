@@ -81,6 +81,7 @@ namespace PrimerVolante.VR
         private bool m_HeadlightsActive = false;
         private bool m_BlinkState = false;
         private float m_BlinkTimer = 0f;
+        private bool m_WasTurnSignalOrHazardActive = false;
         private GearState m_LastGear = (GearState)(-1);
 
         /// <summary>
@@ -147,20 +148,30 @@ namespace PrimerVolante.VR
         private void UpdateTurnSignals()
         {
             TurnSignalState signal = TurnSignalState.Off;
+            bool isHazard = false;
             if (m_VehicleController != null)
             {
                 signal = m_VehicleController.CurrentTurnSignal;
+                isHazard = m_VehicleController.IsHazardActive;
             }
 
-            bool leftShouldBlink = (signal == TurnSignalState.Left);
-            bool rightShouldBlink = (signal == TurnSignalState.Right);
+            bool leftShouldBlink = isHazard || (signal == TurnSignalState.Left);
+            bool rightShouldBlink = isHazard || (signal == TurnSignalState.Right);
 
             if (!leftShouldBlink && !rightShouldBlink)
             {
                 ResetTurnSignalIndicators();
                 m_BlinkTimer = 0f;
                 m_BlinkState = false;
+                m_WasTurnSignalOrHazardActive = false;
                 return;
+            }
+
+            if (!m_WasTurnSignalOrHazardActive)
+            {
+                m_WasTurnSignalOrHazardActive = true;
+                m_BlinkState = true;
+                m_BlinkTimer = 0f;
             }
 
             m_BlinkTimer += Time.deltaTime;
