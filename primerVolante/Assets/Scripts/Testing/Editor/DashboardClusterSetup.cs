@@ -38,8 +38,9 @@ namespace PrimerVolante.Testing.Editor
             try
             {
                 ConfigureDashboardCluster(prefabRoot);
+                VehicleLightingSetup.ConfigureVehicleLighting(prefabRoot);
                 PrefabUtility.SaveAsPrefabAsset(prefabRoot, PREFAB_PATH);
-                Debug.Log("[DashboardClusterSetup] ✅ ¡Car06.prefab actualizado y guardado con el tablero diegético!");
+                Debug.Log("[DashboardClusterSetup] ✅ ¡Car06.prefab actualizado y guardado con el tablero diegético e iluminación!");
             }
             finally
             {
@@ -72,9 +73,10 @@ namespace PrimerVolante.Testing.Editor
             }
 
             ConfigureDashboardCluster(car);
+            VehicleLightingSetup.ConfigureVehicleLighting(car);
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
-            Debug.Log($"[DashboardClusterSetup] ✅ ¡Escena {SCENE_PATH} guardada exitosamente con el cluster configurado!");
+            Debug.Log($"[DashboardClusterSetup] ✅ ¡Escena {SCENE_PATH} guardada exitosamente con el cluster e iluminación configurados!");
         }
 
         public static GameObject ConfigureDashboardCluster(GameObject carRoot)
@@ -216,21 +218,38 @@ namespace PrimerVolante.Testing.Editor
             hbText.alignment = TextAlignmentOptions.Center;
             hbText.color = new Color(1f, 0.15f, 0.15f, 1f); // Activo por defecto
 
-            // 7. Testigo de Luces Frontales / Bajas (Derecha inferior)
+            // 7. Testigos de Luces Frontales: Bajas y Altas (Derecha inferior)
+            // 7.A. Luces Bajas (#1AF2A0)
             GameObject headlightsObj = new GameObject("Indicator_Headlights");
             headlightsObj.transform.SetParent(canvasObj.transform, false);
             RectTransform hlRect = headlightsObj.AddComponent<RectTransform>();
             hlRect.anchorMin = new Vector2(0.5f, 0f);
             hlRect.anchorMax = new Vector2(0.5f, 0f);
-            hlRect.anchoredPosition = new Vector2(155f, 30f);
-            hlRect.sizeDelta = new Vector2(65f, 35f);
+            hlRect.anchoredPosition = new Vector2(130f, 30f);
+            hlRect.sizeDelta = new Vector2(50f, 35f);
             TextMeshProUGUI hlText = headlightsObj.AddComponent<TextMeshProUGUI>();
             if (fontAsset != null) hlText.font = fontAsset;
             hlText.text = "[ ≡ ]";
             hlText.fontSize = 22f;
             hlText.fontStyle = FontStyles.Bold;
             hlText.alignment = TextAlignmentOptions.Center;
-            hlText.color = new Color(0.1f, 0.2f, 0.25f, 0.25f); // Inactivo por defecto
+            hlText.color = new Color(0.102f, 0.949f, 0.627f, 0.2f); // Inactivo por defecto
+
+            // 7.B. Luces Altas (#1A7BFF con símbolo [ D ])
+            GameObject highBeamsObj = new GameObject("Indicator_HighBeams");
+            highBeamsObj.transform.SetParent(canvasObj.transform, false);
+            RectTransform hbAltasRect = highBeamsObj.AddComponent<RectTransform>();
+            hbAltasRect.anchorMin = new Vector2(0.5f, 0f);
+            hbAltasRect.anchorMax = new Vector2(0.5f, 0f);
+            hbAltasRect.anchoredPosition = new Vector2(185f, 30f);
+            hbAltasRect.sizeDelta = new Vector2(50f, 35f);
+            TextMeshProUGUI hbAltasText = highBeamsObj.AddComponent<TextMeshProUGUI>();
+            if (fontAsset != null) hbAltasText.font = fontAsset;
+            hbAltasText.text = "[ D ]";
+            hbAltasText.fontSize = 22f;
+            hbAltasText.fontStyle = FontStyles.Bold;
+            hbAltasText.alignment = TextAlignmentOptions.Center;
+            hbAltasText.color = new Color(0.102f, 0.482f, 1f, 0.2f); // Inactivo por defecto
 
             // 8. Tira de Marchas P R N D (Centro inferior)
             GameObject gearStripObj = new GameObject("Gear_Strip");
@@ -286,6 +305,11 @@ namespace PrimerVolante.Testing.Editor
             so.FindProperty("m_TurnRightIndicator").objectReferenceValue = trText;
             so.FindProperty("m_HandbrakeIndicator").objectReferenceValue = hbText;
             so.FindProperty("m_HeadlightsIndicator").objectReferenceValue = hlText;
+            so.FindProperty("m_HighBeamsIndicator").objectReferenceValue = hbAltasText;
+            so.FindProperty("m_LowBeamActiveColor").colorValue = new Color(0.102f, 0.949f, 0.627f, 1f);
+            so.FindProperty("m_LowBeamInactiveColor").colorValue = new Color(0.102f, 0.949f, 0.627f, 0.2f);
+            so.FindProperty("m_HighBeamActiveColor").colorValue = new Color(0.102f, 0.482f, 1f, 1f);
+            so.FindProperty("m_HighBeamInactiveColor").colorValue = new Color(0.102f, 0.482f, 1f, 0.2f);
 
             SerializedProperty gearArrayProp = so.FindProperty("m_GearLabels");
             gearArrayProp.arraySize = 4;

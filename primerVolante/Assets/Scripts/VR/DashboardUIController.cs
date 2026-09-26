@@ -66,19 +66,28 @@ namespace PrimerVolante.VR
         [Tooltip("Color inactivo del freno de mano.")]
         [SerializeField] private Color m_HandbrakeInactiveColor = new Color(0.25f, 0.1f, 0.1f, 0.2f);
 
-        [Header("Testigo de Luces Frontales / Bajas")]
-        [Tooltip("Elemento visual de luces bajas.")]
+        [Header("Testigos de Luces")]
+        [Tooltip("Elemento visual de luces bajas (verde/celeste #1AF2A0).")]
         [SerializeField] private Graphic m_HeadlightsIndicator;
 
-        [Tooltip("Color activo de las luces frontales.")]
-        [SerializeField] private Color m_HeadlightsActiveColor = new Color(0.1f, 0.85f, 1f, 1f);
+        [Tooltip("Color activo de las luces bajas (#1AF2A0).")]
+        [SerializeField] private Color m_LowBeamActiveColor = new Color(0.102f, 0.949f, 0.627f, 1f);
 
-        [Tooltip("Color inactivo de las luces frontales.")]
-        [SerializeField] private Color m_HeadlightsInactiveColor = new Color(0.1f, 0.2f, 0.25f, 0.2f);
+        [Tooltip("Color inactivo de las luces bajas.")]
+        [SerializeField] private Color m_LowBeamInactiveColor = new Color(0.102f, 0.949f, 0.627f, 0.2f);
+
+        [Tooltip("Elemento visual de luces altas (azul #1A7BFF, símbolo [ D ]).")]
+        [SerializeField] private Graphic m_HighBeamsIndicator;
+
+        [Tooltip("Color activo de las luces altas (#1A7BFF).")]
+        [SerializeField] private Color m_HighBeamActiveColor = new Color(0.102f, 0.482f, 1f, 1f);
+
+        [Tooltip("Color inactivo de las luces altas.")]
+        [SerializeField] private Color m_HighBeamInactiveColor = new Color(0.102f, 0.482f, 1f, 0.2f);
 
         // Estados internos
         private bool m_HandbrakeActive = true;
-        private bool m_HeadlightsActive = false;
+        private HeadlightMode m_HeadlightMode = HeadlightMode.Off;
         private bool m_BlinkState = false;
         private float m_BlinkTimer = 0f;
         private bool m_WasTurnSignalOrHazardActive = false;
@@ -92,7 +101,12 @@ namespace PrimerVolante.VR
         /// <summary>
         /// Estado actual de las luces frontales.
         /// </summary>
-        public bool IsHeadlightsActive => m_HeadlightsActive;
+        public bool IsHeadlightsActive => m_HeadlightMode != HeadlightMode.Off;
+
+        /// <summary>
+        /// Modo actual del sistema de iluminación.
+        /// </summary>
+        public HeadlightMode CurrentHeadlightMode => m_HeadlightMode;
 
         private void Awake()
         {
@@ -283,21 +297,39 @@ namespace PrimerVolante.VR
         }
 
         /// <summary>
-        /// Activa o desactiva el testigo de luces frontales / bajas.
+        /// Sincroniza el estado de las luces en el tablero según el modo (Off, LowBeam, HighBeam).
+        /// </summary>
+        public void SetHeadlightMode(HeadlightMode mode)
+        {
+            m_HeadlightMode = mode;
+            UpdateHeadlightsDisplay();
+        }
+
+        /// <summary>
+        /// Activa o desactiva el testigo de luces frontales / bajas (compatibilidad hacia atrás).
         /// </summary>
         public void SetHeadlightsState(bool active)
         {
-            m_HeadlightsActive = active;
-            UpdateHeadlightsDisplay();
+            SetHeadlightMode(active ? HeadlightMode.LowBeam : HeadlightMode.Off);
         }
 
         private void UpdateHeadlightsDisplay()
         {
+            bool isLowBeam = (m_HeadlightMode == HeadlightMode.LowBeam);
+            bool isHighBeam = (m_HeadlightMode == HeadlightMode.HighBeam);
+
             if (m_HeadlightsIndicator != null)
             {
-                m_HeadlightsIndicator.color = m_HeadlightsActive
-                    ? m_HeadlightsActiveColor
-                    : m_HeadlightsInactiveColor;
+                m_HeadlightsIndicator.color = isLowBeam
+                    ? m_LowBeamActiveColor
+                    : m_LowBeamInactiveColor;
+            }
+
+            if (m_HighBeamsIndicator != null)
+            {
+                m_HighBeamsIndicator.color = isHighBeam
+                    ? m_HighBeamActiveColor
+                    : m_HighBeamInactiveColor;
             }
         }
     }
