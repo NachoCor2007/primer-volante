@@ -339,6 +339,11 @@ namespace PrimerVolante.Testing.Editor
             }
 
             // =========================================================================
+            // 6b. Sistema Completo de Espejos Vehiculares (Retrovisor y Laterales)
+            // =========================================================================
+            VehicleMirrorSetupEditor.ConfigureMirrorsOnCar(carRoot);
+
+            // =========================================================================
             // 7. Blindaje Físico de Controles Internos
             // =========================================================================
             // Asegurar estrictamente que todos los Rigidbodies hijos (GearShifter, Handbrake, Knob, etc.)

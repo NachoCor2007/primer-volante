@@ -262,6 +262,21 @@ namespace PrimerVolante.Testing.Editor
                 Assert(gravityChildRbCount == 0, $"Rigidbodies hijos con useGravity no permitidos (encontrados: {gravityChildRbCount})", ref totalTests, ref passedTests);
 
                 // F. Rigidbody raíz de Car07 debe ser el único dinámico con gravedad
+                // =========================================================================
+                // 10b. Sistema de Espejos Vehiculares (Retrovisor y Laterales)
+                // =========================================================================
+                VRRearviewMirror rearview = carInstance.GetComponentInChildren<VRRearviewMirror>(true);
+                Assert(rearview != null, "VRRearviewMirror debe existir en Car07", ref totalTests, ref passedTests);
+
+                VRSideMirror[] sideMirrors = carInstance.GetComponentsInChildren<VRSideMirror>(true);
+                Assert(sideMirrors.Length == 2, $"Deben existir exactamente 2 VRSideMirror en Car07 (encontrados {sideMirrors.Length})", ref totalTests, ref passedTests);
+
+                VRSideMirrorControlPanel panel = carInstance.GetComponentInChildren<VRSideMirrorControlPanel>(true);
+                Assert(panel != null, "VRSideMirrorControlPanel debe existir en la puerta de Car07", ref totalTests, ref passedTests);
+
+                VehicleMirrorCamera[] mirrorCams = carInstance.GetComponentsInChildren<VehicleMirrorCamera>(true);
+                Assert(mirrorCams.Length == 3, $"Deben existir 3 VehicleMirrorCamera en Car07 (encontrados {mirrorCams.Length})", ref totalTests, ref passedTests);
+
                 Rigidbody rootRb = carInstance.GetComponent<Rigidbody>();
                 Assert(rootRb != null && !rootRb.isKinematic && rootRb.useGravity, "Car07 raíz debe ser Rigidbody dinámico con useGravity=true", ref totalTests, ref passedTests);
             }
