@@ -78,6 +78,7 @@ namespace PrimerVolante.VR
         private float m_CurrentAngle = 0f;
         private float m_GrabStartAngle = 0f;
         private float m_GrabStartHandAngle = 0f;
+        private float m_GrabStartRoll = 0f;
         private bool m_HasRotatedWhileGrabbed = false;
 
         private void Awake()
@@ -163,7 +164,7 @@ namespace PrimerVolante.VR
                 var interactor = m_Interactable.interactorsSelecting[0];
                 if (interactor != null)
                 {
-                    UpdateRotationFromHand(interactor.transform.position);
+                    UpdateRotationFromHand(interactor.transform);
                 }
             }
         }
@@ -269,6 +270,7 @@ namespace PrimerVolante.VR
             if (interactor != null)
             {
                 m_GrabStartHandAngle = CalculateHandAngle(interactor.transform.position);
+                m_GrabStartRoll = GetControllerRoll(interactor.transform);
             }
         }
 
@@ -294,17 +296,25 @@ namespace PrimerVolante.VR
             CycleMode();
         }
 
-        private void UpdateRotationFromHand(Vector3 handWorldPos)
+        private void UpdateRotationFromHand(Transform interactorTransform)
         {
-            float currentHandAngle = CalculateHandAngle(handWorldPos);
-            float angleDelta = Mathf.DeltaAngle(m_GrabStartHandAngle, currentHandAngle);
+            float currentHandAngle = CalculateHandAngle(interactorTransform.position);
+            float deltaHand = Mathf.DeltaAngle(m_GrabStartHandAngle, currentHandAngle);
+
+            float currentRoll = GetControllerRoll(interactorTransform);
+            float deltaRoll = Mathf.DeltaAngle(m_GrabStartRoll, currentRoll);
+
+            // Escoge el delta dominante entre giro de muñeca (roll) y traslación angular de mano
+            float angleDelta = (Mathf.Abs(deltaRoll) > Mathf.Abs(deltaHand)) ? deltaRoll : deltaHand;
 
             if (Mathf.Abs(angleDelta) > 3f)
             {
                 m_HasRotatedWhileGrabbed = true;
             }
 
-            float newAngle = Mathf.Clamp(m_GrabStartAngle + angleDelta, m_OffAngle - 5f, m_HighBeamAngle + 5f);
+            float minAngle = Mathf.Min(m_OffAngle, Mathf.Min(m_LowBeamAngle, m_HighBeamAngle));
+            float maxAngle = Mathf.Max(m_OffAngle, Mathf.Max(m_LowBeamAngle, m_HighBeamAngle));
+            float newAngle = Mathf.Clamp(m_GrabStartAngle + angleDelta, minAngle - 10f, maxAngle + 10f);
             m_CurrentAngle = newAngle;
             ApplyRotation(m_CurrentAngle);
 
@@ -316,6 +326,25 @@ namespace PrimerVolante.VR
                 OnModeChanged?.Invoke(m_CurrentMode);
                 ModeChanged?.Invoke(m_CurrentMode);
             }
+        }
+
+        private float GetControllerRoll(Transform interactorTransform)
+        {
+            Transform parentT = transform.parent != null ? transform.parent : m_OriginalParent;
+            Vector3 worldAxis = parentT != null
+                ? (parentT.rotation * m_InitialLocalRotation * m_RotationAxis.normalized)
+                : (transform.rotation * m_RotationAxis.normalized);
+
+            Vector3 reference = Vector3.up;
+            if (Mathf.Abs(Vector3.Dot(reference, worldAxis)) > 0.9f)
+            {
+                reference = Vector3.forward;
+            }
+
+            Vector3 projectedReference = Vector3.ProjectOnPlane(reference, worldAxis).normalized;
+            Vector3 projectedCurrent = Vector3.ProjectOnPlane(interactorTransform.up, worldAxis).normalized;
+
+            return Vector3.SignedAngle(projectedReference, projectedCurrent, worldAxis);
         }
 
         private float CalculateHandAngle(Vector3 handWorldPos)
@@ -366,8 +395,18 @@ namespace PrimerVolante.VR
             m_SnapRoutine = null;
         }
 
+        private void EnsureInitialized()
+        {
+            if (m_RotorTransform == null) m_RotorTransform = transform;
+            if (m_InitialLocalRotation == default(Quaternion) || (m_InitialLocalRotation.x == 0f && m_InitialLocalRotation.y == 0f && m_InitialLocalRotation.z == 0f && m_InitialLocalRotation.w == 0f))
+            {
+                m_InitialLocalRotation = m_RotorTransform.localRotation;
+            }
+        }
+
         private void ApplyRotation(float angle)
         {
+            EnsureInitialized();
             if (m_RotorTransform != null)
             {
                 m_RotorTransform.localRotation = m_InitialLocalRotation * Quaternion.AngleAxis(angle, m_RotationAxis);

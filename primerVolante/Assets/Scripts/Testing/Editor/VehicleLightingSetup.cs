@@ -172,52 +172,109 @@ namespace PrimerVolante.Testing.Editor
 
         private static VRHeadlightKnob SetupHeadlightKnob(GameObject carRoot, Shader shader)
         {
+            // 1. Usar la perilla 3D nativa (mdl_car02_lights_knob) si existe en el modelo (Car07)
+            Transform nativeKnob = carRoot.transform.Find("mdl_car02_lights_knob");
+            if (nativeKnob != null)
+            {
+                Transform oldProcedural = carRoot.transform.Find("VRHeadlightKnob");
+                if (oldProcedural != null)
+                {
+                    Object.DestroyImmediate(oldProcedural.gameObject);
+                }
+
+                GameObject knobObj = nativeKnob.gameObject;
+
+                // Eliminar script duplicado / obsoleto si estuviera asignado
+                var oldComponent = knobObj.GetComponent("VRLightsKnob");
+                if (oldComponent != null) Object.DestroyImmediate(oldComponent);
+
+                // Eliminar BoxCollider redundante en la perilla nativa (dejar solo SphereCollider)
+                foreach (var b in knobObj.GetComponents<BoxCollider>())
+                {
+                    Object.DestroyImmediate(b);
+                }
+
+                Rigidbody rb = knobObj.GetComponent<Rigidbody>();
+                if (rb == null) rb = knobObj.AddComponent<Rigidbody>();
+                rb.isKinematic = true;
+                rb.useGravity = false;
+
+                SphereCollider collider = knobObj.GetComponent<SphereCollider>();
+                if (collider == null) collider = knobObj.AddComponent<SphereCollider>();
+                collider.center = Vector3.zero;
+                collider.radius = 0.04f;
+
+                XRGrabInteractable grab = knobObj.GetComponent<XRGrabInteractable>();
+                if (grab == null) grab = knobObj.AddComponent<XRGrabInteractable>();
+                grab.trackPosition = false;
+                grab.trackRotation = false;
+                grab.movementType = XRBaseInteractable.MovementType.Instantaneous;
+                grab.throwOnDetach = false;
+                grab.forceGravityOnDetach = false;
+                grab.retainTransformParent = true;
+
+                VRHeadlightKnob knobComp = knobObj.GetComponent<VRHeadlightKnob>();
+                if (knobComp == null) knobComp = knobObj.AddComponent<VRHeadlightKnob>();
+
+                SerializedObject soKnob = new SerializedObject(knobComp);
+                soKnob.Update();
+                soKnob.FindProperty("m_RotorTransform").objectReferenceValue = nativeKnob;
+                soKnob.FindProperty("m_RotationAxis").vector3Value = Vector3.up;
+                soKnob.FindProperty("m_OffAngle").floatValue = 0f;
+                soKnob.FindProperty("m_LowBeamAngle").floatValue = 30f;
+                soKnob.FindProperty("m_HighBeamAngle").floatValue = 60f;
+                soKnob.ApplyModifiedProperties();
+
+                return knobComp;
+            }
+
+            // 2. Fallback procedural si el modelo no tiene la perilla nativa (Car06)
             Transform existingKnob = carRoot.transform.Find("VRHeadlightKnob");
-            GameObject knobObj;
+            GameObject proceduralKnobObj;
             if (existingKnob != null)
             {
-                knobObj = existingKnob.gameObject;
-                for (int i = knobObj.transform.childCount - 1; i >= 0; i--)
+                proceduralKnobObj = existingKnob.gameObject;
+                for (int i = proceduralKnobObj.transform.childCount - 1; i >= 0; i--)
                 {
-                    Object.DestroyImmediate(knobObj.transform.GetChild(i).gameObject);
+                    Object.DestroyImmediate(proceduralKnobObj.transform.GetChild(i).gameObject);
                 }
             }
             else
             {
-                knobObj = new GameObject("VRHeadlightKnob");
-                knobObj.transform.SetParent(carRoot.transform, false);
+                proceduralKnobObj = new GameObject("VRHeadlightKnob");
+                proceduralKnobObj.transform.SetParent(carRoot.transform, false);
             }
 
             // Ubicación en el tablero a la izquierda del volante, apoyada al ras de la pared vertical del tablero
-            knobObj.transform.localPosition = new Vector3(-0.595f, 0.916f, 0.285f);
-            knobObj.transform.localRotation = Quaternion.identity;
-            knobObj.transform.localScale = Vector3.one;
+            proceduralKnobObj.transform.localPosition = new Vector3(-0.595f, 0.916f, 0.285f);
+            proceduralKnobObj.transform.localRotation = Quaternion.identity;
+            proceduralKnobObj.transform.localScale = Vector3.one;
 
             // Rigidbody cinemático
-            Rigidbody rb = knobObj.GetComponent<Rigidbody>();
-            if (rb == null) rb = knobObj.AddComponent<Rigidbody>();
-            rb.isKinematic = true;
-            rb.useGravity = false;
+            Rigidbody rbProcedural = proceduralKnobObj.GetComponent<Rigidbody>();
+            if (rbProcedural == null) rbProcedural = proceduralKnobObj.AddComponent<Rigidbody>();
+            rbProcedural.isKinematic = true;
+            rbProcedural.useGravity = false;
 
             // Collider para interacción VR centrado en la perilla visible
-            SphereCollider collider = knobObj.GetComponent<SphereCollider>();
-            if (collider == null) collider = knobObj.AddComponent<SphereCollider>();
-            collider.center = new Vector3(0f, 0f, -0.012f);
-            collider.radius = 0.038f;
+            SphereCollider proceduralCollider = proceduralKnobObj.GetComponent<SphereCollider>();
+            if (proceduralCollider == null) proceduralCollider = proceduralKnobObj.AddComponent<SphereCollider>();
+            proceduralCollider.center = new Vector3(0f, 0f, -0.012f);
+            proceduralCollider.radius = 0.038f;
 
             // Interactable de XR Interaction Toolkit
-            XRGrabInteractable grab = knobObj.GetComponent<XRGrabInteractable>();
-            if (grab == null) grab = knobObj.AddComponent<XRGrabInteractable>();
-            grab.trackPosition = false;
-            grab.trackRotation = false;
-            grab.movementType = XRBaseInteractable.MovementType.Instantaneous;
-            grab.throwOnDetach = false;
-            grab.forceGravityOnDetach = false;
-            grab.retainTransformParent = true;
+            XRGrabInteractable grabProcedural = proceduralKnobObj.GetComponent<XRGrabInteractable>();
+            if (grabProcedural == null) grabProcedural = proceduralKnobObj.AddComponent<XRGrabInteractable>();
+            grabProcedural.trackPosition = false;
+            grabProcedural.trackRotation = false;
+            grabProcedural.movementType = XRBaseInteractable.MovementType.Instantaneous;
+            grabProcedural.throwOnDetach = false;
+            grabProcedural.forceGravityOnDetach = false;
+            grabProcedural.retainTransformParent = true;
 
             // Pieza visual rotativa (Rotor)
             GameObject rotorObj = new GameObject("Knob_Rotor");
-            rotorObj.transform.SetParent(knobObj.transform, false);
+            rotorObj.transform.SetParent(proceduralKnobObj.transform, false);
             rotorObj.transform.localPosition = Vector3.zero;
             rotorObj.transform.localRotation = Quaternion.identity;
 
@@ -252,23 +309,29 @@ namespace PrimerVolante.Testing.Editor
             notch.GetComponent<Renderer>().sharedMaterial = notchMat;
 
             // Componente VRHeadlightKnob
-            VRHeadlightKnob knobComp = knobObj.GetComponent<VRHeadlightKnob>();
-            if (knobComp == null) knobComp = knobObj.AddComponent<VRHeadlightKnob>();
+            VRHeadlightKnob fallbackKnobComp = proceduralKnobObj.GetComponent<VRHeadlightKnob>();
+            if (fallbackKnobComp == null) fallbackKnobComp = proceduralKnobObj.AddComponent<VRHeadlightKnob>();
 
-            SerializedObject soKnob = new SerializedObject(knobComp);
-            soKnob.Update();
-            soKnob.FindProperty("m_RotorTransform").objectReferenceValue = rotorObj.transform;
-            soKnob.FindProperty("m_RotationAxis").vector3Value = Vector3.back;
-            soKnob.FindProperty("m_OffAngle").floatValue = 0f;
-            soKnob.FindProperty("m_LowBeamAngle").floatValue = 45f;
-            soKnob.FindProperty("m_HighBeamAngle").floatValue = 90f;
-            soKnob.ApplyModifiedProperties();
+            SerializedObject soFallback = new SerializedObject(fallbackKnobComp);
+            soFallback.Update();
+            soFallback.FindProperty("m_RotorTransform").objectReferenceValue = rotorObj.transform;
+            soFallback.FindProperty("m_RotationAxis").vector3Value = Vector3.back;
+            soFallback.FindProperty("m_OffAngle").floatValue = 0f;
+            soFallback.FindProperty("m_LowBeamAngle").floatValue = 45f;
+            soFallback.FindProperty("m_HighBeamAngle").floatValue = 90f;
+            soFallback.ApplyModifiedProperties();
 
-            return knobComp;
+            return fallbackKnobComp;
         }
 
         private static (Renderer[], Renderer[], Light[], Light[]) SetupFrontHeadlights(GameObject carRoot, Shader shader)
         {
+            // Limpiar faros simples heredados de branches anteriores
+            Transform legacyLeft = carRoot.transform.Find("Headlight_FrontLeft");
+            if (legacyLeft != null) Object.DestroyImmediate(legacyLeft.gameObject);
+            Transform legacyRight = carRoot.transform.Find("Headlight_FrontRight");
+            if (legacyRight != null) Object.DestroyImmediate(legacyRight.gameObject);
+
             Transform existingGroup = carRoot.transform.Find("Headlights_Front");
             GameObject groupObj;
             if (existingGroup != null)

@@ -42,6 +42,9 @@ namespace PrimerVolante.VR
         [Tooltip("Desaceleración pasiva / freno de motor en m/s^2.")]
         [SerializeField] private float m_IdleDeceleration = 3f;
 
+        [Tooltip("Desaceleración adicional en m/s^2 aplicada por el freno de mano a Engagement = 1. Debe ser >= a la Tasa de Aceleración para poder inmovilizar el auto a fondo de acelerador.")]
+        [SerializeField] private float m_HandbrakeForce = 12f;
+
         [Tooltip("Orientación del eje frontal del vehículo.")]
         [SerializeField] private ForwardDirection m_ForwardAxis = ForwardDirection.TransformForward;
 
@@ -62,6 +65,14 @@ namespace PrimerVolante.VR
         [Header("Palanca de Guiño")]
         [Tooltip("Palanca de guiño VR (se autodetecta si es hijo del coche).")]
         [SerializeField] private VRTurnSignal m_TurnSignal;
+
+        [Header("Freno de Mano")]
+        [Tooltip("Freno de mano VR (se autodetecta si es hijo del coche).")]
+        [SerializeField] private VRHandbrake m_Handbrake;
+
+        [Header("Iluminación")]
+        [Tooltip("Controlador de iluminación exterior (se autodetecta si existe).")]
+        [SerializeField] private VehicleLightingController m_LightingController;
 
         [Header("Debugging / Logs de Gatillos y Dirección")]
         [Tooltip("Si se activa, imprime mensajes en la Consola de Unity al presionar los gatillos o girar el volante.")]
@@ -188,6 +199,31 @@ namespace PrimerVolante.VR
         public bool IsEngineRunning => m_EngineRunning;
 
         /// <summary>
+        /// Nivel de accionamiento del freno de mano (0..1). 0 si no hay palanca asignada.
+        /// </summary>
+        public float HandbrakeEngagement => m_Handbrake != null ? m_Handbrake.Engagement : 0f;
+
+        /// <summary>
+        /// Indica si el freno de mano no está completamente liberado.
+        /// </summary>
+        public bool IsHandbrakeEngaged => m_Handbrake != null && m_Handbrake.IsEngaged;
+
+        /// <summary>
+        /// Estado actual de las luces frontales.
+        /// </summary>
+        public HeadlightMode CurrentHeadlights
+        {
+            get => m_LightingController != null ? m_LightingController.CurrentHeadlightMode : HeadlightMode.Off;
+            set
+            {
+                if (m_LightingController != null)
+                {
+                    m_LightingController.SetHeadlightMode(value);
+                }
+            }
+        }
+
+        /// <summary>
         /// Enciende o apaga el motor. Al apagarlo, detiene el vehículo instantáneamente.
         /// </summary>
         public void SetEngineRunning(bool running)
@@ -286,6 +322,16 @@ namespace PrimerVolante.VR
                 }
             }
 
+            if (m_Handbrake == null)
+            {
+                m_Handbrake = GetComponentInChildren<VRHandbrake>();
+            }
+
+            if (m_LightingController == null)
+            {
+                m_LightingController = GetComponent<VehicleLightingController>();
+            }
+
             if (Application.isPlaying && m_EnableDebugLogs)
             {
                 Debug.Log($"[VehicleController] 🚗 Inicializado en '{gameObject.name}'. Rigidbody (Interpolate=OK), Volante: {(m_SteeringWheel != null ? "Conectado" : "No asignado")}");
@@ -294,16 +340,15 @@ namespace PrimerVolante.VR
 
         private void IgnoreInternalChildCollisions()
         {
-            Collider mainCol = GetComponent<Collider>();
-            if (mainCol == null) return;
-
-            Collider[] childCols = GetComponentsInChildren<Collider>(true);
-            foreach (var childCol in childCols)
+            Collider[] allCols = GetComponentsInChildren<Collider>(true);
+            for (int i = 0; i < allCols.Length; i++)
             {
-                if (childCol != null && childCol != mainCol)
+                for (int j = i + 1; j < allCols.Length; j++)
                 {
-                    // Ignorar colisión interna con cualquier colisionador en los hijos (como el XROrigin o el jugador)
-                    Physics.IgnoreCollision(mainCol, childCol, true);
+                    if (allCols[i] != null && allCols[j] != null)
+                    {
+                        Physics.IgnoreCollision(allCols[i], allCols[j], true);
+                    }
                 }
             }
         }
@@ -529,14 +574,23 @@ namespace PrimerVolante.VR
         {
             if (!Application.isPlaying) return;
 
-            float maxSpeedMs = m_MaxSpeedKmh / 3.6f;
-
-            if (!m_EngineRunning)
+            // Si el motor está apagado (!m_EngineRunning), o la marcha está en Park, o el freno de mano está accionado (HandbrakeEngagement > 0.8f):
+            // Forzar la velocidad física horizontal en cero absoluto
+            if (!m_EngineRunning || m_CurrentGear == GearState.Park || HandbrakeEngagement > 0.8f)
             {
-                // Motor apagado: el vehículo no responde al acelerador y permanece detenido.
                 m_CurrentSpeedMs = 0f;
+                if (m_Rigidbody != null)
+                {
+                    Vector3 vel = m_Rigidbody.linearVelocity;
+                    m_Rigidbody.linearVelocity = new Vector3(0f, vel.y, 0f);
+                    m_Rigidbody.angularVelocity = Vector3.zero;
+                }
+                return;
             }
-            else if (m_BrakeValue > 0.01f)
+
+            float maxSpeedMs = m_MaxSpeedKmh / 3.6f;
+            float previousFrameSpeed = m_CurrentSpeedMs;
+            if (m_BrakeValue > 0.01f)
             {
                 float decel = m_BrakeForce * m_BrakeValue;
                 m_CurrentSpeedMs = Mathf.MoveTowards(m_CurrentSpeedMs, 0f, decel * Time.fixedDeltaTime);
@@ -551,6 +605,23 @@ namespace PrimerVolante.VR
                 // Frenar bruscamente en Park, o inercia en Neutral/Drive
                 float decel = (m_CurrentGear == GearState.Park) ? m_BrakeForce : m_IdleDeceleration;
                 m_CurrentSpeedMs = Mathf.MoveTowards(m_CurrentSpeedMs, 0f, decel * Time.fixedDeltaTime);
+            }
+
+            // Freno de mano: resta neta de velocidad por encima de lo que ya haya hecho el
+            // acelerador/freno de pie en este frame (fiel a la realidad: con freno parcial y
+            // acelerador a fondo el auto avanza, pero más lento).
+            float handbrakeEngagement = HandbrakeEngagement;
+            if (m_EngineRunning && handbrakeEngagement > 0f)
+            {
+                float handbrakeDecel = handbrakeEngagement * m_HandbrakeForce;
+                m_CurrentSpeedMs = Mathf.MoveTowards(m_CurrentSpeedMs, 0f, handbrakeDecel * Time.fixedDeltaTime);
+            }
+
+            // Regla dura: con el freno de mano prácticamente a fondo, el auto no puede ganar
+            // velocidad en ningún caso, aunque el gatillo esté a fondo.
+            if (handbrakeEngagement >= 0.99f)
+            {
+                m_CurrentSpeedMs = Mathf.Min(m_CurrentSpeedMs, previousFrameSpeed);
             }
 
             m_CurrentSpeedMs = Mathf.Max(0f, m_CurrentSpeedMs);

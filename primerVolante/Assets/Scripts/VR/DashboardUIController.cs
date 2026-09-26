@@ -125,6 +125,15 @@ namespace PrimerVolante.VR
             if (m_UnitText != null)
                 m_UnitText.text = "KM/H";
 
+            if (m_VehicleController != null)
+            {
+                var handbrake = m_VehicleController.GetComponentInChildren<VRHandbrake>();
+                if (handbrake != null)
+                {
+                    handbrake.OnEngagementChanged.AddListener((eng) => UpdateHandbrake());
+                }
+            }
+
             UpdateGearDisplay(m_VehicleController != null ? m_VehicleController.CurrentGear : GearState.Park);
             UpdateHandbrakeDisplay();
             UpdateHeadlightsDisplay();
@@ -136,7 +145,7 @@ namespace PrimerVolante.VR
             UpdateSpeedometer();
             UpdateTurnSignals();
             UpdateGear();
-            CheckDefaultHandbrakeLogic();
+            UpdateHandbrake();
         }
 
         /// <summary>
@@ -254,13 +263,26 @@ namespace PrimerVolante.VR
         }
 
         /// <summary>
-        /// Lógica por defecto de freno de mano si no hay palanca externa conectada:
-        /// se activa automáticamente si está en Parking y detenido.
+        /// Lee el estado real del freno de mano desde VRHandbrake o VehicleController
+        /// y actualiza el testigo (P) en el cluster diegético.
         /// </summary>
-        private void CheckDefaultHandbrakeLogic()
+        private void UpdateHandbrake()
         {
             if (m_VehicleController == null) return;
 
+            // 1. Si existe VRHandbrake en el vehículo, reflejar su estado real
+            var handbrake = m_VehicleController.GetComponentInChildren<VRHandbrake>();
+            if (handbrake != null)
+            {
+                bool engaged = handbrake.IsEngaged;
+                if (engaged != m_HandbrakeActive)
+                {
+                    SetHandbrakeState(engaged);
+                }
+                return;
+            }
+
+            // 2. Fallback automático si no hay palanca física asignada
             if (m_VehicleController.CurrentGear == GearState.Park && m_VehicleController.CurrentSpeedKmh < 0.2f)
             {
                 if (!m_HandbrakeActive)
