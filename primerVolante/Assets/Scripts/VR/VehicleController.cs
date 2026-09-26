@@ -42,6 +42,9 @@ namespace PrimerVolante.VR
         [Tooltip("Desaceleración pasiva / freno de motor en m/s^2.")]
         [SerializeField] private float m_IdleDeceleration = 3f;
 
+        [Tooltip("Desaceleración adicional en m/s^2 aplicada por el freno de mano a Engagement = 1. Debe ser >= a la Tasa de Aceleración para poder inmovilizar el auto a fondo de acelerador.")]
+        [SerializeField] private float m_HandbrakeForce = 12f;
+
         [Tooltip("Orientación del eje frontal del vehículo.")]
         [SerializeField] private ForwardDirection m_ForwardAxis = ForwardDirection.TransformForward;
 
@@ -62,6 +65,14 @@ namespace PrimerVolante.VR
         [Header("Palanca de Guiño")]
         [Tooltip("Palanca de guiño VR (se autodetecta si es hijo del coche).")]
         [SerializeField] private VRTurnSignal m_TurnSignal;
+
+        [Header("Freno de Mano")]
+        [Tooltip("Freno de mano VR (se autodetecta si es hijo del coche).")]
+        [SerializeField] private VRHandbrake m_Handbrake;
+
+        [Header("Perilla de Luces")]
+        [Tooltip("Perilla de luces VR (se autodetecta si es hijo del coche).")]
+        [SerializeField] private VRLightsKnob m_LightsKnob;
 
         [Header("Debugging / Logs de Gatillos y Dirección")]
         [Tooltip("Si se activa, imprime mensajes en la Consola de Unity al presionar los gatillos o girar el volante.")]
@@ -90,6 +101,8 @@ namespace PrimerVolante.VR
         [Header("Balizas / Luces de Emergencia")]
         [SerializeField] private bool m_HazardsActive = false;
         [SerializeField] private VRToggleButton m_HazardButton;
+
+        private HeadlightState m_CurrentHeadlights = HeadlightState.Off;
 
         /// <summary>
         /// Velocidad actual del vehículo en km/h.
@@ -144,6 +157,11 @@ namespace PrimerVolante.VR
             m_CurrentTurnSignal = newState;
         }
 
+        public void SetHeadlights(HeadlightState newState)
+        {
+            m_CurrentHeadlights = newState;
+        }
+
         /// <summary>
         /// Indica si las balizas (luces de emergencia) están activas.
         /// </summary>
@@ -164,6 +182,26 @@ namespace PrimerVolante.VR
         {
             SetHazardActive(!m_HazardsActive);
         }
+
+        /// <summary>
+        /// Estado actual de las luces frontales (Off/High/Low), listo para ser leído por el
+        /// tablero y por los faros reales del vehículo.
+        /// </summary>
+        public HeadlightState CurrentHeadlights
+        {
+            get => m_CurrentHeadlights;
+            set => m_CurrentHeadlights = value;
+        }
+
+        /// <summary>
+        /// Nivel de accionamiento del freno de mano (0..1). 0 si no hay palanca asignada.
+        /// </summary>
+        public float HandbrakeEngagement => m_Handbrake != null ? m_Handbrake.Engagement : 0f;
+
+        /// <summary>
+        /// Indica si el freno de mano no está completamente liberado.
+        /// </summary>
+        public bool IsHandbrakeEngaged => m_Handbrake != null && m_Handbrake.IsEngaged;
 
         /// <summary>
         /// Alterna el guiño (Left o Right). Si ya estaba en el estado indicado, lo pasa a Off.
@@ -272,6 +310,23 @@ namespace PrimerVolante.VR
                 m_TurnSignal.OnTurnSignalChanged.RemoveListener(SetTurnSignal);
                 m_TurnSignal.OnTurnSignalChanged.AddListener(SetTurnSignal);
                 m_CurrentTurnSignal = m_TurnSignal.CurrentSignal;
+            }
+
+            if (m_Handbrake == null)
+            {
+                m_Handbrake = GetComponentInChildren<VRHandbrake>();
+            }
+
+            if (m_LightsKnob == null)
+            {
+                m_LightsKnob = GetComponentInChildren<VRLightsKnob>();
+            }
+
+            if (m_LightsKnob != null)
+            {
+                m_LightsKnob.OnHeadlightStateChanged.RemoveListener(SetHeadlights);
+                m_LightsKnob.OnHeadlightStateChanged.AddListener(SetHeadlights);
+                m_CurrentHeadlights = m_LightsKnob.CurrentState;
             }
 
             if (m_HazardButton == null)
@@ -530,6 +585,7 @@ namespace PrimerVolante.VR
             if (!Application.isPlaying) return;
 
             float maxSpeedMs = m_MaxSpeedKmh / 3.6f;
+            float previousFrameSpeed = m_CurrentSpeedMs;
 
             if (!m_EngineRunning)
             {
@@ -551,6 +607,23 @@ namespace PrimerVolante.VR
                 // Frenar bruscamente en Park, o inercia en Neutral/Drive
                 float decel = (m_CurrentGear == GearState.Park) ? m_BrakeForce : m_IdleDeceleration;
                 m_CurrentSpeedMs = Mathf.MoveTowards(m_CurrentSpeedMs, 0f, decel * Time.fixedDeltaTime);
+            }
+
+            // Freno de mano: resta neta de velocidad por encima de lo que ya haya hecho el
+            // acelerador/freno de pie en este frame (fiel a la realidad: con freno parcial y
+            // acelerador a fondo el auto avanza, pero más lento).
+            float handbrakeEngagement = HandbrakeEngagement;
+            if (m_EngineRunning && handbrakeEngagement > 0f)
+            {
+                float handbrakeDecel = handbrakeEngagement * m_HandbrakeForce;
+                m_CurrentSpeedMs = Mathf.MoveTowards(m_CurrentSpeedMs, 0f, handbrakeDecel * Time.fixedDeltaTime);
+            }
+
+            // Regla dura: con el freno de mano prácticamente a fondo, el auto no puede ganar
+            // velocidad en ningún caso, aunque el gatillo esté a fondo.
+            if (handbrakeEngagement >= 0.99f)
+            {
+                m_CurrentSpeedMs = Mathf.Min(m_CurrentSpeedMs, previousFrameSpeed);
             }
 
             m_CurrentSpeedMs = Mathf.Max(0f, m_CurrentSpeedMs);

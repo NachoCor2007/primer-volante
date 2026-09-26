@@ -66,19 +66,22 @@ namespace PrimerVolante.VR
         [Tooltip("Color inactivo del freno de mano.")]
         [SerializeField] private Color m_HandbrakeInactiveColor = new Color(0.25f, 0.1f, 0.1f, 0.2f);
 
-        [Header("Testigo de Luces Frontales / Bajas")]
-        [Tooltip("Elemento visual de luces bajas.")]
+        [Header("Testigo de Luces Frontales / Off, Bajas, Altas")]
+        [Tooltip("Elemento visual de luces frontales.")]
         [SerializeField] private Graphic m_HeadlightsIndicator;
 
-        [Tooltip("Color activo de las luces frontales.")]
-        [SerializeField] private Color m_HeadlightsActiveColor = new Color(0.1f, 0.85f, 1f, 1f);
+        [Tooltip("Color del testigo cuando las luces bajas (Low) están activas.")]
+        [SerializeField] private Color m_HeadlightsLowColor = new Color(0.2f, 1f, 0.2f, 1f);
 
-        [Tooltip("Color inactivo de las luces frontales.")]
+        [Tooltip("Color del testigo cuando las luces altas (High) están activas.")]
+        [SerializeField] private Color m_HeadlightsHighColor = new Color(0.2f, 0.5f, 1f, 1f);
+
+        [Tooltip("Color inactivo del testigo (luces apagadas, Off).")]
         [SerializeField] private Color m_HeadlightsInactiveColor = new Color(0.1f, 0.2f, 0.25f, 0.2f);
 
         // Estados internos
         private bool m_HandbrakeActive = true;
-        private bool m_HeadlightsActive = false;
+        private HeadlightState m_HeadlightsState = HeadlightState.Off;
         private bool m_BlinkState = false;
         private float m_BlinkTimer = 0f;
         private bool m_WasTurnSignalOrHazardActive = false;
@@ -92,7 +95,7 @@ namespace PrimerVolante.VR
         /// <summary>
         /// Estado actual de las luces frontales.
         /// </summary>
-        public bool IsHeadlightsActive => m_HeadlightsActive;
+        public HeadlightState CurrentHeadlightsState => m_HeadlightsState;
 
         private void Awake()
         {
@@ -122,7 +125,8 @@ namespace PrimerVolante.VR
             UpdateSpeedometer();
             UpdateTurnSignals();
             UpdateGear();
-            CheckDefaultHandbrakeLogic();
+            UpdateHandbrake();
+            UpdateHeadlights();
         }
 
         /// <summary>
@@ -240,26 +244,32 @@ namespace PrimerVolante.VR
         }
 
         /// <summary>
-        /// Lógica por defecto de freno de mano si no hay palanca externa conectada:
-        /// se activa automáticamente si está en Parking y detenido.
+        /// Lee el estado real del freno de mano desde el VehicleController (que a su vez lo
+        /// obtiene del VRHandbrake) y actualiza el testigo si cambió.
         /// </summary>
-        private void CheckDefaultHandbrakeLogic()
+        private void UpdateHandbrake()
         {
             if (m_VehicleController == null) return;
 
-            if (m_VehicleController.CurrentGear == GearState.Park && m_VehicleController.CurrentSpeedKmh < 0.2f)
+            bool engaged = m_VehicleController.IsHandbrakeEngaged;
+            if (engaged != m_HandbrakeActive)
             {
-                if (!m_HandbrakeActive)
-                {
-                    SetHandbrakeState(true);
-                }
+                SetHandbrakeState(engaged);
             }
-            else if (m_VehicleController.CurrentGear == GearState.Drive || m_VehicleController.CurrentGear == GearState.Reverse)
+        }
+
+        /// <summary>
+        /// Lee el estado real de las luces frontales desde el VehicleController y actualiza
+        /// el testigo si cambió.
+        /// </summary>
+        private void UpdateHeadlights()
+        {
+            if (m_VehicleController == null) return;
+
+            HeadlightState state = m_VehicleController.CurrentHeadlights;
+            if (state != m_HeadlightsState)
             {
-                if (m_HandbrakeActive && m_VehicleController.ThrottleValue > 0.05f)
-                {
-                    SetHandbrakeState(false);
-                }
+                SetHeadlightsState(state);
             }
         }
 
@@ -283,21 +293,29 @@ namespace PrimerVolante.VR
         }
 
         /// <summary>
-        /// Activa o desactiva el testigo de luces frontales / bajas.
+        /// Actualiza el testigo de luces frontales a Off / Low / High.
         /// </summary>
-        public void SetHeadlightsState(bool active)
+        public void SetHeadlightsState(HeadlightState state)
         {
-            m_HeadlightsActive = active;
+            m_HeadlightsState = state;
             UpdateHeadlightsDisplay();
         }
 
         private void UpdateHeadlightsDisplay()
         {
-            if (m_HeadlightsIndicator != null)
+            if (m_HeadlightsIndicator == null) return;
+
+            switch (m_HeadlightsState)
             {
-                m_HeadlightsIndicator.color = m_HeadlightsActive
-                    ? m_HeadlightsActiveColor
-                    : m_HeadlightsInactiveColor;
+                case HeadlightState.Low:
+                    m_HeadlightsIndicator.color = m_HeadlightsLowColor;
+                    break;
+                case HeadlightState.High:
+                    m_HeadlightsIndicator.color = m_HeadlightsHighColor;
+                    break;
+                default:
+                    m_HeadlightsIndicator.color = m_HeadlightsInactiveColor;
+                    break;
             }
         }
     }
