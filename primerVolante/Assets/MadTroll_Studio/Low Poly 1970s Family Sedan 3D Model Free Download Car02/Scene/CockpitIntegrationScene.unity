@@ -9817,6 +9817,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: Car07
       objectReference: {fileID: 0}
+    - target: {fileID: 3902099925107984209, guid: 7cbe1b4b647c38d40b90d98c692ad89c, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3902099925107984209, guid: 7cbe1b4b647c38d40b90d98c692ad89c, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0.27
+      objectReference: {fileID: 0}
     - target: {fileID: 6302708114332588765, guid: 7cbe1b4b647c38d40b90d98c692ad89c, type: 3}
       propertyPath: m_ThirdBrakeLight
       value: 
