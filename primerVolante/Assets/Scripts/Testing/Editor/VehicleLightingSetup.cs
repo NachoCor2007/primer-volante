@@ -202,7 +202,8 @@ namespace PrimerVolante.Testing.Editor
                 SphereCollider collider = knobObj.GetComponent<SphereCollider>();
                 if (collider == null) collider = knobObj.AddComponent<SphereCollider>();
                 collider.center = Vector3.zero;
-                collider.radius = 0.04f;
+                // Espacio local del mesh (escala 100): 0.0004 equivale a ~4 cm reales.
+                collider.radius = 0.0004f;
 
                 XRGrabInteractable grab = knobObj.GetComponent<XRGrabInteractable>();
                 if (grab == null) grab = knobObj.AddComponent<XRGrabInteractable>();
@@ -220,9 +221,9 @@ namespace PrimerVolante.Testing.Editor
                 soKnob.Update();
                 soKnob.FindProperty("m_RotorTransform").objectReferenceValue = nativeKnob;
                 soKnob.FindProperty("m_RotationAxis").vector3Value = Vector3.up;
-                soKnob.FindProperty("m_OffAngle").floatValue = 0f;
-                soKnob.FindProperty("m_LowBeamAngle").floatValue = 30f;
-                soKnob.FindProperty("m_HighBeamAngle").floatValue = 60f;
+                soKnob.FindProperty("m_OffAngle").floatValue = -30f;
+                soKnob.FindProperty("m_LowBeamAngle").floatValue = 0f;
+                soKnob.FindProperty("m_HighBeamAngle").floatValue = 30f;
                 soKnob.ApplyModifiedProperties();
 
                 return knobComp;

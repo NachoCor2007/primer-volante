@@ -232,6 +232,16 @@ namespace PrimerVolante.Testing.Editor
                 var oldScript = knobObj.GetComponent("VRLightsKnob");
                 if (oldScript != null) UnityEngine.Object.DestroyImmediate(oldScript);
 
+                // Asegurar primero el SphereCollider definitivo: VRHeadlightKnob exige
+                // [RequireComponent(typeof(Collider))], así que si se borrara antes el BoxCollider
+                // residual sin haber agregado ya el SphereCollider, el objeto quedaría momentáneamente
+                // sin ningún Collider y Unity rechaza el borrado.
+                SphereCollider col = knobObj.GetComponent<SphereCollider>();
+                if (col == null) col = knobObj.AddComponent<SphereCollider>();
+                col.center = Vector3.zero;
+                // Espacio local del mesh (escala 100): 0.0004 equivale a ~4 cm reales.
+                col.radius = 0.0004f;
+
                 // Remover BoxCollider residual en la perilla nativa (conservar solo SphereCollider)
                 foreach (var b in knobObj.GetComponents<BoxCollider>())
                 {
@@ -242,12 +252,6 @@ namespace PrimerVolante.Testing.Editor
                 if (rb == null) rb = knobObj.AddComponent<Rigidbody>();
                 rb.isKinematic = true;
                 rb.useGravity = false;
-
-                SphereCollider col = knobObj.GetComponent<SphereCollider>();
-                if (col == null) col = knobObj.AddComponent<SphereCollider>();
-                col.center = Vector3.zero;
-                // Espacio local del mesh (escala 100): 0.0004 equivale a ~4 cm reales.
-                col.radius = 0.0004f;
 
                 XRGrabInteractable grab = knobObj.GetComponent<XRGrabInteractable>();
                 if (grab == null) grab = knobObj.AddComponent<XRGrabInteractable>();
@@ -265,9 +269,9 @@ namespace PrimerVolante.Testing.Editor
                 soKnob.Update();
                 soKnob.FindProperty("m_RotorTransform").objectReferenceValue = knobTransform;
                 soKnob.FindProperty("m_RotationAxis").vector3Value = Vector3.up;
-                soKnob.FindProperty("m_OffAngle").floatValue = 0f;
-                soKnob.FindProperty("m_LowBeamAngle").floatValue = 30f;
-                soKnob.FindProperty("m_HighBeamAngle").floatValue = 60f;
+                soKnob.FindProperty("m_OffAngle").floatValue = -30f;
+                soKnob.FindProperty("m_LowBeamAngle").floatValue = 0f;
+                soKnob.FindProperty("m_HighBeamAngle").floatValue = 30f;
                 soKnob.ApplyModifiedProperties();
             }
 
