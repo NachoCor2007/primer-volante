@@ -191,8 +191,9 @@ namespace PrimerVolante.Testing.Editor
                     if (existingCol != null) UnityEngine.Object.DestroyImmediate(existingCol);
                     col = brakeObj.AddComponent<BoxCollider>();
                 }
-                col.center = new Vector3(0f, 0.001f, 0.001f);
-                col.size = new Vector3(0.0006f, 0.0025f, 0.001f);
+                // Espacio local del mesh (escala 100): la palanca se extiende hacia Y negativo y Z positivo desde el pivote.
+                col.center = new Vector3(0f, -0.0013f, 0.00112f);
+                col.size = new Vector3(0.0006f, 0.0029f, 0.0026f);
 
                 // XRGrabInteractable
                 XRGrabInteractable grab = brakeObj.GetComponent<XRGrabInteractable>();
@@ -245,7 +246,8 @@ namespace PrimerVolante.Testing.Editor
                 SphereCollider col = knobObj.GetComponent<SphereCollider>();
                 if (col == null) col = knobObj.AddComponent<SphereCollider>();
                 col.center = Vector3.zero;
-                col.radius = 0.04f;
+                // Espacio local del mesh (escala 100): 0.0004 equivale a ~4 cm reales.
+                col.radius = 0.0004f;
 
                 XRGrabInteractable grab = knobObj.GetComponent<XRGrabInteractable>();
                 if (grab == null) grab = knobObj.AddComponent<XRGrabInteractable>();

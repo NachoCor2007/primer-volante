@@ -4386,8 +4386,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.0006, y: 0.0025, z: 0.001}
-  m_Center: {x: 0, y: 0.001, z: 0.001}
+  m_Size: {x: 0.0006, y: 0.0029, z: 0.0026}
+  m_Center: {x: 0, y: -0.0013, z: 0.00112}
 --- !u!54 &1088767356895294825
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -5129,7 +5129,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.VehicleLightingController
   m_VehicleController: {fileID: 1728493498108266381}
-  m_HeadlightKnob: {fileID: 1401835206775248047}
+  m_HeadlightKnob: {fileID: 6230431663951520709}
   m_DashboardUI: {fileID: 7755977849784084657}
   m_TurnSignalController: {fileID: 141153349269423650}
   m_FrontOuterHeadlights:
@@ -11584,8 +11584,6 @@ GameObject:
   - component: {fileID: 6508250689707100354}
   - component: {fileID: 4267860016371513917}
   - component: {fileID: 6230431663951520709}
-  - component: {fileID: 227628629062651682}
-  - component: {fileID: 1401835206775248047}
   m_Layer: 0
   m_Name: mdl_car02_lights_knob
   m_TagString: Untagged
@@ -11841,7 +11839,7 @@ SphereCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Radius: 0.04
+  m_Radius: 0.0004
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!114 &6230431663951520709
 MonoBehaviour:
@@ -11857,76 +11855,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.VRHeadlightKnob
   m_CurrentMode: 0
   m_RotationAxis: {x: 0, y: 1, z: 0}
-  m_OffAngle: 0
-  m_LowBeamAngle: 30
-  m_HighBeamAngle: 60
+  m_OffAngle: -40
+  m_LowBeamAngle: 0
+  m_HighBeamAngle: 40
   m_RotorTransform: {fileID: 1644854613033488024}
-  m_SnapThreshold: 8
-  m_SnapSpeed: 14
+  m_SnapThreshold: 5
+  m_SnapSpeed: 15
   m_AudioSource: {fileID: 0}
   m_ClickClip: {fileID: 0}
   OnModeChanged:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 6302708114332588765}
-        m_TargetAssemblyTypeName: PrimerVolante.VR.VehicleLightingController, Assembly-CSharp
-        m_MethodName: OnKnobModeChanged
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: 
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
---- !u!135 &227628629062651682
-SphereCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8559683551000308422}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Radius: 0.04
-  m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &1401835206775248047
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8559683551000308422}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fcbdc145d9c83cc4a9f503e2f79dee50, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.VRHeadlightKnob
-  m_CurrentMode: 0
-  m_RotationAxis: {x: 0, y: 1, z: 0}
-  m_OffAngle: 0
-  m_LowBeamAngle: 30
-  m_HighBeamAngle: 60
-  m_RotorTransform: {fileID: 1644854613033488024}
-  m_SnapThreshold: 8
-  m_SnapSpeed: 14
-  m_AudioSource: {fileID: 0}
-  m_ClickClip: {fileID: 0}
-  OnModeChanged:
-    m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 1939792938737396481}
         m_TargetAssemblyTypeName: PrimerVolante.VR.VehicleLightingController, Assembly-CSharp
         m_MethodName: OnKnobModeChanged
         m_Mode: 0
