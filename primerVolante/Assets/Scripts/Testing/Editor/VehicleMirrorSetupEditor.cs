@@ -133,6 +133,12 @@ namespace PrimerVolante.Testing.Editor
                 {
                     if (toDestroy[i] != null)
                     {
+                        // Desactivar antes de destruir: dispara OnDisable en los componentes hijos
+                        // (Graphic, TextMeshPro) para que se desuscriban de sus eventos estáticos
+                        // antes del DestroyImmediate. Evita un MissingReferenceException tardío
+                        // cuando Canvas.SendWillRenderCanvases() se dispara luego (p. ej. al hacer
+                        // PrefabUtility.UnloadPrefabContents) y todavía quedan referencias colgantes.
+                        toDestroy[i].SetActive(false);
                         UnityEngine.Object.DestroyImmediate(toDestroy[i]);
                     }
                 }
@@ -160,6 +166,9 @@ namespace PrimerVolante.Testing.Editor
                 {
                     if (rootObj.name == mName)
                     {
+                        // Ver comentario en PurgeDuplicateMirrorsInHierarchy: desactivar antes de
+                        // destruir evita referencias colgantes de TextMeshPro/Graphic.
+                        rootObj.SetActive(false);
                         UnityEngine.Object.DestroyImmediate(rootObj);
                         break;
                     }
