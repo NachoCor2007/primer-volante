@@ -252,6 +252,12 @@ namespace PrimerVolante.VR
         public event Action<string> OnEngineStartRejected;
 
         /// <summary>
+        /// Se dispara en cada pedido de arranque/apagado (botón, tecla o gamepad), antes de validarlo.
+        /// Sirve para el clic mecánico del botón de arranque.
+        /// </summary>
+        public event Action OnEngineToggleRequested;
+
+        /// <summary>
         /// Nivel de accionamiento del freno de mano (0..1). 0 si no hay palanca asignada.
         /// </summary>
         public float HandbrakeEngagement => m_Handbrake != null ? m_Handbrake.Engagement : 0f;
@@ -309,6 +315,8 @@ namespace PrimerVolante.VR
         /// </summary>
         public bool TryToggleEngine()
         {
+            OnEngineToggleRequested?.Invoke();
+
             if (m_IsCranking) return false;
 
             string verb = m_EngineRunning ? "Apagado" : "Encendido";
