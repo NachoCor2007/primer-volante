@@ -94,6 +94,9 @@ namespace PrimerVolante.Testing.Editor
                 Transform highBeamsIndicator = carInstance.transform.Find("Dashboard_Cluster_Canvas/Indicator_HighBeams");
                 Assert(highBeamsIndicator != null, "Indicator_HighBeams [ D ] debe existir en el cluster diegético", ref totalTests, ref passedTests);
 
+                Transform positionIndicator = carInstance.transform.Find("Dashboard_Cluster_Canvas/Indicator_PositionLights");
+                Assert(positionIndicator != null, "Indicator_PositionLights debe existir en el cluster diegético", ref totalTests, ref passedTests);
+
                 // =========================================================================
                 // 6. Pruebas Funcionales: Freno de Mano -> Tablero & Conducción
                 // =========================================================================
@@ -126,6 +129,12 @@ namespace PrimerVolante.Testing.Editor
                     Assert(lightingCtrl.CurrentHeadlightMode == HeadlightMode.Off, "VehicleLightingController en Off", ref totalTests, ref passedTests);
                     Assert(dashboardUI.CurrentHeadlightMode == HeadlightMode.Off, "DashboardUIController en Off", ref totalTests, ref passedTests);
 
+                    // Modo Position (Luces de Posición)
+                    knob.SetMode(HeadlightMode.Position, animated: false);
+                    Assert(knob.CurrentMode == HeadlightMode.Position, "Knob en Position", ref totalTests, ref passedTests);
+                    Assert(lightingCtrl.CurrentHeadlightMode == HeadlightMode.Position, "VehicleLightingController en Position", ref totalTests, ref passedTests);
+                    Assert(dashboardUI.CurrentHeadlightMode == HeadlightMode.Position, "DashboardUIController en Position", ref totalTests, ref passedTests);
+
                     // Modo LowBeam (Bajas)
                     knob.SetMode(HeadlightMode.LowBeam, animated: false);
                     Assert(knob.CurrentMode == HeadlightMode.LowBeam, "Knob en LowBeam", ref totalTests, ref passedTests);
@@ -142,9 +151,9 @@ namespace PrimerVolante.Testing.Editor
                     knob.CycleMode();
                     Assert(knob.CurrentMode == HeadlightMode.Off, "CycleMode (tecla L) desde HighBeam pasa a Off", ref totalTests, ref passedTests);
 
-                    // StepMode (+1): Off -> LowBeam
+                    // StepMode (+1): Off -> Position
                     knob.StepMode(1);
-                    Assert(knob.CurrentMode == HeadlightMode.LowBeam, "StepMode(+1) desde Off pasa a LowBeam", ref totalTests, ref passedTests);
+                    Assert(knob.CurrentMode == HeadlightMode.Position, "StepMode(+1) desde Off pasa a Position", ref totalTests, ref passedTests);
                 }
 
                 // =========================================================================

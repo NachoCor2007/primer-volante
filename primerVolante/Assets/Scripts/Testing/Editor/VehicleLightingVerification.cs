@@ -73,11 +73,20 @@ namespace PrimerVolante.Testing.Editor
                 Transform indicatorHigh = carInstance.transform.Find("Dashboard_Cluster_Canvas/Indicator_HighBeams");
                 Assert(indicatorHigh != null, "Indicator_HighBeams debe existir en el cluster", ref totalTests, ref passedTests);
 
+                Transform indicatorPosition = carInstance.transform.Find("Dashboard_Cluster_Canvas/Indicator_PositionLights");
+                Assert(indicatorPosition != null, "Indicator_PositionLights debe existir en el cluster", ref totalTests, ref passedTests);
+
                 // TEST 2: Estado inicial Off
                 knob.SetMode(HeadlightMode.Off, animated: false);
                 Assert(knob.CurrentMode == HeadlightMode.Off, "Knob en Off", ref totalTests, ref passedTests);
                 Assert(lightingCtrl.CurrentHeadlightMode == HeadlightMode.Off, "LightingController en Off", ref totalTests, ref passedTests);
                 Assert(dashboardUI.CurrentHeadlightMode == HeadlightMode.Off, "DashboardUI en Off", ref totalTests, ref passedTests);
+
+                // TEST 2b: Modo Luces de Posición (Position)
+                knob.SetMode(HeadlightMode.Position, animated: false);
+                Assert(knob.CurrentMode == HeadlightMode.Position, "Knob en Position", ref totalTests, ref passedTests);
+                Assert(lightingCtrl.CurrentHeadlightMode == HeadlightMode.Position, "LightingController en Position", ref totalTests, ref passedTests);
+                Assert(dashboardUI.CurrentHeadlightMode == HeadlightMode.Position, "DashboardUI en Position", ref totalTests, ref passedTests);
 
                 // TEST 3: Modo Luces Bajas (LowBeam)
                 knob.SetMode(HeadlightMode.LowBeam, animated: false);
@@ -97,7 +106,7 @@ namespace PrimerVolante.Testing.Editor
 
                 // TEST 6: StepMode (+1)
                 knob.StepMode(1);
-                Assert(knob.CurrentMode == HeadlightMode.LowBeam, "StepMode(+1) pasa a LowBeam", ref totalTests, ref passedTests);
+                Assert(knob.CurrentMode == HeadlightMode.Position, "StepMode(+1) desde Off pasa a Position", ref totalTests, ref passedTests);
 
                 // TEST 7: Luces de Freno (BrakeValue > 0.05)
                 var brakeField = typeof(VehicleController).GetField("m_BrakeValue", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
