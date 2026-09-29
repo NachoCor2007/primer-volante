@@ -14,7 +14,8 @@ namespace PrimerVolante.Testing.Editor
 {
     /// <summary>
     /// Herramienta de Editor para la configuración y calibración exacta del sistema de espejos en Car07:
-    /// - Posicionamiento exacto sobre la malla 3D original (retrovisor en -0.075, 1.31, 0.00; laterales en -0.88, 1.03, 0.22 y 0.90, 1.03, 0.22).
+    /// - Posicionamiento exacto sobre la malla 3D original (retrovisor en 0.0759, 1.3374, 0.00; laterales en -0.88, 1.03, 0.22 y 0.90, 1.03, 0.22),
+    ///   con el layout afinado a mano (commit 1b66676) definido en las constantes REARVIEW_* y SIDE_*_GLASS_*.
     /// - Eliminación rigurosa de duplicados tanto en el Prefab Car07 como en la escena CockpitIntegrationScene.
     /// - Renderizado garantizado hacia atrás (Quaternion.Euler(0, 180, 0)) sobre RenderTextures creadas en GPU.
     /// - Mini-panel eléctrico en la puerta del conductor.
@@ -27,6 +28,84 @@ namespace PrimerVolante.Testing.Editor
         private const string MIRRORS_DIR = "Assets/MadTroll_Studio/Low Poly 1970s Family Sedan 3D Model Free Download Car02/Materials/Mirrors";
         private const string FONT_PATH = "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset";
         private const string AUDIO_CLICK_PATH = "Assets/Samples/XR Interaction Toolkit/3.5.1/Starter Assets/DemoAssets/Audio/Button Pop.wav";
+
+        // ------------------------------------------------------------------------------------------
+        // Layout afinado a mano en el Editor (commit 1b66676 "Tweaked view location"). El setup
+        // reconstruye los espejos desde cero, así que estos valores viven acá: si no, cada
+        // regeneración de Car07 pisaría el ajuste con valores genéricos (espejos laterales más
+        // angostos y los tres descentrados).
+        // ------------------------------------------------------------------------------------------
+        private static readonly Vector3 REARVIEW_MOUNT_POSITION = new Vector3(0.0759f, 1.3374f, 0f);
+
+        private static readonly Vector3 SIDE_LEFT_GLASS_POSITION = new Vector3(0.03626059f, 0.001330018f, -0.020898508f);
+        private static readonly Quaternion SIDE_LEFT_GLASS_ROTATION = new Quaternion(0f, 0.073240176f, 0f, 0.9973144f);
+        private static readonly Vector3 SIDE_LEFT_GLASS_SCALE = new Vector3(0.14168335f, 0.078947954f, 1f);
+
+        private static readonly Vector3 SIDE_RIGHT_GLASS_POSITION = new Vector3(0.08164f, 0.00238f, 0.0128f);
+        private static readonly Quaternion SIDE_RIGHT_GLASS_ROTATION = Quaternion.identity;
+        private static readonly Vector3 SIDE_RIGHT_GLASS_SCALE = new Vector3(0.1300686f, 0.08243755f, 1f);
+
+        [MenuItem("Tools/Primer Volante/Restore Tuned Mirror Layout (Car07 and Car08)")]
+        public static void RestoreTunedMirrorLayoutInPrefabs()
+        {
+            foreach (string path in new[] { PREFAB_CAR07_PATH, PREFAB_CAR07_PATH.Replace("Car07", "Car08") })
+            {
+                if (AssetDatabase.LoadAssetAtPath<GameObject>(path) == null) continue;
+
+                GameObject root = PrefabUtility.LoadPrefabContents(path);
+                try
+                {
+                    int applied = ApplyTunedMirrorLayout(root);
+                    PrefabUtility.SaveAsPrefabAsset(root, path, out bool ok);
+                    Debug.Log($"[VehicleMirrorSetupEditor] {(ok ? "✅" : "❌")} Layout de espejos restaurado en {path} ({applied} transforms).");
+                }
+                finally
+                {
+                    PrefabUtility.UnloadPrefabContents(root);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Aplica el layout afinado (posición del retrovisor y vidrio de cada espejo lateral) sobre
+        /// un auto que ya tiene los espejos, sin reconstruirlos. Devuelve cuántos transforms actualizó.
+        /// </summary>
+        public static int ApplyTunedMirrorLayout(GameObject carRoot)
+        {
+            int applied = 0;
+
+            Transform mount = FindDeep(carRoot.transform, "RearviewMirror_Mount");
+            if (mount != null)
+            {
+                mount.localPosition = REARVIEW_MOUNT_POSITION;
+                applied++;
+            }
+
+            applied += ApplySideGlass(carRoot.transform, "SideMirror_Left", SIDE_LEFT_GLASS_POSITION, SIDE_LEFT_GLASS_ROTATION, SIDE_LEFT_GLASS_SCALE);
+            applied += ApplySideGlass(carRoot.transform, "SideMirror_Right", SIDE_RIGHT_GLASS_POSITION, SIDE_RIGHT_GLASS_ROTATION, SIDE_RIGHT_GLASS_SCALE);
+            return applied;
+        }
+
+        private static int ApplySideGlass(Transform carRoot, string mirrorName, Vector3 pos, Quaternion rot, Vector3 scale)
+        {
+            Transform mirror = FindDeep(carRoot, mirrorName);
+            Transform glass = mirror != null ? mirror.Find("Glass_Pivot/Mirror_Glass") : null;
+            if (glass == null) return 0;
+
+            glass.localPosition = pos;
+            glass.localRotation = rot;
+            glass.localScale = scale;
+            return 1;
+        }
+
+        private static Transform FindDeep(Transform root, string name)
+        {
+            foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name == name) return t;
+            }
+            return null;
+        }
 
         [MenuItem("Primer Volante/Espejos/Configurar Espejos en Car07")]
         [MenuItem("Tools/Primer Volante/Setup Mirrors in Car07 (Prefab and Scene)")]
@@ -209,7 +288,7 @@ namespace PrimerVolante.Testing.Editor
             PurgeDuplicateMirrorsInHierarchy(carRoot.transform);
 
             // =========================================================================
-            // 4. Espejo Retrovisor Central (Posición exacta: X: -0.075, Y: 1.31, Z: 0.00)
+            // 4. Espejo Retrovisor Central (Posición afinada: X: 0.0759, Y: 1.3374, Z: 0.00)
             // =========================================================================
             VRRearviewMirror rearview = CreateRearviewMirror(carRoot.transform, casingMat, matRearview, rtRearview);
 
@@ -249,14 +328,14 @@ namespace PrimerVolante.Testing.Editor
 
         /// <summary>
         /// Crea el espejo retrovisor interior central en la posición exacta del modelo:
-        /// X: -0.075, Y: 1.31, Z: 0.00 (cubriendo el retrovisor original que cuelga del techo).
+        /// X: 0.0759, Y: 1.3374, Z: 0.00 (cubriendo el retrovisor original que cuelga del techo).
         /// </summary>
         private static VRRearviewMirror CreateRearviewMirror(Transform carTransform, Material casingMat, Material mirrorMat, RenderTexture rt)
         {
             // 1. Soporte fijo en la posición exacta del retrovisor original
             GameObject mountObj = new GameObject("RearviewMirror_Mount");
             mountObj.transform.SetParent(carTransform, false);
-            mountObj.transform.localPosition = new Vector3(-0.075f, 1.31f, 0.00f);
+            mountObj.transform.localPosition = REARVIEW_MOUNT_POSITION;
             mountObj.transform.localRotation = Quaternion.identity;
 
             // 2. Carcasa y rótula basculante interactuable (VRRearviewMirror)
@@ -380,9 +459,10 @@ namespace PrimerVolante.Testing.Editor
             GameObject glassObj = GameObject.CreatePrimitive(PrimitiveType.Quad);
             glassObj.name = "Mirror_Glass";
             glassObj.transform.SetParent(glassPivot.transform, false);
-            glassObj.transform.localPosition = new Vector3(0f, 0f, -0.005f);
-            glassObj.transform.localRotation = Quaternion.identity; // SIN rotación de 180°: cara visible mira hacia -Z
-            glassObj.transform.localScale = new Vector3(0.08f, 0.11f, 1f);
+            // Layout afinado a mano por lado (ver constantes SIDE_*_GLASS_*).
+            glassObj.transform.localPosition = isLeft ? SIDE_LEFT_GLASS_POSITION : SIDE_RIGHT_GLASS_POSITION;
+            glassObj.transform.localRotation = isLeft ? SIDE_LEFT_GLASS_ROTATION : SIDE_RIGHT_GLASS_ROTATION; // cara visible mira hacia -Z (sin giro de 180°)
+            glassObj.transform.localScale = isLeft ? SIDE_LEFT_GLASS_SCALE : SIDE_RIGHT_GLASS_SCALE;
             Renderer glassRenderer = glassObj.GetComponent<Renderer>();
             glassRenderer.sharedMaterial = mirrorMat;
             UnityEngine.Object.DestroyImmediate(glassObj.GetComponent<Collider>());

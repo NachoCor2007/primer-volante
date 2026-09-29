@@ -11,7 +11,7 @@ namespace PrimerVolante.Testing.Editor
     /// Comprueba:
     /// 1. Limpieza de duplicados: exactamente una sola instancia de cada componente.
     /// 2. Posicionamiento exacto sobre la malla 3D original:
-    ///    - Retrovisor interior: X: -0.075, Y: 1.31, Z: 0.00
+    ///    - Retrovisor interior: X: 0.0759, Y: 1.3374, Z: 0.00 (layout afinado a mano; el centro del auto está en X ≈ 0.07)
     ///    - Espejo izquierdo:    X: -0.88,  Y: 1.03, Z: 0.22
     ///    - Espejo derecho:      X:  0.90,  Y: 1.03, Z: 0.22
     /// 3. Renderizado garantizado hacia atrás (rotación Y ~ 180°, RenderTexture creada en GPU, inversión UV).
@@ -69,8 +69,8 @@ namespace PrimerVolante.Testing.Editor
 
                 if (mountTr != null)
                 {
-                    Assert(Mathf.Abs(mountTr.localPosition.x - (-0.075f)) < 0.02f, $"RearviewMirror_Mount X debe ser aprox -0.075m (actual: {mountTr.localPosition.x})", ref totalTests, ref passedTests);
-                    Assert(Mathf.Abs(mountTr.localPosition.y - 1.31f) < 0.03f, $"RearviewMirror_Mount Y debe ser aprox 1.31m (actual: {mountTr.localPosition.y})", ref totalTests, ref passedTests);
+                    Assert(Mathf.Abs(mountTr.localPosition.x - 0.0759f) < 0.02f, $"RearviewMirror_Mount X debe ser aprox 0.0759m (actual: {mountTr.localPosition.x})", ref totalTests, ref passedTests);
+                    Assert(Mathf.Abs(mountTr.localPosition.y - 1.3374f) < 0.03f, $"RearviewMirror_Mount Y debe ser aprox 1.3374m (actual: {mountTr.localPosition.y})", ref totalTests, ref passedTests);
                     Assert(Mathf.Abs(mountTr.localPosition.z - 0.00f) < 0.03f, $"RearviewMirror_Mount Z debe ser aprox 0.00m (actual: {mountTr.localPosition.z})", ref totalTests, ref passedTests);
                 }
 
@@ -191,14 +191,14 @@ namespace PrimerVolante.Testing.Editor
                 Assert(leftGlass != null, "Mirror_Glass debe existir en SideMirror_Left", ref totalTests, ref passedTests);
                 if (leftGlass != null)
                 {
-                    Assert(leftGlass.localRotation == Quaternion.identity, "Mirror_Glass izquierdo debe tener localRotation == Quaternion.identity (cara visible hacia -Z)", ref totalTests, ref passedTests);
+                    Assert(Quaternion.Angle(leftGlass.localRotation, Quaternion.identity) < 15f, "Mirror_Glass izquierdo debe mantener la cara visible hacia -Z (giro local < 15°, layout afinado a mano)", ref totalTests, ref passedTests);
                 }
 
                 Transform rightGlass = carInstance.transform.Find("SideMirror_Right/Glass_Pivot/Mirror_Glass");
                 Assert(rightGlass != null, "Mirror_Glass debe existir en SideMirror_Right", ref totalTests, ref passedTests);
                 if (rightGlass != null)
                 {
-                    Assert(rightGlass.localRotation == Quaternion.identity, "Mirror_Glass derecho debe tener localRotation == Quaternion.identity (cara visible hacia -Z)", ref totalTests, ref passedTests);
+                    Assert(Quaternion.Angle(rightGlass.localRotation, Quaternion.identity) < 15f, "Mirror_Glass derecho debe mantener la cara visible hacia -Z (giro local < 15°, layout afinado a mano)", ref totalTests, ref passedTests);
                 }
 
                 Transform leftPivot = carInstance.transform.Find("SideMirror_Left/Glass_Pivot");
