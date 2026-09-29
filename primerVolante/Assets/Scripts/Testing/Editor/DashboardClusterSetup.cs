@@ -218,15 +218,31 @@ namespace PrimerVolante.Testing.Editor
             hbText.alignment = TextAlignmentOptions.Center;
             hbText.color = new Color(1f, 0.15f, 0.15f, 1f); // Activo por defecto
 
-            // 7. Testigos de Luces Frontales: Bajas y Altas (Derecha inferior)
-            // 7.A. Luces Bajas (#1AF2A0)
+            // 7. Testigos de Luces Frontales: Posición, Bajas y Altas (Derecha inferior)
+            // 7.A. Luces de Posición (verde)
+            GameObject positionObj = new GameObject("Indicator_PositionLights");
+            positionObj.transform.SetParent(canvasObj.transform, false);
+            RectTransform posRect = positionObj.AddComponent<RectTransform>();
+            posRect.anchorMin = new Vector2(0.5f, 0f);
+            posRect.anchorMax = new Vector2(0.5f, 0f);
+            posRect.anchoredPosition = new Vector2(128f, 30f);
+            posRect.sizeDelta = new Vector2(46f, 35f);
+            TextMeshProUGUI posText = positionObj.AddComponent<TextMeshProUGUI>();
+            if (fontAsset != null) posText.font = fontAsset;
+            posText.text = "=DC=";
+            posText.fontSize = 22f;
+            posText.fontStyle = FontStyles.Bold;
+            posText.alignment = TextAlignmentOptions.Center;
+            posText.color = new Color(0.2f, 0.85f, 0.3f, 0.2f); // Inactivo por defecto
+
+            // 7.B. Luces Bajas (#1AF2A0)
             GameObject headlightsObj = new GameObject("Indicator_Headlights");
             headlightsObj.transform.SetParent(canvasObj.transform, false);
             RectTransform hlRect = headlightsObj.AddComponent<RectTransform>();
             hlRect.anchorMin = new Vector2(0.5f, 0f);
             hlRect.anchorMax = new Vector2(0.5f, 0f);
-            hlRect.anchoredPosition = new Vector2(130f, 30f);
-            hlRect.sizeDelta = new Vector2(50f, 35f);
+            hlRect.anchoredPosition = new Vector2(176f, 30f);
+            hlRect.sizeDelta = new Vector2(46f, 35f);
             TextMeshProUGUI hlText = headlightsObj.AddComponent<TextMeshProUGUI>();
             if (fontAsset != null) hlText.font = fontAsset;
             hlText.text = "[ ≡ ]";
@@ -235,14 +251,14 @@ namespace PrimerVolante.Testing.Editor
             hlText.alignment = TextAlignmentOptions.Center;
             hlText.color = new Color(0.102f, 0.949f, 0.627f, 0.2f); // Inactivo por defecto
 
-            // 7.B. Luces Altas (#1A7BFF con símbolo [ D ])
+            // 7.C. Luces Altas (#1A7BFF con símbolo [ D ])
             GameObject highBeamsObj = new GameObject("Indicator_HighBeams");
             highBeamsObj.transform.SetParent(canvasObj.transform, false);
             RectTransform hbAltasRect = highBeamsObj.AddComponent<RectTransform>();
             hbAltasRect.anchorMin = new Vector2(0.5f, 0f);
             hbAltasRect.anchorMax = new Vector2(0.5f, 0f);
-            hbAltasRect.anchoredPosition = new Vector2(185f, 30f);
-            hbAltasRect.sizeDelta = new Vector2(50f, 35f);
+            hbAltasRect.anchoredPosition = new Vector2(224f, 30f);
+            hbAltasRect.sizeDelta = new Vector2(46f, 35f);
             TextMeshProUGUI hbAltasText = highBeamsObj.AddComponent<TextMeshProUGUI>();
             if (fontAsset != null) hbAltasText.font = fontAsset;
             hbAltasText.text = "[ D ]";
@@ -304,6 +320,9 @@ namespace PrimerVolante.Testing.Editor
             so.FindProperty("m_TurnLeftIndicator").objectReferenceValue = tlText;
             so.FindProperty("m_TurnRightIndicator").objectReferenceValue = trText;
             so.FindProperty("m_HandbrakeIndicator").objectReferenceValue = hbText;
+            so.FindProperty("m_PositionLightsIndicator").objectReferenceValue = posText;
+            so.FindProperty("m_PositionActiveColor").colorValue = new Color(0.2f, 0.85f, 0.3f, 1f);
+            so.FindProperty("m_PositionInactiveColor").colorValue = new Color(0.2f, 0.85f, 0.3f, 0.2f);
             so.FindProperty("m_HeadlightsIndicator").objectReferenceValue = hlText;
             so.FindProperty("m_HighBeamsIndicator").objectReferenceValue = hbAltasText;
             so.FindProperty("m_LowBeamActiveColor").colorValue = new Color(0.102f, 0.949f, 0.627f, 1f);
