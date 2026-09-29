@@ -40,7 +40,7 @@ namespace PrimerVolante.VR
         [Tooltip("Color del indicador de guiño cuando está apagado / inactivo.")]
         [SerializeField] private Color m_TurnSignalInactiveColor = new Color(0.15f, 0.15f, 0.15f, 0.25f);
 
-        [Tooltip("Frecuencia de parpadeo de los guiños en segundos (~0.4s).")]
+        [Tooltip("Frecuencia de parpadeo de los guiños en segundos (~0.4s). Solo se usa como fallback si el vehículo no tiene TurnSignalLightController (que es el reloj único).")]
         [SerializeField] private float m_BlinkInterval = 0.4f;
 
         [Header("Selector de Marchas (P, R, N, D)")]
@@ -101,6 +101,7 @@ namespace PrimerVolante.VR
         private float m_BlinkTimer = 0f;
         private bool m_WasTurnSignalOrHazardActive = false;
         private GearState m_LastGear = (GearState)(-1);
+        private TurnSignalLightController m_BlinkClock;
 
         /// <summary>
         /// Estado actual del freno de mano.
@@ -126,6 +127,11 @@ namespace PrimerVolante.VR
                 {
                     m_VehicleController = Object.FindAnyObjectByType<VehicleController>();
                 }
+            }
+
+            if (m_VehicleController != null)
+            {
+                m_BlinkClock = m_VehicleController.GetComponentInChildren<TurnSignalLightController>(true);
             }
         }
 
@@ -206,11 +212,19 @@ namespace PrimerVolante.VR
                 m_BlinkTimer = 0f;
             }
 
-            m_BlinkTimer += Time.deltaTime;
-            if (m_BlinkTimer >= m_BlinkInterval)
+            if (m_BlinkClock != null)
             {
-                m_BlinkTimer -= m_BlinkInterval;
-                m_BlinkState = !m_BlinkState;
+                // Reloj único: la fase la dicta TurnSignalLightController (en fase con luces exteriores y audio).
+                m_BlinkState = m_BlinkClock.IsBlinkOn;
+            }
+            else
+            {
+                m_BlinkTimer += Time.deltaTime;
+                if (m_BlinkTimer >= m_BlinkInterval)
+                {
+                    m_BlinkTimer -= m_BlinkInterval;
+                    m_BlinkState = !m_BlinkState;
+                }
             }
 
             if (m_TurnLeftIndicator != null)

@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace PrimerVolante.VR
@@ -6,6 +7,7 @@ namespace PrimerVolante.VR
     /// Controla el parpadeo de las luces de guiño izquierda/derecha del vehículo,
     /// según el estado reportado por VehicleController.CurrentTurnSignal.
     /// </summary>
+    [DefaultExecutionOrder(-10)]
     public class TurnSignalLightController : MonoBehaviour
     {
         [Header("Referencias")]
@@ -27,6 +29,34 @@ namespace PrimerVolante.VR
         private TurnSignalState m_LastAppliedSignal = TurnSignalState.Off;
         private bool m_LastHazardActive = false;
 
+        /// <summary>
+        /// Fase actual del parpadeo (true = encendido). Reloj único para luces, tablero y audio.
+        /// </summary>
+        public bool IsBlinkOn => m_BlinkOn;
+
+        /// <summary>
+        /// Indica si el lado izquierdo está activo (guiño izquierdo o balizas).
+        /// </summary>
+        public bool IsLeftActive => m_VehicleController != null &&
+            (m_VehicleController.IsHazardActive || m_LastAppliedSignal == TurnSignalState.Left);
+
+        /// <summary>
+        /// Indica si el lado derecho está activo (guiño derecho o balizas).
+        /// </summary>
+        public bool IsRightActive => m_VehicleController != null &&
+            (m_VehicleController.IsHazardActive || m_LastAppliedSignal == TurnSignalState.Right);
+
+        /// <summary>
+        /// Indica si hay algún guiño o las balizas activas.
+        /// </summary>
+        public bool IsAnyActive => IsLeftActive || IsRightActive;
+
+        /// <summary>
+        /// Se dispara en cada cambio de fase (true = encendido), incluido el arranque en "on" al
+        /// activar y el paso a apagado al desactivar.
+        /// </summary>
+        public event Action<bool> OnBlinkPhaseChanged;
+
         private void Awake()
         {
             if (m_VehicleController == null)
@@ -45,8 +75,15 @@ namespace PrimerVolante.VR
                 m_LastAppliedSignal = signal;
                 m_LastHazardActive = hazard;
                 m_BlinkTimer = 0f;
-                m_BlinkOn = true;
+
+                bool nowActive = hazard || (signal != TurnSignalState.Off);
+                bool previousPhase = m_BlinkOn;
+                m_BlinkOn = nowActive;
                 ApplyBlinkState();
+
+                // Al activar: arranca en "on". Al desactivar: pasa a "off" (si estaba encendido).
+                if (nowActive || previousPhase)
+                    OnBlinkPhaseChanged?.Invoke(m_BlinkOn);
             }
 
             bool isActive = hazard || (signal != TurnSignalState.Off);
@@ -61,6 +98,7 @@ namespace PrimerVolante.VR
                 m_BlinkTimer -= halfPeriod;
                 m_BlinkOn = !m_BlinkOn;
                 ApplyBlinkState();
+                OnBlinkPhaseChanged?.Invoke(m_BlinkOn);
             }
         }
 

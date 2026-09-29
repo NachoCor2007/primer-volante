@@ -6,6 +6,21 @@ using UnityEngine.XR;
 namespace PrimerVolante.VR
 {
     /// <summary>
+    /// Estado de la máquina de estados del motor.
+    /// </summary>
+    public enum EngineState
+    {
+        /// <summary>Motor apagado.</summary>
+        Off = 0,
+
+        /// <summary>Burro de arranque en curso (el auto aún no puede moverse).</summary>
+        Cranking = 1,
+
+        /// <summary>Motor en marcha.</summary>
+        Running = 2
+    }
+
+    /// <summary>
     /// Controlador cinemático-híbrido de movimiento y dirección de vehículo para VR.
     /// Maneja Aceleración (Gatillo Derecho), Frenado (Gatillo Izquierdo) y Giro por Volante (VRSteeringWheel).
     /// Evita explosiones físicas ignorando colisiones internas con el XROrigin del jugador.
@@ -96,6 +111,12 @@ namespace PrimerVolante.VR
         [Header("Estado del Motor")]
         [SerializeField] private bool m_EngineRunning = false;
 
+        [Tooltip("Duración en segundos del arranque (estado Cranking) antes de quedar en marcha. 0 = arranque instantáneo.")]
+        [SerializeField] private float m_CrankDuration = 0f;
+
+        private bool m_IsCranking;
+        private float m_CrankTimeRemaining;
+
         private TurnSignalState m_CurrentTurnSignal = TurnSignalState.Off;
 
         [Header("Balizas / Luces de Emergencia")]
@@ -160,10 +181,16 @@ namespace PrimerVolante.VR
         /// </summary>
         public bool IsHazardActive => m_HazardsActive;
 
+        /// <summary>
+        /// Se dispara cuando cambian las balizas (por botón VR o tecla H).
+        /// </summary>
+        public event Action<bool> OnHazardChanged;
+
         public void SetHazardActive(bool active)
         {
             if (m_HazardsActive == active) return;
             m_HazardsActive = active;
+            OnHazardChanged?.Invoke(active);
 
             if (m_HazardButton != null && m_HazardButton.IsToggled != active)
             {
@@ -193,10 +220,36 @@ namespace PrimerVolante.VR
         }
 
         /// <summary>
-        /// Indica si el motor está encendido. Con el motor apagado, el vehículo ignora el acelerador
-        /// y se frena en seco (velocidad y dirección de avance quedan a cero de inmediato).
+        /// Indica si el motor está encendido (true solo en <see cref="EngineState.Running"/>).
+        /// Con el motor apagado, el vehículo ignora el acelerador y se frena en seco
+        /// (velocidad y dirección de avance quedan a cero de inmediato).
         /// </summary>
         public bool IsEngineRunning => m_EngineRunning;
+
+        /// <summary>
+        /// Estado actual del motor (Off, Cranking o Running).
+        /// </summary>
+        public EngineState CurrentEngineState =>
+            m_EngineRunning ? EngineState.Running : (m_IsCranking ? EngineState.Cranking : EngineState.Off);
+
+        /// <summary>
+        /// Duración del arranque en segundos (0 = instantáneo).
+        /// </summary>
+        public float CrankDuration
+        {
+            get => m_CrankDuration;
+            set => m_CrankDuration = Mathf.Max(0f, value);
+        }
+
+        /// <summary>
+        /// Se dispara al cambiar el estado del motor (Off, Cranking, Running).
+        /// </summary>
+        public event Action<EngineState> OnEngineStateChanged;
+
+        /// <summary>
+        /// Se dispara cuando se rechaza un pedido de arranque/apagado; el argumento es el motivo.
+        /// </summary>
+        public event Action<string> OnEngineStartRejected;
 
         /// <summary>
         /// Nivel de accionamiento del freno de mano (0..1). 0 si no hay palanca asignada.
@@ -224,12 +277,15 @@ namespace PrimerVolante.VR
         }
 
         /// <summary>
-        /// Enciende o apaga el motor. Al apagarlo, detiene el vehículo instantáneamente.
+        /// Enciende o apaga el motor de forma inmediata (sin fase de arranque). Al apagarlo,
+        /// detiene el vehículo instantáneamente. Mantenido por compatibilidad; para el flujo
+        /// con validación y arranque temporizado usar <see cref="TryToggleEngine"/>.
         /// </summary>
         public void SetEngineRunning(bool running)
         {
-            if (m_EngineRunning == running) return;
+            if (m_EngineRunning == running && !m_IsCranking) return;
 
+            m_IsCranking = false;
             m_EngineRunning = running;
 
             if (!m_EngineRunning)
@@ -241,6 +297,71 @@ namespace PrimerVolante.VR
                     m_Rigidbody.linearVelocity = Vector3.zero;
                     m_Rigidbody.angularVelocity = Vector3.zero;
                 }
+            }
+
+            OnEngineStateChanged?.Invoke(CurrentEngineState);
+        }
+
+        /// <summary>
+        /// Intenta alternar el motor. Tanto encender como apagar exigen la palanca en Park y el
+        /// freno pisado a fondo (≥ 0.8); si no se cumple se dispara <see cref="OnEngineStartRejected"/>.
+        /// Durante Cranking las pulsaciones se ignoran. Devuelve true si el pedido fue aceptado.
+        /// </summary>
+        public bool TryToggleEngine()
+        {
+            if (m_IsCranking) return false;
+
+            string verb = m_EngineRunning ? "Apagado" : "Encendido";
+
+            if (m_CurrentGear != GearState.Park)
+            {
+                RejectEngineToggle($"{verb} bloqueado: la palanca debe estar en Park (actual: {m_CurrentGear}).");
+                return false;
+            }
+
+            if (m_BrakeValue < 0.8f)
+            {
+                RejectEngineToggle($"{verb} bloqueado: hay que pisar el freno a fondo (actual: {m_BrakeValue * 100f:F0}%).");
+                return false;
+            }
+
+            if (m_EngineRunning)
+            {
+                SetEngineRunning(false);
+            }
+            else if (m_CrankDuration > 0f && Application.isPlaying)
+            {
+                m_IsCranking = true;
+                m_CrankTimeRemaining = m_CrankDuration;
+                OnEngineStateChanged?.Invoke(EngineState.Cranking);
+            }
+            else
+            {
+                SetEngineRunning(true);
+            }
+
+            return true;
+        }
+
+        private void RejectEngineToggle(string reason)
+        {
+            if (m_EnableDebugLogs)
+            {
+                Debug.LogWarning($"[VehicleController] ⚠️ {reason}");
+            }
+            OnEngineStartRejected?.Invoke(reason);
+        }
+
+        private void UpdateCranking()
+        {
+            if (!m_IsCranking) return;
+
+            m_CrankTimeRemaining -= Time.deltaTime;
+            if (m_CrankTimeRemaining <= 0f)
+            {
+                m_IsCranking = false;
+                m_EngineRunning = true;
+                OnEngineStateChanged?.Invoke(EngineState.Running);
             }
         }
 
@@ -450,6 +571,8 @@ namespace PrimerVolante.VR
         {
             if (!Application.isPlaying) return;
 
+            UpdateCranking();
+
             m_ThrottleValue = ReadTriggerValue(m_RightTriggerAction, m_DefaultRightAction, XRNode.RightHand);
             m_BrakeValue = ReadTriggerValue(m_LeftTriggerAction, m_DefaultLeftAction, XRNode.LeftHand);
 
@@ -461,7 +584,7 @@ namespace PrimerVolante.VR
 
                 if (Gamepad.current.buttonSouth.wasPressedThisFrame)
                 {
-                    HandleEngineToggleRequest();
+                    TryToggleEngine();
                 }
             }
 
@@ -477,7 +600,7 @@ namespace PrimerVolante.VR
                 }
                 if (Keyboard.current.eKey.wasPressedThisFrame)
                 {
-                    HandleEngineToggleRequest();
+                    TryToggleEngine();
                 }
             }
 
@@ -529,44 +652,6 @@ namespace PrimerVolante.VR
                     Debug.Log($"[VehicleController] 🔄 GIRO VOLANTE: {m_SteeringWheel.SteeringValue * 100f:F0}% | Vel: {CurrentSpeedKmh:F1} km/h");
                     m_LastLogTime = Time.time;
                 }
-            }
-        }
-
-        private void HandleEngineToggleRequest()
-        {
-            if (m_EngineRunning)
-            {
-                // Para apagar exige palanca en Park y freno pisado
-                if (m_CurrentGear != GearState.Park)
-                {
-                    Debug.LogWarning($"[VehicleController] ⚠️ Apagado bloqueado: la palanca debe estar en Park (actual: {m_CurrentGear}).");
-                    return;
-                }
-                if (m_BrakeValue < 0.8f)
-                {
-                    Debug.LogWarning($"[VehicleController] ⚠️ Apagado bloqueado: hay que pisar el freno a fondo (actual: {m_BrakeValue * 100f:F0}%).");
-                    return;
-                }
-
-                SetEngineRunning(false);
-                Debug.Log("[VehicleController] 🛑 Motor apagado mediante Gamepad/Teclado.");
-            }
-            else
-            {
-                // Para encender exige palanca en Park y freno a fondo
-                if (m_CurrentGear != GearState.Park)
-                {
-                    Debug.LogWarning($"[VehicleController] ⚠️ Encendido bloqueado: la palanca debe estar en Park (actual: {m_CurrentGear}).");
-                    return;
-                }
-                if (m_BrakeValue < 0.8f)
-                {
-                    Debug.LogWarning($"[VehicleController] ⚠️ Encendido bloqueado: hay que pisar el freno a fondo (actual: {m_BrakeValue * 100f:F0}%).");
-                    return;
-                }
-
-                SetEngineRunning(true);
-                Debug.Log("[VehicleController] 🟢 Motor encendido con éxito mediante Gamepad/Teclado.");
             }
         }
 

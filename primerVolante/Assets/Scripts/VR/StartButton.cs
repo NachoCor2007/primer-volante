@@ -5,8 +5,8 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 namespace PrimerVolante.VR
 {
     /// <summary>
-    /// Botón de arranque/apagado del motor. Alterna VehicleController.IsEngineRunning.
-    /// Tanto para arrancar como para apagar exige la palanca en Park y el freno a fondo.
+    /// Botón de arranque/apagado del motor. Delega en VehicleController.TryToggleEngine.
+    /// Tanto para arrancar como para apagar se exige la palanca en Park y el freno a fondo.
     /// </summary>
     public class StartButton : MonoBehaviour
     {
@@ -20,6 +20,9 @@ namespace PrimerVolante.VR
 
         [Tooltip("Color del botón con el motor apagado.")]
         [SerializeField] private Color m_EngineOffColor = Color.white;
+
+        [Tooltip("Color del botón durante el arranque (Cranking).")]
+        [SerializeField] private Color m_EngineCrankingColor = new Color(1f, 0.65f, 0.1f);
 
         [Tooltip("Color del botón con el motor encendido.")]
         [SerializeField] private Color m_EngineOnColor = new Color(0.1f, 0.9f, 0.2f);
@@ -79,8 +82,8 @@ namespace PrimerVolante.VR
         }
 
         /// <summary>
-        /// Intenta alternar el estado del motor. Tanto encender como apagar requieren
-        /// la palanca en Park y el freno pisado a fondo.
+        /// Intenta alternar el estado del motor. La validación (Park + freno a fondo) vive en
+        /// <see cref="VehicleController.TryToggleEngine"/>.
         /// </summary>
         public void ToggleEngine()
         {
@@ -91,57 +94,28 @@ namespace PrimerVolante.VR
                 return;
             }
 
-            bool wantsToStart = !m_VehicleController.IsEngineRunning;
-
-            if (wantsToStart)
-            {
-                if (!IsGearSafeToStart())
-                {
-                    if (m_EnableDebugLogs)
-                        Debug.Log($"[StartButton:{gameObject.name}] Encendido bloqueado: la palanca debe estar en Park (actual: {m_VehicleController.CurrentGear}).");
-                    return;
-                }
-
-                if (m_VehicleController.BrakeValue < 0.8f)
-                {
-                    if (m_EnableDebugLogs)
-                        Debug.Log($"[StartButton:{gameObject.name}] Encendido bloqueado: hay que pisar el freno a fondo.");
-                    return;
-                }
-            }
-            else
-            {
-                if (m_VehicleController.CurrentGear != GearState.Park)
-                {
-                    if (m_EnableDebugLogs)
-                        Debug.Log($"[StartButton:{gameObject.name}] Apagado bloqueado: la palanca debe estar en Park (actual: {m_VehicleController.CurrentGear}).");
-                    return;
-                }
-
-                if (m_VehicleController.BrakeValue < 0.8f)
-                {
-                    if (m_EnableDebugLogs)
-                        Debug.Log($"[StartButton:{gameObject.name}] Apagado bloqueado: hay que pisar el freno a fondo.");
-                    return;
-                }
-            }
-
-            m_VehicleController.SetEngineRunning(wantsToStart);
+            bool accepted = m_VehicleController.TryToggleEngine();
             UpdateVisual();
 
             if (m_EnableDebugLogs)
-                Debug.Log($"[StartButton:{gameObject.name}] Motor {(wantsToStart ? "ENCENDIDO 🟢" : "APAGADO 🔴")}.");
-        }
-
-        private bool IsGearSafeToStart()
-        {
-            return m_VehicleController.CurrentGear == GearState.Park;
+                Debug.Log($"[StartButton:{gameObject.name}] Pulsación {(accepted ? "aceptada ✅" : "rechazada ⛔")} (estado: {m_VehicleController.CurrentEngineState}).");
         }
 
         private void UpdateVisual()
         {
             if (m_InstancedMaterial == null || m_VehicleController == null) return;
-            m_InstancedMaterial.color = m_VehicleController.IsEngineRunning ? m_EngineOnColor : m_EngineOffColor;
+            switch (m_VehicleController.CurrentEngineState)
+            {
+                case EngineState.Running:
+                    m_InstancedMaterial.color = m_EngineOnColor;
+                    break;
+                case EngineState.Cranking:
+                    m_InstancedMaterial.color = m_EngineCrankingColor;
+                    break;
+                default:
+                    m_InstancedMaterial.color = m_EngineOffColor;
+                    break;
+            }
         }
     }
 }
