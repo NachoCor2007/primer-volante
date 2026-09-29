@@ -5,15 +5,17 @@ namespace PrimerVolante.VR
 {
     /// <summary>
     /// Modos discretos del sistema de luces frontales:
-    /// Off: Todo apagado (0°).
-    /// LowBeam: Luces bajas / posición (45°).
-    /// HighBeam: Luces altas de largo alcance (90°).
+    /// Off: Todo apagado.
+    /// Position: Luces de posición encendidas (emisión tenue delantera y trasera).
+    /// LowBeam: Luces bajas (posición + faros externos + spotlights bajas).
+    /// HighBeam: Luces altas de largo alcance (posición + faros externos e internos + spotlights bajas y altas).
     /// </summary>
     public enum HeadlightMode
     {
         Off = 0,
-        LowBeam = 1,
-        HighBeam = 2
+        Position = 1,
+        LowBeam = 2,
+        HighBeam = 3
     }
 
     [Serializable]

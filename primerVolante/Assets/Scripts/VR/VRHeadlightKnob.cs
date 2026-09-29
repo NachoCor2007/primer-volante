@@ -8,7 +8,7 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 namespace PrimerVolante.VR
 {
     /// <summary>
-    /// Perilla rotativa interactuable en VR para el control de luces (Off / LowBeam / HighBeam).
+    /// Perilla rotativa interactuable en VR para el control de luces (Off / Position / LowBeam / HighBeam).
     /// Soporta interacción física mediante XRGrabInteractable (rotación continua y snap magnético suave),
     /// pasos por clic/poke y controles de depuración mediante Teclado (L) y Gamepad (D-Pad Arriba/Abajo).
     /// </summary>
@@ -28,8 +28,11 @@ namespace PrimerVolante.VR
         [Tooltip("Ángulo local para la posición Off (0°).")]
         [SerializeField] private float m_OffAngle = 0f;
 
-        [Tooltip("Ángulo local para la posición Luces Bajas (45°).")]
-        [SerializeField] private float m_LowBeamAngle = 45f;
+        [Tooltip("Ángulo local para la posición Luces de Posición (30°).")]
+        [SerializeField] private float m_PositionAngle = 30f;
+
+        [Tooltip("Ángulo local para la posición Luces Bajas (60°).")]
+        [SerializeField] private float m_LowBeamAngle = 60f;
 
         [Tooltip("Ángulo local para la posición Luces Altas (90°).")]
         [SerializeField] private float m_HighBeamAngle = 90f;
@@ -61,6 +64,12 @@ namespace PrimerVolante.VR
         /// Modo actual de las luces.
         /// </summary>
         public HeadlightMode CurrentMode => m_CurrentMode;
+
+        /// <summary>
+        /// Ángulos locales de la perilla indexados por el valor entero de <see cref="HeadlightMode"/>
+        /// (Off, Position, LowBeam, HighBeam). Única fuente de verdad para la cantidad de modos.
+        /// </summary>
+        private float[] AngleTable => new float[] { m_OffAngle, m_PositionAngle, m_LowBeamAngle, m_HighBeamAngle };
 
         /// <summary>
         /// Indica si la perilla está actualmente sostenida por un interactor VR.
@@ -176,7 +185,7 @@ namespace PrimerVolante.VR
         {
             if (m_IsGrabbed) return;
 
-            // Teclado: tecla L cicla Off -> LowBeam -> HighBeam -> Off
+            // Teclado: tecla L cicla Off -> Position -> LowBeam -> HighBeam -> Off
             if (Keyboard.current != null && Keyboard.current.lKey.wasPressedThisFrame)
             {
                 CycleMode();
@@ -200,11 +209,11 @@ namespace PrimerVolante.VR
         }
 
         /// <summary>
-        /// Cicla al siguiente modo: Off -> LowBeam -> HighBeam -> Off.
+        /// Cicla al siguiente modo: Off -> Position -> LowBeam -> HighBeam -> Off.
         /// </summary>
         public void CycleMode()
         {
-            int nextMode = ((int)m_CurrentMode + 1) % 3;
+            int nextMode = ((int)m_CurrentMode + 1) % AngleTable.Length;
             SetMode((HeadlightMode)nextMode, animated: true);
         }
 
@@ -213,7 +222,7 @@ namespace PrimerVolante.VR
         /// </summary>
         public void StepMode(int direction)
         {
-            int next = Mathf.Clamp((int)m_CurrentMode + direction, 0, 2);
+            int next = Mathf.Clamp((int)m_CurrentMode + direction, 0, AngleTable.Length - 1);
             SetMode((HeadlightMode)next, animated: true);
         }
 
@@ -312,8 +321,8 @@ namespace PrimerVolante.VR
                 m_HasRotatedWhileGrabbed = true;
             }
 
-            float minAngle = Mathf.Min(m_OffAngle, Mathf.Min(m_LowBeamAngle, m_HighBeamAngle));
-            float maxAngle = Mathf.Max(m_OffAngle, Mathf.Max(m_LowBeamAngle, m_HighBeamAngle));
+            float minAngle = Mathf.Min(AngleTable);
+            float maxAngle = Mathf.Max(AngleTable);
             float newAngle = Mathf.Clamp(m_GrabStartAngle + angleDelta, minAngle - 10f, maxAngle + 10f);
             m_CurrentAngle = newAngle;
             ApplyRotation(m_CurrentAngle);
@@ -415,23 +424,28 @@ namespace PrimerVolante.VR
 
         private float GetAngleForMode(HeadlightMode mode)
         {
-            switch (mode)
-            {
-                case HeadlightMode.LowBeam: return m_LowBeamAngle;
-                case HeadlightMode.HighBeam: return m_HighBeamAngle;
-                default: return m_OffAngle;
-            }
+            float[] angles = AngleTable;
+            int index = (int)mode;
+            return (index >= 0 && index < angles.Length) ? angles[index] : m_OffAngle;
         }
 
         private HeadlightMode GetClosestMode(float angle)
         {
-            float dOff = Mathf.Abs(angle - m_OffAngle);
-            float dLow = Mathf.Abs(angle - m_LowBeamAngle);
-            float dHigh = Mathf.Abs(angle - m_HighBeamAngle);
+            float[] angles = AngleTable;
+            int closestIndex = 0;
+            float closestDelta = Mathf.Abs(angle - angles[0]);
 
-            if (dOff <= dLow && dOff <= dHigh) return HeadlightMode.Off;
-            if (dLow <= dOff && dLow <= dHigh) return HeadlightMode.LowBeam;
-            return HeadlightMode.HighBeam;
+            for (int i = 1; i < angles.Length; i++)
+            {
+                float delta = Mathf.Abs(angle - angles[i]);
+                if (delta < closestDelta)
+                {
+                    closestDelta = delta;
+                    closestIndex = i;
+                }
+            }
+
+            return (HeadlightMode)closestIndex;
         }
 
         private void PlayClickSound()
