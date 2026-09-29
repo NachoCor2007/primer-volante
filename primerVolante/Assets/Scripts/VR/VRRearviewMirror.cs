@@ -265,8 +265,11 @@ namespace PrimerVolante.VR
         {
             if (m_PivotTransform == null) m_PivotTransform = transform;
 
-            // Pitch en X, Yaw en Y, Roll bloqueado en 0°
-            Quaternion targetRot = m_InitialLocalRotation * Quaternion.Euler(m_CurrentPitch, m_CurrentYaw, 0f);
+            // Pitch en X, Yaw en Y, Roll bloqueado en 0°.
+            // La cara del vidrio mira hacia -Z (hacia el conductor): un giro positivo en Y giraría esa
+            // cara hacia la izquierda, así que se invierte el signo para que Yaw > 0 = cara hacia la derecha
+            // (mano a la derecha o tecla L => el espejo sigue a la mano). El Pitch ya coincide (+ = cara hacia arriba).
+            Quaternion targetRot = m_InitialLocalRotation * Quaternion.Euler(m_CurrentPitch, -m_CurrentYaw, 0f);
             m_PivotTransform.localRotation = targetRot;
 
             // Si la cámara no es hija del pivote pero está asignada, sincronizar su rotación
