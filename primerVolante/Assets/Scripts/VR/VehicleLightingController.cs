@@ -17,7 +17,7 @@ namespace PrimerVolante.VR
         [Tooltip("Controlador físico/cinemático del vehículo. Si se deja vacío se busca en este objeto o en padres/escena.")]
         [SerializeField] private VehicleController m_VehicleController;
 
-        [Tooltip("Perilla rotativa de 3 posiciones en cabina.")]
+        [Tooltip("Perilla rotativa de 4 posiciones en cabina (Off, Position, LowBeam, HighBeam).")]
         [SerializeField] private VRHeadlightKnob m_HeadlightKnob;
 
         [Tooltip("Controlador del cluster/tablero diegético.")]
@@ -27,7 +27,7 @@ namespace PrimerVolante.VR
         [SerializeField] private TurnSignalLightController m_TurnSignalController;
 
         [Header("Iluminación Delantera - Ópticas Emisivas")]
-        [Tooltip("Faros externos delanteros (se encienden en Bajas y Altas).")]
+        [Tooltip("Faros externos delanteros (emisión tenue en Position, se encienden en Bajas y Altas).")]
         [SerializeField] private Renderer[] m_FrontOuterHeadlights;
 
         [Tooltip("Faros internos delanteros (se encienden únicamente en Altas).")]
@@ -47,6 +47,12 @@ namespace PrimerVolante.VR
 
         [Tooltip("Intensidad de emisión de luces altas.")]
         [SerializeField] private float m_HighBeamEmissionIntensity = 4.5f;
+
+        [Tooltip("Color emisivo de luces de posición (blanco cálido).")]
+        [SerializeField] private Color m_PositionLightColor = new Color(1f, 0.95f, 0.88f, 1f);
+
+        [Tooltip("Intensidad de emisión de luces de posición (tenue, bastante menor que Bajas).")]
+        [SerializeField] private float m_PositionEmissionIntensity = 0.6f;
 
         [Header("Iluminación Delantera - Spotlights 3D")]
         [Tooltip("2 Spotlights de luces bajas (alcance ~25m, ángulo ancho, ligera inclinación hacia abajo).")]
@@ -308,6 +314,17 @@ namespace PrimerVolante.VR
                     SetLightsEnabled(m_HighBeamSpotlights, false);
                     break;
 
+                case HeadlightMode.Position:
+                    // Ópticas externas: emisión tenue de posición
+                    SetMaterialsState(m_OuterHeadlightMaterials, Color.white, m_PositionLightColor, m_PositionEmissionIntensity, true);
+                    // Ópticas internas: apagadas
+                    SetMaterialsState(m_InnerHeadlightMaterials, m_FrontOffColor, Color.black, 0f, false);
+
+                    // Spotlights apagados
+                    SetLightsEnabled(m_LowBeamSpotlights, false);
+                    SetLightsEnabled(m_HighBeamSpotlights, false);
+                    break;
+
                 case HeadlightMode.LowBeam:
                     // Ópticas externas: blanco/cálido activo
                     SetMaterialsState(m_OuterHeadlightMaterials, Color.white, m_LowBeamColor, m_LowBeamEmissionIntensity, true);
@@ -336,7 +353,7 @@ namespace PrimerVolante.VR
         /// </summary>
         private void ApplyRearTailLighting(HeadlightMode mode, bool braking)
         {
-            bool positionOn = (mode == HeadlightMode.LowBeam || mode == HeadlightMode.HighBeam);
+            bool positionOn = (mode != HeadlightMode.Off);
 
             if (braking)
             {
