@@ -12,7 +12,7 @@ namespace PrimerVolante.VR
     /// - Testigos de guiños / balizas (flechas izquierda y derecha con parpadeo)
     /// - Tira de marchas (P, R, N, D) resaltando la activa
     /// - Testigo de freno de mano (P / !) en rojo
-    /// - Testigo de luces frontales / bajas en verde o azul
+    /// - Testigos de luces frontales: posición (verde), bajas (verde agua) y altas (azul)
     /// </summary>
     public class DashboardUIController : MonoBehaviour
     {
@@ -67,6 +67,15 @@ namespace PrimerVolante.VR
         [SerializeField] private Color m_HandbrakeInactiveColor = new Color(0.25f, 0.1f, 0.1f, 0.2f);
 
         [Header("Testigos de Luces")]
+        [Tooltip("Elemento visual de luces de posición (verde).")]
+        [SerializeField] private Graphic m_PositionLightsIndicator;
+
+        [Tooltip("Color activo de las luces de posición.")]
+        [SerializeField] private Color m_PositionActiveColor = new Color(0.2f, 0.85f, 0.3f, 1f);
+
+        [Tooltip("Color inactivo de las luces de posición.")]
+        [SerializeField] private Color m_PositionInactiveColor = new Color(0.2f, 0.85f, 0.3f, 0.2f);
+
         [Tooltip("Elemento visual de luces bajas (verde/celeste #1AF2A0).")]
         [SerializeField] private Graphic m_HeadlightsIndicator;
 
@@ -319,7 +328,7 @@ namespace PrimerVolante.VR
         }
 
         /// <summary>
-        /// Sincroniza el estado de las luces en el tablero según el modo (Off, LowBeam, HighBeam).
+        /// Sincroniza el estado de las luces en el tablero según el modo (Off, Position, LowBeam, HighBeam).
         /// </summary>
         public void SetHeadlightMode(HeadlightMode mode)
         {
@@ -337,8 +346,16 @@ namespace PrimerVolante.VR
 
         private void UpdateHeadlightsDisplay()
         {
+            bool isPositionOn = (m_HeadlightMode != HeadlightMode.Off);
             bool isLowBeam = (m_HeadlightMode == HeadlightMode.LowBeam);
             bool isHighBeam = (m_HeadlightMode == HeadlightMode.HighBeam);
+
+            if (m_PositionLightsIndicator != null)
+            {
+                m_PositionLightsIndicator.color = isPositionOn
+                    ? m_PositionActiveColor
+                    : m_PositionInactiveColor;
+            }
 
             if (m_HeadlightsIndicator != null)
             {
