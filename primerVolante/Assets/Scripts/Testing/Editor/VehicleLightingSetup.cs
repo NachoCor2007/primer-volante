@@ -96,7 +96,7 @@ namespace PrimerVolante.Testing.Editor
             DashboardUIController dashboardUI = carRoot.GetComponentInChildren<DashboardUIController>(true);
 
             // =========================================================================
-            // 1. Perilla Virtual de 3 Modos (VRHeadlightKnob)
+            // 1. Perilla Virtual de 4 Modos (VRHeadlightKnob)
             // =========================================================================
             VRHeadlightKnob knob = SetupHeadlightKnob(carRoot, litShader);
 
@@ -221,9 +221,10 @@ namespace PrimerVolante.Testing.Editor
                 soKnob.Update();
                 soKnob.FindProperty("m_RotorTransform").objectReferenceValue = nativeKnob;
                 soKnob.FindProperty("m_RotationAxis").vector3Value = Vector3.up;
-                soKnob.FindProperty("m_OffAngle").floatValue = -30f;
-                soKnob.FindProperty("m_LowBeamAngle").floatValue = 0f;
-                soKnob.FindProperty("m_HighBeamAngle").floatValue = 30f;
+                soKnob.FindProperty("m_OffAngle").floatValue = -45f;
+                soKnob.FindProperty("m_PositionAngle").floatValue = -15f;
+                soKnob.FindProperty("m_LowBeamAngle").floatValue = 15f;
+                soKnob.FindProperty("m_HighBeamAngle").floatValue = 45f;
                 soKnob.ApplyModifiedProperties();
 
                 return knobComp;
@@ -318,7 +319,8 @@ namespace PrimerVolante.Testing.Editor
             soFallback.FindProperty("m_RotorTransform").objectReferenceValue = rotorObj.transform;
             soFallback.FindProperty("m_RotationAxis").vector3Value = Vector3.back;
             soFallback.FindProperty("m_OffAngle").floatValue = 0f;
-            soFallback.FindProperty("m_LowBeamAngle").floatValue = 45f;
+            soFallback.FindProperty("m_PositionAngle").floatValue = 30f;
+            soFallback.FindProperty("m_LowBeamAngle").floatValue = 60f;
             soFallback.FindProperty("m_HighBeamAngle").floatValue = 90f;
             soFallback.ApplyModifiedProperties();
 
