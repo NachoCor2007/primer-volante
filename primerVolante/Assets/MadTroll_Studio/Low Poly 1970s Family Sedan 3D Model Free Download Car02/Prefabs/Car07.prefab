@@ -11331,7 +11331,9 @@ MonoBehaviour:
   snapThreshold: 6
   snapSpeed: 12
   m_VehicleController: {fileID: 1728493498108266381}
-  m_SelfCancelGraceAngle: 15
+  m_ArmTurnAngle: 80
+  m_CancelReturnAngle: 15
+  m_OppositeCancelAngle: 50
   OnTurnSignalChanged:
     m_PersistentCalls:
       m_Calls: []

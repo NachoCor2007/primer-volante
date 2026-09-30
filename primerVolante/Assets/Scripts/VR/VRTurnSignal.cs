@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.Serialization;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
@@ -22,8 +23,8 @@ namespace PrimerVolante.VR
     /// <summary>
     /// Palanca de guiño física e interactiva en Realidad Virtual.
     /// Rota sobre un único eje local con imanes (snapping) en Left, Off y Right.
-    /// Se auto-cancela (vuelve a Off) cuando el volante gira lo suficiente en la
-    /// dirección contraria al guiño activo, imitando el mecanismo de un auto real.
+    /// Cuenta con un mecanismo de auto-cancelación de dos fases (armado y retorno)
+    /// imitando la leva mecánica de un auto real, más cancelación de seguridad por contra-giro.
     /// </summary>
     [RequireComponent(typeof(XRGrabInteractable))]
     [RequireComponent(typeof(Rigidbody))]
@@ -55,14 +56,50 @@ namespace PrimerVolante.VR
         [Tooltip("Controlador del vehículo, usado para leer el ángulo del volante. Se autodetecta en los padres si se deja vacío.")]
         [SerializeField] private VehicleController m_VehicleController;
 
-        [Tooltip("Grados que el volante debe girar en la dirección contraria al guiño activo antes de que la palanca vuelva sola a Off.")]
-        [SerializeField] private float m_SelfCancelGraceAngle = 15f;
+        [Tooltip("Ángulo mínimo del volante en la dirección del guiño (en grados) para armar el mecanismo de auto-cancelación.")]
+        [SerializeField] private float m_ArmTurnAngle = 80f;
+
+        [Tooltip("Ángulo del volante al retornar hacia el centro (en grados) para auto-cancelar el guiño una vez armado.")]
+        [SerializeField] private float m_CancelReturnAngle = 15f;
+
+        [Tooltip("Ángulo de contra-giro en la dirección opuesta al guiño activo (en grados) que cancela inmediatamente por seguridad.")]
+        [FormerlySerializedAs("m_SelfCancelGraceAngle")]
+        [SerializeField] private float m_OppositeCancelAngle = 50f;
 
         [Header("Eventos")]
         [Tooltip("Evento disparado cada vez que cambia el estado de la palanca.")]
         public TurnSignalStateEvent OnTurnSignalChanged = new TurnSignalStateEvent();
 
         public TurnSignalState CurrentSignal => currentSignal;
+
+        /// <summary>
+        /// Indica si la leva mecánica de auto-cancelación ha sido armada por un giro suficiente en el sentido del guiño.
+        /// </summary>
+        public bool IsTurnArmed => m_IsTurnArmed;
+
+        public float ArmTurnAngle
+        {
+            get => m_ArmTurnAngle;
+            set => m_ArmTurnAngle = value;
+        }
+
+        public float CancelReturnAngle
+        {
+            get => m_CancelReturnAngle;
+            set => m_CancelReturnAngle = value;
+        }
+
+        public float OppositeCancelAngle
+        {
+            get => m_OppositeCancelAngle;
+            set => m_OppositeCancelAngle = value;
+        }
+
+        public VehicleController VehicleController
+        {
+            get => m_VehicleController;
+            set => m_VehicleController = value;
+        }
 
         /// <summary>
         /// Indica si la palanca de guiño está actualmente agarrada por un interactor VR.
@@ -72,6 +109,7 @@ namespace PrimerVolante.VR
         private XRBaseInteractable m_Interactable;
         private Rigidbody m_Rigidbody;
         private bool m_IsGrabbed = false;
+        private bool m_IsTurnArmed = false;
         private Coroutine m_SnapRoutine;
         private Quaternion m_ZeroRotation;
 
@@ -147,6 +185,8 @@ namespace PrimerVolante.VR
 
         private bool SetSignalState(TurnSignalState newState)
         {
+            m_IsTurnArmed = false;
+
             if (newState != currentSignal)
             {
                 currentSignal = newState;
@@ -169,6 +209,7 @@ namespace PrimerVolante.VR
         private void OnGrab(SelectEnterEventArgs args)
         {
             m_IsGrabbed = true;
+            m_IsTurnArmed = false;
             if (m_SnapRoutine != null)
             {
                 StopCoroutine(m_SnapRoutine);
@@ -206,6 +247,7 @@ namespace PrimerVolante.VR
         private void OnRelease(SelectExitEventArgs args)
         {
             m_IsGrabbed = false;
+            m_IsTurnArmed = false;
 
             EnsureHierarchyAndLocalTransform();
 
@@ -261,9 +303,19 @@ namespace PrimerVolante.VR
             }
         }
 
-        private void CheckSelfCancel()
+        /// <summary>
+        /// Evalúa la auto-cancelación del guiño en función del ángulo del volante:
+        /// 1. Contra-giro opuesto cancela de inmediato por seguridad (>= OppositeCancelAngle opuesto).
+        /// 2. Superar ArmTurnAngle en la dirección del guiño arma el mecanismo mecánico.
+        /// 3. Retornar hacia el centro tras estar armado (<= CancelReturnAngle) cancela el guiño.
+        /// </summary>
+        public void CheckSelfCancel()
         {
-            if (currentSignal == TurnSignalState.Off) return;
+            if (currentSignal == TurnSignalState.Off)
+            {
+                m_IsTurnArmed = false;
+                return;
+            }
             if (m_SnapRoutine != null) return; // ya está volviendo a Off
             if (m_VehicleController == null) return;
 
@@ -272,13 +324,61 @@ namespace PrimerVolante.VR
 
             float wheelAngle = wheel.CurrentAngle;
 
-            if (currentSignal == TurnSignalState.Right && wheelAngle <= -m_SelfCancelGraceAngle)
+            if (currentSignal == TurnSignalState.Right)
             {
-                CenterSignal();
+                // Cancelación de seguridad por contra-giro hacia la izquierda
+                if (wheelAngle <= -m_OppositeCancelAngle)
+                {
+                    Debug.Log($"[VRTurnSignal] 🛑 Auto-cancelado de seguridad por CONTRA-GIRO. Volante: {wheelAngle:F1}° (Umbral: -{m_OppositeCancelAngle}°)");
+                    m_IsTurnArmed = false;
+                    CenterSignal();
+                    return;
+                }
+
+                // Armado del mecanismo si el giro supera el umbral en el sentido del guiño
+                if (wheelAngle >= m_ArmTurnAngle)
+                {
+                    if (!m_IsTurnArmed)
+                    {
+                        Debug.Log($"[VRTurnSignal] ⚙️ Mecanismo ARMADO (Guiño Derecho). Volante: {wheelAngle:F1}° >= {m_ArmTurnAngle}°");
+                        m_IsTurnArmed = true;
+                    }
+                }
+                // Cancelación por retorno al centro tras haber estado armado
+                else if (m_IsTurnArmed && wheelAngle <= m_CancelReturnAngle)
+                {
+                    Debug.Log($"[VRTurnSignal] ↩️ Auto-cancelado por RETORNO AL CENTRO. Volante: {wheelAngle:F1}° <= {m_CancelReturnAngle}°");
+                    m_IsTurnArmed = false;
+                    CenterSignal();
+                }
             }
-            else if (currentSignal == TurnSignalState.Left && wheelAngle >= m_SelfCancelGraceAngle)
+            else if (currentSignal == TurnSignalState.Left)
             {
-                CenterSignal();
+                // Cancelación de seguridad por contra-giro hacia la derecha
+                if (wheelAngle >= m_OppositeCancelAngle)
+                {
+                    Debug.Log($"[VRTurnSignal] 🛑 Auto-cancelado de seguridad por CONTRA-GIRO. Volante: {wheelAngle:F1}° (Umbral: +{m_OppositeCancelAngle}°)");
+                    m_IsTurnArmed = false;
+                    CenterSignal();
+                    return;
+                }
+
+                // Armado del mecanismo si el giro supera el umbral en el sentido del guiño
+                if (wheelAngle <= -m_ArmTurnAngle)
+                {
+                    if (!m_IsTurnArmed)
+                    {
+                        Debug.Log($"[VRTurnSignal] ⚙️ Mecanismo ARMADO (Guiño Izquierdo). Volante: {wheelAngle:F1}° <= -{m_ArmTurnAngle}°");
+                        m_IsTurnArmed = true;
+                    }
+                }
+                // Cancelación por retorno al centro tras haber estado armado
+                else if (m_IsTurnArmed && wheelAngle >= -m_CancelReturnAngle)
+                {
+                    Debug.Log($"[VRTurnSignal] ↩️ Auto-cancelado por RETORNO AL CENTRO. Volante: {wheelAngle:F1}° >= -{m_CancelReturnAngle}°");
+                    m_IsTurnArmed = false;
+                    CenterSignal();
+                }
             }
         }
 
@@ -287,6 +387,7 @@ namespace PrimerVolante.VR
         /// </summary>
         public void CenterSignal()
         {
+            m_IsTurnArmed = false;
             if (m_SnapRoutine != null) StopCoroutine(m_SnapRoutine);
             m_SnapRoutine = StartCoroutine(SnapToState(TurnSignalState.Off));
         }
@@ -298,6 +399,7 @@ namespace PrimerVolante.VR
         public void SetSignalAnimated(TurnSignalState targetState)
         {
             if (m_IsGrabbed) return;
+            m_IsTurnArmed = false;
             SetSignalState(targetState);
             if (m_SnapRoutine != null) StopCoroutine(m_SnapRoutine);
             m_SnapRoutine = StartCoroutine(SnapToState(targetState));
