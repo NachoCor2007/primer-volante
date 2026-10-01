@@ -12,7 +12,7 @@ namespace PrimerVolante.Editor
             string scenePath = "Assets/Scenes/TestingScenes/TriggerSensitivity.unity";
             var scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
             
-            TriggerSensitivityMonitor existingMonitor = Object.FindFirstObjectByType<TriggerSensitivityMonitor>();
+            TriggerSensitivityMonitor existingMonitor = Object.FindAnyObjectByType<TriggerSensitivityMonitor>();
             if (existingMonitor != null)
             {
                 Object.DestroyImmediate(existingMonitor.gameObject);

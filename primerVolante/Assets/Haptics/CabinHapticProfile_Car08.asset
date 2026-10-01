@@ -1,0 +1,137 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb4739065e2eaa34294ccffe773cc93d, type: 3}
+  m_Name: CabinHapticProfile_Car08
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.CabinHapticProfile
+  MasterAmplitude: 1
+  ReachCooldownSeconds: 0.25
+  MaxReachDistance: 0.12
+  SliderStep: 0.01
+  Levers:
+    Reach:
+      Pulse:
+        Amplitude: 0.35
+        Duration: 0.04
+      Count: 2
+      Gap: 0.06
+    Grab:
+      Pulse:
+        Amplitude: 0.5
+        Duration: 0.05
+      Count: 1
+      Gap: 0
+  Wheel:
+    Reach:
+      Pulse:
+        Amplitude: 0.2
+        Duration: 0.12
+      Count: 1
+      Gap: 0
+    Grab:
+      Pulse:
+        Amplitude: 0.4
+        Duration: 0.08
+      Count: 1
+      Gap: 0
+  ButtonsAndKnobs:
+    Reach:
+      Pulse:
+        Amplitude: 0.3
+        Duration: 0.03
+      Count: 1
+      Gap: 0
+    Grab:
+      Pulse:
+        Amplitude: 0.45
+        Duration: 0.04
+      Count: 1
+      Gap: 0
+  Confirmations:
+    GearChange:
+      Pulse:
+        Amplitude: 0.6
+        Duration: 0.06
+      Count: 1
+      Gap: 0
+    TurnSignalClick:
+      Pulse:
+        Amplitude: 0.4
+        Duration: 0.025
+      Count: 1
+      Gap: 0
+    HeadlightDetent:
+      Pulse:
+        Amplitude: 0.3
+        Duration: 0.02
+      Count: 1
+      Gap: 0
+    HandbrakeRatchet:
+      Pulse:
+        Amplitude: 0.25
+        Duration: 0.015
+      Count: 1
+      Gap: 0
+    HandbrakeRelease:
+      Pulse:
+        Amplitude: 0.4
+        Duration: 0.08
+      Count: 1
+      Gap: 0
+    EngineStartAccepted:
+      Pulse:
+        Amplitude: 0.5
+        Duration: 0.05
+      Count: 1
+      Gap: 0
+    EngineStartRejected:
+      Pulse:
+        Amplitude: 0.4
+        Duration: 0.04
+      Count: 3
+      Gap: 0.05
+    HazardToggle:
+      Pulse:
+        Amplitude: 0.4
+        Duration: 0.025
+      Count: 1
+      Gap: 0
+  UI:
+    Hover:
+      Pulse:
+        Amplitude: 0.15
+        Duration: 0.015
+      Count: 1
+      Gap: 0
+    Click:
+      Pulse:
+        Amplitude: 0.3
+        Duration: 0.03
+      Count: 1
+      Gap: 0
+    SliderTick:
+      Pulse:
+        Amplitude: 0.12
+        Duration: 0.01
+      Count: 1
+      Gap: 0
+    SliderZero:
+      Pulse:
+        Amplitude: 0.4
+        Duration: 0.04
+      Count: 1
+      Gap: 0
+    SliderLimit:
+      Pulse:
+        Amplitude: 0.5
+        Duration: 0.06
+      Count: 1
+      Gap: 0

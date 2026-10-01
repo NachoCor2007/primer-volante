@@ -29,7 +29,7 @@ namespace PrimerVolante.Editor
             if (activeScene.name != "TriggerSensitivity")
                 return;
 
-            TriggerSensitivityMonitor existingMonitor = Object.FindFirstObjectByType<TriggerSensitivityMonitor>();
+            TriggerSensitivityMonitor existingMonitor = Object.FindAnyObjectByType<TriggerSensitivityMonitor>();
             if (existingMonitor == null)
             {
                 GameObject screenObj = new GameObject("TriggerSensitivityScreen");

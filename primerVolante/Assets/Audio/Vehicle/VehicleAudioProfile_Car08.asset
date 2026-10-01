@@ -1,0 +1,149 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba85e11ff1dc3a344a450c23277bff45, type: 3}
+  m_Name: VehicleAudioProfile_Car08
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.VehicleAudioProfile
+  EngineStart: {fileID: 8300000, guid: 1bb493a3a912a0b4b8a2cd3124b54a4c, type: 3}
+  EngineStop: {fileID: 8300000, guid: 9deed613f844dba449edd78df3f2b118, type: 3}
+  EngineStartFail: {fileID: 8300000, guid: f58c28dcebed4194899c62b2f668d7dc, type: 3}
+  EngineIdleLoop: {fileID: 8300000, guid: c2770a73b9781af4191e59d646109cab, type: 3}
+  EngineMidLoop: {fileID: 8300000, guid: 119eaf1e7dfef1642ad89aabe45e8ac9, type: 3}
+  EngineHighLoop: {fileID: 8300000, guid: 96e0cc03628ae29448efcb14870406c0, type: 3}
+  BlinkerTick: {fileID: 8300000, guid: 546c9a798e3e27842bce13c3926f4a02, type: 3}
+  BlinkerTock: {fileID: 8300000, guid: 40476f824ed7a0f42b414c8cb6754997, type: 3}
+  HandbrakeRatchetClick: {fileID: 8300000, guid: 941e97bf7f0c5b9409bc1340466fcbb1, type: 3}
+  HandbrakePullFull: {fileID: 8300000, guid: 1a242530281765d45aec84c1a0171bee, type: 3}
+  HandbrakeRelease: {fileID: 8300000, guid: 0503ceddfec1e2f4e8b8a379c99ac1c5, type: 3}
+  ButtonClick: {fileID: 8300000, guid: 47e5ff6f1b55e5a4b9ddf14b405a3cc8, type: 3}
+  StalkClick: {fileID: 8300000, guid: 9bb732c5578763345ae8bedde9619cc6, type: 3}
+  KnobClick: {fileID: 8300000, guid: 7a2f0ef8f1a0e714798fde280d2b7b6c, type: 3}
+  GearClunk: {fileID: 8300000, guid: 51762df91cf5fbf49969290d82a0b7d7, type: 3}
+  WindRoadLoop: {fileID: 8300000, guid: 27d929430e3607d4aa55ce2e2ec7c970, type: 3}
+  EngineStartVolume: 0.9
+  EngineStopVolume: 0.8
+  EngineStartFailVolume: 0.8
+  EngineLoopVolume: 0.7
+  BlinkerVolume: 0.6
+  HandbrakeRatchetVolume: 0.6
+  HandbrakePullFullVolume: 0.7
+  HandbrakeReleaseVolume: 0.8
+  ButtonClickVolume: 0.7
+  StalkClickVolume: 0.7
+  KnobClickVolume: 0.7
+  GearClunkVolume: 0.8
+  WindRoadMaxVolume: 0.5
+  IdleLayerRpm: 800
+  MidLayerRpm: 2500
+  HighLayerRpm: 4500
+  IdleToMidCrossfade: {x: 1000, y: 2000}
+  MidToHighCrossfade: {x: 3000, y: 4000}
+  PitchRange: {x: 0.5, y: 2}
+  EngineNoLoadVolumeFactor: 0.65
+  EngineFadeInSeconds: 0.25
+  EngineFadeOutSeconds: 0.4
+  EngineSimulation:
+    IdleRpm: 800
+    MaxRpm: 5000
+    CrankRpm: 250
+    FreeRevMaxRpm: 4500
+    MaxSpeedKmh: 60
+    ForwardGears: 4
+    UpshiftRpm: 4000
+    DownshiftHysteresisKmh: 2
+    ThrottleLoadRpmBonus: 500
+    ReverseSpeedFraction: 0.5
+    HandbrakeHoldThreshold: 0.5
+    HandbrakeStallMaxRpm: 2000
+    RiseRate: 4500
+    FallRate: 1200
+    ShiftFallRate: 9000
+    ShiftFallDuration: 0.25
+    ShutdownFallRate: 2500
+    LoadSmoothing: 8
+  RoadVolumeBySpeed:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 3
+      value: 0.08
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 20
+      value: 0.45
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 60
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  RoadPitchBySpeed:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0.8
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 60
+      value: 1.3
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  RoadSilenceThreshold: 0.005
+  RatchetStep: 0.125
+  RatchetPitchRange: {x: 0.95, y: 1.05}
+  RatchetMinInterval: 0.025
+  PullFullThreshold: 0.5
+  StalkClickDebounce: 0.08
+  CabinMinDistance: 0.3
+  CabinMaxDistance: 5
+  EngineMinDistance: 1
+  EngineMaxDistance: 12
+  RoadMinDistance: 1
+  RoadMaxDistance: 10
