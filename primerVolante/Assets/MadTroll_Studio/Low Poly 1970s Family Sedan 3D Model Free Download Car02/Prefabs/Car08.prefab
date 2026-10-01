@@ -284,6 +284,7 @@ GameObject:
   - component: {fileID: 3347278054543758572}
   - component: {fileID: 8353423289605527373}
   - component: {fileID: 789938993056883986}
+  - component: {fileID: 1194563225034445385}
   m_Layer: 0
   m_Name: RearviewMirror_Casing
   m_TagString: Untagged
@@ -511,6 +512,22 @@ MonoBehaviour:
   m_CurrentPitch: 0
   m_EnableKeyboardDebug: 1
   m_KeyboardRotationSpeed: 35
+--- !u!114 &1194563225034445385
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 245506804384800586}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f48d1c03a1c9f554cb8250af6fe8246d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.CabinHapticTarget
+  m_Profile: {fileID: 11400000, guid: 235bf743cc14ff845af9a8237dd700b3, type: 2}
+  m_Category: 2
+  m_PlayReach: 1
+  m_EnableDebugLogs: 0
 --- !u!1 &264065493053132888
 GameObject:
   m_ObjectHideFlags: 0
@@ -2183,6 +2200,7 @@ GameObject:
   - component: {fileID: 3882087627752002296}
   - component: {fileID: 3789190289974323629}
   - component: {fileID: 7981462650642848204}
+  - component: {fileID: 5025335011572466001}
   m_Layer: 0
   m_Name: Btn_Select_Right
   m_TagString: Untagged
@@ -2358,6 +2376,22 @@ MonoBehaviour:
   m_StartingInteractionStrengthFilters: []
   m_AutoFindParentInteractableInHierarchy: 0
   m_ParentInteractableObject: {fileID: 0}
+--- !u!114 &5025335011572466001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1113663794849048033}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f48d1c03a1c9f554cb8250af6fe8246d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.CabinHapticTarget
+  m_Profile: {fileID: 11400000, guid: 235bf743cc14ff845af9a8237dd700b3, type: 2}
+  m_Category: 2
+  m_PlayReach: 0
+  m_EnableDebugLogs: 0
 --- !u!1 &1240961400635676226
 GameObject:
   m_ObjectHideFlags: 0
@@ -2622,6 +2656,7 @@ GameObject:
   - component: {fileID: 7090250946788858374}
   - component: {fileID: 8424777522982146176}
   - component: {fileID: 2210225027764000778}
+  - component: {fileID: 1030819491176538178}
   m_Layer: 0
   m_Name: Btn_DPad_Right
   m_TagString: Untagged
@@ -2797,6 +2832,22 @@ MonoBehaviour:
   m_StartingInteractionStrengthFilters: []
   m_AutoFindParentInteractableInHierarchy: 0
   m_ParentInteractableObject: {fileID: 0}
+--- !u!114 &1030819491176538178
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1429568207529216195}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f48d1c03a1c9f554cb8250af6fe8246d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.CabinHapticTarget
+  m_Profile: {fileID: 11400000, guid: 235bf743cc14ff845af9a8237dd700b3, type: 2}
+  m_Category: 2
+  m_PlayReach: 0
+  m_EnableDebugLogs: 0
 --- !u!1 &1517327850923171635
 GameObject:
   m_ObjectHideFlags: 0
@@ -3324,6 +3375,7 @@ GameObject:
   - component: {fileID: 5453387360030288951}
   - component: {fileID: 5049729205902891874}
   - component: {fileID: 3982583624660588899}
+  - component: {fileID: 167433777071107276}
   m_Layer: 0
   m_Name: SteeringWheel_Pivot
   m_TagString: Untagged
@@ -3541,6 +3593,22 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.39, y: 0.39, z: 0.035}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &167433777071107276
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1959119125053113067}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f48d1c03a1c9f554cb8250af6fe8246d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.CabinHapticTarget
+  m_Profile: {fileID: 11400000, guid: 235bf743cc14ff845af9a8237dd700b3, type: 2}
+  m_Category: 1
+  m_PlayReach: 1
+  m_EnableDebugLogs: 0
 --- !u!1 &1999017134446769021
 GameObject:
   m_ObjectHideFlags: 0
@@ -3554,6 +3622,7 @@ GameObject:
   - component: {fileID: 7259025816352212064}
   - component: {fileID: 485416288932869631}
   - component: {fileID: 8310388907870652384}
+  - component: {fileID: 1654064867696884447}
   m_Layer: 0
   m_Name: Btn_DPad_Up
   m_TagString: Untagged
@@ -3729,6 +3798,22 @@ MonoBehaviour:
   m_StartingInteractionStrengthFilters: []
   m_AutoFindParentInteractableInHierarchy: 0
   m_ParentInteractableObject: {fileID: 0}
+--- !u!114 &1654064867696884447
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1999017134446769021}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f48d1c03a1c9f554cb8250af6fe8246d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.CabinHapticTarget
+  m_Profile: {fileID: 11400000, guid: 235bf743cc14ff845af9a8237dd700b3, type: 2}
+  m_Category: 2
+  m_PlayReach: 0
+  m_EnableDebugLogs: 0
 --- !u!1 &2005267106809937617
 GameObject:
   m_ObjectHideFlags: 0
@@ -5172,6 +5257,7 @@ GameObject:
   - component: {fileID: 6350976198138174948}
   - component: {fileID: 2837077416508066696}
   - component: {fileID: 4234576930495104073}
+  - component: {fileID: 1967669356267358054}
   m_Layer: 0
   m_Name: GearShifter
   m_TagString: Untagged
@@ -5453,6 +5539,22 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_VehicleController: {fileID: 0}
+--- !u!114 &1967669356267358054
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2983140101244256925}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f48d1c03a1c9f554cb8250af6fe8246d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.CabinHapticTarget
+  m_Profile: {fileID: 11400000, guid: 235bf743cc14ff845af9a8237dd700b3, type: 2}
+  m_Category: 0
+  m_PlayReach: 1
+  m_EnableDebugLogs: 0
 --- !u!1 &2986086575745982210
 GameObject:
   m_ObjectHideFlags: 0
@@ -5837,6 +5939,7 @@ GameObject:
   - component: {fileID: 1088767356895294825}
   - component: {fileID: 3742421721685773594}
   - component: {fileID: 2818071473846032164}
+  - component: {fileID: 4078979212131501689}
   m_Layer: 0
   m_Name: mdl_car02_brake
   m_TagString: Untagged
@@ -6113,6 +6216,22 @@ MonoBehaviour:
   OnEngagementChanged:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &4078979212131501689
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3016032272487022762}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f48d1c03a1c9f554cb8250af6fe8246d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.CabinHapticTarget
+  m_Profile: {fileID: 11400000, guid: 235bf743cc14ff845af9a8237dd700b3, type: 2}
+  m_Category: 0
+  m_PlayReach: 1
+  m_EnableDebugLogs: 0
 --- !u!1 &3024345716133836270
 GameObject:
   m_ObjectHideFlags: 0
@@ -6126,6 +6245,7 @@ GameObject:
   - component: {fileID: 5148343671368970334}
   - component: {fileID: 1202360042862430264}
   - component: {fileID: 9073436494380944520}
+  - component: {fileID: 7363471157382561882}
   m_Layer: 0
   m_Name: Btn_DPad_Left
   m_TagString: Untagged
@@ -6301,6 +6421,22 @@ MonoBehaviour:
   m_StartingInteractionStrengthFilters: []
   m_AutoFindParentInteractableInHierarchy: 0
   m_ParentInteractableObject: {fileID: 0}
+--- !u!114 &7363471157382561882
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3024345716133836270}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f48d1c03a1c9f554cb8250af6fe8246d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.CabinHapticTarget
+  m_Profile: {fileID: 11400000, guid: 235bf743cc14ff845af9a8237dd700b3, type: 2}
+  m_Category: 2
+  m_PlayReach: 0
+  m_EnableDebugLogs: 0
 --- !u!1 &3064494890649091135
 GameObject:
   m_ObjectHideFlags: 0
@@ -6630,6 +6766,7 @@ Transform:
   - {fileID: 5533370068465707009}
   - {fileID: 7896781503899692154}
   - {fileID: 4325103590228914857}
+  - {fileID: 7488730016886492810}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!54 &7503489613241897533
@@ -8419,6 +8556,7 @@ GameObject:
   - component: {fileID: 8749228836255515135}
   - component: {fileID: 2958392324012188258}
   - component: {fileID: 6897814583879845216}
+  - component: {fileID: 3246290649321854423}
   m_Layer: 0
   m_Name: Btn_Select_Off
   m_TagString: Untagged
@@ -8594,6 +8732,22 @@ MonoBehaviour:
   m_StartingInteractionStrengthFilters: []
   m_AutoFindParentInteractableInHierarchy: 0
   m_ParentInteractableObject: {fileID: 0}
+--- !u!114 &3246290649321854423
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4949936962912043811}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f48d1c03a1c9f554cb8250af6fe8246d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.CabinHapticTarget
+  m_Profile: {fileID: 11400000, guid: 235bf743cc14ff845af9a8237dd700b3, type: 2}
+  m_Category: 2
+  m_PlayReach: 0
+  m_EnableDebugLogs: 0
 --- !u!1 &4966766303125894210
 GameObject:
   m_ObjectHideFlags: 0
@@ -9309,6 +9463,7 @@ GameObject:
   - component: {fileID: 1278092905765559109}
   - component: {fileID: 6619417029816230994}
   - component: {fileID: 6774366956879858220}
+  - component: {fileID: 8303797126066254875}
   m_Layer: 0
   m_Name: Btn_Select_Left
   m_TagString: Untagged
@@ -9484,6 +9639,22 @@ MonoBehaviour:
   m_StartingInteractionStrengthFilters: []
   m_AutoFindParentInteractableInHierarchy: 0
   m_ParentInteractableObject: {fileID: 0}
+--- !u!114 &8303797126066254875
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5277734359338215825}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f48d1c03a1c9f554cb8250af6fe8246d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.CabinHapticTarget
+  m_Profile: {fileID: 11400000, guid: 235bf743cc14ff845af9a8237dd700b3, type: 2}
+  m_Category: 2
+  m_PlayReach: 0
+  m_EnableDebugLogs: 0
 --- !u!1 &5296900826333784497
 GameObject:
   m_ObjectHideFlags: 0
@@ -9529,6 +9700,7 @@ GameObject:
   - component: {fileID: 3717251806428332679}
   - component: {fileID: 6502746736495947580}
   - component: {fileID: 4561270831287655970}
+  - component: {fileID: 5516371336542876383}
   m_Layer: 0
   m_Name: StartButton
   m_TagString: Untagged
@@ -9708,6 +9880,22 @@ MonoBehaviour:
   m_EngineCrankingColor: {r: 1, g: 0.65, b: 0.1, a: 1}
   m_EngineOnColor: {r: 0.1, g: 0.9, b: 0.2, a: 1}
   m_EnableDebugLogs: 1
+--- !u!114 &5516371336542876383
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5371512112176836257}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f48d1c03a1c9f554cb8250af6fe8246d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.CabinHapticTarget
+  m_Profile: {fileID: 11400000, guid: 235bf743cc14ff845af9a8237dd700b3, type: 2}
+  m_Category: 2
+  m_PlayReach: 1
+  m_EnableDebugLogs: 0
 --- !u!1 &5453492897007054964
 GameObject:
   m_ObjectHideFlags: 0
@@ -10431,6 +10619,7 @@ GameObject:
   - component: {fileID: 820397541849468989}
   - component: {fileID: 3982430399673722035}
   - component: {fileID: 6746828710089253894}
+  - component: {fileID: 3878698830912091014}
   m_Layer: 0
   m_Name: HazardButton
   m_TagString: Untagged
@@ -10662,6 +10851,22 @@ MonoBehaviour:
   m_ClampToMaxDistance: 1
   m_MaxDistance: 0.00003
   m_PokeFilter: {fileID: 3982430399673722035}
+--- !u!114 &3878698830912091014
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5951099138387618267}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f48d1c03a1c9f554cb8250af6fe8246d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.CabinHapticTarget
+  m_Profile: {fileID: 11400000, guid: 235bf743cc14ff845af9a8237dd700b3, type: 2}
+  m_Category: 2
+  m_PlayReach: 1
+  m_EnableDebugLogs: 0
 --- !u!1 &5978672953289690204
 GameObject:
   m_ObjectHideFlags: 0
@@ -12755,6 +12960,7 @@ GameObject:
   - component: {fileID: 346592772568379495}
   - component: {fileID: 2283902607934821438}
   - component: {fileID: 4753574202285617693}
+  - component: {fileID: 9173749205146581157}
   m_Layer: 0
   m_Name: TurnSignal
   m_TagString: Untagged
@@ -13038,6 +13244,22 @@ MonoBehaviour:
   OnTurnSignalChanged:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &9173749205146581157
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7731573510029799756}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f48d1c03a1c9f554cb8250af6fe8246d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.CabinHapticTarget
+  m_Profile: {fileID: 11400000, guid: 235bf743cc14ff845af9a8237dd700b3, type: 2}
+  m_Category: 0
+  m_PlayReach: 1
+  m_EnableDebugLogs: 0
 --- !u!1 &7769419101100107596
 GameObject:
   m_ObjectHideFlags: 0
@@ -13821,6 +14043,7 @@ GameObject:
   - component: {fileID: 1627947364431105181}
   - component: {fileID: 5088800470979149325}
   - component: {fileID: 4484818444449165859}
+  - component: {fileID: 7137810709733722876}
   m_Layer: 0
   m_Name: Btn_DPad_Down
   m_TagString: Untagged
@@ -13996,6 +14219,22 @@ MonoBehaviour:
   m_StartingInteractionStrengthFilters: []
   m_AutoFindParentInteractableInHierarchy: 0
   m_ParentInteractableObject: {fileID: 0}
+--- !u!114 &7137810709733722876
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8465833366585970113}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f48d1c03a1c9f554cb8250af6fe8246d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.CabinHapticTarget
+  m_Profile: {fileID: 11400000, guid: 235bf743cc14ff845af9a8237dd700b3, type: 2}
+  m_Category: 2
+  m_PlayReach: 0
+  m_EnableDebugLogs: 0
 --- !u!1 &8503095131326499989
 GameObject:
   m_ObjectHideFlags: 0
@@ -14108,6 +14347,7 @@ GameObject:
   - component: {fileID: 6508250689707100354}
   - component: {fileID: 6230431663951520709}
   - component: {fileID: 3702675211681139547}
+  - component: {fileID: 4860572541873570770}
   m_Layer: 0
   m_Name: mdl_car02_lights_knob
   m_TagString: Untagged
@@ -14404,6 +14644,22 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 0.0004
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &4860572541873570770
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8559683551000308422}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f48d1c03a1c9f554cb8250af6fe8246d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.CabinHapticTarget
+  m_Profile: {fileID: 11400000, guid: 235bf743cc14ff845af9a8237dd700b3, type: 2}
+  m_Category: 2
+  m_PlayReach: 1
+  m_EnableDebugLogs: 0
 --- !u!1 &8597801342025717630
 GameObject:
   m_ObjectHideFlags: 0
@@ -14934,6 +15190,60 @@ MonoBehaviour:
   m_OffColor: {r: 0.35, g: 0.28, b: 0, a: 1}
   m_OnColor: {r: 1, g: 0.55, b: 0, a: 1}
   m_EmissionIntensity: 2
+--- !u!1 &8864339576210745163
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7488730016886492810}
+  - component: {fileID: 2531242329875659884}
+  m_Layer: 0
+  m_Name: VehicleHaptics
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7488730016886492810
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8864339576210745163}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 6631202488475238318}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2531242329875659884
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8864339576210745163}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f236bc5f6508784fba4335992618d7f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.VehicleCabinControlsHaptics
+  m_VehicleController: {fileID: 1728493498108266381}
+  m_TurnSignal: {fileID: 4753574202285617693}
+  m_GearShifter: {fileID: 4234576930495104073}
+  m_HeadlightKnob: {fileID: 6230431663951520709}
+  m_Handbrake: {fileID: 2818071473846032164}
+  m_StartInteractable: {fileID: 6981033098401776428}
+  m_HazardInteractable: {fileID: 820397541849468989}
+  m_Profile: {fileID: 11400000, guid: 235bf743cc14ff845af9a8237dd700b3, type: 2}
+  m_AudioProfile: {fileID: 11400000, guid: 4497a3defafc6bd41b59250f3447b6ca, type: 2}
+  m_EnableDebugLogs: 0
 --- !u!1 &8903582835967667572
 GameObject:
   m_ObjectHideFlags: 0
