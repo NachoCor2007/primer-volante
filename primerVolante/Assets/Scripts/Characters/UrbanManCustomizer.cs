@@ -5,11 +5,14 @@ using UnityEngine;
 namespace PrimerVolante.Characters
 {
     /// <summary>
-    /// Personalización modular del personaje Urban Man (ALSTRA INFINITE): cambio de torso y de accesorios.
+    /// Personalización modular del personaje Urban Man (ALSTRA INFINITE): cambio de torso, accesorios y color de piel.
     /// Torso: las mallas de otro prefab (Separated/) se reasignan a los huesos de ESTE esqueleto por nombre,
     /// de modo que se animan con el personaje; el esqueleto sobrante del prefab se destruye.
     /// Accesorios: mallas rígidas que se anclan al hueso de la cabeza. Los accesorios que comparten
     /// "slot" son excluyentes entre sí (ej. anteojos y anteojos de sol).
+    /// Piel: la cabeza y las manos muestrean un único píxel de la paleta compartida. Para teñirlas se las apunta
+    /// a un píxel blanco de la paleta y se aplica el color elegido como tinte, solo en esos renderers
+    /// (MaterialPropertyBlock), sin tocar el material compartido.
     /// </summary>
     public class UrbanManCustomizer : MonoBehaviour
     {
@@ -51,6 +54,18 @@ namespace PrimerVolante.Characters
             public Vector3 RestEulerAngles => m_RestEulerAngles;
         }
 
+        [Serializable]
+        public class SkinTone
+        {
+            [Tooltip("Identificador usado desde código (ej. \"Medium\").")]
+            [SerializeField] private string m_Id;
+
+            [SerializeField] private Color m_Color = Color.white;
+
+            public string Id => m_Id;
+            public Color Color => m_Color;
+        }
+
         [Header("Esqueleto")]
         [Tooltip("Hueso raíz del esqueleto del personaje (el hijo \"root\" del prefab). Define el destino del reasignado de huesos.")]
         [SerializeField] private Transform m_RootBone;
@@ -75,9 +90,26 @@ namespace PrimerVolante.Characters
         [Tooltip("Accesorios equipados al iniciar.")]
         [SerializeField] private List<string> m_InitialAccessoryIds = new List<string>();
 
+        [Header("Color de piel")]
+        [Tooltip("Mallas de piel (cabeza y manos).")]
+        [SerializeField] private SkinnedMeshRenderer[] m_SkinRenderers = Array.Empty<SkinnedMeshRenderer>();
+
+        [Tooltip("UV de un píxel blanco puro de la paleta Main_UrbanMan. El color de piel se aplica como tinte sobre él.")]
+        [SerializeField] private Vector2 m_NeutralPaletteUV = new Vector2(0.16064f, 0.58936f);
+
+        [Tooltip("Tonos de piel predefinidos.")]
+        [SerializeField] private List<SkinTone> m_SkinTones = new List<SkinTone>();
+
+        [Tooltip("Tono aplicado al iniciar. Vacío = el color de piel de fábrica.")]
+        [SerializeField] private string m_InitialSkinToneId;
+
+        private static readonly int s_BaseColorId = Shader.PropertyToID("_BaseColor");
+        private static readonly int s_BaseMapSTId = Shader.PropertyToID("_BaseMap_ST");
+
         private readonly List<GameObject> m_TorsoInstances = new List<GameObject>();
         private readonly Dictionary<string, GameObject> m_EquippedAccessories = new Dictionary<string, GameObject>();
         private Dictionary<string, Transform> m_BoneMap;
+        private MaterialPropertyBlock m_PropertyBlock;
         private string m_CurrentTorsoId;
 
         /// <summary>Se dispara cada vez que cambia el torso o algún accesorio.</summary>
@@ -89,6 +121,8 @@ namespace PrimerVolante.Characters
         public IReadOnlyList<TorsoOption> TorsoOptions => m_TorsoOptions;
 
         public IReadOnlyList<AccessoryOption> AccessoryOptions => m_AccessoryOptions;
+
+        public IReadOnlyList<SkinTone> SkinTones => m_SkinTones;
 
         private void Reset()
         {
@@ -103,6 +137,16 @@ namespace PrimerVolante.Characters
                 }
             }
             m_DefaultTorsoRenderers = defaults.ToArray();
+
+            var skin = new List<SkinnedMeshRenderer>();
+            foreach (SkinnedMeshRenderer smr in GetComponentsInChildren<SkinnedMeshRenderer>(true))
+            {
+                if (smr.name.StartsWith("Head_", StringComparison.Ordinal) || smr.name.StartsWith("Hands_", StringComparison.Ordinal))
+                {
+                    skin.Add(smr);
+                }
+            }
+            m_SkinRenderers = skin.ToArray();
         }
 
         private void Start()
@@ -115,6 +159,11 @@ namespace PrimerVolante.Characters
             foreach (string id in m_InitialAccessoryIds)
             {
                 EquipAccessory(id);
+            }
+
+            if (!string.IsNullOrEmpty(m_InitialSkinToneId))
+            {
+                SetSkinTone(m_InitialSkinToneId);
             }
         }
 
@@ -257,6 +306,59 @@ namespace PrimerVolante.Characters
             }
 
             return EquipAccessory(id);
+        }
+
+        /// <summary>Aplica un tono de piel predefinido. Devuelve false si no existe.</summary>
+        public bool SetSkinTone(string id)
+        {
+            SkinTone tone = m_SkinTones.Find(t => t.Id == id);
+            if (tone == null)
+            {
+                Debug.LogWarning($"[UrbanManCustomizer] No existe el tono de piel '{id}'.", this);
+                return false;
+            }
+
+            SetSkinColor(tone.Color);
+            return true;
+        }
+
+        /// <summary>
+        /// Tiñe la piel con un color cualquiera (espacio sRGB, como el del Inspector). Apunta las mallas de piel a un
+        /// píxel blanco de la paleta: con escala de UV 0 el resultado no depende de las UVs de la malla.
+        /// </summary>
+        public void SetSkinColor(Color color)
+        {
+            m_PropertyBlock ??= new MaterialPropertyBlock();
+            var scaleOffset = new Vector4(0f, 0f, m_NeutralPaletteUV.x, m_NeutralPaletteUV.y);
+
+            foreach (SkinnedMeshRenderer smr in m_SkinRenderers)
+            {
+                if (smr == null)
+                {
+                    continue;
+                }
+
+                smr.GetPropertyBlock(m_PropertyBlock);
+                m_PropertyBlock.SetColor(s_BaseColorId, color);
+                m_PropertyBlock.SetVector(s_BaseMapSTId, scaleOffset);
+                smr.SetPropertyBlock(m_PropertyBlock);
+            }
+
+            Changed?.Invoke();
+        }
+
+        /// <summary>Vuelve al color de piel de fábrica. Quita todo MaterialPropertyBlock de las mallas de piel.</summary>
+        public void ResetSkinColor()
+        {
+            foreach (SkinnedMeshRenderer smr in m_SkinRenderers)
+            {
+                if (smr != null)
+                {
+                    smr.SetPropertyBlock(null);
+                }
+            }
+
+            Changed?.Invoke();
         }
 
         public bool IsAccessoryEquipped(string id) => m_EquippedAccessories.ContainsKey(id);
