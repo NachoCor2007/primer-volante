@@ -5,9 +5,11 @@ using UnityEngine;
 namespace PrimerVolante.Characters
 {
     /// <summary>
-    /// Personalización modular del personaje Urban Man (ALSTRA INFINITE): cambio de torso.
+    /// Personalización modular del personaje Urban Man (ALSTRA INFINITE): cambio de torso y de accesorios.
     /// Torso: las mallas de otro prefab (Separated/) se reasignan a los huesos de ESTE esqueleto por nombre,
     /// de modo que se animan con el personaje; el esqueleto sobrante del prefab se destruye.
+    /// Accesorios: mallas rígidas que se anclan al hueso de la cabeza. Los accesorios que comparten
+    /// "slot" son excluyentes entre sí (ej. anteojos y anteojos de sol).
     /// </summary>
     public class UrbanManCustomizer : MonoBehaviour
     {
@@ -24,9 +26,38 @@ namespace PrimerVolante.Characters
             public GameObject Prefab => m_Prefab;
         }
 
+        [Serializable]
+        public class AccessoryOption
+        {
+            [Tooltip("Identificador usado desde código (ej. \"Cap\").")]
+            [SerializeField] private string m_Id;
+
+            [Tooltip("Zona del cuerpo. Dos accesorios del mismo slot no pueden estar equipados a la vez.")]
+            [SerializeField] private string m_Slot;
+
+            [Tooltip("Prefab Accessories/ (malla rígida, sin esqueleto).")]
+            [SerializeField] private GameObject m_Prefab;
+
+            [Tooltip("Posición del accesorio en el espacio del personaje (raíz del prefab) con el personaje en pose de reposo. Los accesorios del asset NO están modelados en el espacio del hueso, sino en posiciones absolutas.")]
+            [SerializeField] private Vector3 m_RestPosition = Vector3.zero;
+
+            [Tooltip("Rotación (grados) del accesorio respecto de la raíz del personaje en pose de reposo. Cero = orientado igual que el personaje.")]
+            [SerializeField] private Vector3 m_RestEulerAngles = Vector3.zero;
+
+            public string Id => m_Id;
+            public string Slot => m_Slot;
+            public GameObject Prefab => m_Prefab;
+            public Vector3 RestPosition => m_RestPosition;
+            public Vector3 RestEulerAngles => m_RestEulerAngles;
+        }
+
         [Header("Esqueleto")]
         [Tooltip("Hueso raíz del esqueleto del personaje (el hijo \"root\" del prefab). Define el destino del reasignado de huesos.")]
         [SerializeField] private Transform m_RootBone;
+
+        [Tooltip("Nombre del hueso de la cabeza donde se anclan los accesorios.")]
+        [SerializeField] private string m_HeadBoneName = "head.x";
+
         [Header("Torso")]
         [Tooltip("Mallas del torso que trae el personaje de fábrica. Se ocultan mientras haya un torso alternativo equipado.")]
         [SerializeField] private SkinnedMeshRenderer[] m_DefaultTorsoRenderers = Array.Empty<SkinnedMeshRenderer>();
@@ -37,17 +68,27 @@ namespace PrimerVolante.Characters
         [Tooltip("Torso equipado al iniciar. Vacío = el torso de fábrica.")]
         [SerializeField] private string m_InitialTorsoId;
 
+        [Header("Accesorios")]
+        [Tooltip("Accesorios disponibles.")]
+        [SerializeField] private List<AccessoryOption> m_AccessoryOptions = new List<AccessoryOption>();
+
+        [Tooltip("Accesorios equipados al iniciar.")]
+        [SerializeField] private List<string> m_InitialAccessoryIds = new List<string>();
+
         private readonly List<GameObject> m_TorsoInstances = new List<GameObject>();
+        private readonly Dictionary<string, GameObject> m_EquippedAccessories = new Dictionary<string, GameObject>();
         private Dictionary<string, Transform> m_BoneMap;
         private string m_CurrentTorsoId;
 
-        /// <summary>Se dispara cada vez que cambia el torso.</summary>
+        /// <summary>Se dispara cada vez que cambia el torso o algún accesorio.</summary>
         public event Action Changed;
 
         /// <summary>Id del torso alternativo equipado, o null si se usa el de fábrica.</summary>
         public string CurrentTorsoId => m_CurrentTorsoId;
 
         public IReadOnlyList<TorsoOption> TorsoOptions => m_TorsoOptions;
+
+        public IReadOnlyList<AccessoryOption> AccessoryOptions => m_AccessoryOptions;
 
         private void Reset()
         {
@@ -69,6 +110,11 @@ namespace PrimerVolante.Characters
             if (!string.IsNullOrEmpty(m_InitialTorsoId))
             {
                 EquipTorso(m_InitialTorsoId);
+            }
+
+            foreach (string id in m_InitialAccessoryIds)
+            {
+                EquipAccessory(id);
             }
         }
 
@@ -133,6 +179,88 @@ namespace PrimerVolante.Characters
             Changed?.Invoke();
         }
 
+        /// <summary>Equipa el accesorio; si otro del mismo slot estaba puesto, lo reemplaza.</summary>
+        public bool EquipAccessory(string id)
+        {
+            AccessoryOption option = m_AccessoryOptions.Find(o => o.Id == id);
+            if (option == null || option.Prefab == null)
+            {
+                Debug.LogWarning($"[UrbanManCustomizer] No existe el accesorio '{id}'.", this);
+                return false;
+            }
+
+            if (m_EquippedAccessories.ContainsKey(id))
+            {
+                return true;
+            }
+
+            if (!EnsureBoneMap() || !m_BoneMap.TryGetValue(m_HeadBoneName, out Transform head))
+            {
+                Debug.LogWarning($"[UrbanManCustomizer] No se encontró el hueso '{m_HeadBoneName}'.", this);
+                return false;
+            }
+
+            UnequipSlot(option.Slot);
+
+            GameObject instance = Instantiate(option.Prefab, head, false);
+            instance.name = option.Prefab.name;
+            ApplyRestPose(instance.transform, head, option);
+            m_EquippedAccessories[id] = instance;
+            Changed?.Invoke();
+            return true;
+        }
+
+        public bool UnequipAccessory(string id)
+        {
+            if (!m_EquippedAccessories.TryGetValue(id, out GameObject instance))
+            {
+                return false;
+            }
+
+            m_EquippedAccessories.Remove(id);
+            Dispose(instance);
+            Changed?.Invoke();
+            return true;
+        }
+
+        /// <summary>Quita todo lo que haya equipado en ese slot.</summary>
+        public void UnequipSlot(string slot)
+        {
+            if (string.IsNullOrEmpty(slot))
+            {
+                return;
+            }
+
+            var toRemove = new List<string>();
+            foreach (string equippedId in m_EquippedAccessories.Keys)
+            {
+                AccessoryOption equipped = m_AccessoryOptions.Find(o => o.Id == equippedId);
+                if (equipped != null && string.Equals(equipped.Slot, slot, StringComparison.OrdinalIgnoreCase))
+                {
+                    toRemove.Add(equippedId);
+                }
+            }
+
+            foreach (string equippedId in toRemove)
+            {
+                UnequipAccessory(equippedId);
+            }
+        }
+
+        /// <summary>Alterna el accesorio. Devuelve true si quedó equipado.</summary>
+        public bool ToggleAccessory(string id)
+        {
+            if (IsAccessoryEquipped(id))
+            {
+                UnequipAccessory(id);
+                return false;
+            }
+
+            return EquipAccessory(id);
+        }
+
+        public bool IsAccessoryEquipped(string id) => m_EquippedAccessories.ContainsKey(id);
+
         private bool EnsureBoneMap()
         {
             if (m_BoneMap != null)
@@ -153,6 +281,33 @@ namespace PrimerVolante.Characters
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Coloca el accesorio donde le corresponde con el personaje en pose de reposo. Usa la bind pose del hueso
+        /// (que no cambia con la animación) para pasar de espacio del personaje a espacio local del hueso.
+        /// </summary>
+        private void ApplyRestPose(Transform accessory, Transform head, AccessoryOption option)
+        {
+            foreach (SkinnedMeshRenderer smr in GetComponentsInChildren<SkinnedMeshRenderer>(true))
+            {
+                int index = Array.IndexOf(smr.bones, head);
+                if (index < 0)
+                {
+                    continue;
+                }
+
+                Matrix4x4 smrInCharacter = transform.worldToLocalMatrix * smr.transform.localToWorldMatrix;
+                Matrix4x4 boneRestInCharacter = smrInCharacter * smr.sharedMesh.bindposes[index].inverse;
+                Matrix4x4 accessoryInCharacter = Matrix4x4.TRS(option.RestPosition, Quaternion.Euler(option.RestEulerAngles), Vector3.one);
+                Matrix4x4 local = boneRestInCharacter.inverse * accessoryInCharacter;
+
+                accessory.localPosition = local.GetPosition();
+                accessory.localRotation = local.rotation;
+                return;
+            }
+
+            Debug.LogWarning($"[UrbanManCustomizer] Ninguna malla del personaje usa el hueso '{head.name}': el accesorio queda sin ajuste de pose.", this);
         }
 
         private void RebindToSkeleton(SkinnedMeshRenderer smr)
