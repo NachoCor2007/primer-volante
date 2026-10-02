@@ -1,0 +1,142 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &2761009383544071929
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 6854702145005453075, guid: 96d98df100c25db4598807162b10c097, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6854702145005453075, guid: 96d98df100c25db4598807162b10c097, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6854702145005453075, guid: 96d98df100c25db4598807162b10c097, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6854702145005453075, guid: 96d98df100c25db4598807162b10c097, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6854702145005453075, guid: 96d98df100c25db4598807162b10c097, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6854702145005453075, guid: 96d98df100c25db4598807162b10c097, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6854702145005453075, guid: 96d98df100c25db4598807162b10c097, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6854702145005453075, guid: 96d98df100c25db4598807162b10c097, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6854702145005453075, guid: 96d98df100c25db4598807162b10c097, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6854702145005453075, guid: 96d98df100c25db4598807162b10c097, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7897420823872174766, guid: 96d98df100c25db4598807162b10c097, type: 3}
+      propertyPath: m_Name
+      value: UrbanManCustomizable
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 7897420823872174766, guid: 96d98df100c25db4598807162b10c097, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6646384575593286814}
+  m_SourcePrefab: {fileID: 100100000, guid: 96d98df100c25db4598807162b10c097, type: 3}
+--- !u!137 &897896455493900449 stripped
+SkinnedMeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 3036810942091492952, guid: 96d98df100c25db4598807162b10c097, type: 3}
+  m_PrefabInstance: {fileID: 2761009383544071929}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &2914768914809731921 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1018452905121783208, guid: 96d98df100c25db4598807162b10c097, type: 3}
+  m_PrefabInstance: {fileID: 2761009383544071929}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &5460708016456621143 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7897420823872174766, guid: 96d98df100c25db4598807162b10c097, type: 3}
+  m_PrefabInstance: {fileID: 2761009383544071929}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &6646384575593286814
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5460708016456621143}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5a515addce5d85842b8670f205a544ca, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Characters.UrbanManCustomizer
+  m_RootBone: {fileID: 2914768914809731921}
+  m_HeadBoneName: head.x
+  m_DefaultTorsoRenderers:
+  - {fileID: 6773055862517977190}
+  m_TorsoOptions:
+  - m_Id: HoodieUp
+    m_Prefab: {fileID: 2507088605152310184, guid: 8024ee862e0d4db438a2c692a699bb3d, type: 3}
+  m_InitialTorsoId: 
+  m_AccessoryOptions:
+  - m_Id: Cap
+    m_Slot: Hat
+    m_Prefab: {fileID: 7308407615459530428, guid: 0ad2c13af28a395499044e9fbb68b47d, type: 3}
+    m_RestPosition: {x: 0, y: 1.775, z: -0.0024}
+    m_RestEulerAngles: {x: 0, y: 0, z: 0}
+  - m_Id: Glasses
+    m_Slot: Eyewear
+    m_Prefab: {fileID: 4507353188209838234, guid: 574e132ce77181e43b6c1175dd69ce1d, type: 3}
+    m_RestPosition: {x: 0, y: 1.7298, z: 0.0889}
+    m_RestEulerAngles: {x: 0, y: 0, z: 0}
+  - m_Id: Sunglasses
+    m_Slot: Eyewear
+    m_Prefab: {fileID: 2259548707153128728, guid: 9555ac373810033419e408ab5e9d8c45, type: 3}
+    m_RestPosition: {x: 0, y: 1.7298, z: 0.0889}
+    m_RestEulerAngles: {x: 0, y: 0, z: 0}
+  m_InitialAccessoryIds: []
+  m_SkinRenderers:
+  - {fileID: 6008767860197455641}
+  - {fileID: 897896455493900449}
+  m_NeutralPaletteUV: {x: 0.16064, y: 0.58936}
+  m_SkinTones:
+  - m_Id: Light
+    m_Color: {r: 0.96, g: 0.8, b: 0.69, a: 1}
+  - m_Id: Fair
+    m_Color: {r: 0.89, g: 0.69, b: 0.55, a: 1}
+  - m_Id: Medium
+    m_Color: {r: 0.78, g: 0.57, b: 0.42, a: 1}
+  - m_Id: Olive
+    m_Color: {r: 0.66, g: 0.47, b: 0.33, a: 1}
+  - m_Id: Brown
+    m_Color: {r: 0.5, g: 0.34, b: 0.24, a: 1}
+  - m_Id: Dark
+    m_Color: {r: 0.33, g: 0.21, b: 0.15, a: 1}
+  m_InitialSkinToneId: 
+--- !u!137 &6008767860197455641 stripped
+SkinnedMeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 8444950719197368800, guid: 96d98df100c25db4598807162b10c097, type: 3}
+  m_PrefabInstance: {fileID: 2761009383544071929}
+  m_PrefabAsset: {fileID: 0}
+--- !u!137 &6773055862517977190 stripped
+SkinnedMeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 8912528057112786591, guid: 96d98df100c25db4598807162b10c097, type: 3}
+  m_PrefabInstance: {fileID: 2761009383544071929}
+  m_PrefabAsset: {fileID: 0}
