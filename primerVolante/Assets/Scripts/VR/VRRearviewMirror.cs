@@ -141,14 +141,28 @@ namespace PrimerVolante.VR
         /// </summary>
         public void EnsureLateralGrabColliders()
         {
-            // 1. Eliminar cualquier collider directo en este GameObject para que el centro quede totalmente libre
             Collider[] rootColliders = GetComponents<Collider>();
             foreach (var col in rootColliders)
             {
                 if (col != null)
                 {
-                    if (Application.isPlaying) Destroy(col);
-                    else DestroyImmediate(col);
+                    col.enabled = false;
+                    if (Application.isPlaying)
+                    {
+                        Destroy(col);
+                    }
+                    else
+                    {
+#if UNITY_EDITOR
+                        UnityEditor.EditorApplication.delayCall += () =>
+                        {
+                            if (col != null)
+                            {
+                                DestroyImmediate(col, true);
+                            }
+                        };
+#endif
+                    }
                 }
             }
 
@@ -432,8 +446,6 @@ namespace PrimerVolante.VR
             {
                 m_PivotTransform = transform;
             }
-            EnsureLateralGrabColliders();
-            ConfigureInteractableAndPhysics();
         }
 #endif
     }

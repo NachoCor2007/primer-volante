@@ -151,6 +151,12 @@ namespace PrimerVolante.VR
                 grab.forceGravityOnDetach = false;
                 grab.unparentTransformOnGrab = false;
                 grab.retainTransformParent = true;
+
+                if (grab.attachTransform == null)
+                {
+                    Transform knob = transform.Find("Attach_Knob");
+                    if (knob != null) grab.attachTransform = knob;
+                }
             }
         }
 

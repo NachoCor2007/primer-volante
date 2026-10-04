@@ -2748,6 +2748,7 @@ GameObject:
   - component: {fileID: 5453387360030288951}
   - component: {fileID: 5049729205902891874}
   - component: {fileID: 3982583624660588899}
+  - component: {fileID: 481698993228896126}
   m_Layer: 0
   m_Name: SteeringWheel_Pivot
   m_TagString: Untagged
@@ -2965,6 +2966,27 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.39, y: 0.39, z: 0.035}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &481698993228896126
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1959119125053113067}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 655a37824f3fdd447bb34fbfe44ad809, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.VRHandPoseTarget
+  m_PoseType: 1
+  m_FollowObjectMotion: 1
+  m_UseDynamicContactPoint: 1
+  m_WheelRadius: 0.165
+  m_HandPalmGripOffset: {x: 0, y: -0.015, z: 0}
+  m_LeftAttachTransform: {fileID: 0}
+  m_RightAttachTransform: {fileID: 0}
+  m_PositionOffset: {x: 0, y: 0, z: 0}
+  m_RotationOffset: {x: 0, y: 0, z: 0}
 --- !u!1 &2002986354057963347
 GameObject:
   m_ObjectHideFlags: 0
@@ -4021,6 +4043,7 @@ GameObject:
   - component: {fileID: 6371496948664637915}
   - component: {fileID: 3857430915484164684}
   - component: {fileID: 6884356454327293267}
+  - component: {fileID: 5357611444756828051}
   m_Layer: 0
   m_Name: RearviewMirror_Casing
   m_TagString: Untagged
@@ -4044,6 +4067,8 @@ Transform:
   - {fileID: 2372922347523910414}
   - {fileID: 4874908794885234243}
   - {fileID: 8028141935183623123}
+  - {fileID: 5175702377946162778}
+  - {fileID: 181146940045820778}
   m_Father: {fileID: 4176764341220788384}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!54 &6529907087013084458
@@ -4107,7 +4132,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Unity.XR.Interaction.Toolkit::UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable
   m_InteractionManager: {fileID: 0}
-  m_Colliders: []
+  m_Colliders:
+  - {fileID: 7150104845778225959}
+  - {fileID: 8138970259100968853}
   m_InteractionLayers:
     m_Bits: 1
   m_DistanceCalculationMode: 1
@@ -4214,7 +4241,7 @@ MonoBehaviour:
   m_ThrowVelocityScale: 1.5
   m_ThrowAngularVelocityScale: 1
   m_ForceGravityOnDetach: 0
-  m_UnparentTransformOnGrab: 1
+  m_UnparentTransformOnGrab: 0
   m_RetainTransformParent: 1
   m_StartingSingleGrabTransformers: []
   m_StartingMultipleGrabTransformers: []
@@ -4239,6 +4266,8 @@ MonoBehaviour:
   m_PivotTransform: {fileID: 3665763325654534241}
   m_MountTransform: {fileID: 4176764341220788384}
   m_RearviewCameraTransform: {fileID: 8028141935183623123}
+  m_LeftGrabCollider: {fileID: 7150104845778225959}
+  m_RightGrabCollider: {fileID: 8138970259100968853}
   m_MinYaw: -30
   m_MaxYaw: 30
   m_MinPitch: -20
@@ -4248,6 +4277,58 @@ MonoBehaviour:
   m_CurrentPitch: 0
   m_EnableKeyboardDebug: 1
   m_KeyboardRotationSpeed: 35
+--- !u!114 &5357611444756828051
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2678770283207114855}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 655a37824f3fdd447bb34fbfe44ad809, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.VRHandPoseTarget
+  m_PoseType: 5
+  m_FollowObjectMotion: 1
+  m_UseDynamicContactPoint: 0
+  m_WheelRadius: 0.18
+  m_HandPalmGripOffset: {x: 0, y: -0.018, z: 0.065}
+  m_LeftAttachTransform: {fileID: 0}
+  m_RightAttachTransform: {fileID: 0}
+  m_PositionOffset: {x: 0, y: 0, z: 0}
+  m_RotationOffset: {x: 0, y: 0, z: 0}
+--- !u!1 &2696225983269001982
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4826759152026504287}
+  m_Layer: 0
+  m_Name: HandAttach_Right
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4826759152026504287
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2696225983269001982}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.75679785, y: -0.3134759, z: 0.12414465, w: 0.55998033}
+  m_LocalPosition: {x: -0.0000000019371509, y: -0.0018000212, z: 0.0011999998}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 6635447764001978020}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2703362708707764056
 GameObject:
   m_ObjectHideFlags: 0
@@ -4901,6 +4982,7 @@ GameObject:
   - component: {fileID: 6350976198138174948}
   - component: {fileID: 2837077416508066696}
   - component: {fileID: 4234576930495104073}
+  - component: {fileID: 5674499865034531080}
   m_Layer: 0
   m_Name: GearShifter
   m_TagString: Untagged
@@ -4920,7 +5002,8 @@ Transform:
   m_LocalPosition: {x: 0.074, y: 0.5348, z: 0.0303}
   m_LocalScale: {x: 100, y: 100, z: 100}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 3709247397745079765}
   m_Father: {fileID: 6631202488475238318}
   m_LocalEulerAnglesHint: {x: -90, y: 0, z: 0}
 --- !u!33 &1549859651533428610
@@ -5102,7 +5185,7 @@ MonoBehaviour:
   m_StartingInteractionStrengthFilters: []
   m_AutoFindParentInteractableInHierarchy: 0
   m_ParentInteractableObject: {fileID: 0}
-  m_AttachTransform: {fileID: 0}
+  m_AttachTransform: {fileID: 3709247397745079765}
   m_SecondaryAttachTransform: {fileID: 0}
   m_UseDynamicAttach: 0
   m_MatchAttachPosition: 1
@@ -5181,6 +5264,27 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_VehicleController: {fileID: 0}
+--- !u!114 &5674499865034531080
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2983140101244256925}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 655a37824f3fdd447bb34fbfe44ad809, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.VRHandPoseTarget
+  m_PoseType: 3
+  m_FollowObjectMotion: 1
+  m_UseDynamicContactPoint: 0
+  m_WheelRadius: 0.18
+  m_HandPalmGripOffset: {x: 0, y: -0.018, z: 0.065}
+  m_LeftAttachTransform: {fileID: 3709247397745079765}
+  m_RightAttachTransform: {fileID: 3709247397745079765}
+  m_PositionOffset: {x: 0, y: 0, z: 0}
+  m_RotationOffset: {x: 0, y: 0, z: 0}
 --- !u!1 &2986086575745982210
 GameObject:
   m_ObjectHideFlags: 0
@@ -5384,6 +5488,7 @@ GameObject:
   - component: {fileID: 1088767356895294825}
   - component: {fileID: 3742421721685773594}
   - component: {fileID: 2818071473846032164}
+  - component: {fileID: 73326622515371221}
   m_Layer: 0
   m_Name: mdl_car02_brake
   m_TagString: Untagged
@@ -5403,7 +5508,9 @@ Transform:
   m_LocalPosition: {x: 0.07439156, y: 0.5122292, z: -0.47892943}
   m_LocalScale: {x: 100, y: 100, z: 100}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 4826759152026504287}
+  - {fileID: 290801333283488687}
   m_Father: {fileID: 6631202488475238318}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &2530913339182578140
@@ -5585,7 +5692,7 @@ MonoBehaviour:
   m_StartingInteractionStrengthFilters: []
   m_AutoFindParentInteractableInHierarchy: 0
   m_ParentInteractableObject: {fileID: 0}
-  m_AttachTransform: {fileID: 0}
+  m_AttachTransform: {fileID: 4826759152026504287}
   m_SecondaryAttachTransform: {fileID: 0}
   m_UseDynamicAttach: 0
   m_MatchAttachPosition: 1
@@ -5659,6 +5766,27 @@ MonoBehaviour:
   OnEngagementChanged:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &73326622515371221
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3016032272487022762}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 655a37824f3fdd447bb34fbfe44ad809, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.VRHandPoseTarget
+  m_PoseType: 4
+  m_FollowObjectMotion: 1
+  m_UseDynamicContactPoint: 0
+  m_WheelRadius: 0.18
+  m_HandPalmGripOffset: {x: 0, y: -0.018, z: 0.065}
+  m_LeftAttachTransform: {fileID: 290801333283488687}
+  m_RightAttachTransform: {fileID: 4826759152026504287}
+  m_PositionOffset: {x: 0, y: 0, z: 0}
+  m_RotationOffset: {x: 0, y: 0, z: 0}
 --- !u!1 &3074697982522634854
 GameObject:
   m_ObjectHideFlags: 0
@@ -7188,6 +7316,59 @@ MonoBehaviour:
   m_HighBeamsIndicator: {fileID: 442535566389451428}
   m_HighBeamActiveColor: {r: 0.102, g: 0.482, b: 1, a: 1}
   m_HighBeamInactiveColor: {r: 0.102, g: 0.482, b: 1, a: 0.2}
+--- !u!1 &3903622278574440878
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 181146940045820778}
+  - component: {fileID: 8138970259100968853}
+  m_Layer: 0
+  m_Name: GrabZone_Right
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &181146940045820778
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3903622278574440878}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.075, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3665763325654534241}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &8138970259100968853
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3903622278574440878}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.07, y: 0.065, z: 0.045}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &4232409295363553903
 GameObject:
   m_ObjectHideFlags: 0
@@ -9034,6 +9215,37 @@ Transform:
   - {fileID: 5568953152394214734}
   m_Father: {fileID: 5433750223219588520}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &5919674326455968383
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 290801333283488687}
+  m_Layer: 0
+  m_Name: HandAttach_Left
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &290801333283488687
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5919674326455968383}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.75679785, y: 0.3134759, z: -0.12414465, w: 0.55998033}
+  m_LocalPosition: {x: -0.0000000019371509, y: -0.0018000212, z: 0.0011999998}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 6635447764001978020}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &5926324700909766741
 GameObject:
   m_ObjectHideFlags: 0
@@ -9638,6 +9850,37 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1 &6156162168169917283
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3709247397745079765}
+  m_Layer: 0
+  m_Name: Attach_Knob
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3709247397745079765
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6156162168169917283}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.7933534, y: -0, z: -0, w: 0.6087615}
+  m_LocalPosition: {x: -0.0000000011920929, y: -0.000000001490116, z: 0.0018000002}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2462887017287211047}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &6372411682717403827
 GameObject:
   m_ObjectHideFlags: 0
@@ -10922,6 +11165,59 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_renderer: {fileID: 9032577088993955168}
   m_maskType: 0
+--- !u!1 &7282405993712596663
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5175702377946162778}
+  - component: {fileID: 7150104845778225959}
+  m_Layer: 0
+  m_Name: GrabZone_Left
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5175702377946162778
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7282405993712596663}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.075, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3665763325654534241}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &7150104845778225959
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7282405993712596663}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.07, y: 0.065, z: 0.045}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &7358490043896134544
 GameObject:
   m_ObjectHideFlags: 0
@@ -12294,6 +12590,7 @@ GameObject:
   - component: {fileID: 6508250689707100354}
   - component: {fileID: 6230431663951520709}
   - component: {fileID: 3702675211681139547}
+  - component: {fileID: 533797566277149962}
   m_Layer: 0
   m_Name: mdl_car02_lights_knob
   m_TagString: Untagged
@@ -12589,6 +12886,27 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 0.0004
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &533797566277149962
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8559683551000308422}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 655a37824f3fdd447bb34fbfe44ad809, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.VRHandPoseTarget
+  m_PoseType: 2
+  m_FollowObjectMotion: 1
+  m_UseDynamicContactPoint: 0
+  m_WheelRadius: 0.18
+  m_HandPalmGripOffset: {x: 0, y: -0.018, z: 0.065}
+  m_LeftAttachTransform: {fileID: 0}
+  m_RightAttachTransform: {fileID: 0}
+  m_PositionOffset: {x: 0, y: 0, z: 0}
+  m_RotationOffset: {x: 0, y: 0, z: 0}
 --- !u!1 &8592436552528270982
 GameObject:
   m_ObjectHideFlags: 0
