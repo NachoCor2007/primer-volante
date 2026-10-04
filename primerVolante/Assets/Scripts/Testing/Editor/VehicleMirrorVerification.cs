@@ -88,7 +88,52 @@ namespace PrimerVolante.Testing.Editor
                     {
                         Assert(!grab.trackPosition, "XRGrabInteractable.trackPosition debe ser false", ref totalTests, ref passedTests);
                         Assert(!grab.trackRotation, "XRGrabInteractable.trackRotation debe ser false", ref totalTests, ref passedTests);
+                        Assert(!grab.unparentTransformOnGrab, "XRGrabInteractable.unparentTransformOnGrab debe ser false (el espejo no se desconecta del auto al agarrarlo)", ref totalTests, ref passedTests);
+                        Assert(grab.retainTransformParent, "XRGrabInteractable.retainTransformParent debe ser true", ref totalTests, ref passedTests);
                     }
+
+                    // Verificación de zonas de agarre laterales y centro libre (sin collider en la raíz/centro)
+                    Assert(rearview.GetComponent<Collider>() == null, "RearviewMirror_Casing no debe tener collider central en la raíz", ref totalTests, ref passedTests);
+
+                    Transform leftZone = carInstance.transform.Find("RearviewMirror_Mount/RearviewMirror_Casing/GrabZone_Left");
+                    Assert(leftZone != null, "GrabZone_Left debe existir como hijo lateral", ref totalTests, ref passedTests);
+                    if (leftZone != null)
+                    {
+                        BoxCollider leftBox = leftZone.GetComponent<BoxCollider>();
+                        Assert(leftBox != null && leftZone.localPosition.x < -0.04f, $"GrabZone_Left debe tener BoxCollider en lateral izquierdo (X: {leftZone.localPosition.x:F3}m)", ref totalTests, ref passedTests);
+                    }
+
+                    Transform rightZone = carInstance.transform.Find("RearviewMirror_Mount/RearviewMirror_Casing/GrabZone_Right");
+                    Assert(rightZone != null, "GrabZone_Right debe existir como hijo lateral", ref totalTests, ref passedTests);
+                    if (rightZone != null)
+                    {
+                        BoxCollider rightBox = rightZone.GetComponent<BoxCollider>();
+                        Assert(rightBox != null && rightZone.localPosition.x > 0.04f, $"GrabZone_Right debe tener BoxCollider en lateral derecho (X: {rightZone.localPosition.x:F3}m)", ref totalTests, ref passedTests);
+                    }
+
+                    if (grab != null)
+                    {
+                        Assert(grab.colliders != null && grab.colliders.Count >= 2, $"XRGrabInteractable debe tener al menos 2 colliders laterales registrados (actual: {(grab.colliders != null ? grab.colliders.Count : 0)})", ref totalTests, ref passedTests);
+                    }
+
+                    Assert(rearview.LeftGrabCollider != null && rearview.RightGrabCollider != null, "VRRearviewMirror debe tener asignados ambos colliders laterales", ref totalTests, ref passedTests);
+
+                    // Prueba de retención de jerarquía y posición ante desplazamiento
+                    Transform parentBefore = rearview.transform.parent;
+                    Vector3 localPosBefore = rearview.transform.localPosition;
+                    rearview.transform.SetParent(null, true);
+                    rearview.transform.position += Vector3.forward * 10f;
+                    rearview.EnsureHierarchyAndLocalTransform();
+                    Assert(rearview.transform.parent == parentBefore, "EnsureHierarchyAndLocalTransform debe restaurar el parent del soporte", ref totalTests, ref passedTests);
+                    Assert(rearview.transform.localPosition == localPosBefore, "EnsureHierarchyAndLocalTransform debe restaurar localPosition inicial", ref totalTests, ref passedTests);
+
+                    // Prueba de inmunidad al avance/retroceso del auto
+                    Vector3 initialCarPos = carInstance.transform.position;
+                    carInstance.transform.position += carInstance.transform.forward * 25f; // Auto avanza 25 metros
+                    rearview.EnsureHierarchyAndLocalTransform();
+                    Assert(rearview.transform.parent == mountTr, "El espejo debe permanecer emparentado al soporte tras avanzar el vehículo", ref totalTests, ref passedTests);
+                    Assert(rearview.transform.localPosition == Vector3.zero, "El espejo debe mantener localPosition (0,0,0) respecto al soporte tras avanzar el vehículo", ref totalTests, ref passedTests);
+                    carInstance.transform.position = initialCarPos;
 
                     // Prueba de límites angulares: Yaw [-30, 30], Pitch [-20, 20], Roll = 0
                     rearview.SetAngles(50f, 60f);
