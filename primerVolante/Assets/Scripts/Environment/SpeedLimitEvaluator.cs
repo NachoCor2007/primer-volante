@@ -32,6 +32,7 @@ namespace PrimerVolante.Environment
         private float m_MaxSpeedRecorded;
         private float m_LastAlertTime = -100f;
         private BoxCollider m_BoxCollider;
+        private readonly System.Collections.Generic.HashSet<Collider> m_ActiveColliders = new System.Collections.Generic.HashSet<Collider>();
 
         /// <summary>
         /// Límite de velocidad reglamentario asignado.
@@ -139,17 +140,24 @@ namespace PrimerVolante.Environment
             var vehicle = other.GetComponentInParent<VehicleController>();
             if (vehicle == null) return;
 
-            // Si ya estamos evaluando otro vehículo, no sobrescribir a menos que sea el mismo
+            // Si ya estamos evaluando otro vehículo distinto, ignorarlo
             if (m_CurrentVehicle != null && m_CurrentVehicle != vehicle) return;
 
-            m_CurrentVehicle = vehicle;
-            m_HasInfraction = false;
-            m_MaxSpeedRecorded = vehicle.CurrentSpeedKmh;
-            m_LastAlertTime = -m_AlertCooldown;
+            bool isFirstCollider = (m_ActiveColliders.Count == 0);
+            m_ActiveColliders.Add(other);
 
-            SyncWithSign();
+            // Solo inicializar y notificar con el primer colisionador del auto que ingresa
+            if (isFirstCollider)
+            {
+                m_CurrentVehicle = vehicle;
+                m_HasInfraction = false;
+                m_MaxSpeedRecorded = vehicle.CurrentSpeedKmh;
+                m_LastAlertTime = -m_AlertCooldown;
 
-            Debug.Log($"[TRAFFIC-SPEED] ℹ Ingreso a tramo con límite de {m_SpeedLimitKmh} km/h");
+                SyncWithSign();
+
+                Debug.Log($"[TRAFFIC-SPEED] ℹ Ingreso a tramo con límite de {m_SpeedLimitKmh} km/h");
+            }
         }
 
         private void OnTriggerStay(Collider other)
@@ -180,22 +188,28 @@ namespace PrimerVolante.Environment
             var vehicle = other.GetComponentInParent<VehicleController>();
             if (vehicle == null || vehicle != m_CurrentVehicle) return;
 
-            float finalSpeed = vehicle.CurrentSpeedKmh;
-            if (finalSpeed > m_MaxSpeedRecorded)
-            {
-                m_MaxSpeedRecorded = finalSpeed;
-            }
+            m_ActiveColliders.Remove(other);
 
-            if (m_HasInfraction)
+            // Solo finalizar el tramo y emitir reporte cuando TODOS los colisionadores del auto hayan salido
+            if (m_ActiveColliders.Count == 0)
             {
-                Debug.Log($"[TRAFFIC-SPEED] ❌ Tramo finalizado con infracción. Velocidad máxima alcanzada: {m_MaxSpeedRecorded:F1} km/h (Permitido: {m_SpeedLimitKmh} km/h)");
-            }
-            else
-            {
-                Debug.Log($"[TRAFFIC-SPEED] ✅ Tramo completado sin infracciones. Velocidad máxima alcanzada: {m_MaxSpeedRecorded:F1} km/h (Permitido: {m_SpeedLimitKmh} km/h)");
-            }
+                float finalSpeed = vehicle.CurrentSpeedKmh;
+                if (finalSpeed > m_MaxSpeedRecorded)
+                {
+                    m_MaxSpeedRecorded = finalSpeed;
+                }
 
-            m_CurrentVehicle = null;
+                if (m_HasInfraction)
+                {
+                    Debug.Log($"[TRAFFIC-SPEED] ❌ Tramo finalizado con infracción. Velocidad máxima alcanzada: {m_MaxSpeedRecorded:F1} km/h (Permitido: {m_SpeedLimitKmh} km/h)");
+                }
+                else
+                {
+                    Debug.Log($"[TRAFFIC-SPEED] ✅ Tramo completado sin infracciones. Velocidad máxima alcanzada: {m_MaxSpeedRecorded:F1} km/h (Permitido: {m_SpeedLimitKmh} km/h)");
+                }
+
+                m_CurrentVehicle = null;
+            }
         }
 
         private void OnDrawGizmos()
