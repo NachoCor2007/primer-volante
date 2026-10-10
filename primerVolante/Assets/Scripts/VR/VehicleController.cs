@@ -394,6 +394,14 @@ namespace PrimerVolante.VR
             ConfigurePhysicsAndColliders();
         }
 
+        private void Start()
+        {
+            // Algunos hijos crean colliders en su propio Awake (p. ej. las zonas de agarre del retrovisor,
+            // con orden de ejecución posterior). Si no se ignoran contra la carrocería, esos cuerpos cinemáticos
+            // quedan incrustados en el BoxCollider del auto y lo inmovilizan. En Start ya corrieron todos los Awake.
+            IgnoreInternalChildCollisions();
+        }
+
         [ContextMenu("Reconfigurar Físicas y Collider Ahora")]
         public void ConfigurePhysicsAndColliders()
         {
