@@ -445,14 +445,18 @@ namespace PrimerVolante.VR
         }
 
 #if UNITY_EDITOR
+        /// <summary>
+        /// Solo completa referencias propias. No crea, destruye ni reparenta objetos ni modifica otros componentes:
+        /// Unity lo prohíbe en OnValidate (y sobre Prefab Assets), y además ensuciaba el prefab con colliders nulos
+        /// al guardarlo. Las zonas de agarre y la configuración del XRGrabInteractable se aseguran en Awake/Start
+        /// y en VehicleMirrorSetupEditor.
+        /// </summary>
         private void OnValidate()
         {
             if (m_PivotTransform == null)
             {
                 m_PivotTransform = transform;
             }
-            EnsureLateralGrabColliders();
-            ConfigureInteractableAndPhysics();
         }
 #endif
     }
