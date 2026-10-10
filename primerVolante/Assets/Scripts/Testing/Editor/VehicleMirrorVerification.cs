@@ -162,6 +162,18 @@ namespace PrimerVolante.Testing.Editor
                     Assert(Mathf.Approximately(rearview.CurrentPitch, 0f), "ResetToCenter debe devolver Pitch a 0°", ref totalTests, ref passedTests);
                     Assert(Mathf.Approximately(rearview.CurrentYaw, 0f), "ResetToCenter debe devolver Yaw a 0°", ref totalTests, ref passedTests);
 
+                    // Agarre lateral: el borde agarrado sigue a la mano, así que cada lado gira en sentido opuesto
+                    Vector3 rightEdge = new Vector3(0.075f, 0f, 0f);
+                    Vector3 leftEdge = new Vector3(-0.075f, 0f, 0f);
+                    Vector3 push = new Vector3(0f, 0f, 0.03f);
+                    float yawRightPush = VRRearviewMirror.ComputeYawDelta(rightEdge, rightEdge + push);
+                    float yawLeftPush = VRRearviewMirror.ComputeYawDelta(leftEdge, leftEdge + push);
+                    Assert(yawRightPush > 0f, $"Empujar el borde derecho hacia adelante debe girar el espejo a la derecha (Yaw: {yawRightPush:F1}°)", ref totalTests, ref passedTests);
+                    Assert(yawLeftPush < 0f, $"Empujar el borde izquierdo hacia adelante debe girar el espejo a la izquierda (Yaw: {yawLeftPush:F1}°)", ref totalTests, ref passedTests);
+                    Assert(Mathf.Abs(yawRightPush + yawLeftPush) < 0.01f, "Ambos lados deben girar con la misma magnitud y sentido opuesto", ref totalTests, ref passedTests);
+                    float yawRadial = VRRearviewMirror.ComputeYawDelta(rightEdge, rightEdge * 1.4f);
+                    Assert(Mathf.Abs(yawRadial) < 0.01f, $"Alejar la mano del pivote en línea recta no debe girar el espejo (Yaw: {yawRadial:F2}°)", ref totalTests, ref passedTests);
+
                     // Vidrio reflectante del retrovisor central
                     Transform rvGlass = carInstance.transform.Find("RearviewMirror_Mount/RearviewMirror_Casing/Mirror_Glass");
                     Assert(rvGlass != null, "Mirror_Glass debe existir en el retrovisor central", ref totalTests, ref passedTests);

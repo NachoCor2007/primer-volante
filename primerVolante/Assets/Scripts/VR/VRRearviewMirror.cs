@@ -52,7 +52,7 @@ namespace PrimerVolante.VR
         [SerializeField] private float m_MaxPitch = 20f;
 
         [Header("Sensibilidad y Brazos de Palanca")]
-        [Tooltip("Radio virtual de palanca de la mano respecto al pivote (en metros). Determina la respuesta angular al mover la mano.")]
+        [Tooltip("Radio virtual de palanca de la mano respecto al pivote (en metros). Determina la respuesta del Pitch al mover la mano verticalmente. El Yaw sigue al borde agarrado alrededor del pivote.")]
         [SerializeField] private float m_HandLeverArm = 0.15f;
 
         [Header("Estado Actual")]
@@ -76,6 +76,7 @@ namespace PrimerVolante.VR
         private Quaternion m_InitialLocalRotation;
 
         private Vector3 m_GrabStartHandLocalPos;
+        private Vector3 m_GrabStartHandPivotDir;
         private float m_GrabStartYaw;
         private float m_GrabStartPitch;
 
@@ -288,6 +289,7 @@ namespace PrimerVolante.VR
             Vector3 handWorldPos = attach != null ? attach.position : (m_ActiveInteractor != null ? m_ActiveInteractor.transform.position : transform.position);
 
             m_GrabStartHandLocalPos = refSpace.InverseTransformPoint(handWorldPos);
+            m_GrabStartHandPivotDir = GetHandDirectionInPivotFrame(handWorldPos);
             m_GrabStartYaw = m_CurrentYaw;
             m_GrabStartPitch = m_CurrentPitch;
         }
@@ -343,8 +345,9 @@ namespace PrimerVolante.VR
 
             float leverArm = Mathf.Max(0.05f, m_HandLeverArm);
 
-            // Mover mano a la derecha (+X en cabina) incrementa Yaw (+ rotación hacia la derecha)
-            float deltaYaw = (localDelta.x / leverArm) * Mathf.Rad2Deg;
+            // Yaw: el borde agarrado sigue a la mano alrededor del pivote, así que el sentido depende del lado
+            // (empujar el borde derecho hacia adelante gira al revés que empujar el izquierdo).
+            float deltaYaw = ComputeYawDelta(m_GrabStartHandPivotDir, GetHandDirectionInPivotFrame(currentHandWorldPos));
 
             // Mover mano hacia arriba (+Y en cabina) inclina Pitch hacia arriba
             float deltaPitch = (localDelta.y / leverArm) * Mathf.Rad2Deg;
@@ -353,6 +356,40 @@ namespace PrimerVolante.VR
             m_CurrentPitch = Mathf.Clamp(m_GrabStartPitch + deltaPitch, m_MinPitch, m_MaxPitch);
 
             ApplyRotation();
+        }
+
+        /// <summary>
+        /// Vector pivote → mano expresado en el marco de rotación inicial del espejo, que es el mismo marco
+        /// en el que ApplyRotation aplica Yaw y Pitch.
+        /// </summary>
+        private Vector3 GetHandDirectionInPivotFrame(Vector3 handWorldPos)
+        {
+            Transform parent = m_PivotTransform.parent;
+            Quaternion initialWorldRotation = (parent != null ? parent.rotation : Quaternion.identity) * m_InitialLocalRotation;
+            return Quaternion.Inverse(initialWorldRotation) * (handWorldPos - m_PivotTransform.position);
+        }
+
+        /// <summary>
+        /// Variación de Yaw (en grados) para que el borde agarrado siga a la mano alrededor del eje vertical
+        /// del pivote. Recibe los vectores pivote → mano al inicio del agarre y actual, en el marco de rotación
+        /// inicial del espejo. Un desplazamiento radial (alejar o acercar la mano al pivote) no produce giro.
+        /// </summary>
+        public static float ComputeYawDelta(Vector3 startDirection, Vector3 currentDirection)
+        {
+            // Por debajo de este radio horizontal el ángulo alrededor del pivote es inestable
+            const float k_MinRadius = 0.01f;
+            if (new Vector2(startDirection.x, startDirection.z).sqrMagnitude < k_MinRadius * k_MinRadius ||
+                new Vector2(currentDirection.x, currentDirection.z).sqrMagnitude < k_MinRadius * k_MinRadius)
+            {
+                return 0f;
+            }
+
+            // Ángulo alrededor de +Y medido de +Z hacia +X: el mismo sentido que una rotación positiva en Y
+            float startAngle = Mathf.Atan2(startDirection.x, startDirection.z) * Mathf.Rad2Deg;
+            float currentAngle = Mathf.Atan2(currentDirection.x, currentDirection.z) * Mathf.Rad2Deg;
+
+            // ApplyRotation rota el espejo -Yaw en Y, así que para acompañar a la mano el Yaw cambia con signo opuesto
+            return -Mathf.DeltaAngle(startAngle, currentAngle);
         }
 
         /// <summary>
