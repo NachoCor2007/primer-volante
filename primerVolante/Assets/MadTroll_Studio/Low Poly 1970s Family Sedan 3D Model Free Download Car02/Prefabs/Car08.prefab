@@ -503,6 +503,8 @@ MonoBehaviour:
   m_PivotTransform: {fileID: 4574324287443069125}
   m_MountTransform: {fileID: 7684139610027947066}
   m_RearviewCameraTransform: {fileID: 990756883577788098}
+  m_LeftGrabCollider: {fileID: 0}
+  m_RightGrabCollider: {fileID: 0}
   m_MinYaw: -30
   m_MaxYaw: 30
   m_MinPitch: -20
@@ -6709,6 +6711,7 @@ GameObject:
   - component: {fileID: 6302708114332588765}
   - component: {fileID: 1939792938737396481}
   - component: {fileID: 1769561840034510198}
+  - component: {fileID: -1382152921473904357}
   m_Layer: 0
   m_Name: Car08
   m_TagString: Untagged
@@ -7028,6 +7031,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.VehicleEngineSimulator
   m_VehicleController: {fileID: 1728493498108266381}
   m_Profile: {fileID: 11400000, guid: 4497a3defafc6bd41b59250f3447b6ca, type: 2}
+--- !u!114 &-1382152921473904357
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3449169920416470478}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 09b50a6249984f040930d32b7ae9bf83, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.CabinInteractablePhysicsSync
 --- !u!1 &3450295784253597689
 GameObject:
   m_ObjectHideFlags: 0
