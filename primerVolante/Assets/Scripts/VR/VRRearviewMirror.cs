@@ -100,6 +100,7 @@ namespace PrimerVolante.VR
 
             EnsureLateralGrabColliders();
             ConfigureInteractableAndPhysics();
+            RefreshInteractableRegistration();
         }
 
         private void Start()
@@ -112,7 +113,25 @@ namespace PrimerVolante.VR
 
             EnsureLateralGrabColliders();
             ConfigureInteractableAndPhysics();
+            RefreshInteractableRegistration();
             ApplyRotation();
+        }
+
+        /// <summary>
+        /// XRI arma el mapa collider → interactuable cuando el interactuable se registra, y el XRGrabInteractable
+        /// se registra en su OnEnable, antes de que este componente cree las zonas de agarre laterales. Sin volver
+        /// a registrarlo, las zonas no figuran en el mapa y las manos no pueden interactuar con el espejo.
+        /// </summary>
+        private void RefreshInteractableRegistration()
+        {
+            if (!Application.isPlaying || m_GrabInteractable == null) return;
+
+            var interactable = (IXRInteractable)m_GrabInteractable;
+            XRInteractionManager manager = m_GrabInteractable.interactionManager;
+            if (manager == null || !manager.IsRegistered(interactable)) return;
+
+            manager.UnregisterInteractable(interactable);
+            manager.RegisterInteractable(interactable);
         }
 
         private void OnEnable()
