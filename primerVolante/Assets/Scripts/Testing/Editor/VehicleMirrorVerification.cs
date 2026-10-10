@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using PrimerVolante.VR;
@@ -43,8 +44,10 @@ namespace PrimerVolante.Testing.Editor
                 // Asegurar configuración de espejos sobre la instancia
                 VehicleMirrorSetupEditor.ConfigureMirrorsOnCar(carInstance);
 
-                carInstance.BroadcastMessage("Awake", SendMessageOptions.DontRequireReceiver);
-                carInstance.BroadcastMessage("Start", SendMessageOptions.DontRequireReceiver);
+                // Inicializar solo los componentes que esta suite verifica. Un BroadcastMessage("Awake"/"Start")
+                // sobre todo el auto ejecutaba en modo edición scripts que no lo soportan (aserciones
+                // 'ShouldRunBehaviour()' y materiales filtrados por renderer.material en luces y botones).
+                InvokeLifecycle(carInstance, typeof(VRRearviewMirror), typeof(VehicleMirrorCamera), typeof(VRSideMirror));
 
                 // =========================================================================
                 // 0. Orden de ejecución: el XROrigin debe seguir al asiento ANTES de que el
@@ -372,6 +375,29 @@ namespace PrimerVolante.Testing.Editor
             else
             {
                 Debug.LogError($"❌ {totalTests - passedTests} pruebas fallaron. Revisa los mensajes anteriores.");
+            }
+        }
+
+        /// <summary>
+        /// Invoca Awake y luego Start (si existen) de los componentes de los tipos indicados bajo root,
+        /// replicando el orden de inicialización de Play Mode sin pasar por SendMessage.
+        /// </summary>
+        private static void InvokeLifecycle(GameObject root, params Type[] componentTypes)
+        {
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+            var targets = new List<Component>();
+            foreach (Type type in componentTypes)
+            {
+                targets.AddRange(root.GetComponentsInChildren(type, true));
+            }
+
+            foreach (string methodName in new[] { "Awake", "Start" })
+            {
+                foreach (Component target in targets)
+                {
+                    MethodInfo method = target.GetType().GetMethod(methodName, flags, null, Type.EmptyTypes, null);
+                    method?.Invoke(target, null);
+                }
             }
         }
 
