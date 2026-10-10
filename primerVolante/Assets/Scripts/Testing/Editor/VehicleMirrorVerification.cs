@@ -47,6 +47,17 @@ namespace PrimerVolante.Testing.Editor
                 carInstance.BroadcastMessage("Start", SendMessageOptions.DontRequireReceiver);
 
                 // =========================================================================
+                // 0. Orden de ejecución: el XROrigin debe seguir al asiento ANTES de que el
+                //    XRInteractionManager detecte hover/select; si no, con el auto en movimiento
+                //    las manos quedan un frame atrasadas y el retrovisor no se puede agarrar.
+                // =========================================================================
+                var orderAttr = (DefaultExecutionOrder)Attribute.GetCustomAttribute(typeof(DriverSeatFollower), typeof(DefaultExecutionOrder));
+                int interactionManagerOrder = UnityEngine.XR.Interaction.Toolkit.XRInteractionUpdateOrder.k_InteractionManager;
+                Assert(orderAttr != null && orderAttr.order < interactionManagerOrder,
+                    $"DriverSeatFollower debe ejecutarse antes del XRInteractionManager ({interactionManagerOrder}) para poder agarrar el retrovisor en movimiento (actual: {(orderAttr != null ? orderAttr.order.ToString() : "sin atributo")})",
+                    ref totalTests, ref passedTests);
+
+                // =========================================================================
                 // 1. Verificación de No Duplicados (Exactamente 1 instancia de cada uno)
                 // =========================================================================
                 int countMount = CountChildrenNamed(carInstance.transform, "RearviewMirror_Mount");

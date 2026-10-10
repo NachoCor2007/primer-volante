@@ -177,7 +177,7 @@ namespace PrimerVolante.VR
                 transform.SetParent(m_InitialParent, false);
             }
 
-            // 2. Procesar el ángulo del volante en LateUpdate, DESPUÉS de que DriverSeatFollower (Order=50) haya actualizado XROrigin
+            // 2. Procesar el ángulo del volante en LateUpdate, DESPUÉS de que DriverSeatFollower (Order=-300) haya actualizado XROrigin
             if (IsGrabbed && m_ActiveInteractor != null && m_ActiveInteractor.transform != null)
             {
                 float currentHandAngle = CalculateHandAngle(m_ActiveInteractor.transform);
