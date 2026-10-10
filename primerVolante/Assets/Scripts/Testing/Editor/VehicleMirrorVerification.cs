@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using PrimerVolante.VR;
@@ -43,8 +44,21 @@ namespace PrimerVolante.Testing.Editor
                 // Asegurar configuración de espejos sobre la instancia
                 VehicleMirrorSetupEditor.ConfigureMirrorsOnCar(carInstance);
 
-                carInstance.BroadcastMessage("Awake", SendMessageOptions.DontRequireReceiver);
-                carInstance.BroadcastMessage("Start", SendMessageOptions.DontRequireReceiver);
+                // Inicializar solo los componentes que esta suite verifica. Un BroadcastMessage("Awake"/"Start")
+                // sobre todo el auto ejecutaba en modo edición scripts que no lo soportan (aserciones
+                // 'ShouldRunBehaviour()' y materiales filtrados por renderer.material en luces y botones).
+                InvokeLifecycle(carInstance, typeof(VRRearviewMirror), typeof(VehicleMirrorCamera), typeof(VRSideMirror));
+
+                // =========================================================================
+                // 0. Orden de ejecución: el XROrigin debe seguir al asiento ANTES de que el
+                //    XRInteractionManager detecte hover/select; si no, con el auto en movimiento
+                //    las manos quedan un frame atrasadas y el retrovisor no se puede agarrar.
+                // =========================================================================
+                var orderAttr = (DefaultExecutionOrder)Attribute.GetCustomAttribute(typeof(DriverSeatFollower), typeof(DefaultExecutionOrder));
+                int interactionManagerOrder = UnityEngine.XR.Interaction.Toolkit.XRInteractionUpdateOrder.k_InteractionManager;
+                Assert(orderAttr != null && orderAttr.order < interactionManagerOrder,
+                    $"DriverSeatFollower debe ejecutarse antes del XRInteractionManager ({interactionManagerOrder}) para poder agarrar el retrovisor en movimiento (actual: {(orderAttr != null ? orderAttr.order.ToString() : "sin atributo")})",
+                    ref totalTests, ref passedTests);
 
                 // =========================================================================
                 // 1. Verificación de No Duplicados (Exactamente 1 instancia de cada uno)
@@ -88,7 +102,52 @@ namespace PrimerVolante.Testing.Editor
                     {
                         Assert(!grab.trackPosition, "XRGrabInteractable.trackPosition debe ser false", ref totalTests, ref passedTests);
                         Assert(!grab.trackRotation, "XRGrabInteractable.trackRotation debe ser false", ref totalTests, ref passedTests);
+                        Assert(!grab.unparentTransformOnGrab, "XRGrabInteractable.unparentTransformOnGrab debe ser false (el espejo no se desconecta del auto al agarrarlo)", ref totalTests, ref passedTests);
+                        Assert(grab.retainTransformParent, "XRGrabInteractable.retainTransformParent debe ser true", ref totalTests, ref passedTests);
                     }
+
+                    // Verificación de zonas de agarre laterales y centro libre (sin collider en la raíz/centro)
+                    Assert(rearview.GetComponent<Collider>() == null, "RearviewMirror_Casing no debe tener collider central en la raíz", ref totalTests, ref passedTests);
+
+                    Transform leftZone = carInstance.transform.Find("RearviewMirror_Mount/RearviewMirror_Casing/GrabZone_Left");
+                    Assert(leftZone != null, "GrabZone_Left debe existir como hijo lateral", ref totalTests, ref passedTests);
+                    if (leftZone != null)
+                    {
+                        BoxCollider leftBox = leftZone.GetComponent<BoxCollider>();
+                        Assert(leftBox != null && leftZone.localPosition.x < -0.04f, $"GrabZone_Left debe tener BoxCollider en lateral izquierdo (X: {leftZone.localPosition.x:F3}m)", ref totalTests, ref passedTests);
+                    }
+
+                    Transform rightZone = carInstance.transform.Find("RearviewMirror_Mount/RearviewMirror_Casing/GrabZone_Right");
+                    Assert(rightZone != null, "GrabZone_Right debe existir como hijo lateral", ref totalTests, ref passedTests);
+                    if (rightZone != null)
+                    {
+                        BoxCollider rightBox = rightZone.GetComponent<BoxCollider>();
+                        Assert(rightBox != null && rightZone.localPosition.x > 0.04f, $"GrabZone_Right debe tener BoxCollider en lateral derecho (X: {rightZone.localPosition.x:F3}m)", ref totalTests, ref passedTests);
+                    }
+
+                    if (grab != null)
+                    {
+                        Assert(grab.colliders != null && grab.colliders.Count >= 2, $"XRGrabInteractable debe tener al menos 2 colliders laterales registrados (actual: {(grab.colliders != null ? grab.colliders.Count : 0)})", ref totalTests, ref passedTests);
+                    }
+
+                    Assert(rearview.LeftGrabCollider != null && rearview.RightGrabCollider != null, "VRRearviewMirror debe tener asignados ambos colliders laterales", ref totalTests, ref passedTests);
+
+                    // Prueba de retención de jerarquía y posición ante desplazamiento
+                    Transform parentBefore = rearview.transform.parent;
+                    Vector3 localPosBefore = rearview.transform.localPosition;
+                    rearview.transform.SetParent(null, true);
+                    rearview.transform.position += Vector3.forward * 10f;
+                    rearview.EnsureHierarchyAndLocalTransform();
+                    Assert(rearview.transform.parent == parentBefore, "EnsureHierarchyAndLocalTransform debe restaurar el parent del soporte", ref totalTests, ref passedTests);
+                    Assert(rearview.transform.localPosition == localPosBefore, "EnsureHierarchyAndLocalTransform debe restaurar localPosition inicial", ref totalTests, ref passedTests);
+
+                    // Prueba de inmunidad al avance/retroceso del auto
+                    Vector3 initialCarPos = carInstance.transform.position;
+                    carInstance.transform.position += carInstance.transform.forward * 25f; // Auto avanza 25 metros
+                    rearview.EnsureHierarchyAndLocalTransform();
+                    Assert(rearview.transform.parent == mountTr, "El espejo debe permanecer emparentado al soporte tras avanzar el vehículo", ref totalTests, ref passedTests);
+                    Assert(rearview.transform.localPosition == Vector3.zero, "El espejo debe mantener localPosition (0,0,0) respecto al soporte tras avanzar el vehículo", ref totalTests, ref passedTests);
+                    carInstance.transform.position = initialCarPos;
 
                     // Prueba de límites angulares: Yaw [-30, 30], Pitch [-20, 20], Roll = 0
                     rearview.SetAngles(50f, 60f);
@@ -102,6 +161,18 @@ namespace PrimerVolante.Testing.Editor
                     rearview.ResetToCenter();
                     Assert(Mathf.Approximately(rearview.CurrentPitch, 0f), "ResetToCenter debe devolver Pitch a 0°", ref totalTests, ref passedTests);
                     Assert(Mathf.Approximately(rearview.CurrentYaw, 0f), "ResetToCenter debe devolver Yaw a 0°", ref totalTests, ref passedTests);
+
+                    // Agarre lateral: el borde agarrado sigue a la mano, así que cada lado gira en sentido opuesto
+                    Vector3 rightEdge = new Vector3(0.075f, 0f, 0f);
+                    Vector3 leftEdge = new Vector3(-0.075f, 0f, 0f);
+                    Vector3 push = new Vector3(0f, 0f, 0.03f);
+                    float yawRightPush = VRRearviewMirror.ComputeYawDelta(rightEdge, rightEdge + push);
+                    float yawLeftPush = VRRearviewMirror.ComputeYawDelta(leftEdge, leftEdge + push);
+                    Assert(yawRightPush > 0f, $"Empujar el borde derecho hacia adelante debe girar el espejo a la derecha (Yaw: {yawRightPush:F1}°)", ref totalTests, ref passedTests);
+                    Assert(yawLeftPush < 0f, $"Empujar el borde izquierdo hacia adelante debe girar el espejo a la izquierda (Yaw: {yawLeftPush:F1}°)", ref totalTests, ref passedTests);
+                    Assert(Mathf.Abs(yawRightPush + yawLeftPush) < 0.01f, "Ambos lados deben girar con la misma magnitud y sentido opuesto", ref totalTests, ref passedTests);
+                    float yawRadial = VRRearviewMirror.ComputeYawDelta(rightEdge, rightEdge * 1.4f);
+                    Assert(Mathf.Abs(yawRadial) < 0.01f, $"Alejar la mano del pivote en línea recta no debe girar el espejo (Yaw: {yawRadial:F2}°)", ref totalTests, ref passedTests);
 
                     // Vidrio reflectante del retrovisor central
                     Transform rvGlass = carInstance.transform.Find("RearviewMirror_Mount/RearviewMirror_Casing/Mirror_Glass");
@@ -316,6 +387,29 @@ namespace PrimerVolante.Testing.Editor
             else
             {
                 Debug.LogError($"❌ {totalTests - passedTests} pruebas fallaron. Revisa los mensajes anteriores.");
+            }
+        }
+
+        /// <summary>
+        /// Invoca Awake y luego Start (si existen) de los componentes de los tipos indicados bajo root,
+        /// replicando el orden de inicialización de Play Mode sin pasar por SendMessage.
+        /// </summary>
+        private static void InvokeLifecycle(GameObject root, params Type[] componentTypes)
+        {
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+            var targets = new List<Component>();
+            foreach (Type type in componentTypes)
+            {
+                targets.AddRange(root.GetComponentsInChildren(type, true));
+            }
+
+            foreach (string methodName in new[] { "Awake", "Start" })
+            {
+                foreach (Component target in targets)
+                {
+                    MethodInfo method = target.GetType().GetMethod(methodName, flags, null, Type.EmptyTypes, null);
+                    method?.Invoke(target, null);
+                }
             }
         }
 

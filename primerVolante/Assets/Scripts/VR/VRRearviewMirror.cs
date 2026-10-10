@@ -16,6 +16,7 @@ namespace PrimerVolante.VR
     /// - Al soltarlo, mantiene firmemente la rotación fijada por el conductor.
     /// Incluye controles de depuración por teclado para el Editor (I/K: Pitch, J/L: Yaw, U: Centrar).
     /// </summary>
+    [DefaultExecutionOrder(100)]
     [RequireComponent(typeof(XRGrabInteractable))]
     [RequireComponent(typeof(Rigidbody))]
     public class VRRearviewMirror : MonoBehaviour
@@ -29,6 +30,13 @@ namespace PrimerVolante.VR
 
         [Tooltip("Cámara retrovisora opcional emparentada a la carcasa.")]
         [SerializeField] private Transform m_RearviewCameraTransform;
+
+        [Header("Zonas de Agarre Laterales")]
+        [Tooltip("Collider de la zona de agarre izquierda del espejo.")]
+        [SerializeField] private Collider m_LeftGrabCollider;
+
+        [Tooltip("Collider de la zona de agarre derecha del espejo.")]
+        [SerializeField] private Collider m_RightGrabCollider;
 
         [Header("Límites Angulares Estrictos")]
         [Tooltip("Límite mínimo de Yaw (giro horizontal hacia la izquierda) en grados.")]
@@ -44,7 +52,7 @@ namespace PrimerVolante.VR
         [SerializeField] private float m_MaxPitch = 20f;
 
         [Header("Sensibilidad y Brazos de Palanca")]
-        [Tooltip("Radio virtual de palanca de la mano respecto al pivote (en metros). Determina la respuesta angular al mover la mano.")]
+        [Tooltip("Radio virtual de palanca de la mano respecto al pivote (en metros). Determina la respuesta del Pitch al mover la mano verticalmente. El Yaw sigue al borde agarrado alrededor del pivote.")]
         [SerializeField] private float m_HandLeverArm = 0.15f;
 
         [Header("Estado Actual")]
@@ -63,14 +71,20 @@ namespace PrimerVolante.VR
         private IXRInteractor m_ActiveInteractor;
         private bool m_IsGrabbed = false;
 
+        private Transform m_InitialParent;
+        private Vector3 m_InitialLocalPosition;
         private Quaternion m_InitialLocalRotation;
-        private Vector3 m_GrabStartHandWorldPos;
+
+        private Vector3 m_GrabStartHandLocalPos;
+        private Vector3 m_GrabStartHandPivotDir;
         private float m_GrabStartYaw;
         private float m_GrabStartPitch;
 
         public float CurrentYaw => m_CurrentYaw;
         public float CurrentPitch => m_CurrentPitch;
         public bool IsGrabbed => m_IsGrabbed;
+        public Collider LeftGrabCollider => m_LeftGrabCollider;
+        public Collider RightGrabCollider => m_RightGrabCollider;
 
         private void Awake()
         {
@@ -79,17 +93,46 @@ namespace PrimerVolante.VR
                 m_PivotTransform = transform;
             }
 
+            m_InitialParent = transform.parent;
+            m_InitialLocalPosition = transform.localPosition;
             m_InitialLocalRotation = m_PivotTransform.localRotation;
             m_GrabInteractable = GetComponent<XRGrabInteractable>();
             m_Rigidbody = GetComponent<Rigidbody>();
 
+            EnsureLateralGrabColliders();
             ConfigureInteractableAndPhysics();
+            RefreshInteractableRegistration();
         }
 
         private void Start()
         {
+            if (m_InitialParent == null && transform.parent != null)
+            {
+                m_InitialParent = transform.parent;
+                m_InitialLocalPosition = transform.localPosition;
+            }
+
+            EnsureLateralGrabColliders();
             ConfigureInteractableAndPhysics();
+            RefreshInteractableRegistration();
             ApplyRotation();
+        }
+
+        /// <summary>
+        /// XRI arma el mapa collider → interactuable cuando el interactuable se registra, y el XRGrabInteractable
+        /// se registra en su OnEnable, antes de que este componente cree las zonas de agarre laterales. Sin volver
+        /// a registrarlo, las zonas no figuran en el mapa y las manos no pueden interactuar con el espejo.
+        /// </summary>
+        private void RefreshInteractableRegistration()
+        {
+            if (!Application.isPlaying || m_GrabInteractable == null) return;
+
+            var interactable = (IXRInteractable)m_GrabInteractable;
+            XRInteractionManager manager = m_GrabInteractable.interactionManager;
+            if (manager == null || !manager.IsRegistered(interactable)) return;
+
+            manager.UnregisterInteractable(interactable);
+            manager.RegisterInteractable(interactable);
         }
 
         private void OnEnable()
@@ -110,6 +153,66 @@ namespace PrimerVolante.VR
             }
             m_IsGrabbed = false;
             m_ActiveInteractor = null;
+        }
+
+        /// <summary>
+        /// Asegura que existan únicamente dos zonas de agarre laterales (izquierda y derecha),
+        /// dejando el centro completamente libre para evitar interferir con el pivote del espejo.
+        /// </summary>
+        public void EnsureLateralGrabColliders()
+        {
+            // 1. Eliminar cualquier collider directo en este GameObject para que el centro quede totalmente libre
+            Collider[] rootColliders = GetComponents<Collider>();
+            foreach (var col in rootColliders)
+            {
+                if (col != null)
+                {
+                    if (Application.isPlaying) Destroy(col);
+                    else DestroyImmediate(col);
+                }
+            }
+
+            // 2. Zona de agarre lateral izquierda
+            Transform leftTr = transform.Find("GrabZone_Left");
+            if (leftTr == null)
+            {
+                GameObject leftObj = new GameObject("GrabZone_Left");
+                leftObj.transform.SetParent(transform, false);
+                leftObj.transform.localPosition = new Vector3(-0.075f, 0f, 0f);
+                leftObj.transform.localRotation = Quaternion.identity;
+                leftTr = leftObj.transform;
+            }
+            BoxCollider leftBox = leftTr.GetComponent<BoxCollider>();
+            if (leftBox == null) leftBox = leftTr.gameObject.AddComponent<BoxCollider>();
+            leftBox.center = Vector3.zero;
+            leftBox.size = new Vector3(0.07f, 0.065f, 0.045f);
+            leftBox.isTrigger = false;
+            m_LeftGrabCollider = leftBox;
+
+            // 3. Zona de agarre lateral derecha
+            Transform rightTr = transform.Find("GrabZone_Right");
+            if (rightTr == null)
+            {
+                GameObject rightObj = new GameObject("GrabZone_Right");
+                rightObj.transform.SetParent(transform, false);
+                rightObj.transform.localPosition = new Vector3(0.075f, 0f, 0f);
+                rightObj.transform.localRotation = Quaternion.identity;
+                rightTr = rightObj.transform;
+            }
+            BoxCollider rightBox = rightTr.GetComponent<BoxCollider>();
+            if (rightBox == null) rightBox = rightTr.gameObject.AddComponent<BoxCollider>();
+            rightBox.center = Vector3.zero;
+            rightBox.size = new Vector3(0.07f, 0.065f, 0.045f);
+            rightBox.isTrigger = false;
+            m_RightGrabCollider = rightBox;
+
+            // 4. Actualizar lista de colliders en el interactuable
+            if (m_GrabInteractable != null)
+            {
+                m_GrabInteractable.colliders.Clear();
+                if (m_LeftGrabCollider != null) m_GrabInteractable.colliders.Add(m_LeftGrabCollider);
+                if (m_RightGrabCollider != null) m_GrabInteractable.colliders.Add(m_RightGrabCollider);
+            }
         }
 
         public void ConfigureInteractableAndPhysics()
@@ -137,23 +240,56 @@ namespace PrimerVolante.VR
                 m_GrabInteractable.throwOnDetach = false;
                 m_GrabInteractable.forceGravityOnDetach = false;
                 m_GrabInteractable.retainTransformParent = true;
+                m_GrabInteractable.unparentTransformOnGrab = false;
                 m_GrabInteractable.movementType = XRBaseInteractable.MovementType.Instantaneous;
 
                 if (m_GrabInteractable.startingSingleGrabTransformers != null)
                 {
                     m_GrabInteractable.startingSingleGrabTransformers.Clear();
                 }
+
+                if (m_LeftGrabCollider != null || m_RightGrabCollider != null)
+                {
+                    m_GrabInteractable.colliders.Clear();
+                    if (m_LeftGrabCollider != null) m_GrabInteractable.colliders.Add(m_LeftGrabCollider);
+                    if (m_RightGrabCollider != null) m_GrabInteractable.colliders.Add(m_RightGrabCollider);
+                }
             }
+        }
+
+        /// <summary>
+        /// Garantiza que el espejo conserve su jerarquía original en el vehículo y su posición local.
+        /// </summary>
+        public void EnsureHierarchyAndLocalTransform()
+        {
+            if (m_InitialParent != null && transform.parent != m_InitialParent)
+            {
+                transform.SetParent(m_InitialParent, false);
+            }
+            transform.localPosition = m_InitialLocalPosition;
+        }
+
+        private Transform GetReferenceSpace()
+        {
+            if (m_MountTransform != null) return m_MountTransform;
+            if (m_InitialParent != null) return m_InitialParent;
+            if (transform.parent != null) return transform.parent;
+            return transform;
         }
 
         private void OnGrabEntered(SelectEnterEventArgs args)
         {
+            EnsureHierarchyAndLocalTransform();
+
             m_IsGrabbed = true;
             m_ActiveInteractor = args.interactorObject;
 
+            Transform refSpace = GetReferenceSpace();
             Transform attach = m_ActiveInteractor != null ? m_ActiveInteractor.GetAttachTransform(m_GrabInteractable) : null;
-            m_GrabStartHandWorldPos = attach != null ? attach.position : (m_ActiveInteractor != null ? m_ActiveInteractor.transform.position : transform.position);
+            Vector3 handWorldPos = attach != null ? attach.position : (m_ActiveInteractor != null ? m_ActiveInteractor.transform.position : transform.position);
 
+            m_GrabStartHandLocalPos = refSpace.InverseTransformPoint(handWorldPos);
+            m_GrabStartHandPivotDir = GetHandDirectionInPivotFrame(handWorldPos);
             m_GrabStartYaw = m_CurrentYaw;
             m_GrabStartPitch = m_CurrentPitch;
         }
@@ -163,16 +299,13 @@ namespace PrimerVolante.VR
             m_IsGrabbed = false;
             m_ActiveInteractor = null;
 
-            // Al soltar, mantiene firmemente la rotación fijada
+            EnsureHierarchyAndLocalTransform();
             ApplyRotation();
         }
 
         private void Update()
         {
-            if (m_IsGrabbed && m_ActiveInteractor != null)
-            {
-                ProcessHandDisplacement();
-            }
+            EnsureHierarchyAndLocalTransform();
 
             if (m_EnableKeyboardDebug)
             {
@@ -180,32 +313,83 @@ namespace PrimerVolante.VR
             }
         }
 
+        private void LateUpdate()
+        {
+            EnsureHierarchyAndLocalTransform();
+
+            if (m_IsGrabbed && m_ActiveInteractor != null)
+            {
+                ProcessHandDisplacement();
+            }
+        }
+
+        private void FixedUpdate()
+        {
+            EnsureHierarchyAndLocalTransform();
+        }
+
         /// <summary>
-        /// Procesa el desplazamiento tridimensional de la mano alrededor del pivote para calcular Yaw y Pitch.
+        /// Procesa el desplazamiento tridimensional de la mano relativo al soporte del espejo en la cabina
+        /// para calcular Yaw y Pitch de manera completamente inmune a la velocidad de avance/retroceso del auto.
         /// </summary>
         private void ProcessHandDisplacement()
         {
+            if (m_ActiveInteractor == null) return;
+
+            Transform refSpace = GetReferenceSpace();
             Transform attach = m_ActiveInteractor.GetAttachTransform(m_GrabInteractable);
-            Vector3 currentHandPos = attach != null ? attach.position : m_ActiveInteractor.transform.position;
+            Vector3 currentHandWorldPos = attach != null ? attach.position : m_ActiveInteractor.transform.position;
+            Vector3 currentHandLocalPos = refSpace.InverseTransformPoint(currentHandWorldPos);
 
-            Vector3 deltaWorld = currentHandPos - m_GrabStartHandWorldPos;
-
-            // Transformar el desplazamiento al espacio de referencia (soporte o padre del espejo)
-            Transform refSpace = m_MountTransform != null ? m_MountTransform : (m_PivotTransform.parent != null ? m_PivotTransform.parent : m_PivotTransform);
-            Vector3 localDelta = refSpace.InverseTransformDirection(deltaWorld);
+            Vector3 localDelta = currentHandLocalPos - m_GrabStartHandLocalPos;
 
             float leverArm = Mathf.Max(0.05f, m_HandLeverArm);
 
-            // Mover mano a la derecha (+X) incrementa Yaw (+ rotación hacia la derecha)
-            float deltaYaw = (localDelta.x / leverArm) * Mathf.Rad2Deg;
+            // Yaw: el borde agarrado sigue a la mano alrededor del pivote, así que el sentido depende del lado
+            // (empujar el borde derecho hacia adelante gira al revés que empujar el izquierdo).
+            float deltaYaw = ComputeYawDelta(m_GrabStartHandPivotDir, GetHandDirectionInPivotFrame(currentHandWorldPos));
 
-            // Mover mano hacia arriba (+Y) inclina Pitch hacia arriba
+            // Mover mano hacia arriba (+Y en cabina) inclina Pitch hacia arriba
             float deltaPitch = (localDelta.y / leverArm) * Mathf.Rad2Deg;
 
             m_CurrentYaw = Mathf.Clamp(m_GrabStartYaw + deltaYaw, m_MinYaw, m_MaxYaw);
             m_CurrentPitch = Mathf.Clamp(m_GrabStartPitch + deltaPitch, m_MinPitch, m_MaxPitch);
 
             ApplyRotation();
+        }
+
+        /// <summary>
+        /// Vector pivote → mano expresado en el marco de rotación inicial del espejo, que es el mismo marco
+        /// en el que ApplyRotation aplica Yaw y Pitch.
+        /// </summary>
+        private Vector3 GetHandDirectionInPivotFrame(Vector3 handWorldPos)
+        {
+            Transform parent = m_PivotTransform.parent;
+            Quaternion initialWorldRotation = (parent != null ? parent.rotation : Quaternion.identity) * m_InitialLocalRotation;
+            return Quaternion.Inverse(initialWorldRotation) * (handWorldPos - m_PivotTransform.position);
+        }
+
+        /// <summary>
+        /// Variación de Yaw (en grados) para que el borde agarrado siga a la mano alrededor del eje vertical
+        /// del pivote. Recibe los vectores pivote → mano al inicio del agarre y actual, en el marco de rotación
+        /// inicial del espejo. Un desplazamiento radial (alejar o acercar la mano al pivote) no produce giro.
+        /// </summary>
+        public static float ComputeYawDelta(Vector3 startDirection, Vector3 currentDirection)
+        {
+            // Por debajo de este radio horizontal el ángulo alrededor del pivote es inestable
+            const float k_MinRadius = 0.01f;
+            if (new Vector2(startDirection.x, startDirection.z).sqrMagnitude < k_MinRadius * k_MinRadius ||
+                new Vector2(currentDirection.x, currentDirection.z).sqrMagnitude < k_MinRadius * k_MinRadius)
+            {
+                return 0f;
+            }
+
+            // Ángulo alrededor de +Y medido de +Z hacia +X: el mismo sentido que una rotación positiva en Y
+            float startAngle = Mathf.Atan2(startDirection.x, startDirection.z) * Mathf.Rad2Deg;
+            float currentAngle = Mathf.Atan2(currentDirection.x, currentDirection.z) * Mathf.Rad2Deg;
+
+            // ApplyRotation rota el espejo -Yaw en Y, así que para acompañar a la mano el Yaw cambia con signo opuesto
+            return -Mathf.DeltaAngle(startAngle, currentAngle);
         }
 
         /// <summary>
@@ -298,13 +482,18 @@ namespace PrimerVolante.VR
         }
 
 #if UNITY_EDITOR
+        /// <summary>
+        /// Solo completa referencias propias. No crea, destruye ni reparenta objetos ni modifica otros componentes:
+        /// Unity lo prohíbe en OnValidate (y sobre Prefab Assets), y además ensuciaba el prefab con colliders nulos
+        /// al guardarlo. Las zonas de agarre y la configuración del XRGrabInteractable se aseguran en Awake/Start
+        /// y en VehicleMirrorSetupEditor.
+        /// </summary>
         private void OnValidate()
         {
             if (m_PivotTransform == null)
             {
                 m_PivotTransform = transform;
             }
-            ConfigureInteractableAndPhysics();
         }
 #endif
     }
