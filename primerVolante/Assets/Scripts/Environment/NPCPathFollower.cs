@@ -208,6 +208,9 @@ namespace PrimerVolante.Environment
         {
             m_Rigidbody = GetComponent<Rigidbody>();
             RefreshPath();
+
+            // El estado de ejecución arranca en la distancia inicial configurada.
+            if (HasPath) TeleportToDistance(m_InitialDistance);
         }
 
         private void Start()
