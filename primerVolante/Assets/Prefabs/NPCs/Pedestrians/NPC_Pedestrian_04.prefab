@@ -136,6 +136,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5460708016456621143, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
       insertIndex: -1
       addedObject: {fileID: 3176647741916044032}
+    - targetCorrespondingSourceObject: {fileID: 5460708016456621143, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 440443020819725941}
   m_SourcePrefab: {fileID: 100100000, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
 --- !u!1 &1004064784146032037 stripped
 GameObject:
@@ -227,3 +230,18 @@ MonoBehaviour:
   m_SpeedDampTime: 0.1
   m_MaxAnimatorSpeed: 2
   m_BodyCollider: {fileID: 3539024415669574168}
+--- !u!114 &440443020819725941
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1004064784146032037}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6b67de027f05ac647b97602adac6f23b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.NPCFootGrounding
+  m_HipsLift: 0.046224125
+  m_LeftPitchOffset: -37.043537
+  m_RightPitchOffset: -2.9812393

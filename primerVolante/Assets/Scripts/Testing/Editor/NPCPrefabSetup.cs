@@ -436,6 +436,10 @@ namespace PrimerVolante.Testing.Editor
             var box = GetOrAdd<BoxCollider>(root);
             FitBoxToStandingBody(root, box);
 
+            // Corrección del sesgo de los pies: se mide el apoyo al caminar contra el pie plano en reposo.
+            var grounding = GetOrAdd<NPCFootGrounding>(root);
+            CalibrateFootGrounding(grounding);
+
             var pedestrian = GetOrAdd<NPCPedestrianController>(root);
             var pedestrianSo = new SerializedObject(pedestrian);
             RequireProperty(pedestrianSo, "m_WalkReferenceSpeed").floatValue = walkReferenceSpeed;
@@ -492,6 +496,38 @@ namespace PrimerVolante.Testing.Editor
             body.isKinematic = true;
             body.useGravity = false;
             body.interpolation = RigidbodyInterpolation.Interpolate;
+        }
+
+        /// <summary>
+        /// Calibra <see cref="NPCFootGrounding"/> con el UrbanMan: elevación del esqueleto y pitch por pie que
+        /// llevan el apoyo del clip Walking a la pose de pie plano del clip Idle.
+        /// </summary>
+        public static void CalibrateFootGrounding(NPCFootGrounding grounding)
+        {
+            var urbanMan = AssetDatabase.LoadAssetAtPath<GameObject>(URBAN_MAN_PREFAB_PATH);
+            AnimationClip idle = LoadClip(IDLE_FBX_PATH);
+            AnimationClip walking = LoadClip(WALKING_FBX_PATH);
+
+            if (!NPCFootSlidingAnalyzer.MeasureRestFoot(urbanMan, idle, out float restAnkle, out float restPitch))
+            {
+                Debug.LogWarning("[NPCPrefabSetup] ⚠️ No se pudo medir el pie en reposo; NPCFootGrounding queda sin corrección.");
+                return;
+            }
+
+            NPCFootSlidingAnalyzer.StanceFoot[] stance = NPCFootSlidingAnalyzer.MeasureStanceFromClip(urbanMan, walking);
+            if (stance[0].Frames == 0 || stance[1].Frames == 0)
+            {
+                Debug.LogWarning("[NPCPrefabSetup] ⚠️ No se pudo medir el apoyo del clip Walking; NPCFootGrounding queda sin corrección.");
+                return;
+            }
+
+            float lift = restAnkle - (stance[0].AnkleHeight + stance[1].AnkleHeight) * 0.5f;
+            float leftOffset = restPitch - stance[0].Pitch;
+            float rightOffset = restPitch - stance[1].Pitch;
+            grounding.Calibrate(Mathf.Max(0f, lift), leftOffset, rightOffset);
+            Debug.Log($"[NPCPrefabSetup] 🦶 NPCFootGrounding: elevación {Mathf.Max(0f, lift) * 100f:F1} cm, " +
+                      $"pitch izquierdo {leftOffset:+0.0;-0.0}°, pitch derecho {rightOffset:+0.0;-0.0}° " +
+                      $"(reposo: tobillo {restAnkle:F3} m, pitch {restPitch:F0}°).");
         }
 
         /// <summary>

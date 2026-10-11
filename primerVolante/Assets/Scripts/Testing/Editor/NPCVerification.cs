@@ -206,6 +206,21 @@ namespace PrimerVolante.Testing.Editor
                     $"Pies sin deslizar a {speed:F2} m/s (deslizamiento medio {sliding:F2} m/s, tolerancia 0.35)", ref total, ref passed);
             }
 
+            // Apoyo plano: en la fase de apoyo el tobillo y los dedos deben estar a la altura del pie plano en reposo
+            // (antes del arreglo el pie izquierdo pisaba con el talón: dedos a 7 cm y pitch +8° contra -29° plano).
+            Assert(prefab.GetComponent<NPCFootGrounding>() != null, "NPC_Pedestrian_01 debe tener NPCFootGrounding", ref total, ref passed);
+            NPCFootSlidingAnalyzer.MeasureRestFoot(prefab, NPCPrefabSetup.LoadClip(NPCPrefabSetup.IDLE_FBX_PATH), out float restAnkle, out float restPitch);
+            NPCFootSlidingAnalyzer.StanceFoot[] stance = NPCFootSlidingAnalyzer.MeasureStance(prefab, NPCPedestrianController.DefaultCruiseSpeed);
+            string[] sides = { "izquierdo", "derecho" };
+            for (int foot = 0; foot < 2; foot++)
+            {
+                NPCFootSlidingAnalyzer.StanceFoot s = stance[foot];
+                Assert(s.Frames > 0 && Mathf.Abs(s.AnkleHeight - restAnkle) <= 0.02f,
+                    $"Pie {sides[foot]} en apoyo: tobillo a {s.AnkleHeight:F3} m, plano en reposo {restAnkle:F3} m (tolerancia 2 cm)", ref total, ref passed);
+                Assert(s.Frames > 0 && Mathf.Abs(s.Pitch - restPitch) <= 10f,
+                    $"Pie {sides[foot]} en apoyo: pitch {s.Pitch:F0}°, plano en reposo {restPitch:F0}° (tolerancia 10°)", ref total, ref passed);
+            }
+
             AnimationClip walking = NPCPrefabSetup.LoadClip(NPCPrefabSetup.WALKING_FBX_PATH);
             float measured = NPCFootSlidingAnalyzer.MeasureWalkReferenceSpeed(prefab, walking);
             var controller = prefab.GetComponent<NPCPedestrianController>();
