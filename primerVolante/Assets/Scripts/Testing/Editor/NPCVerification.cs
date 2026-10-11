@@ -31,6 +31,7 @@ namespace PrimerVolante.Testing.Editor
             VerifyVehiclePrefabs(ref total, ref passed);
             VerifyPedestrianPrefabs(ref total, ref passed);
             VerifyMixamoClips(ref total, ref passed);
+            VerifyFootSliding(ref total, ref passed);
             VerifyPathMath(ref total, ref passed);
             VerifyVehicleVisualMath(ref total, ref passed);
             VerifyPlayerSteering(ref total, ref passed);
@@ -188,6 +189,30 @@ namespace PrimerVolante.Testing.Editor
             Assert(reference > 1f && reference < 3f, $"Velocidad de referencia de Walking del UrbanMan en rango (actual: {reference:F2} m/s)", ref total, ref passed);
         }
 
+        // ---------------------------------------------------------------- Pies
+
+        private static void VerifyFootSliding(ref int total, ref int passed)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{NPCPrefabSetup.PEDESTRIAN_OUTPUT_FOLDER}/NPC_Pedestrian_01.prefab");
+            Assert(prefab != null, "NPC_Pedestrian_01 debe existir para medir el deslizamiento de los pies", ref total, ref passed);
+            if (prefab == null) return;
+
+            // El pie en apoyo debe ir (casi) a la velocidad del suelo: se tolera hasta 0.35 m/s de promedio.
+            // El diseño anterior (Walking a peso 1 recién en 1.89 m/s) daba ~1.0 m/s a 1.4 m/s.
+            foreach (float speed in new[] { 0.6f, 1.0f, NPCPedestrianController.DefaultCruiseSpeed, 1.8f })
+            {
+                float sliding = NPCFootSlidingAnalyzer.MeasureFootSliding(prefab, speed);
+                Assert(!float.IsNaN(sliding) && sliding <= 0.35f,
+                    $"Pies sin deslizar a {speed:F2} m/s (deslizamiento medio {sliding:F2} m/s, tolerancia 0.35)", ref total, ref passed);
+            }
+
+            AnimationClip walking = NPCPrefabSetup.LoadClip(NPCPrefabSetup.WALKING_FBX_PATH);
+            float measured = NPCFootSlidingAnalyzer.MeasureWalkReferenceSpeed(prefab, walking);
+            var controller = prefab.GetComponent<NPCPedestrianController>();
+            Assert(controller != null && measured > 0f && Mathf.Abs(controller.WalkReferenceSpeed - measured) < 0.05f,
+                $"La velocidad de referencia del prefab ({controller?.WalkReferenceSpeed:F2}) coincide con la medida en el esqueleto ({measured:F2})", ref total, ref passed);
+        }
+
         // ---------------------------------------------------------------- Matemática pura del follower
 
         private struct RunResult
@@ -287,16 +312,19 @@ namespace PrimerVolante.Testing.Editor
             Assert(Mathf.Approximately(limited, 35f), "Ángulo de dirección limitado a ±35°", ref total, ref passed);
             Assert(NPCVehicleController.ComputeSteerAngle(2.44f, 1f, 0f, 35f) == 0f, "Con v = 0 el ángulo inverso no está definido (se conserva el último)", ref total, ref passed);
 
-            // Por debajo de la referencia el blend tree ya acorta el paso: el Animator va a 1 (sin doble compensación).
-            float idleSpeed = NPCPedestrianController.ComputeAnimatorSpeed(0f, 1.89f, 2f);
-            float slowSpeed = NPCPedestrianController.ComputeAnimatorSpeed(1.4f, 1.89f, 2f);
-            float walkSpeed = NPCPedestrianController.ComputeAnimatorSpeed(1.89f, 1.89f, 2f);
-            float brisk = NPCPedestrianController.ComputeAnimatorSpeed(2.84f, 1.89f, 2f);
-            float fastSpeed = NPCPedestrianController.ComputeAnimatorSpeed(5f, 1.89f, 2f);
-            Assert(Mathf.Approximately(idleSpeed, 1f) && Mathf.Approximately(slowSpeed, 1f) && Mathf.Approximately(walkSpeed, 1f),
-                "Por debajo de la referencia el Animator va a velocidad 1 (el blend tree ya acorta el paso)", ref total, ref passed);
-            Assert(Mathf.Abs(brisk - 2.84f / 1.89f) < 1e-4f && Mathf.Approximately(fastSpeed, 2f),
-                "Por encima de la referencia el Animator sigue a v / referencia y queda acotado", ref total, ref passed);
+            // Con el Walking a peso 1 el largo de paso es fijo: la cadencia sigue a v / referencia.
+            const float reference = 1.6f;
+            float idleSpeed = NPCPedestrianController.ComputeAnimatorSpeed(0f, reference, 2f);
+            float cruise = NPCPedestrianController.ComputeAnimatorSpeed(1.4f, reference, 2f);
+            float brisk = NPCPedestrianController.ComputeAnimatorSpeed(2.4f, reference, 2f);
+            float fastSpeed = NPCPedestrianController.ComputeAnimatorSpeed(5f, reference, 2f);
+            Assert(Mathf.Approximately(idleSpeed, 1f), "En reposo el Animator va a velocidad 1", ref total, ref passed);
+            Assert(Mathf.Abs(cruise - 1.4f / reference) < 1e-4f && Mathf.Abs(brisk - 1.5f) < 1e-4f && Mathf.Approximately(fastSpeed, 2f),
+                "Caminando el Animator sigue a v / referencia y queda acotado", ref total, ref passed);
+
+            float justBelow = NPCPedestrianController.ComputeAnimatorSpeed(NPCPedestrianController.WalkBlendEndSpeed - 1e-4f, reference, 2f);
+            float justAbove = NPCPedestrianController.ComputeAnimatorSpeed(NPCPedestrianController.WalkBlendEndSpeed + 1e-4f, reference, 2f);
+            Assert(Mathf.Abs(justBelow - justAbove) < 1e-2f, "La velocidad del Animator es continua en el umbral del blend", ref total, ref passed);
         }
 
         // ---------------------------------------------------------------- Auto del jugador

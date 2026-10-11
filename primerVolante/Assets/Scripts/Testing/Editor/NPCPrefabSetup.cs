@@ -70,8 +70,10 @@ namespace PrimerVolante.Testing.Editor
         // ------------------------------------------------------------------ Mixamo
 
         /// <summary>
-        /// Velocidad de referencia del clip Walking para el UrbanMan: la medida en X Bot escalada por la altura
-        /// de cadera (<c>Animator.humanScale</c> del UrbanMan / altura de cadera de X Bot).
+        /// Velocidad de referencia del clip Walking para el UrbanMan, medida sobre su esqueleto: es la velocidad
+        /// con la que retrocede el pie en apoyo. Si no se puede medir (faltan el clip o el avatar) se estima
+        /// escalando la medición de X Bot por la altura de cadera (<c>Animator.humanScale</c>), que sobrestima
+        /// el paso real: el UrbanMan da 1.6 m/s medidos contra 1.89 m/s estimados.
         /// </summary>
         public static float ComputeUrbanManWalkReferenceSpeed()
         {
@@ -79,10 +81,15 @@ namespace PrimerVolante.Testing.Editor
             var animator = prefab != null ? prefab.GetComponent<Animator>() : null;
             if (animator == null || animator.avatar == null || !animator.avatar.isHuman)
             {
-                Debug.LogWarning("[NPCPrefabSetup] ⚠️ No se pudo leer humanScale del UrbanMan; se usa la velocidad de X Bot.");
+                Debug.LogWarning("[NPCPrefabSetup] ⚠️ No se pudo leer el avatar del UrbanMan; se usa la velocidad de X Bot.");
                 return XBOT_WALK_SPEED;
             }
 
+            AnimationClip walking = LoadClip(WALKING_FBX_PATH);
+            float measured = NPCFootSlidingAnalyzer.MeasureWalkReferenceSpeed(prefab, walking);
+            if (measured > 0.5f && measured < 4f) return measured;
+
+            Debug.LogWarning("[NPCPrefabSetup] ⚠️ No se pudo medir el paso del clip Walking; se estima por altura de cadera.");
             return XBOT_WALK_SPEED * animator.humanScale / XBOT_HIP_HEIGHT;
         }
 
@@ -171,8 +178,9 @@ namespace PrimerVolante.Testing.Editor
 
         /// <summary>
         /// Crea o actualiza <c>NPC_Pedestrian.controller</c>: blend tree 1D por <c>Speed</c> (m/s) con Idle en 0
-        /// y Walking en la velocidad de referencia. Se conserva el asset (y su GUID) si ya existe.
-        /// Si faltan clips avisa y deja el controller creado sin movimientos.
+        /// y Walking a peso 1 desde <see cref="NPCPedestrianController.WalkBlendEndSpeed"/>; por encima solo cambia la
+        /// cadencia (Animator.speed). Un blend lento hasta la velocidad de referencia aplana el paso y los pies
+        /// resbalan. Se conserva el asset (y su GUID) si ya existe. Si faltan clips avisa y lo deja sin movimientos.
         /// </summary>
         public static AnimatorController CreateOrUpdateAnimatorController(float walkReferenceSpeed)
         {
@@ -196,7 +204,7 @@ namespace PrimerVolante.Testing.Editor
             }
 
             AnimatorStateMachine machine = controller.layers[0].stateMachine;
-            if (HasExpectedBlendTree(machine, idle, walking, walkReferenceSpeed))
+            if (HasExpectedBlendTree(machine, idle, walking))
             {
                 return controller;
             }
@@ -211,17 +219,18 @@ namespace PrimerVolante.Testing.Editor
             tree.blendParameter = NPCPedestrianController.SpeedParameter;
             tree.useAutomaticThresholds = false;
             tree.AddChild(idle, 0f);
-            tree.AddChild(walking, walkReferenceSpeed);
+            tree.AddChild(walking, NPCPedestrianController.WalkBlendEndSpeed);
 
             EditorUtility.SetDirty(controller);
-            Debug.Log($"[NPCPrefabSetup] 🎛️ Animator Controller listo: {CONTROLLER_PATH} (Walking en {walkReferenceSpeed:F2} m/s).");
+            Debug.Log($"[NPCPrefabSetup] 🎛️ Animator Controller listo: {CONTROLLER_PATH} " +
+                      $"(Walking a peso 1 desde {NPCPedestrianController.WalkBlendEndSpeed:F2} m/s; referencia de paso {walkReferenceSpeed:F2} m/s).");
             return controller;
         }
 
         /// <summary>
         /// true si el controller ya tiene el blend tree esperado (se evita reescribir el asset sin cambios).
         /// </summary>
-        private static bool HasExpectedBlendTree(AnimatorStateMachine machine, AnimationClip idle, AnimationClip walking, float walkReferenceSpeed)
+        private static bool HasExpectedBlendTree(AnimatorStateMachine machine, AnimationClip idle, AnimationClip walking)
         {
             ChildAnimatorState[] states = machine.states;
             if (states.Length != 1 || !(states[0].state.motion is BlendTree tree)) return false;
@@ -231,7 +240,7 @@ namespace PrimerVolante.Testing.Editor
                    tree.blendParameter == NPCPedestrianController.SpeedParameter &&
                    children.Length == 2 &&
                    children[0].motion == idle && Mathf.Approximately(children[0].threshold, 0f) &&
-                   children[1].motion == walking && Mathf.Approximately(children[1].threshold, walkReferenceSpeed);
+                   children[1].motion == walking && Mathf.Approximately(children[1].threshold, NPCPedestrianController.WalkBlendEndSpeed);
         }
 
         // ------------------------------------------------------------------ Vehículos

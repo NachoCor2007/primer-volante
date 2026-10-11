@@ -17,10 +17,16 @@ namespace PrimerVolante.Environment
 
         private static readonly int s_SpeedHash = Animator.StringToHash(SpeedParameter);
 
+        /// <summary>
+        /// Velocidad (m/s) a la que el blend tree llega al clip Walking a peso 1. Es el umbral del Walking en el
+        /// Animator Controller: por encima de ella solo se escala la cadencia, así el largo de paso es el del clip.
+        /// </summary>
+        public const float WalkBlendEndSpeed = 0.35f;
+
         [Header("Animación")]
-        [Tooltip("Velocidad (m/s) a la que el clip Walking no desliza los pies. Es el umbral del blend tree; " +
-                 "el default sale de escalar la medición de X Bot (1.79 m/s, cadera a 1.02 m) por la altura de cadera del personaje.")]
-        [SerializeField] private float m_WalkReferenceSpeed = 1.89f;
+        [Tooltip("Velocidad (m/s) del cuerpo con la que el clip Walking, reproducido a velocidad 1, no desliza los pies. " +
+                 "El setup la mide sobre el esqueleto del personaje (retroceso del pie en apoyo).")]
+        [SerializeField] private float m_WalkReferenceSpeed = 1.6f;
 
         [Tooltip("Tiempo de suavizado del parámetro Speed en segundos.")]
         [SerializeField] private float m_SpeedDampTime = 0.1f;
@@ -39,6 +45,9 @@ namespace PrimerVolante.Environment
 
         /// <summary>Velocidad de referencia del clip Walking en m/s.</summary>
         public float WalkReferenceSpeed => m_WalkReferenceSpeed;
+
+        /// <summary>Velocidad máxima del Animator (cadencia máxima respecto del clip).</summary>
+        public float MaxAnimatorSpeed => m_MaxAnimatorSpeed;
 
         /// <summary>Velocidad de crucero por defecto de un peatón en m/s.</summary>
         public const float DefaultCruiseSpeed = 1.4f;
@@ -96,15 +105,20 @@ namespace PrimerVolante.Environment
         }
 
         /// <summary>
-        /// Multiplicador de velocidad del Animator. Por debajo de la referencia el blend tree (Idle → Walking por
-        /// <c>Speed</c>) ya acorta el paso en proporción a la velocidad, así que el Animator va a 1: escalarlo
-        /// también compensaría dos veces y los pies patinarían. Por encima de la referencia el blend tree
-        /// satura en Walking y el cadencia se escala con velocidad / referencia.
+        /// Multiplicador de velocidad del Animator. Con el Walking a peso 1 (desde
+        /// <see cref="WalkBlendEndSpeed"/>) el largo de paso es fijo y para que el pie en apoyo vaya a la velocidad
+        /// del cuerpo la cadencia debe ser velocidad / referencia. Por debajo se interpola desde 1 (Idle a ritmo
+        /// normal en reposo) para que no haya saltos.
         /// </summary>
         public static float ComputeAnimatorSpeed(float speed, float referenceSpeed, float maxSpeed)
         {
-            if (referenceSpeed <= 0f || speed <= referenceSpeed) return 1f;
-            return Mathf.Min(speed / referenceSpeed, Mathf.Max(1f, maxSpeed));
+            if (referenceSpeed <= 0f) return 1f;
+
+            float cadence = speed / referenceSpeed;
+            if (speed >= WalkBlendEndSpeed) return Mathf.Min(cadence, Mathf.Max(1f, maxSpeed));
+
+            float atBlendEnd = WalkBlendEndSpeed / referenceSpeed;
+            return Mathf.Lerp(1f, atBlendEnd, Mathf.Max(0f, speed) / WalkBlendEndSpeed);
         }
     }
 }

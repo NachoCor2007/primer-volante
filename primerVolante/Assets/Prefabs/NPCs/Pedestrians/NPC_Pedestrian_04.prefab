@@ -223,7 +223,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: db69ac7a7fe4f00469e45a7afa631cf3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.NPCPedestrianController
-  m_WalkReferenceSpeed: 1.8902996
+  m_WalkReferenceSpeed: 1.5557727
   m_SpeedDampTime: 0.1
   m_MaxAnimatorSpeed: 2
   m_BodyCollider: {fileID: 3539024415669574168}
