@@ -38,6 +38,11 @@ namespace PrimerVolante.Environment
     /// </summary>
     public static class NPCPathMath
     {
+        // Fracción de la desaceleración máxima que se usa para detenerse justo en el final. Con el paso fijo
+        // la parábola sqrt(2·d·s) llega al final con v ≈ 2·d·dt; usando 0.4·d llega con v ≈ 0.8·d·dt ≤ d·dt,
+        // así el corte en seco al llegar no supera la desaceleración máxima.
+        private const float k_StopBrakingFactor = 0.4f;
+
         /// <summary>
         /// Velocidad máxima para tomar una curva de radio <paramref name="radius"/> sin superar la aceleración
         /// lateral: sqrt(aLat · R). Un radio infinito (o no positivo) no impone límite.
@@ -58,6 +63,15 @@ namespace PrimerVolante.Environment
             if (float.IsInfinity(speedAtPoint)) return float.PositiveInfinity;
             float s = Mathf.Max(0f, distanceAhead);
             return Mathf.Sqrt(speedAtPoint * speedAtPoint + 2f * Mathf.Max(0f, deceleration) * s);
+        }
+
+        /// <summary>
+        /// Velocidad máxima a <paramref name="remainingDistance"/> metros del final de la ruta para poder
+        /// detenerse justo en él respetando la desaceleración máxima.
+        /// </summary>
+        public static float StopSpeedLimit(float remainingDistance, float deceleration)
+        {
+            return ApproachSpeedLimit(0f, remainingDistance, deceleration * k_StopBrakingFactor);
         }
 
         /// <summary>
@@ -378,7 +392,7 @@ namespace PrimerVolante.Environment
             if (!loop)
             {
                 float remaining = m_PathLength - m_State.Distance;
-                target = Mathf.Min(target, NPCPathMath.ApproachSpeedLimit(0f, remaining, m_Deceleration));
+                target = Mathf.Min(target, NPCPathMath.StopSpeedLimit(remaining, m_Deceleration));
             }
 
             return target;
