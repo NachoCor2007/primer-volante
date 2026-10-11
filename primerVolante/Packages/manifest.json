@@ -8,6 +8,7 @@
     "com.unity.inputsystem": "1.20.0",
     "com.unity.pipeline": "0.6.0-exp.1",
     "com.unity.render-pipelines.universal": "17.6.0",
+    "com.unity.splines": "2.9.1",
     "com.unity.xr.androidxr-openxr": "1.4.0",
     "com.unity.xr.arfoundation": "6.6.2",
     "com.unity.xr.compositionlayers": "2.5.0",
