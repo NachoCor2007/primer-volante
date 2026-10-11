@@ -146,6 +146,8 @@ namespace PrimerVolante.Environment
         private float m_PathLength;
         private float m_WorldPerLocalLength = 1f;
         private float m_CurrentAcceleration;
+        private float m_CurrentYawRate;
+        private float m_LastYaw;
         private bool m_IsPlaying;
         private bool m_StopRequested;
         private bool m_ReportedEnd;
@@ -158,6 +160,9 @@ namespace PrimerVolante.Environment
 
         /// <summary>Aceleración longitudinal del último paso en m/s^2 (negativa al frenar).</summary>
         public float CurrentAcceleration => m_CurrentAcceleration;
+
+        /// <summary>Velocidad de giro (yaw) del último paso en rad/s; positiva al doblar a la derecha.</summary>
+        public float CurrentYawRate => m_CurrentYawRate;
 
         /// <summary>Distancia recorrida sobre la ruta en metros.</summary>
         public float DistanceTravelled => m_State.Distance;
@@ -276,10 +281,12 @@ namespace PrimerVolante.Environment
 
             m_State = new NPCPathState { Distance = clamped, Speed = 0f, Finished = false };
             m_CurrentAcceleration = 0f;
+            m_CurrentYawRate = 0f;
             m_ReportedEnd = false;
 
             if (EvaluatePose(clamped, out Vector3 position, out Quaternion rotation))
             {
+                m_LastYaw = rotation.eulerAngles.y;
                 transform.SetPositionAndRotation(position, rotation);
                 if (m_Rigidbody != null)
                 {
@@ -330,6 +337,10 @@ namespace PrimerVolante.Environment
             {
                 m_Rigidbody.MovePosition(position);
                 m_Rigidbody.MoveRotation(rotation);
+
+                float yaw = rotation.eulerAngles.y;
+                m_CurrentYawRate = Mathf.DeltaAngle(m_LastYaw, yaw) * Mathf.Deg2Rad / dt;
+                m_LastYaw = yaw;
             }
 
             if (m_State.Finished && !m_ReportedEnd)
