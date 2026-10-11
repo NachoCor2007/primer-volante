@@ -1,0 +1,218 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &2453922950601967356
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 298729231529558179, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 430742020645915014, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1544570392135278597, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2983034910216622958, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.017550256
+      objectReference: {fileID: 0}
+    - target: {fileID: 2983034910216622958, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0.023597572
+      objectReference: {fileID: 0}
+    - target: {fileID: 3648618523074886621, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: -0.017803177
+      objectReference: {fileID: 0}
+    - target: {fileID: 3648618523074886621, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.028444415
+      objectReference: {fileID: 0}
+    - target: {fileID: 5239617011661827921, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5305498741371849795, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5460708016456621143, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      propertyPath: m_Name
+      value: NPC_Pedestrian_01
+      objectReference: {fileID: 0}
+    - target: {fileID: 6646384575593286814, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      propertyPath: m_InitialSkinToneId
+      value: Medium
+      objectReference: {fileID: 0}
+    - target: {fileID: 8248280975362672374, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7015118
+      objectReference: {fileID: 0}
+    - target: {fileID: 8248280975362672374, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.6096098
+      objectReference: {fileID: 0}
+    - target: {fileID: 8751013249975212522, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8751013249975212522, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8751013249975212522, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8751013249975212522, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8751013249975212522, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8751013249975212522, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8751013249975212522, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8751013249975212522, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8751013249975212522, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8751013249975212522, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8931947830574443188, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: e50a8746d34fb5d4c8b0e7b8ce8658a1, type: 2}
+    - target: {fileID: 8931947830574443188, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      propertyPath: m_ApplyRootMotion
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 5460708016456621143, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3508479473044406422}
+    - targetCorrespondingSourceObject: {fileID: 5460708016456621143, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 274145519724538971}
+    - targetCorrespondingSourceObject: {fileID: 5460708016456621143, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8866753892630461736}
+    - targetCorrespondingSourceObject: {fileID: 5460708016456621143, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2090334545861421886}
+  m_SourcePrefab: {fileID: 100100000, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+--- !u!1 &7621850811790351019 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5460708016456621143, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+  m_PrefabInstance: {fileID: 2453922950601967356}
+  m_PrefabAsset: {fileID: 0}
+--- !u!54 &3508479473044406422
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7621850811790351019}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 0
+  m_IsKinematic: 1
+  m_Interpolate: 1
+  m_Constraints: 0
+  m_CollisionDetection: 0
+--- !u!114 &274145519724538971
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7621850811790351019}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: edc4e8dc36ee76d4d9decb744a79dcae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.NPCPathFollower
+  m_Path: {fileID: 0}
+  m_SplineIndex: 0
+  m_InitialDistance: 0
+  m_EndBehavior: 0
+  m_PlayOnStart: 1
+  m_CruiseSpeed: 1.4
+  m_Acceleration: 1
+  m_Deceleration: 2
+  m_MaxLateralAcceleration: 1.5
+--- !u!65 &8866753892630461736
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7621850811790351019}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.55, y: 1.8258177, z: 0.4}
+  m_Center: {x: 0, y: 0.91290885, z: 0}
+--- !u!114 &2090334545861421886
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7621850811790351019}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db69ac7a7fe4f00469e45a7afa631cf3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.NPCPedestrianController
+  m_WalkReferenceSpeed: 1.8902996
+  m_SpeedDampTime: 0.1
+  m_MinAnimatorSpeed: 0.6
+  m_MaxAnimatorSpeed: 2
+  m_BodyCollider: {fileID: 8866753892630461736}

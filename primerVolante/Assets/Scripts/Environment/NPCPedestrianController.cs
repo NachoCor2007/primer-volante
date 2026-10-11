@@ -1,3 +1,4 @@
+using PrimerVolante.Characters;
 using UnityEngine;
 
 namespace PrimerVolante.Environment
@@ -30,8 +31,14 @@ namespace PrimerVolante.Environment
         [Tooltip("Velocidad máxima del Animator (evita pasos frenéticos si el crucero supera mucho la referencia).")]
         [SerializeField] private float m_MaxAnimatorSpeed = 2f;
 
+        [Header("Colisión")]
+        [Tooltip("Único collider activo del peatón. Los de las piezas de la ropa (torso, gorra, lentes) se desactivan, " +
+                 "incluidos los que el UrbanManCustomizer instancia al iniciar.")]
+        [SerializeField] private Collider m_BodyCollider;
+
         private NPCPathFollower m_Follower;
         private Animator m_Animator;
+        private UrbanManCustomizer m_Customizer;
 
         /// <summary>Velocidad de referencia del clip Walking en m/s.</summary>
         public float WalkReferenceSpeed => m_WalkReferenceSpeed;
@@ -50,6 +57,36 @@ namespace PrimerVolante.Environment
             m_Follower = GetComponent<NPCPathFollower>();
             m_Animator = GetComponent<Animator>();
             m_Animator.applyRootMotion = false;
+            m_Customizer = GetComponent<UrbanManCustomizer>();
+        }
+
+        private void OnEnable()
+        {
+            if (m_Customizer != null) m_Customizer.Changed += DisablePartColliders;
+        }
+
+        private void OnDisable()
+        {
+            if (m_Customizer != null) m_Customizer.Changed -= DisablePartColliders;
+        }
+
+        private void Start()
+        {
+            DisablePartColliders();
+        }
+
+        /// <summary>
+        /// Deja activo solo <see cref="m_BodyCollider"/>: los colliders de las piezas (con tamaños de T-pose)
+        /// harían un compuesto que no cubre el cuerpo animado.
+        /// </summary>
+        private void DisablePartColliders()
+        {
+            if (m_BodyCollider == null) return;
+
+            foreach (Collider part in GetComponentsInChildren<Collider>(true))
+            {
+                if (part != m_BodyCollider) part.enabled = false;
+            }
         }
 
         private void Update()
