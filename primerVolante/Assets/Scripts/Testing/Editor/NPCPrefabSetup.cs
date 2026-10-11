@@ -196,6 +196,11 @@ namespace PrimerVolante.Testing.Editor
             }
 
             AnimatorStateMachine machine = controller.layers[0].stateMachine;
+            if (HasExpectedBlendTree(machine, idle, walking, walkReferenceSpeed))
+            {
+                return controller;
+            }
+
             foreach (ChildAnimatorState child in machine.states.ToArray())
             {
                 machine.RemoveState(child.state);
@@ -211,6 +216,22 @@ namespace PrimerVolante.Testing.Editor
             EditorUtility.SetDirty(controller);
             Debug.Log($"[NPCPrefabSetup] 🎛️ Animator Controller listo: {CONTROLLER_PATH} (Walking en {walkReferenceSpeed:F2} m/s).");
             return controller;
+        }
+
+        /// <summary>
+        /// true si el controller ya tiene el blend tree esperado (se evita reescribir el asset sin cambios).
+        /// </summary>
+        private static bool HasExpectedBlendTree(AnimatorStateMachine machine, AnimationClip idle, AnimationClip walking, float walkReferenceSpeed)
+        {
+            ChildAnimatorState[] states = machine.states;
+            if (states.Length != 1 || !(states[0].state.motion is BlendTree tree)) return false;
+
+            ChildMotion[] children = tree.children;
+            return tree.blendType == BlendTreeType.Simple1D &&
+                   tree.blendParameter == NPCPedestrianController.SpeedParameter &&
+                   children.Length == 2 &&
+                   children[0].motion == idle && Mathf.Approximately(children[0].threshold, 0f) &&
+                   children[1].motion == walking && Mathf.Approximately(children[1].threshold, walkReferenceSpeed);
         }
 
         // ------------------------------------------------------------------ Vehículos
