@@ -25,10 +25,7 @@ namespace PrimerVolante.Environment
         [Tooltip("Tiempo de suavizado del parámetro Speed en segundos.")]
         [SerializeField] private float m_SpeedDampTime = 0.1f;
 
-        [Tooltip("Velocidad mínima del Animator mientras camina (evita pasos en cámara lenta).")]
-        [SerializeField] private float m_MinAnimatorSpeed = 0.6f;
-
-        [Tooltip("Velocidad máxima del Animator (evita pasos frenéticos si el crucero supera mucho la referencia).")]
+        [Tooltip("Velocidad máxima del Animator cuando se camina más rápido que la referencia (evita pasos frenéticos).")]
         [SerializeField] private float m_MaxAnimatorSpeed = 2f;
 
         [Header("Colisión")]
@@ -95,17 +92,19 @@ namespace PrimerVolante.Environment
 
             float speed = m_Follower.CurrentSpeed;
             m_Animator.SetFloat(s_SpeedHash, speed, m_SpeedDampTime, Time.deltaTime);
-            m_Animator.speed = ComputeAnimatorSpeed(speed, m_WalkReferenceSpeed, m_MinAnimatorSpeed, m_MaxAnimatorSpeed);
+            m_Animator.speed = ComputeAnimatorSpeed(speed, m_WalkReferenceSpeed, m_MaxAnimatorSpeed);
         }
 
         /// <summary>
-        /// Multiplicador de velocidad del Animator: velocidad / referencia mientras camina (para que el paso
-        /// acompañe al desplazamiento), 1 cuando está parado (el Idle sigue a ritmo normal).
+        /// Multiplicador de velocidad del Animator. Por debajo de la referencia el blend tree (Idle → Walking por
+        /// <c>Speed</c>) ya acorta el paso en proporción a la velocidad, así que el Animator va a 1: escalarlo
+        /// también compensaría dos veces y los pies patinarían. Por encima de la referencia el blend tree
+        /// satura en Walking y el cadencia se escala con velocidad / referencia.
         /// </summary>
-        public static float ComputeAnimatorSpeed(float speed, float referenceSpeed, float minSpeed, float maxSpeed)
+        public static float ComputeAnimatorSpeed(float speed, float referenceSpeed, float maxSpeed)
         {
-            if (speed < 0.05f || referenceSpeed <= 0f) return 1f;
-            return Mathf.Clamp(speed / referenceSpeed, minSpeed, maxSpeed);
+            if (referenceSpeed <= 0f || speed <= referenceSpeed) return 1f;
+            return Mathf.Min(speed / referenceSpeed, Mathf.Max(1f, maxSpeed));
         }
     }
 }

@@ -311,10 +311,10 @@ namespace PrimerVolante.Testing.Editor
             controller.AutoAssignWheels();
 
             var so = new SerializedObject(follower);
-            so.FindProperty("m_CruiseSpeed").floatValue = 8f;
-            so.FindProperty("m_Acceleration").floatValue = 2.5f;
-            so.FindProperty("m_Deceleration").floatValue = 4f;
-            so.FindProperty("m_MaxLateralAcceleration").floatValue = 3f;
+            RequireProperty(so, "m_CruiseSpeed").floatValue = 8f;
+            RequireProperty(so, "m_Acceleration").floatValue = 2.5f;
+            RequireProperty(so, "m_Deceleration").floatValue = 4f;
+            RequireProperty(so, "m_MaxLateralAcceleration").floatValue = 3f;
             so.ApplyModifiedPropertiesWithoutUndo();
 
             EditorUtility.SetDirty(controller);
@@ -429,15 +429,15 @@ namespace PrimerVolante.Testing.Editor
 
             var pedestrian = GetOrAdd<NPCPedestrianController>(root);
             var pedestrianSo = new SerializedObject(pedestrian);
-            pedestrianSo.FindProperty("m_WalkReferenceSpeed").floatValue = walkReferenceSpeed;
-            pedestrianSo.FindProperty("m_BodyCollider").objectReferenceValue = box;
+            RequireProperty(pedestrianSo, "m_WalkReferenceSpeed").floatValue = walkReferenceSpeed;
+            RequireProperty(pedestrianSo, "m_BodyCollider").objectReferenceValue = box;
             pedestrianSo.ApplyModifiedPropertiesWithoutUndo();
 
             var followerSo = new SerializedObject(follower);
-            followerSo.FindProperty("m_CruiseSpeed").floatValue = NPCPedestrianController.DefaultCruiseSpeed;
-            followerSo.FindProperty("m_Acceleration").floatValue = 1f;
-            followerSo.FindProperty("m_Deceleration").floatValue = 2f;
-            followerSo.FindProperty("m_MaxLateralAcceleration").floatValue = 1.5f;
+            RequireProperty(followerSo, "m_CruiseSpeed").floatValue = NPCPedestrianController.DefaultCruiseSpeed;
+            RequireProperty(followerSo, "m_Acceleration").floatValue = 1f;
+            RequireProperty(followerSo, "m_Deceleration").floatValue = 2f;
+            RequireProperty(followerSo, "m_MaxLateralAcceleration").floatValue = 1.5f;
             followerSo.ApplyModifiedPropertiesWithoutUndo();
         }
 
@@ -483,6 +483,22 @@ namespace PrimerVolante.Testing.Editor
             body.isKinematic = true;
             body.useGravity = false;
             body.interpolation = RigidbodyInterpolation.Interpolate;
+        }
+
+        /// <summary>
+        /// Propiedad serializada por nombre; si no existe (por ejemplo porque se renombró el campo) falla con un
+        /// mensaje claro en lugar de una NullReferenceException a mitad del setup.
+        /// </summary>
+        public static SerializedProperty RequireProperty(SerializedObject serializedObject, string propertyName)
+        {
+            SerializedProperty property = serializedObject.FindProperty(propertyName);
+            if (property == null)
+            {
+                throw new System.InvalidOperationException(
+                    $"[NPCPrefabSetup] Falta el campo serializado '{propertyName}' en {serializedObject.targetObject.GetType().Name}: ¿se renombró?");
+            }
+
+            return property;
         }
 
         private static T GetOrAdd<T>(GameObject target) where T : Component

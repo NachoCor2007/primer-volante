@@ -287,11 +287,16 @@ namespace PrimerVolante.Testing.Editor
             Assert(Mathf.Approximately(limited, 35f), "Ángulo de dirección limitado a ±35°", ref total, ref passed);
             Assert(NPCVehicleController.ComputeSteerAngle(2.44f, 1f, 0f, 35f) == 0f, "Con v = 0 el ángulo inverso no está definido (se conserva el último)", ref total, ref passed);
 
-            float idleSpeed = NPCPedestrianController.ComputeAnimatorSpeed(0f, 1.89f, 0.6f, 2f);
-            float walkSpeed = NPCPedestrianController.ComputeAnimatorSpeed(1.89f, 1.89f, 0.6f, 2f);
-            float fastSpeed = NPCPedestrianController.ComputeAnimatorSpeed(5f, 1.89f, 0.6f, 2f);
-            Assert(Mathf.Approximately(idleSpeed, 1f) && Mathf.Approximately(walkSpeed, 1f) && Mathf.Approximately(fastSpeed, 2f),
-                "La velocidad del Animator sigue a v / referencia y queda acotada", ref total, ref passed);
+            // Por debajo de la referencia el blend tree ya acorta el paso: el Animator va a 1 (sin doble compensación).
+            float idleSpeed = NPCPedestrianController.ComputeAnimatorSpeed(0f, 1.89f, 2f);
+            float slowSpeed = NPCPedestrianController.ComputeAnimatorSpeed(1.4f, 1.89f, 2f);
+            float walkSpeed = NPCPedestrianController.ComputeAnimatorSpeed(1.89f, 1.89f, 2f);
+            float brisk = NPCPedestrianController.ComputeAnimatorSpeed(2.84f, 1.89f, 2f);
+            float fastSpeed = NPCPedestrianController.ComputeAnimatorSpeed(5f, 1.89f, 2f);
+            Assert(Mathf.Approximately(idleSpeed, 1f) && Mathf.Approximately(slowSpeed, 1f) && Mathf.Approximately(walkSpeed, 1f),
+                "Por debajo de la referencia el Animator va a velocidad 1 (el blend tree ya acorta el paso)", ref total, ref passed);
+            Assert(Mathf.Abs(brisk - 2.84f / 1.89f) < 1e-4f && Mathf.Approximately(fastSpeed, 2f),
+                "Por encima de la referencia el Animator sigue a v / referencia y queda acotado", ref total, ref passed);
         }
 
         // ---------------------------------------------------------------- Auto del jugador
@@ -353,6 +358,9 @@ namespace PrimerVolante.Testing.Editor
                 VehicleLightingController lighting = controllers[0];
 
                 var vehicle = prefab.GetComponent<VehicleController>();
+                Assert(vehicle != null, $"{label}: debe tener VehicleController", ref total, ref passed);
+                if (vehicle == null) continue;
+
                 var vehicleSo = new SerializedObject(vehicle);
                 Assert(vehicleSo.FindProperty("m_LightingController").objectReferenceValue == lighting,
                     $"{label}: VehicleController.m_LightingController apunta al único controlador", ref total, ref passed);
@@ -423,6 +431,16 @@ namespace PrimerVolante.Testing.Editor
 
                     var spline = follower.Path.Splines[0];
                     Assert(spline.Closed, $"{follower.name}: la ruta de la manzana debe ser una spline cerrada", ref total, ref passed);
+                }
+
+                // Peatones: la ruta no atraviesa colliders estáticos (farolas, bancos, árboles, vehículos).
+                var pedestrianProbe = new Vector3(0.3f, 0.75f, 0.3f);
+                foreach (NPCPathFollower follower in followers.Where(f => f.GetComponent<NPCPedestrianController>() != null))
+                {
+                    if (follower.Path == null) continue;
+                    List<GameObject> obstacles = NPCDemoRoutesSetup.FindRouteObstacles(follower.Path, pedestrianProbe, 1.1f);
+                    Assert(obstacles.Count == 0,
+                        $"{follower.name}: la ruta peatonal no atraviesa colliders (obstáculos: {string.Join(", ", obstacles.Select(o => o.name))})", ref total, ref passed);
                 }
             }
             finally

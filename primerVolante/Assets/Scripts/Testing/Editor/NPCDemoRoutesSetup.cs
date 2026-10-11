@@ -303,14 +303,15 @@ namespace PrimerVolante.Testing.Editor
             float localLength = spline.GetLength();
             if (worldLength <= 0f || localLength <= 0f) return samples;
 
-            float scale = worldLength / localLength;
+            float worldPerLocal = worldLength / localLength;
             for (float distance = 0f; distance < worldLength; distance += step)
             {
-                float t = spline.ConvertIndexUnit(distance / scale, PathIndexUnit.Distance, PathIndexUnit.Normalized);
-                container.Evaluate(splineIndex, t, out float3 position, out float3 tangent, out float3 _);
-                Vector3 flat = new Vector3(tangent.x, 0f, tangent.z);
-                Quaternion rotation = flat.sqrMagnitude > 1e-6f ? Quaternion.LookRotation(flat.normalized, Vector3.up) : Quaternion.identity;
-                samples.Add((position, rotation));
+                Vector3 position = default;
+                Quaternion rotation = Quaternion.identity;
+                if (NPCPathFollower.EvaluatePoseOnPath(container, splineIndex, worldPerLocal, distance, ref position, ref rotation))
+                {
+                    samples.Add((position, rotation));
+                }
             }
 
             return samples;
@@ -324,14 +325,23 @@ namespace PrimerVolante.Testing.Editor
         /// </summary>
         public static List<GameObject> FindRouteObstacles(SplineContainer route)
         {
+            return FindRouteObstacles(route, s_VehicleProbeHalfExtents, VEHICLE_PROBE_CENTER_Y);
+        }
+
+        /// <summary>
+        /// Igual que <see cref="FindRouteObstacles(SplineContainer)"/> con una caja de prueba a medida (por ejemplo
+        /// la de un peatón). <paramref name="centerHeight"/> es la altura del centro de la caja sobre la ruta.
+        /// </summary>
+        public static List<GameObject> FindRouteObstacles(SplineContainer route, Vector3 halfExtents, float centerHeight)
+        {
             var obstacles = new List<GameObject>();
             var seen = new HashSet<GameObject>();
 
             foreach (var (position, rotation) in SampleRoute(route, 0, 1f))
             {
                 Collider[] hits = Physics.OverlapBox(
-                    position + Vector3.up * VEHICLE_PROBE_CENTER_Y,
-                    s_VehicleProbeHalfExtents,
+                    position + Vector3.up * centerHeight,
+                    halfExtents,
                     rotation,
                     ~0,
                     QueryTriggerInteraction.Ignore);
@@ -388,11 +398,11 @@ namespace PrimerVolante.Testing.Editor
 
             var follower = instance.GetComponent<NPCPathFollower>();
             var so = new SerializedObject(follower);
-            so.FindProperty("m_Path").objectReferenceValue = route;
-            so.FindProperty("m_SplineIndex").intValue = 0;
-            so.FindProperty("m_EndBehavior").enumValueIndex = (int)NPCPathEndBehavior.Loop;
-            so.FindProperty("m_InitialDistance").floatValue = initialDistance;
-            so.FindProperty("m_PlayOnStart").boolValue = true;
+            NPCPrefabSetup.RequireProperty(so, "m_Path").objectReferenceValue = route;
+            NPCPrefabSetup.RequireProperty(so, "m_SplineIndex").intValue = 0;
+            NPCPrefabSetup.RequireProperty(so, "m_EndBehavior").enumValueIndex = (int)NPCPathEndBehavior.Loop;
+            NPCPrefabSetup.RequireProperty(so, "m_InitialDistance").floatValue = initialDistance;
+            NPCPrefabSetup.RequireProperty(so, "m_PlayOnStart").boolValue = true;
             so.ApplyModifiedPropertiesWithoutUndo();
 
             follower.SetPath(route, 0);

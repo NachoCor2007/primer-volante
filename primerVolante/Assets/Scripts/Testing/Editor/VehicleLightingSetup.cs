@@ -214,9 +214,14 @@ namespace PrimerVolante.Testing.Editor
         /// </summary>
         public static int RemoveDuplicateLightingObjects(GameObject carRoot)
         {
+            bool hasDuplicates = carRoot.GetComponents<VehicleLightingController>().Length > 1 ||
+                                 CountChildrenNamed(carRoot.transform, "Headlights_Front") > 1 ||
+                                 CountChildrenNamed(carRoot.transform, "Taillights_Rear") > 1;
+            if (!hasDuplicates) return 0;
+
             if (PrefabUtility.IsPartOfNonAssetPrefabInstance(carRoot))
             {
-                Debug.LogWarning($"[VehicleLightingSetup] ⚠️ {carRoot.name} es una instancia de prefab: no se pueden eliminar duplicados aquí. Limpiá el asset del prefab.");
+                Debug.LogWarning($"[VehicleLightingSetup] ⚠️ {carRoot.name} es una instancia de prefab con iluminación duplicada: no se pueden eliminar aquí. Limpiá el asset del prefab.");
                 return 0;
             }
 
@@ -245,13 +250,51 @@ namespace PrimerVolante.Testing.Editor
             }
 
             // 2. Grupos duplicados: se conserva el que usa el controlador conservado.
-            removed += RemoveDuplicateGroups(carRoot.transform, "Headlights_Front", keep, "m_FrontOuterHeadlights");
-            removed += RemoveDuplicateGroups(carRoot.transform, "Taillights_Rear", keep, "m_RearTailBrakeLights");
+            removed += RemoveDuplicateGroups(carRoot.transform, "Headlights_Front", keep);
+            removed += RemoveDuplicateGroups(carRoot.transform, "Taillights_Rear", keep);
 
             return removed;
         }
 
-        private static int RemoveDuplicateGroups(Transform carRoot, string groupName, VehicleLightingController keepController, string referenceProperty)
+        private static int CountChildrenNamed(Transform parent, string childName)
+        {
+            int count = 0;
+            foreach (Transform child in parent)
+            {
+                if (child.name == childName) count++;
+            }
+
+            return count;
+        }
+
+        /// <summary>
+        /// Cantidad de referencias a objetos (en cualquier campo serializado) que <paramref name="controller"/>
+        /// tiene hacia el interior de <paramref name="group"/>.
+        /// </summary>
+        private static int CountReferencesInto(VehicleLightingController controller, Transform group)
+        {
+            int count = 0;
+            var so = new SerializedObject(controller);
+            SerializedProperty iterator = so.GetIterator();
+            while (iterator.Next(true))
+            {
+                if (iterator.propertyType != SerializedPropertyType.ObjectReference) continue;
+
+                Object target = iterator.objectReferenceValue;
+                Transform targetTransform = target is Component component ? component.transform
+                    : target is GameObject gameObject ? gameObject.transform
+                    : null;
+                if (targetTransform != null && targetTransform.IsChildOf(group)) count++;
+            }
+
+            return count;
+        }
+
+        /// <summary>
+        /// Conserva el grupo al que más apunta el controlador conservado (el primero si hay empate) y elimina
+        /// los demás solo si el controlador no referencia nada dentro de ellos.
+        /// </summary>
+        private static int RemoveDuplicateGroups(Transform carRoot, string groupName, VehicleLightingController keepController)
         {
             var groups = new System.Collections.Generic.List<Transform>();
             foreach (Transform child in carRoot)
@@ -261,33 +304,29 @@ namespace PrimerVolante.Testing.Editor
 
             if (groups.Count <= 1) return 0;
 
-            Transform keep = groups[0];
+            var references = new int[groups.Count];
+            int keepIndex = 0;
             if (keepController != null)
             {
-                var so = new SerializedObject(keepController);
-                SerializedProperty array = so.FindProperty(referenceProperty);
-                if (array != null && array.isArray && array.arraySize > 0)
+                for (int i = 0; i < groups.Count; i++)
                 {
-                    var first = array.GetArrayElementAtIndex(0).objectReferenceValue as Component;
-                    if (first != null)
-                    {
-                        foreach (Transform group in groups)
-                        {
-                            if (first.transform.IsChildOf(group))
-                            {
-                                keep = group;
-                                break;
-                            }
-                        }
-                    }
+                    references[i] = CountReferencesInto(keepController, groups[i]);
+                    if (references[i] > references[keepIndex]) keepIndex = i;
                 }
             }
 
             int removed = 0;
-            foreach (Transform group in groups)
+            for (int i = 0; i < groups.Count; i++)
             {
-                if (group == keep) continue;
-                Object.DestroyImmediate(group.gameObject);
+                if (i == keepIndex) continue;
+
+                if (references[i] > 0)
+                {
+                    Debug.LogWarning($"[VehicleLightingSetup] ⚠️ {groupName} duplicado con {references[i]} referencia(s) del controlador: no se elimina.");
+                    continue;
+                }
+
+                Object.DestroyImmediate(groups[i].gameObject);
                 removed++;
             }
 

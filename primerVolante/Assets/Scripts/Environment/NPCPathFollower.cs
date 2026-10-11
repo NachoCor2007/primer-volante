@@ -232,7 +232,8 @@ namespace PrimerVolante.Environment
                 m_SplineIndex >= 0 && m_SplineIndex < m_Path.Splines.Count)
             {
                 RefreshPath();
-                if (EvaluatePose(m_InitialDistance, out Vector3 position, out Quaternion rotation))
+                if (EvaluatePose(m_InitialDistance, out Vector3 position, out Quaternion rotation) &&
+                    ((transform.position - position).sqrMagnitude > 1e-6f || Quaternion.Angle(transform.rotation, rotation) > 0.01f))
                 {
                     transform.SetPositionAndRotation(position, rotation);
                 }
@@ -323,8 +324,21 @@ namespace PrimerVolante.Environment
             rotation = transform.rotation;
             if (!HasPath) return false;
 
-            float t = DistanceToNormalized(distance);
-            if (!m_Path.Evaluate(m_SplineIndex, t, out float3 pos, out float3 tangent, out float3 _))
+            return EvaluatePoseOnPath(m_Path, m_SplineIndex, m_WorldPerLocalLength, distance, ref position, ref rotation);
+        }
+
+        /// <summary>
+        /// Posición (altura incluida) y yaw de la tangente proyectada en XZ de una ruta en la distancia de mundo
+        /// indicada. Es la misma convención que usa el follower: compartida para que las herramientas de Editor
+        /// no se desvíen de ella. <paramref name="rotation"/> conserva su valor si la tangente es vertical.
+        /// </summary>
+        public static bool EvaluatePoseOnPath(
+            SplineContainer container, int splineIndex, float worldPerLocalLength, float worldDistance,
+            ref Vector3 position, ref Quaternion rotation)
+        {
+            Spline spline = container.Splines[splineIndex];
+            float t = spline.ConvertIndexUnit(worldDistance / worldPerLocalLength, PathIndexUnit.Distance, PathIndexUnit.Normalized);
+            if (!container.Evaluate(splineIndex, t, out float3 pos, out float3 tangent, out float3 _))
             {
                 return false;
             }
