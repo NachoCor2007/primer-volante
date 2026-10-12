@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using PrimerVolante.Environment;
 using PrimerVolante.VR;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -76,6 +77,7 @@ namespace PrimerVolante.Testing.Editor
             VerifySceneRoadInstances(BARRIERS_SCENE_PATH, ref total, ref passed);
             VerifySceneRoadInstances(CAR_SCENE_PATH, ref total, ref passed);
             VerifyCarDetection(ref total, ref passed);
+            VerifyBarrierPrefab(ref total, ref passed);
 
             Debug.Log("=========================================================");
             Debug.Log($"🏁 RESULTADO FINAL: {passed}/{total} pruebas pasadas con éxito!");
@@ -414,6 +416,55 @@ namespace PrimerVolante.Testing.Editor
                     EditorSceneManager.ClosePreviewScene(preview);
                 }
             }
+        }
+
+        // ---------------------------------------------------------------- Prefab LessonBarrier
+
+        private static void VerifyBarrierPrefab(ref int total, ref int passed)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(LessonBoundarySetup.BARRIER_PREFAB_PATH);
+            Assert(prefab != null, "LessonBarrier.prefab debe existir", ref total, ref passed);
+            if (prefab == null) return;
+
+            var source = PrefabUtility.GetCorrespondingObjectFromSource(prefab);
+            Assert(PrefabUtility.GetPrefabAssetType(prefab) == PrefabAssetType.Variant &&
+                   source != null && AssetDatabase.GetAssetPath(source) == LessonBoundarySetup.FENCE_SOURCE_PATH,
+                "LessonBarrier: debe ser variante de la valla de control policial", ref total, ref passed);
+
+            var original = AssetDatabase.LoadAssetAtPath<GameObject>(LessonBoundarySetup.FENCE_SOURCE_PATH);
+            Assert(original != null && original.GetComponentsInChildren<Collider>(true).Length == 0,
+                "La valla original sigue sin collider (no se modifica)", ref total, ref passed);
+
+            var noFriction = AssetDatabase.LoadAssetAtPath<PhysicsMaterial>(LessonBoundarySetup.NO_FRICTION_PATH);
+            var solid = prefab.GetComponent<BoxCollider>();
+            Assert(solid != null && !solid.isTrigger && solid.size.z >= 0.4f - 0.001f,
+                $"LessonBarrier: BoxCollider sólido de espesor ≥ 0.4 m ({(solid != null ? solid.size.z.ToString("F2") : "sin collider")})",
+                ref total, ref passed);
+            Assert(solid != null && Mathf.Abs(solid.size.x - 3.6f) < 0.01f && Mathf.Abs(solid.size.y - 2.05f) < 0.01f,
+                "LessonBarrier: el sólido mide 3.6 × 2.05 m de frente", ref total, ref passed);
+            Assert(solid != null && solid.sharedMaterial == noFriction,
+                "LessonBarrier: el sólido usa el material sin fricción", ref total, ref passed);
+
+            var meshFilter = prefab.GetComponentInChildren<MeshFilter>(true);
+            Assert(solid != null && meshFilter != null &&
+                   Vector3.Distance(solid.center, prefab.transform.InverseTransformPoint(meshFilter.transform.TransformPoint(meshFilter.sharedMesh.bounds.center))) < 0.01f,
+                "LessonBarrier: el sólido está centrado en la malla", ref total, ref passed);
+
+            Transform alert = prefab.transform.Find(LessonBoundarySetup.ALERT_TRIGGER_NAME);
+            var trigger = alert != null ? alert.GetComponent<BoxCollider>() : null;
+            Assert(trigger != null && trigger.isTrigger && alert.GetComponent<LessonBarrier>() != null,
+                $"LessonBarrier: hijo {LessonBoundarySetup.ALERT_TRIGGER_NAME} con BoxCollider trigger y el script LessonBarrier",
+                ref total, ref passed);
+            Assert(solid != null && trigger != null && trigger.size.z >= solid.size.z + 0.8f - 0.001f &&
+                   Mathf.Abs(trigger.size.x - solid.size.x) < 0.01f,
+                "LessonBarrier: el trigger deja 0.4 m de aire a cada lado del sólido", ref total, ref passed);
+
+            Assert(prefab.GetComponentsInChildren<VehicleController>(true).Length == 0 &&
+                   prefab.GetComponentsInChildren<Rigidbody>(true).Length == 0,
+                "LessonBarrier: sin VehicleController ni Rigidbody", ref total, ref passed);
+
+            var renderer = prefab.GetComponentInChildren<MeshRenderer>(true);
+            Assert(renderer != null && renderer.enabled, "LessonBarrier: conserva su MeshRenderer visible", ref total, ref passed);
         }
 
         // ---------------------------------------------------------------- Helpers

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using PrimerVolante.Environment;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -26,6 +27,22 @@ namespace PrimerVolante.Testing.Editor
 
         /// <summary>Altura de los muros de cordón desde y = 0 (m).</summary>
         public const float WALL_HEIGHT = 2f;
+
+        public const string FENCE_SOURCE_PATH = "Assets/SimplePoly City - Low Poly Assets/Prefab/Props/Props_Traffic Control Barrier Fence.prefab";
+        public const string BARRIER_PREFAB_PATH = ENVIRONMENT_FOLDER + "/LessonBarrier.prefab";
+        public const string ALERT_TRIGGER_NAME = "AlertTrigger";
+
+        /// <summary>Ancho de la valla (eje X de la malla) en metros.</summary>
+        public const float BARRIER_WIDTH = 3.6f;
+
+        /// <summary>Alto del collider de la valla en metros.</summary>
+        public const float BARRIER_HEIGHT = 2.05f;
+
+        /// <summary>Espesor del collider sólido: la malla mide 0.2 m, el sólido 0.4 m para no ser atravesado.</summary>
+        public const float BARRIER_SOLID_THICKNESS = 0.4f;
+
+        /// <summary>Profundidad del trigger de aviso: el sólido más 0.4 m de aire a cada lado.</summary>
+        public const float BARRIER_ALERT_DEPTH = 1.2f;
 
         // Prefijos de las piezas con cordón; el resto (Road Tile*, Road Concrete Tile*, Road Sidewalk) es plano.
         private static readonly string[] s_CurbPrefixes =
@@ -240,6 +257,105 @@ namespace PrimerVolante.Testing.Editor
         {
             box.isTrigger = false;
             box.sharedMaterial = noFriction;
+        }
+
+        // ------------------------------------------------------------------ Parte B: prefab LessonBarrier
+
+        /// <summary>
+        /// Crea o actualiza <c>LessonBarrier.prefab</c>: variante de la valla de control policial con un
+        /// collider sólido grueso y un hijo trigger de aviso. La valla original no se modifica.
+        /// </summary>
+        [MenuItem("Tools/Primer Volante/Setup Lesson Barrier Prefab")]
+        public static void SetupLessonBarrierPrefab()
+        {
+            var source = AssetDatabase.LoadAssetAtPath<GameObject>(FENCE_SOURCE_PATH);
+            if (source == null)
+            {
+                Debug.LogError($"[LessonBoundarySetup] ❌ No se encontró la valla original en {FENCE_SOURCE_PATH}.");
+                return;
+            }
+
+            PhysicsMaterial noFriction = EnsureNoFrictionMaterial();
+            EnsureFolder(ENVIRONMENT_FOLDER);
+
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(BARRIER_PREFAB_PATH) == null)
+            {
+                CreateVariant(source, BARRIER_PREFAB_PATH);
+            }
+
+            GameObject root = PrefabUtility.LoadPrefabContents(BARRIER_PREFAB_PATH);
+            try
+            {
+                var filter = root.GetComponentInChildren<MeshFilter>(true);
+                if (filter == null || filter.sharedMesh == null)
+                {
+                    Debug.LogError("[LessonBoundarySetup] ❌ La valla no tiene malla; no se puede centrar el collider.");
+                    return;
+                }
+
+                // Centro de la malla en el espacio de la raíz.
+                Vector3 center = root.transform.InverseTransformPoint(filter.transform.TransformPoint(filter.sharedMesh.bounds.center));
+                center = new Vector3(Mathf.Round(center.x * 1000f) / 1000f, Mathf.Round(center.y * 1000f) / 1000f, Mathf.Round(center.z * 1000f) / 1000f);
+
+                // Sólido: frena físicamente al auto. Con 0.4 m de espesor y detección continua no se atraviesa.
+                var solid = GetOrAdd<BoxCollider>(root);
+                solid.isTrigger = false;
+                solid.center = center;
+                solid.size = new Vector3(BARRIER_WIDTH, BARRIER_HEIGHT, BARRIER_SOLID_THICKNESS);
+                solid.sharedMaterial = noFriction;
+
+                // Aviso: el mensaje de trigger de un collider estático llega al GameObject del collider, por eso
+                // el trigger y el script LessonBarrier van juntos en un hijo.
+                Transform alert = root.transform.Find(ALERT_TRIGGER_NAME);
+                if (alert == null)
+                {
+                    var go = new GameObject(ALERT_TRIGGER_NAME);
+                    go.transform.SetParent(root.transform, false);
+                    alert = go.transform;
+                }
+
+                alert.localPosition = Vector3.zero;
+                alert.localRotation = Quaternion.identity;
+                alert.localScale = Vector3.one;
+
+                var trigger = GetOrAdd<BoxCollider>(alert.gameObject);
+                trigger.isTrigger = true;
+                trigger.center = center;
+                trigger.size = new Vector3(BARRIER_WIDTH, BARRIER_HEIGHT, BARRIER_ALERT_DEPTH);
+
+                GetOrAdd<LessonBarrier>(alert.gameObject);
+
+                PrefabUtility.SaveAsPrefabAsset(root, BARRIER_PREFAB_PATH);
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            Debug.Log($"[LessonBoundarySetup] ✅ LessonBarrier.prefab listo en {BARRIER_PREFAB_PATH}.");
+        }
+
+        private static void CreateVariant(GameObject source, string outputPath)
+        {
+            // La instancia intermedia vive en una preview scene para no ensuciar la escena abierta.
+            Scene preview = EditorSceneManager.NewPreviewScene();
+            try
+            {
+                var instance = (GameObject)PrefabUtility.InstantiatePrefab(source, preview);
+                PrefabUtility.SaveAsPrefabAsset(instance, outputPath);
+            }
+            finally
+            {
+                EditorSceneManager.ClosePreviewScene(preview);
+            }
+        }
+
+        private static T GetOrAdd<T>(GameObject target) where T : Component
+        {
+            var component = target.GetComponent<T>();
+            return component != null ? component : target.AddComponent<T>();
         }
 
         // ------------------------------------------------------------------ Limpieza de overrides de escena
