@@ -440,11 +440,10 @@ namespace PrimerVolante.Environment
                     col.GetComponentInParent<NPCVehicleController>() != null ||
                     col.GetComponentInParent<NPCPathFollower>() != null;
 
-                // Verificar tag relevante como "Player" o "Vehicle"
+                // Verificar tag relevante como "Player"
                 bool hasRelevantTag =
                     HasMatchingTag(col.gameObject, "Player") ||
-                    HasMatchingTag(col.gameObject, "Vehicle") ||
-                    (col.transform.root != null && (HasMatchingTag(col.transform.root.gameObject, "Player") || HasMatchingTag(col.transform.root.gameObject, "Vehicle")));
+                    (col.transform.root != null && HasMatchingTag(col.transform.root.gameObject, "Player"));
 
                 if (!hasTrafficComponent && !hasRelevantTag)
                 {
@@ -466,14 +465,7 @@ namespace PrimerVolante.Environment
         private static bool HasMatchingTag(GameObject go, string tag)
         {
             if (go == null || string.IsNullOrEmpty(tag)) return false;
-            try
-            {
-                return go.CompareTag(tag);
-            }
-            catch
-            {
-                return false;
-            }
+            return string.Equals(go.tag, tag, StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
