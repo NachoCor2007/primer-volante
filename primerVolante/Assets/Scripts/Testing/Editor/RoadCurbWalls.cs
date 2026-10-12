@@ -39,8 +39,11 @@ namespace PrimerVolante.Testing.Editor
         public float Length;
         public float Thickness;
 
-        /// <summary>true si la caja está alineada con los ejes X/Z de la pieza (no necesita rotación).</summary>
-        public bool IsAxisAligned => Mathf.Abs(Normal.x) > 0.999f || Mathf.Abs(Normal.y) > 0.999f;
+        /// <summary>
+        /// true si la caja está alineada con los ejes X/Z de la pieza (no necesita rotación). El umbral es estricto
+        /// (≈ 0.26°): una caja de 20 m con 2.6° de desvío se corre ~0.9 m de la cara real en el extremo.
+        /// </summary>
+        public bool IsAxisAligned => Mathf.Abs(Normal.x) > 0.99999f || Mathf.Abs(Normal.y) > 0.99999f;
     }
 
     /// <summary>

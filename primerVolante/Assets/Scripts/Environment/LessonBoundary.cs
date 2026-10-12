@@ -279,29 +279,38 @@ namespace PrimerVolante.Environment
         }
 
         /// <summary>
-        /// Borra y recrea el contenedor <c>Barriers</c> con una instancia del prefab por valla. Las instancias
-        /// quedan guardadas en la escena (existen en el build sin regenerarse). Solo en el Editor y fuera de Play.
+        /// Igual que <see cref="TryRebuildBarriers"/>; es el punto de entrada del menú contextual.
         /// </summary>
         [ContextMenu("Reconstruir barreras")]
         public void RebuildBarriers()
+        {
+            TryRebuildBarriers();
+        }
+
+        /// <summary>
+        /// Borra y recrea el contenedor <c>Barriers</c> con una instancia del prefab por valla. Las instancias
+        /// quedan guardadas en la escena (existen en el build sin regenerarse). Solo en el Editor y fuera de Play.
+        /// Devuelve false (sin tocar nada) si no pudo reconstruir: Play Mode, falta el prefab o la spline no es válida.
+        /// </summary>
+        public bool TryRebuildBarriers()
         {
 #if UNITY_EDITOR
             if (Application.isPlaying)
             {
                 Debug.LogWarning("[LessonBoundary] ⚠️ Las barreras se reconstruyen en el Editor, fuera de Play Mode.");
-                return;
+                return false;
             }
 
             if (m_BarrierPrefab == null)
             {
                 Debug.LogWarning($"[LessonBoundary] ⚠️ {name}: falta asignar el prefab de valla (LessonBarrier).");
-                return;
+                return false;
             }
 
             if (!TryComputePoses(out List<BarrierPose> poses, out float splineLength))
             {
                 Debug.LogWarning($"[LessonBoundary] ⚠️ {name}: no hay una spline válida en el índice {m_SplineIndex}.");
-                return;
+                return false;
             }
 
             if (!Mathf.Approximately(transform.lossyScale.x, 1f) || !Mathf.Approximately(transform.lossyScale.y, 1f) ||
@@ -331,8 +340,10 @@ namespace PrimerVolante.Environment
 
             Undo.CollapseUndoOperations(undoGroup);
             Debug.Log($"[LessonBoundary] 🚧 {name}: {poses.Count} vallas sobre {splineLength:F1} m de spline.");
+            return true;
 #else
             Debug.LogWarning("[LessonBoundary] ⚠️ RebuildBarriers solo está disponible en el Editor.");
+            return false;
 #endif
         }
 
@@ -359,7 +370,14 @@ namespace PrimerVolante.Environment
             Gizmos.color = new Color(1f, 0.55f, 0.1f, 1f);
 
             // Rectángulo de cada valla (largo × alto × espesor del sólido), visible aunque el renderer esté oculto.
+            // Alto y espesor salen del collider sólido del prefab para que sigan al prefab si se redimensiona.
             var size = new Vector3(m_BarrierLength, 2.05f, 0.4f);
+            if (m_BarrierPrefab != null)
+            {
+                BoxCollider solid = m_BarrierPrefab.GetComponent<BoxCollider>();
+                if (solid != null) size = new Vector3(m_BarrierLength, solid.size.y, solid.size.z);
+            }
+
             foreach (BarrierPose pose in poses)
             {
                 Gizmos.matrix = Matrix4x4.TRS(pose.Position + Vector3.up * (size.y * 0.5f), pose.Rotation, Vector3.one);

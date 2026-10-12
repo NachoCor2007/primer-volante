@@ -823,17 +823,19 @@ namespace PrimerVolante.Testing.Editor
                 }
             }
 
+            bool menuFound;
             Application.logMessageReceived += OnLog;
             try
             {
-                EditorApplication.ExecuteMenuItem("Tools/Primer Volante/Run NPC Verification");
+                menuFound = EditorApplication.ExecuteMenuItem("Tools/Primer Volante/Run NPC Verification");
             }
             finally
             {
                 Application.logMessageReceived -= OnLog;
             }
 
-            Assert(suiteTotal > 0 && suitePassed == suiteTotal,
+            Assert(menuFound, "El MenuItem Run NPC Verification debe existir", ref total, ref passed);
+            Assert(menuFound && suiteTotal > 0 && suitePassed == suiteTotal,
                 $"NPCVerification (y las suites Cockpit, VehicleLighting, SoundIntegration y TurnSignal) sigue pasando ({suitePassed}/{suiteTotal})",
                 ref total, ref passed);
         }
@@ -929,7 +931,7 @@ namespace PrimerVolante.Testing.Editor
             }
 
             // Celda de inicio: la del Car08.
-            VehicleController car = Object.FindObjectsByType<VehicleController>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+            VehicleController car = Object.FindObjectsByType<VehicleController>(FindObjectsInactive.Include)
                 .FirstOrDefault(v => v.name == "Car08");
             if (car == null)
             {

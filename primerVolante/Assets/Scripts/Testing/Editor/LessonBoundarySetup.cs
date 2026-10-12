@@ -211,7 +211,7 @@ namespace PrimerVolante.Testing.Editor
                     BoxCollider box = boxIndex < boxes.Count ? boxes[boxIndex] : curb.gameObject.AddComponent<BoxCollider>();
                     boxIndex++;
 
-                    bool alongZ = Mathf.Abs(wall.Normal.x) > 0.999f;
+                    bool alongZ = Mathf.Abs(wall.Normal.x) > Mathf.Abs(wall.Normal.y);
                     box.center = new Vector3(wall.Center.x, WALL_HEIGHT * 0.5f, wall.Center.y);
                     box.size = alongZ
                         ? new Vector3(wall.Thickness, WALL_HEIGHT, wall.Length)
@@ -432,7 +432,11 @@ namespace PrimerVolante.Testing.Editor
             so.FindProperty("m_AlertCooldownSeconds").floatValue = 1f;
             so.ApplyModifiedPropertiesWithoutUndo();
 
-            boundary.RebuildBarriers();
+            if (!boundary.TryRebuildBarriers())
+            {
+                Debug.LogError("[LessonBoundarySetup] ❌ No se pudieron generar las vallas (¿Play Mode, prefab o spline inválidos?). La escena no se guardó.");
+                return;
+            }
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
