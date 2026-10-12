@@ -37,7 +37,7 @@ namespace PrimerVolante.Testing.Editor
     public static class VehicleAudioPlaceholderGenerator
     {
         public const string AUDIO_FOLDER = "Assets/Audio/Vehicle";
-        private const int SAMPLE_RATE = 44100;
+        internal const int SAMPLE_RATE = 44100;
 
         private static readonly string[] s_LoopFiles =
         {
@@ -138,7 +138,7 @@ namespace PrimerVolante.Testing.Editor
             return 1;
         }
 
-        private static void Normalize(float[] s, float peak)
+        internal static void Normalize(float[] s, float peak)
         {
             float max = 1e-6f;
             for (int i = 0; i < s.Length; i++) max = Mathf.Max(max, Mathf.Abs(s[i]));
@@ -146,7 +146,7 @@ namespace PrimerVolante.Testing.Editor
             for (int i = 0; i < s.Length; i++) s[i] *= g;
         }
 
-        private static void WriteWav16(string path, float[] samples)
+        internal static void WriteWav16(string path, float[] samples)
         {
             using (var fs = new FileStream(path, FileMode.Create, FileAccess.Write))
             using (var w = new BinaryWriter(fs))
@@ -179,7 +179,7 @@ namespace PrimerVolante.Testing.Editor
         private static float Tri(float x) => Mathf.Clamp01(x);
 
         /// <summary>Filtro pasa-bajos de un polo, in-place.</summary>
-        private static void LowPass(float[] s, float cutoffHz)
+        internal static void LowPass(float[] s, float cutoffHz)
         {
             float a = 1f - Mathf.Exp(-2f * Mathf.PI * cutoffHz / SAMPLE_RATE);
             float y = 0f;
@@ -212,7 +212,7 @@ namespace PrimerVolante.Testing.Editor
             return Mathf.Sin(2f * Mathf.PI * freq * t) * Mathf.Exp(-t / decay);
         }
 
-        private static void AddClick(float[] buf, float startSec, float freq, float decay, float amp, System.Random r)
+        internal static void AddClick(float[] buf, float startSec, float freq, float decay, float amp, System.Random r)
         {
             int start = Mathf.RoundToInt(startSec * SAMPLE_RATE);
             int len = Mathf.Min(buf.Length - start, Mathf.RoundToInt(decay * 8f * SAMPLE_RATE));
