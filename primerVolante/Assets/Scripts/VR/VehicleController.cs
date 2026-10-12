@@ -67,11 +67,14 @@ namespace PrimerVolante.VR
         [Tooltip("Componente de volante VR para dirección.")]
         [SerializeField] private VRSteeringWheel m_SteeringWheel;
 
-        [Tooltip("Velocidad máxima de giro de la carrocería en grados por segundo.")]
-        [SerializeField] private float m_MaxTurnSpeed = 45f;
+        [Tooltip("Distancia entre ejes en metros (modelo de bicicleta).")]
+        [SerializeField] private float m_WheelBase = 2.86f;
 
-        [Tooltip("Si se activa, el coche solo gira si tiene velocidad de avance.")]
-        [SerializeField] private bool m_ScaleTurnWithSpeed = true;
+        [Tooltip("Ángulo máximo de las ruedas delanteras en grados con el volante a fondo. Define el radio de giro mínimo (L / tan(δ)).")]
+        [SerializeField] private float m_MaxSteerAngle = 30f;
+
+        [Tooltip("Aceleración lateral máxima en m/s^2. Limita la velocidad de giro a alta velocidad para que no sea irreal.")]
+        [SerializeField] private float m_MaxLateralAcceleration = 6f;
 
         [Header("Palanca de Cambios")]
         [Tooltip("Palanca de cambios VR (se autodetecta si es hijo del coche).")]
@@ -394,6 +397,14 @@ namespace PrimerVolante.VR
             ConfigurePhysicsAndColliders();
         }
 
+        private void Start()
+        {
+            // Algunos hijos crean colliders en su propio Awake (p. ej. las zonas de agarre del retrovisor,
+            // con orden de ejecución posterior). Si no se ignoran contra la carrocería, esos cuerpos cinemáticos
+            // quedan incrustados en el BoxCollider del auto y lo inmovilizan. En Start ya corrieron todos los Awake.
+            IgnoreInternalChildCollisions();
+        }
+
         [ContextMenu("Reconfigurar Físicas y Collider Ahora")]
         public void ConfigurePhysicsAndColliders()
         {
@@ -404,6 +415,9 @@ namespace PrimerVolante.VR
                 m_Rigidbody.isKinematic = false;
                 m_Rigidbody.useGravity = true;
                 m_Rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
+                // Detección continua contra colliders estáticos: a 60 km/h el auto avanza ~0.33 m por paso y
+                // con detección Discrete podría atravesar muros y vallas delgadas.
+                m_Rigidbody.collisionDetectionMode = CollisionDetectionMode.Continuous;
                 m_Rigidbody.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
             }
 
@@ -738,8 +752,8 @@ namespace PrimerVolante.VR
                 {
                     // Si va en reversa, la rotación global se invierte visualmente
                     float directionSign = (m_CurrentGear == GearState.Reverse) ? -1f : 1f;
-                    float speedFactor = m_ScaleTurnWithSpeed ? Mathf.Clamp01(m_CurrentSpeedMs / maxSpeedMs) : 1f;
-                    float turnAmount = m_MaxTurnSpeed * steeringValue * speedFactor * directionSign * Time.fixedDeltaTime;
+                    float yawRate = ComputeYawRate(m_CurrentSpeedMs, steeringValue, m_MaxSteerAngle, m_WheelBase, m_MaxLateralAcceleration);
+                    float turnAmount = yawRate * Mathf.Rad2Deg * directionSign * Time.fixedDeltaTime;
 
                     Quaternion turnRotation = Quaternion.Euler(0f, turnAmount, 0f);
                     m_Rigidbody.MoveRotation(m_Rigidbody.rotation * turnRotation);
@@ -764,6 +778,26 @@ namespace PrimerVolante.VR
                     m_Rigidbody.linearVelocity = new Vector3(forwardVel.x, currentVel.y, forwardVel.z);
                 }
             }
+        }
+
+        /// <summary>
+        /// Velocidad de yaw (rad/s) del modelo de bicicleta: ω = v · tan(δ) / L, con δ = steering · maxSteerAngle,
+        /// limitada a |ω| ≤ aLat / v. El signo sigue al del volante (positivo = giro a la derecha).
+        /// </summary>
+        /// <param name="speedMs">Velocidad longitudinal en m/s (≥ 0).</param>
+        /// <param name="steering">Valor del volante normalizado (-1 a 1).</param>
+        /// <param name="maxSteerAngleDeg">Ángulo máximo de las ruedas delanteras en grados.</param>
+        /// <param name="wheelBase">Distancia entre ejes en metros.</param>
+        /// <param name="maxLateralAcceleration">Aceleración lateral máxima en m/s^2.</param>
+        public static float ComputeYawRate(float speedMs, float steering, float maxSteerAngleDeg, float wheelBase, float maxLateralAcceleration)
+        {
+            if (speedMs <= 0f || wheelBase <= 0f) return 0f;
+
+            float steerAngle = Mathf.Clamp(steering, -1f, 1f) * maxSteerAngleDeg * Mathf.Deg2Rad;
+            float yawRate = speedMs * Mathf.Tan(steerAngle) / wheelBase;
+
+            float maxYawRate = maxLateralAcceleration / speedMs;
+            return Mathf.Clamp(yawRate, -maxYawRate, maxYawRate);
         }
 
         private float ReadTriggerValue(InputActionProperty property, InputAction defaultAction, XRNode handNode)

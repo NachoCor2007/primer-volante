@@ -118,11 +118,21 @@ namespace PrimerVolante.Testing.Editor
         [MenuItem("Tools/Primer Volante/Setup Mirrors in Car07 Prefab")]
         public static void SetupMirrorsInPrefab()
         {
-            Debug.Log($"[VehicleMirrorSetupEditor] 📦 Configurando sistema de espejos en Prefab: {PREFAB_CAR07_PATH}...");
-            GameObject prefabRoot = PrefabUtility.LoadPrefabContents(PREFAB_CAR07_PATH);
+            SetupMirrorsInSpecificPrefab(PREFAB_CAR07_PATH);
+            string car08Path = PREFAB_CAR07_PATH.Replace("Car07", "Car08");
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(car08Path) != null)
+            {
+                SetupMirrorsInSpecificPrefab(car08Path);
+            }
+        }
+
+        public static void SetupMirrorsInSpecificPrefab(string prefabPath)
+        {
+            Debug.Log($"[VehicleMirrorSetupEditor] 📦 Configurando sistema de espejos en Prefab: {prefabPath}...");
+            GameObject prefabRoot = PrefabUtility.LoadPrefabContents(prefabPath);
             if (prefabRoot == null)
             {
-                Debug.LogError($"[VehicleMirrorSetupEditor] ❌ No se pudo cargar el Prefab en {PREFAB_CAR07_PATH}");
+                Debug.LogError($"[VehicleMirrorSetupEditor] ❌ No se pudo cargar el Prefab en {prefabPath}");
                 return;
             }
 
@@ -132,14 +142,14 @@ namespace PrimerVolante.Testing.Editor
                 PurgeDuplicateMirrorsInHierarchy(prefabRoot.transform);
 
                 ConfigureMirrorsOnCar(prefabRoot);
-                PrefabUtility.SaveAsPrefabAsset(prefabRoot, PREFAB_CAR07_PATH, out bool success);
+                PrefabUtility.SaveAsPrefabAsset(prefabRoot, prefabPath, out bool success);
                 if (success)
                 {
-                    Debug.Log($"[VehicleMirrorSetupEditor] ✅ ¡Sistema de espejos guardado exitosamente en {PREFAB_CAR07_PATH}!");
+                    Debug.Log($"[VehicleMirrorSetupEditor] ✅ ¡Sistema de espejos guardado exitosamente en {prefabPath}!");
                 }
                 else
                 {
-                    Debug.LogError($"[VehicleMirrorSetupEditor] ❌ Falló el guardado del Prefab en {PREFAB_CAR07_PATH}");
+                    Debug.LogError($"[VehicleMirrorSetupEditor] ❌ Falló el guardado del Prefab en {prefabPath}");
                 }
             }
             finally
@@ -349,12 +359,26 @@ namespace PrimerVolante.Testing.Editor
             rb.isKinematic = true;
             rb.useGravity = false;
 
-            // BoxCollider para agarre en VR
-            BoxCollider grabCol = casingObj.AddComponent<BoxCollider>();
-            grabCol.center = Vector3.zero;
-            grabCol.size = new Vector3(0.22f, 0.065f, 0.04f);
+            // Zonas de agarre laterales (BoxColliders en los extremos izquierdo y derecho; zona media vacía para el pivote)
+            GameObject leftGrabObj = new GameObject("GrabZone_Left");
+            leftGrabObj.transform.SetParent(casingObj.transform, false);
+            leftGrabObj.transform.localPosition = new Vector3(-0.075f, 0f, 0f);
+            leftGrabObj.transform.localRotation = Quaternion.identity;
+            BoxCollider leftGrabCol = leftGrabObj.AddComponent<BoxCollider>();
+            leftGrabCol.center = Vector3.zero;
+            leftGrabCol.size = new Vector3(0.07f, 0.065f, 0.045f);
+            leftGrabCol.isTrigger = false;
 
-            // XRGrabInteractable sin traslación ni rotación física libre
+            GameObject rightGrabObj = new GameObject("GrabZone_Right");
+            rightGrabObj.transform.SetParent(casingObj.transform, false);
+            rightGrabObj.transform.localPosition = new Vector3(0.075f, 0f, 0f);
+            rightGrabObj.transform.localRotation = Quaternion.identity;
+            BoxCollider rightGrabCol = rightGrabObj.AddComponent<BoxCollider>();
+            rightGrabCol.center = Vector3.zero;
+            rightGrabCol.size = new Vector3(0.07f, 0.065f, 0.045f);
+            rightGrabCol.isTrigger = false;
+
+            // XRGrabInteractable sin traslación ni rotación física libre, anclado al vehículo
             XRGrabInteractable grab = casingObj.AddComponent<XRGrabInteractable>();
             grab.trackPosition = false;
             grab.trackRotation = false;
@@ -362,6 +386,10 @@ namespace PrimerVolante.Testing.Editor
             grab.throwOnDetach = false;
             grab.forceGravityOnDetach = false;
             grab.retainTransformParent = true;
+            grab.unparentTransformOnGrab = false;
+            grab.colliders.Clear();
+            grab.colliders.Add(leftGrabCol);
+            grab.colliders.Add(rightGrabCol);
 
             // Malla visual de la carcasa que cubre con precisión el retrovisor estático original
             GameObject casingMesh = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -420,6 +448,8 @@ namespace PrimerVolante.Testing.Editor
             soMirror.FindProperty("m_PivotTransform").objectReferenceValue = casingObj.transform;
             soMirror.FindProperty("m_MountTransform").objectReferenceValue = mountObj.transform;
             soMirror.FindProperty("m_RearviewCameraTransform").objectReferenceValue = camObj.transform;
+            soMirror.FindProperty("m_LeftGrabCollider").objectReferenceValue = leftGrabCol;
+            soMirror.FindProperty("m_RightGrabCollider").objectReferenceValue = rightGrabCol;
             soMirror.FindProperty("m_MinYaw").floatValue = -30f;
             soMirror.FindProperty("m_MaxYaw").floatValue = 30f;
             soMirror.FindProperty("m_MinPitch").floatValue = -20f;

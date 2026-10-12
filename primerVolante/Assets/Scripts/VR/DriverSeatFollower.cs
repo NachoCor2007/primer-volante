@@ -5,9 +5,13 @@ namespace PrimerVolante.VR
 {
     /// <summary>
     /// Sincroniza la posición y rotación del XROrigin con el asiento del conductor (DriverSeat).
-    /// Ejecución prioritaria (ExecutionOrder = 50) para que ocurra ANTES del procesamiento de scripts de cabina.
+    /// Ejecución prioritaria (ExecutionOrder = -300) para que ocurra ANTES del XRInteractionManager (-105)
+    /// y de los scripts de cabina. Con el auto en movimiento, si el XROrigin se reposiciona después de que
+    /// el XRInteractionManager detecta hover/select, las manos quedan un frame atrasadas respecto de los
+    /// interactuables del vehículo (desfase = velocidad × deltaTime) y los colliders chicos, como los del
+    /// retrovisor, dejan de poder agarrarse.
     /// </summary>
-    [DefaultExecutionOrder(50)]
+    [DefaultExecutionOrder(-300)]
     public class DriverSeatFollower : MonoBehaviour
     {
         [Header("Referencias de Asiento")]
