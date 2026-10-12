@@ -60482,6 +60482,22 @@ PrefabInstance:
       propertyPath: m_Name
       value: SpeedLimitSignWithEvaluationZone
       objectReference: {fileID: 0}
+    - target: {fileID: 4187651399261279873, guid: e82212efee40ce146b0b5a124351f764, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -1.31
+      objectReference: {fileID: 0}
+    - target: {fileID: 4187651399261279873, guid: e82212efee40ce146b0b5a124351f764, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0.93
+      objectReference: {fileID: 0}
+    - target: {fileID: 5305940842596333893, guid: e82212efee40ce146b0b5a124351f764, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -1.31
+      objectReference: {fileID: 0}
+    - target: {fileID: 5305940842596333893, guid: e82212efee40ce146b0b5a124351f764, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0.89
+      objectReference: {fileID: 0}
     - target: {fileID: 5466821278410580078, guid: e82212efee40ce146b0b5a124351f764, type: 3}
       propertyPath: m_LocalPosition.x
       value: 72
