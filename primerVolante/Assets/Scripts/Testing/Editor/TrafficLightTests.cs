@@ -202,33 +202,74 @@ namespace PrimerVolante.Testing.Editor
                 GameObject redObj = new GameObject("Red");
                 redObj.transform.SetParent(go.transform);
                 Light redLight = redObj.AddComponent<Light>();
+                MeshRenderer redLens = redObj.AddComponent<MeshRenderer>();
 
                 GameObject yellowObj = new GameObject("Yellow");
                 yellowObj.transform.SetParent(go.transform);
                 Light yellowLight = yellowObj.AddComponent<Light>();
+                MeshRenderer yellowLens = yellowObj.AddComponent<MeshRenderer>();
 
                 GameObject greenObj = new GameObject("Green");
                 greenObj.transform.SetParent(go.transform);
                 Light greenLight = greenObj.AddComponent<Light>();
+                MeshRenderer greenLens = greenObj.AddComponent<MeshRenderer>();
 
                 controller.RedLight = redLight;
                 controller.YellowLight = yellowLight;
                 controller.GreenLight = greenLight;
+
+                controller.RedLensRenderer = redLens;
+                controller.YellowLensRenderer = yellowLens;
+                controller.GreenLensRenderer = greenLens;
+
+                MaterialPropertyBlock redPb = new MaterialPropertyBlock();
+                MaterialPropertyBlock yellowPb = new MaterialPropertyBlock();
+                MaterialPropertyBlock greenPb = new MaterialPropertyBlock();
 
                 // Estado Red
                 controller.SetState(TrafficLightState.Red);
                 Assert(redLight.enabled && !yellowLight.enabled && !greenLight.enabled,
                     "En estado Red: luz roja encendida, amarilla y verde apagadas", ref total, ref passed);
 
+                redLens.GetPropertyBlock(redPb);
+                yellowLens.GetPropertyBlock(yellowPb);
+                greenLens.GetPropertyBlock(greenPb);
+                Assert(redPb.GetColor("_BaseColor") == controller.RedActiveColor,
+                    "En estado Red: lente roja tiene color activo vívido", ref total, ref passed);
+                Assert(yellowPb.GetColor("_BaseColor") == controller.YellowDimmedColor,
+                    "En estado Red: lente amarilla tiene color atenuado/oscuro", ref total, ref passed);
+                Assert(greenPb.GetColor("_BaseColor") == controller.GreenDimmedColor,
+                    "En estado Red: lente verde tiene color atenuado/oscuro", ref total, ref passed);
+
                 // Estado Yellow
                 controller.SetState(TrafficLightState.Yellow);
                 Assert(!redLight.enabled && yellowLight.enabled && !greenLight.enabled,
                     "En estado Yellow: luz amarilla encendida, roja y verde apagadas", ref total, ref passed);
 
+                redLens.GetPropertyBlock(redPb);
+                yellowLens.GetPropertyBlock(yellowPb);
+                greenLens.GetPropertyBlock(greenPb);
+                Assert(redPb.GetColor("_BaseColor") == controller.RedDimmedColor,
+                    "En estado Yellow: lente roja tiene color atenuado/oscuro", ref total, ref passed);
+                Assert(yellowPb.GetColor("_BaseColor") == controller.YellowActiveColor,
+                    "En estado Yellow: lente amarilla tiene color activo vívido", ref total, ref passed);
+                Assert(greenPb.GetColor("_BaseColor") == controller.GreenDimmedColor,
+                    "En estado Yellow: lente verde tiene color atenuado/oscuro", ref total, ref passed);
+
                 // Estado Green
                 controller.SetState(TrafficLightState.Green);
                 Assert(!redLight.enabled && !yellowLight.enabled && greenLight.enabled,
                     "En estado Green: luz verde encendida, roja y amarilla apagadas", ref total, ref passed);
+
+                redLens.GetPropertyBlock(redPb);
+                yellowLens.GetPropertyBlock(yellowPb);
+                greenLens.GetPropertyBlock(greenPb);
+                Assert(redPb.GetColor("_BaseColor") == controller.RedDimmedColor,
+                    "En estado Green: lente roja tiene color atenuado/oscuro", ref total, ref passed);
+                Assert(yellowPb.GetColor("_BaseColor") == controller.YellowDimmedColor,
+                    "En estado Green: lente amarilla tiene color atenuado/oscuro", ref total, ref passed);
+                Assert(greenPb.GetColor("_BaseColor") == controller.GreenActiveColor,
+                    "En estado Green: lente verde tiene color activo vívido", ref total, ref passed);
             }
             finally
             {
@@ -262,11 +303,15 @@ namespace PrimerVolante.Testing.Editor
             Assert(controller.YellowLight != null, $"{prefabName} tiene referencia asignada a YellowLight", ref total, ref passed);
             Assert(controller.GreenLight != null, $"{prefabName} tiene referencia asignada a GreenLight", ref total, ref passed);
 
+            Assert(controller.RedLensRenderer != null, $"{prefabName} tiene referencia asignada a RedLensRenderer", ref total, ref passed);
+            Assert(controller.YellowLensRenderer != null, $"{prefabName} tiene referencia asignada a YellowLensRenderer", ref total, ref passed);
+            Assert(controller.GreenLensRenderer != null, $"{prefabName} tiene referencia asignada a GreenLensRenderer", ref total, ref passed);
+
             if (controller.RedLight != null)
             {
                 Assert(controller.RedLight.type == LightType.Point, $"{prefabName} RedLight es Point Light", ref total, ref passed);
-                Assert(controller.RedLight.range > 0f && controller.RedLight.intensity > 0f,
-                    $"{prefabName} RedLight tiene rango e intensidad válidos (> 0)", ref total, ref passed);
+                Assert(controller.RedLight.range >= 6.0f && controller.RedLight.intensity >= 6.0f,
+                    $"{prefabName} RedLight tiene rango e intensidad para exteriores (>= 6)", ref total, ref passed);
             }
 
             if (controller.YellowLight != null)

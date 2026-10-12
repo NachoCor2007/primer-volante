@@ -50,6 +50,35 @@ namespace PrimerVolante.Environment
         [Tooltip("Luz Point/Spot correspondiente al foco verde.")]
         [SerializeField] private Light m_GreenLight;
 
+        [Header("Lentes Visuales de Focos")]
+        [Tooltip("Renderer de la lente física para el foco rojo.")]
+        [SerializeField] private MeshRenderer m_RedLensRenderer;
+
+        [Tooltip("Renderer de la lente física para el foco amarillo.")]
+        [SerializeField] private MeshRenderer m_YellowLensRenderer;
+
+        [Tooltip("Renderer de la lente física para el foco verde.")]
+        [SerializeField] private MeshRenderer m_GreenLensRenderer;
+
+        [Header("Colores de Lentes (Activo vs Atenuado)")]
+        [Tooltip("Color HDR vívido para la lente roja activa.")]
+        [SerializeField] private Color m_RedActiveColor = new Color(1.5f, 0.15f, 0.15f, 1f);
+
+        [Tooltip("Color atenuado/apagado para la lente roja inactiva.")]
+        [SerializeField] private Color m_RedDimmedColor = new Color(0.18f, 0.03f, 0.03f, 1f);
+
+        [Tooltip("Color HDR vívido para la lente amarilla activa.")]
+        [SerializeField] private Color m_YellowActiveColor = new Color(1.5f, 1.125f, 0.075f, 1f);
+
+        [Tooltip("Color atenuado/apagado para la lente amarilla inactiva.")]
+        [SerializeField] private Color m_YellowDimmedColor = new Color(0.18f, 0.13f, 0.01f, 1f);
+
+        [Tooltip("Color HDR vívido para la lente verde activa.")]
+        [SerializeField] private Color m_GreenActiveColor = new Color(0.15f, 1.5f, 0.525f, 1f);
+
+        [Tooltip("Color atenuado/apagado para la lente verde inactiva.")]
+        [SerializeField] private Color m_GreenDimmedColor = new Color(0.01f, 0.18f, 0.05f, 1f);
+
         [Header("Emisividad de Materiales (Opcional)")]
         [Tooltip("Renderer objetivo para aplicar color emisivo.")]
         [SerializeField] private Renderer m_EmissiveRenderer;
@@ -81,6 +110,7 @@ namespace PrimerVolante.Environment
         private bool m_IsCycleActive = false;
         private bool m_IsPaused = false;
         private MaterialPropertyBlock m_PropertyBlock;
+        private MaterialPropertyBlock m_LensPropertyBlock;
         private int m_EmissionColorPropId = 0;
 
         #region Propiedades Públicas
@@ -159,6 +189,60 @@ namespace PrimerVolante.Environment
             set => m_GreenLight = value;
         }
 
+        public MeshRenderer RedLensRenderer
+        {
+            get => m_RedLensRenderer;
+            set => m_RedLensRenderer = value;
+        }
+
+        public MeshRenderer YellowLensRenderer
+        {
+            get => m_YellowLensRenderer;
+            set => m_YellowLensRenderer = value;
+        }
+
+        public MeshRenderer GreenLensRenderer
+        {
+            get => m_GreenLensRenderer;
+            set => m_GreenLensRenderer = value;
+        }
+
+        public Color RedActiveColor
+        {
+            get => m_RedActiveColor;
+            set => m_RedActiveColor = value;
+        }
+
+        public Color RedDimmedColor
+        {
+            get => m_RedDimmedColor;
+            set => m_RedDimmedColor = value;
+        }
+
+        public Color YellowActiveColor
+        {
+            get => m_YellowActiveColor;
+            set => m_YellowActiveColor = value;
+        }
+
+        public Color YellowDimmedColor
+        {
+            get => m_YellowDimmedColor;
+            set => m_YellowDimmedColor = value;
+        }
+
+        public Color GreenActiveColor
+        {
+            get => m_GreenActiveColor;
+            set => m_GreenActiveColor = value;
+        }
+
+        public Color GreenDimmedColor
+        {
+            get => m_GreenDimmedColor;
+            set => m_GreenDimmedColor = value;
+        }
+
         public Renderer EmissiveRenderer
         {
             get => m_EmissiveRenderer;
@@ -175,6 +259,7 @@ namespace PrimerVolante.Environment
             m_TimeRemainingInState = GetDurationForState(m_InitialState);
             m_EmissionColorPropId = Shader.PropertyToID(m_EmissionColorProperty);
             m_PropertyBlock = new MaterialPropertyBlock();
+            m_LensPropertyBlock = new MaterialPropertyBlock();
         }
 
         private void Start()
@@ -363,6 +448,7 @@ namespace PrimerVolante.Environment
                 m_GreenLight.enabled = (m_CurrentState == TrafficLightState.Green);
             }
 
+            UpdateLensMaterials();
             UpdateEmissiveMaterial();
         }
 
@@ -370,10 +456,48 @@ namespace PrimerVolante.Environment
 
         #region Métodos Privados
 
+        private static readonly int s_BaseColorPropId = Shader.PropertyToID("_BaseColor");
+        private static readonly int s_ColorPropId = Shader.PropertyToID("_Color");
+        private static readonly int s_EmissionColorPropId = Shader.PropertyToID("_EmissionColor");
+
         private void NotifyStateChanged()
         {
             OnStateChanged?.Invoke(m_CurrentState);
             onStateChangedEvent?.Invoke(m_CurrentState);
+        }
+
+        private void UpdateLensMaterials()
+        {
+            Color redColor = (m_CurrentState == TrafficLightState.Red) ? m_RedActiveColor : m_RedDimmedColor;
+            Color yellowColor = (m_CurrentState == TrafficLightState.Yellow) ? m_YellowActiveColor : m_YellowDimmedColor;
+            Color greenColor = (m_CurrentState == TrafficLightState.Green) ? m_GreenActiveColor : m_GreenDimmedColor;
+
+            Color redEmission = (m_CurrentState == TrafficLightState.Red) ? m_RedActiveColor : Color.black;
+            Color yellowEmission = (m_CurrentState == TrafficLightState.Yellow) ? m_YellowActiveColor : Color.black;
+            Color greenEmission = (m_CurrentState == TrafficLightState.Green) ? m_GreenActiveColor : Color.black;
+
+            ApplyLensColor(m_RedLensRenderer, redColor, redEmission);
+            ApplyLensColor(m_YellowLensRenderer, yellowColor, yellowEmission);
+            ApplyLensColor(m_GreenLensRenderer, greenColor, greenEmission);
+        }
+
+        private void ApplyLensColor(MeshRenderer lensRenderer, Color baseColor, Color emissionColor)
+        {
+            if (lensRenderer == null)
+            {
+                return;
+            }
+
+            if (m_LensPropertyBlock == null)
+            {
+                m_LensPropertyBlock = new MaterialPropertyBlock();
+            }
+
+            lensRenderer.GetPropertyBlock(m_LensPropertyBlock);
+            m_LensPropertyBlock.SetColor(s_BaseColorPropId, baseColor);
+            m_LensPropertyBlock.SetColor(s_ColorPropId, baseColor);
+            m_LensPropertyBlock.SetColor(s_EmissionColorPropId, emissionColor);
+            lensRenderer.SetPropertyBlock(m_LensPropertyBlock);
         }
 
         private void UpdateEmissiveMaterial()
@@ -413,5 +537,103 @@ namespace PrimerVolante.Environment
         }
 
         #endregion
+
+#if UNITY_EDITOR
+        private void OnDrawGizmos()
+        {
+            DrawTrafficLightGizmos(false);
+        }
+
+        private void OnDrawGizmosSelected()
+        {
+            DrawTrafficLightGizmos(true);
+        }
+
+        private void DrawTrafficLightGizmos(bool isSelected)
+        {
+            Vector3 redPos = m_RedLensRenderer != null ? m_RedLensRenderer.transform.position : (m_RedLight != null ? m_RedLight.transform.position : Vector3.zero);
+            Vector3 yellowPos = m_YellowLensRenderer != null ? m_YellowLensRenderer.transform.position : (m_YellowLight != null ? m_YellowLight.transform.position : Vector3.zero);
+            Vector3 greenPos = m_GreenLensRenderer != null ? m_GreenLensRenderer.transform.position : (m_GreenLight != null ? m_GreenLight.transform.position : Vector3.zero);
+
+            bool hasBulbPositions = (m_RedLensRenderer != null || m_RedLight != null);
+            if (!hasBulbPositions) return;
+
+            float activeRadius = 0.14f;
+            float dimmedRadius = 0.09f;
+
+            // Foco Rojo
+            if (m_CurrentState == TrafficLightState.Red)
+            {
+                Gizmos.color = Color.red;
+                Gizmos.DrawSphere(redPos, activeRadius);
+            }
+            else
+            {
+                Gizmos.color = new Color(0.45f, 0.05f, 0.05f, 0.6f);
+                Gizmos.DrawWireSphere(redPos, dimmedRadius);
+            }
+
+            // Foco Amarillo
+            if (m_CurrentState == TrafficLightState.Yellow)
+            {
+                Gizmos.color = Color.yellow;
+                Gizmos.DrawSphere(yellowPos, activeRadius);
+            }
+            else
+            {
+                Gizmos.color = new Color(0.45f, 0.35f, 0.05f, 0.6f);
+                Gizmos.DrawWireSphere(yellowPos, dimmedRadius);
+            }
+
+            // Foco Verde
+            if (m_CurrentState == TrafficLightState.Green)
+            {
+                Gizmos.color = Color.green;
+                Gizmos.DrawSphere(greenPos, activeRadius);
+            }
+            else
+            {
+                Gizmos.color = new Color(0.05f, 0.40f, 0.10f, 0.6f);
+                Gizmos.DrawWireSphere(greenPos, dimmedRadius);
+            }
+
+            // Etiquetas y depuración en vista de Escena
+            if (Application.isPlaying || isSelected)
+            {
+                Vector3 labelPos = redPos + Vector3.up * 0.35f;
+                GUIStyle style = new GUIStyle();
+                style.alignment = TextAnchor.MiddleCenter;
+                style.fontSize = 12;
+                style.fontStyle = FontStyle.Bold;
+
+                string stateText;
+                switch (m_CurrentState)
+                {
+                    case TrafficLightState.Red:
+                        style.normal.textColor = new Color(1f, 0.3f, 0.3f);
+                        stateText = "RED";
+                        break;
+                    case TrafficLightState.Yellow:
+                        style.normal.textColor = new Color(1f, 0.85f, 0.2f);
+                        stateText = "YELLOW";
+                        break;
+                    case TrafficLightState.Green:
+                        style.normal.textColor = new Color(0.3f, 1f, 0.4f);
+                        stateText = "GREEN";
+                        break;
+                    default:
+                        style.normal.textColor = Color.white;
+                        stateText = m_CurrentState.ToString();
+                        break;
+                }
+
+                string text = Application.isPlaying
+                    ? $"[{stateText}] {TimeRemainingInState:F1}s"
+                    : $"[{stateText}]";
+
+                UnityEditor.Handles.Label(labelPos, text, style);
+            }
+        }
+#endif
     }
 }
