@@ -111,7 +111,122 @@ namespace PrimerVolante.Testing.Editor
             return mixer.FindMatchingGroups("Road").FirstOrDefault(group => group.name == "Road");
         }
 
+        // ------------------------------------------------------------------ Cono (prefab original)
+
+        public const string CONE_PREFAB_PATH = "Assets/SimplePoly City - Low Poly Assets/Prefab/Props/Props_Traffic cone.prefab";
+
+        /// <summary>
+        /// Deja el prefab original del cono con un <c>MeshCollider</c> convexo (material sin fricción) y un
+        /// <see cref="ObstacleCollisionDetector"/> de tipo <see cref="ObstacleKind.Cone"/>. Sin Rigidbody: el cono
+        /// es fijo. No toca la malla, el material visual ni la escala.
+        /// </summary>
+        [MenuItem("Tools/Primer Volante/Setup Obstacle Cone Prefab")]
+        public static void SetupObstacleConePrefab()
+        {
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(CONE_PREFAB_PATH) == null)
+            {
+                Debug.LogError($"[ObstacleCollisionSetup] ❌ No existe el prefab del cono en {CONE_PREFAB_PATH}.");
+                return;
+            }
+
+            PhysicsMaterial noFriction = LessonBoundarySetup.EnsureNoFrictionMaterial();
+
+            GameObject root = PrefabUtility.LoadPrefabContents(CONE_PREFAB_PATH);
+            try
+            {
+                var filter = root.GetComponent<MeshFilter>();
+                if (filter == null || filter.sharedMesh == null)
+                {
+                    Debug.LogError("[ObstacleCollisionSetup] ❌ El cono no tiene MeshFilter con malla; no se puede crear el collider.");
+                    return;
+                }
+
+                var collider = GetOrAdd<MeshCollider>(root);
+                collider.sharedMesh = filter.sharedMesh;
+                collider.convex = true;
+                collider.isTrigger = false;
+                collider.sharedMaterial = noFriction;
+
+                // El cono es fijo: un Rigidbody lo haría derribable y la decisión es que no lo sea.
+                var body = root.GetComponent<Rigidbody>();
+                if (body != null) Object.DestroyImmediate(body);
+
+                SetKind(GetOrAdd<ObstacleCollisionDetector>(root), ObstacleKind.Cone);
+                PrefabUtility.SaveAsPrefabAsset(root, CONE_PREFAB_PATH);
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            Debug.Log($"[ObstacleCollisionSetup] ✅ Cono listo en {CONE_PREFAB_PATH} (MeshCollider convexo + detector, sin Rigidbody).");
+        }
+
+        // ------------------------------------------------------------------ Prefabs NPC
+
+        /// <summary>Rutas de los prefabs de vehículo NPC (<c>NPC_*.prefab</c>), ordenadas por nombre.</summary>
+        public static string[] FindNpcVehiclePaths() => FindPrefabPaths(NPCPrefabSetup.VEHICLE_OUTPUT_FOLDER, "NPC_");
+
+        /// <summary>Rutas de los prefabs de peatón NPC (<c>NPC_Pedestrian_*.prefab</c>), ordenadas por nombre.</summary>
+        public static string[] FindNpcPedestrianPaths() => FindPrefabPaths(NPCPrefabSetup.PEDESTRIAN_OUTPUT_FOLDER, "NPC_Pedestrian_");
+
+        private static string[] FindPrefabPaths(string folder, string namePrefix)
+        {
+            if (!AssetDatabase.IsValidFolder(folder)) return new string[0];
+
+            return AssetDatabase.FindAssets("t:Prefab", new[] { folder })
+                .Select(AssetDatabase.GUIDToAssetPath)
+                .Where(path => System.IO.Path.GetFileName(path).StartsWith(namePrefix))
+                .OrderBy(path => path, System.StringComparer.Ordinal)
+                .ToArray();
+        }
+
+        /// <summary>
+        /// Agrega <see cref="ObstacleCollisionDetector"/> en la raíz (donde están el Rigidbody y el BoxCollider) de
+        /// los vehículos NPC (<see cref="ObstacleKind.Vehicle"/>) y los peatones NPC (<see cref="ObstacleKind.Pedestrian"/>).
+        /// </summary>
+        [MenuItem("Tools/Primer Volante/Setup NPC Obstacle Detectors")]
+        public static void SetupNpcObstacleDetectors()
+        {
+            int vehicles = SetupDetectorOnPrefabs(FindNpcVehiclePaths(), ObstacleKind.Vehicle);
+            int pedestrians = SetupDetectorOnPrefabs(FindNpcPedestrianPaths(), ObstacleKind.Pedestrian);
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            Debug.Log($"[ObstacleCollisionSetup] ✅ Detectores en {vehicles} vehículos NPC y {pedestrians} peatones NPC.");
+        }
+
+        private static int SetupDetectorOnPrefabs(string[] paths, ObstacleKind kind)
+        {
+            int count = 0;
+            foreach (string path in paths)
+            {
+                GameObject root = PrefabUtility.LoadPrefabContents(path);
+                try
+                {
+                    SetKind(GetOrAdd<ObstacleCollisionDetector>(root), kind);
+                    PrefabUtility.SaveAsPrefabAsset(root, path);
+                    count++;
+                }
+                finally
+                {
+                    PrefabUtility.UnloadPrefabContents(root);
+                }
+            }
+
+            return count;
+        }
+
         // ------------------------------------------------------------------ Helpers
+
+        private static void SetKind(ObstacleCollisionDetector detector, ObstacleKind kind)
+        {
+            var so = new SerializedObject(detector);
+            so.FindProperty("m_Kind").enumValueIndex = (int)kind;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
 
         private static T GetOrAdd<T>(GameObject target) where T : Component
         {

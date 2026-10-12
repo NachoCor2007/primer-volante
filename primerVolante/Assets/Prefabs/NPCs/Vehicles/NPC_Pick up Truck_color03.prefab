@@ -80,6 +80,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 100010, guid: 675baac8bae68964e948aabc6ff2857c, type: 3}
       insertIndex: -1
       addedObject: {fileID: 58520784811771188}
+    - targetCorrespondingSourceObject: {fileID: 100010, guid: 675baac8bae68964e948aabc6ff2857c, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2503681872927698552}
   m_SourcePrefab: {fileID: 100100000, guid: 675baac8bae68964e948aabc6ff2857c, type: 3}
 --- !u!1 &6146080625337123052 stripped
 GameObject:
@@ -177,6 +180,22 @@ MonoBehaviour:
   m_WheelBase: 2.6269915
   m_MaxSteerAngle: 35
   m_BrakingThreshold: 0.3
+--- !u!114 &2503681872927698552
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6146080625337123052}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 113c9a6095349c14e99d9bbd65478c0a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.ObstacleCollisionDetector
+  m_Kind: 1
+  m_CrashSpeedKmh: 5
+  m_RearmSeconds: 1
+  m_LogEvents: 0
 --- !u!4 &6146080625337490624 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 400006, guid: 675baac8bae68964e948aabc6ff2857c, type: 3}
