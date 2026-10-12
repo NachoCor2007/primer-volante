@@ -30,6 +30,13 @@ namespace PrimerVolante.Testing.Editor
         /// <summary>Altura de los muros de cordón desde y = 0 (m).</summary>
         public const float WALL_HEIGHT = 2f;
 
+        /// <summary>
+        /// Cuánto se adelanta la cara del muro hacia la calzada respecto de la cara del cordón (m). Con 0 el auto
+        /// roza primero el plano superior de la vereda (y = 0.2) y rebota ~0.16 m hacia arriba; con 0.05 desliza
+        /// limpio. Poner en 0 para que el muro arranque exactamente en la cara.
+        /// </summary>
+        public const float WALL_INSET = 0.05f;
+
         public const string FENCE_SOURCE_PATH = "Assets/SimplePoly City - Low Poly Assets/Prefab/Props/Props_Traffic Control Barrier Fence.prefab";
         public const string BARRIER_PREFAB_PATH = ENVIRONMENT_FOLDER + "/LessonBarrier.prefab";
         public const string ALERT_TRIGGER_NAME = "AlertTrigger";
@@ -176,7 +183,7 @@ namespace PrimerVolante.Testing.Editor
         private static int SyncCurbWalls(GameObject root, Mesh mesh, PhysicsMaterial noFriction)
         {
             List<CurbFace> faces = RoadCurbWalls.FindRoadFacingFaces(mesh);
-            List<CurbWall> walls = RoadCurbWalls.BuildWalls(faces, WALL_THICKNESS);
+            List<CurbWall> walls = RoadCurbWalls.BuildWalls(faces, WALL_THICKNESS, WALL_INSET);
 
             Transform curb = root.transform.Find(CURB_WALLS_NAME);
             if (curb == null)

@@ -154,11 +154,13 @@ namespace PrimerVolante.Testing.Editor
         }
 
         /// <summary>
-        /// Convierte las caras en cajas de muro. Cada caja arranca en la cara y se extiende
-        /// <paramref name="thickness"/> hacia la vereda; en las esquinas donde la calzada forma un rincón se
-        /// prolonga el espesor para que no queden rendijas entre cajas perpendiculares.
+        /// Convierte las caras en cajas de muro. Cada caja arranca en la cara (adelantada
+        /// <paramref name="inset"/> metros hacia la calzada) y mide <paramref name="thickness"/> de espesor; en las
+        /// esquinas donde la calzada forma un rincón se prolonga el tramo para que no queden rendijas entre cajas
+        /// perpendiculares. El adelanto evita que el auto toque antes la malla de la vereda (cuyo plano superior
+        /// en y = 0.2 lo hace rebotar hacia arriba al rozar de costado).
         /// </summary>
-        public static List<CurbWall> BuildWalls(IReadOnlyList<CurbFace> faces, float thickness)
+        public static List<CurbWall> BuildWalls(IReadOnlyList<CurbFace> faces, float thickness, float inset = 0f)
         {
             var walls = new List<CurbWall>(faces.Count);
             for (int i = 0; i < faces.Count; i++)
@@ -173,7 +175,7 @@ namespace PrimerVolante.Testing.Editor
                 float middle = (start + end) * 0.5f;
                 walls.Add(new CurbWall
                 {
-                    Center = face.PointAt(middle) - face.Normal * (thickness * 0.5f),
+                    Center = face.PointAt(middle) + face.Normal * inset - face.Normal * (thickness * 0.5f),
                     Tangent = face.Tangent,
                     Normal = face.Normal,
                     Length = end - start,
