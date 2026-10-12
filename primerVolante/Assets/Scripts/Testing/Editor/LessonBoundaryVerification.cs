@@ -2,10 +2,12 @@ using System.Collections.Generic;
 using System.Linq;
 using PrimerVolante.Environment;
 using PrimerVolante.VR;
+using Unity.Mathematics;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.Splines;
 
 namespace PrimerVolante.Testing.Editor
 {
@@ -78,6 +80,8 @@ namespace PrimerVolante.Testing.Editor
             VerifySceneRoadInstances(CAR_SCENE_PATH, ref total, ref passed);
             VerifyCarDetection(ref total, ref passed);
             VerifyBarrierPrefab(ref total, ref passed);
+            VerifyBoundaryMath(ref total, ref passed);
+            VerifyBoundaryComponent(ref total, ref passed);
 
             Debug.Log("=========================================================");
             Debug.Log($"🏁 RESULTADO FINAL: {passed}/{total} pruebas pasadas con éxito!");
@@ -465,6 +469,174 @@ namespace PrimerVolante.Testing.Editor
 
             var renderer = prefab.GetComponentInChildren<MeshRenderer>(true);
             Assert(renderer != null && renderer.enabled, "LessonBarrier: conserva su MeshRenderer visible", ref total, ref passed);
+        }
+
+        // ---------------------------------------------------------------- Funciones puras de LessonBoundary
+
+        private static void VerifyBoundaryMath(ref int total, ref int passed)
+        {
+            const float len = 3.6f, overlap = 0.1f;
+
+            // Cantidad de vallas: ceil((largo − solape) / (3.6 − 0.1)).
+            AssertCount(0f, false, 0, ref total, ref passed);
+            AssertCount(3.6f, false, 1, ref total, ref passed);
+            AssertCount(7f, false, 2, ref total, ref passed);
+            AssertCount(10f, false, 3, ref total, ref passed);
+            AssertCount(36f, false, 11, ref total, ref passed);
+            AssertCount(40f, true, 12, ref total, ref passed);
+
+            // Línea recta abierta: sin huecos, sin pasarse del final, vallas del largo de la malla.
+            foreach (float length in new[] { 7f, 10f, 36f, 53.7f })
+            {
+                List<BarrierPose> poses = LessonBoundaryMath.ComputePoses(length, false, len, overlap, d => new Vector3(d, 0.3f, 0f));
+                bool startsAtZero = poses.Count > 0 && Mathf.Abs(poses[0].StartDistance) < 1e-3f;
+                bool endsAtLength = poses.Count > 0 && Mathf.Abs(poses[poses.Count - 1].EndDistance - length) < 1e-3f;
+                bool noGaps = true, noOvershoot = true, fullLength = true;
+                for (int i = 0; i < poses.Count; i++)
+                {
+                    if (poses[i].EndDistance > length + 1e-3f) noOvershoot = false;
+                    if (Mathf.Abs(poses[i].EndDistance - poses[i].StartDistance - len) > 1e-3f) fullLength = false;
+                    if (i > 0 && poses[i].StartDistance > poses[i - 1].EndDistance + 1e-3f) noGaps = false;
+                }
+
+                Assert(startsAtZero && endsAtLength && noGaps && noOvershoot && fullLength,
+                    $"Reparto en recta de {length:F1} m: {poses.Count} vallas sin huecos, sin pasarse y cerrando en el final",
+                    ref total, ref passed);
+            }
+
+            // Posición en el punto medio del tramo y altura tomada de la spline.
+            {
+                List<BarrierPose> poses = LessonBoundaryMath.ComputePoses(10f, false, len, overlap, d => new Vector3(d, 0.3f, 0f));
+                bool ok = poses.Count == 3 &&
+                          Mathf.Abs(poses[0].Position.x - 1.8f) < 1e-3f && Mathf.Abs(poses[1].Position.x - 5.3f) < 1e-3f &&
+                          Mathf.Abs(poses[2].Position.x - 8.2f) < 1e-3f && poses.All(p => Mathf.Abs(p.Position.y - 0.3f) < 1e-4f);
+                Assert(ok, "Cada valla se ubica en el punto medio de su tramo con la altura de la spline", ref total, ref passed);
+            }
+
+            // Orientación: el eje X de la valla va a lo largo de la cuerda, sin pitch ni roll.
+            {
+                var direction = new Vector3(Mathf.Cos(30f * Mathf.Deg2Rad), 0f, Mathf.Sin(30f * Mathf.Deg2Rad));
+                List<BarrierPose> poses = LessonBoundaryMath.ComputePoses(20f, false, len, overlap, d => direction * d + Vector3.up * (0.05f * d));
+                bool alongChord = poses.All(p => Vector3.Dot(p.Rotation * Vector3.right, direction) > 0.9999f);
+                bool noTilt = poses.All(p => Vector3.Dot(p.Rotation * Vector3.up, Vector3.up) > 0.9999f);
+                Assert(poses.Count > 0 && alongChord && noTilt,
+                    "Las vallas se orientan a lo largo de la cuerda con yaw puro (sin pitch ni roll, aun con pendiente)", ref total, ref passed);
+            }
+
+            // Curva: cuarto de círculo de radio 10, cada valla sigue su cuerda.
+            {
+                const float radius = 10f;
+                float arc = Mathf.PI * 0.5f * radius;
+                Vector3 OnArc(float d)
+                {
+                    float a = d / radius;
+                    return new Vector3(Mathf.Sin(a) * radius, 0f, (1f - Mathf.Cos(a)) * radius);
+                }
+
+                List<BarrierPose> poses = LessonBoundaryMath.ComputePoses(arc, false, len, overlap, OnArc);
+                bool chordOk = poses.Count > 2 && poses.All(p =>
+                {
+                    Vector3 chord = OnArc(p.EndDistance) - OnArc(p.StartDistance);
+                    chord.y = 0f;
+                    return Vector3.Dot(p.Rotation * Vector3.right, chord.normalized) > 0.9999f;
+                });
+                Assert(chordOk, $"En una curva cada valla sigue la cuerda de su tramo ({poses.Count} vallas)", ref total, ref passed);
+            }
+
+            // Spline cerrada: cuadrado de 10 m de lado; la costura no deja hueco.
+            {
+                const float side = 10f, perimeter = 40f;
+                Vector3 OnSquare(float d)
+                {
+                    d %= perimeter;
+                    if (d < side) return new Vector3(d, 0f, 0f);
+                    if (d < 2f * side) return new Vector3(side, 0f, d - side);
+                    if (d < 3f * side) return new Vector3(side - (d - 2f * side), 0f, side);
+                    return new Vector3(0f, 0f, side - (d - 3f * side));
+                }
+
+                List<BarrierPose> poses = LessonBoundaryMath.ComputePoses(perimeter, true, len, overlap, OnSquare);
+                bool noGaps = true;
+                for (int i = 1; i < poses.Count; i++)
+                {
+                    if (poses[i].StartDistance > poses[i - 1].EndDistance + 1e-3f) noGaps = false;
+                }
+
+                // La última valla debe llegar hasta el inicio de la primera más el solape (una vuelta completa).
+                bool seamClosed = poses.Count > 1 &&
+                                  poses[poses.Count - 1].EndDistance - perimeter >= poses[0].StartDistance + overlap - 1e-3f;
+                Assert(poses.Count == 12 && noGaps && seamClosed,
+                    $"Spline cerrada: {poses.Count} vallas sin huecos y la costura cierra con solape", ref total, ref passed);
+            }
+
+            // Deduplicación: el segundo aviso dentro del enfriamiento se suprime, el que viene después no.
+            Assert(LessonBoundaryMath.ShouldAlert(float.NegativeInfinity, 0f, 1f),
+                "Dedup: el primer aviso pasa", ref total, ref passed);
+            Assert(!LessonBoundaryMath.ShouldAlert(0f, 0.5f, 1f),
+                "Dedup: el segundo aviso dentro del enfriamiento se suprime", ref total, ref passed);
+            Assert(LessonBoundaryMath.ShouldAlert(0f, 1f, 1f) && LessonBoundaryMath.ShouldAlert(0f, 1.5f, 1f),
+                "Dedup: el aviso posterior al enfriamiento pasa", ref total, ref passed);
+            Assert(LessonBoundaryMath.ShouldAlert(5f, 0f, 1f),
+                "Dedup: si el reloj retrocede (reinicio) el aviso pasa", ref total, ref passed);
+        }
+
+        private static void AssertCount(float length, bool closed, int expected, ref int total, ref int passed)
+        {
+            int count = LessonBoundaryMath.CountBarriers(length, closed, 3.6f, 0.1f);
+            Assert(count == expected,
+                $"CountBarriers({length:F1} m, {(closed ? "cerrada" : "abierta")}) = {expected} (obtuvo {count})",
+                ref total, ref passed);
+        }
+
+        // ---------------------------------------------------------------- Componente LessonBoundary
+
+        private static void VerifyBoundaryComponent(ref int total, ref int passed)
+        {
+            var barrierPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(LessonBoundarySetup.BARRIER_PREFAB_PATH);
+            Scene preview = EditorSceneManager.NewPreviewScene();
+            try
+            {
+                var go = new GameObject("TestBoundary");
+                SceneManager.MoveGameObjectToScene(go, preview);
+
+                var container = go.AddComponent<SplineContainer>();
+                if (container.Splines.Count == 0) container.AddSpline(new Spline());
+                Spline spline = container.Splines[0];
+                spline.Clear();
+                spline.Add(new BezierKnot(new float3(0f, 0f, 0f)), TangentMode.Linear);
+                spline.Add(new BezierKnot(new float3(36f, 0f, 0f)), TangentMode.Linear);
+
+                var boundary = go.AddComponent<LessonBoundary>();
+                var so = new SerializedObject(boundary);
+                so.FindProperty("m_BarrierPrefab").objectReferenceValue = barrierPrefab;
+                so.ApplyModifiedPropertiesWithoutUndo();
+
+                bool computed = boundary.TryComputePoses(out List<BarrierPose> poses, out float length);
+                Assert(computed && Mathf.Abs(length - 36f) < 0.01f && poses.Count == 11,
+                    $"LessonBoundary: spline de 36 m reparte 11 vallas (obtuvo {(poses != null ? poses.Count : 0)}, largo {length:F2})",
+                    ref total, ref passed);
+
+                // Idempotente: regenerar dos veces deja un solo contenedor con la misma cantidad de vallas.
+                boundary.RebuildBarriers();
+                boundary.RebuildBarriers();
+                int containers = go.transform.Cast<Transform>().Count(c => c.name == LessonBoundary.CONTAINER_NAME);
+                Transform barriers = go.transform.Find(LessonBoundary.CONTAINER_NAME);
+                int children = barriers != null ? barriers.childCount : -1;
+                Assert(containers == 1 && children == 11,
+                    $"LessonBoundary: reconstruir dos veces deja 1 contenedor con 11 vallas (contenedores {containers}, vallas {children})",
+                    ref total, ref passed);
+
+                int barrierScripts = go.GetComponentsInChildren<LessonBarrier>(true).Length;
+                bool prefabInstances = barriers != null && barriers.Cast<Transform>().All(c =>
+                    PrefabUtility.IsAnyPrefabInstanceRoot(c.gameObject) &&
+                    AssetDatabase.GetAssetPath(PrefabUtility.GetCorrespondingObjectFromSource(c.gameObject)) == LessonBoundarySetup.BARRIER_PREFAB_PATH);
+                Assert(barrierScripts == 11 && prefabInstances,
+                    "LessonBoundary: las vallas son instancias del prefab LessonBarrier, cada una con su aviso", ref total, ref passed);
+            }
+            finally
+            {
+                EditorSceneManager.ClosePreviewScene(preview);
+            }
         }
 
         // ---------------------------------------------------------------- Helpers
