@@ -78,14 +78,14 @@ namespace PrimerVolante.Environment
             ObstacleImpact? impact = detector.BeginContact(m_Vehicle, collision);
             if (impact.HasValue) PlayImpactSound(impact.Value);
 
-            m_Vehicle.LimitSpeedToActualMotion();
+            LimitSpeedIfPressing(collision);
         }
 
         private void OnCollisionStay(Collision collision)
         {
             if (FindDetector(collision) == null) return;
 
-            m_Vehicle.LimitSpeedToActualMotion();
+            LimitSpeedIfPressing(collision);
         }
 
         private void OnCollisionExit(Collision collision)
@@ -95,6 +95,22 @@ namespace PrimerVolante.Environment
 
             // Solo cierra los contactos que este sensor abrió, así el contador del obstáculo no se desbalancea.
             if (m_Touching.Remove(detector)) detector.EndContact(m_Vehicle);
+        }
+
+        // Solo se limita la velocidad si el auto empuja contra la superficie. Al separarse o rozar de costado se deja
+        // que avance libre: la velocidad medida ya descuenta la fricción del suelo y, si se la usara como tope en
+        // esos casos, la velocidad interna se iría a 0 en cada paso y el auto quedaría clavado al obstáculo.
+        private void LimitSpeedIfPressing(Collision collision)
+        {
+            Vector3 travel = m_Vehicle.GetTravelDirection();
+            for (int i = 0; i < collision.contactCount; i++)
+            {
+                if (ObstacleImpactMath.IsPressingInto(travel, collision.GetContact(i).normal))
+                {
+                    m_Vehicle.LimitSpeedToActualMotion();
+                    return;
+                }
+            }
         }
 
         private static ObstacleCollisionDetector FindDetector(Collision collision)

@@ -85,6 +85,19 @@ namespace PrimerVolante.Environment
             if (kind == ObstacleKind.Pedestrian) return ObstacleImpactSeverity.Crash;
             return playerSpeedKmh < crashThresholdKmh ? ObstacleImpactSeverity.Graze : ObstacleImpactSeverity.Crash;
         }
+
+        /// <summary>
+        /// true si el auto empuja de frente contra la superficie de un contacto: el sentido de avance apunta contra
+        /// la normal (que sale de la superficie hacia el auto) con un coseno menor a −<paramref name="minCosine"/>
+        /// (0.9 ≈ dentro de 25° de la normal). Un contacto de costado, en diagonal o mientras el auto se separa no
+        /// bloquea el avance: el solver lo desliza a lo largo de la superficie y ahí no hay que limitar la velocidad
+        /// (la fricción del suelo, descontada de la velocidad medida, lo dejaría clavado).
+        /// </summary>
+        public static bool IsPressingInto(Vector3 travelDirection, Vector3 contactNormal, float minCosine = 0.9f)
+        {
+            if (travelDirection.sqrMagnitude < 1e-8f || contactNormal.sqrMagnitude < 1e-8f) return false;
+            return Vector3.Dot(travelDirection.normalized, contactNormal.normalized) < -minCosine;
+        }
     }
 
     /// <summary>
@@ -114,6 +127,10 @@ namespace PrimerVolante.Environment
         [Tooltip("Segundos mínimos entre dos eventos del mismo obstáculo.")]
         [SerializeField] private float m_RearmSeconds = 1f;
 
+        [Tooltip("Si el contacto se corta menos de estos segundos, al volver a tocar sigue siendo el mismo episodio: un roce sostenido " +
+                 "parpadea (el contacto se pierde y se recupera) sin que eso cuente como un impacto nuevo.")]
+        [SerializeField] private float m_ContactGraceSeconds = 0.3f;
+
         [Header("Depuración")]
         [Tooltip("Si se activa, escribe un log por cada impacto emitido.")]
         [SerializeField] private bool m_LogEvents = false;
@@ -121,6 +138,7 @@ namespace PrimerVolante.Environment
         private NPCPathFollower m_Follower;
         private int m_ActiveContacts;
         private float m_LastImpactTime = float.NegativeInfinity;
+        private float m_LastContactEndTime = float.NegativeInfinity;
 
         /// <summary>Se dispara una vez por episodio de contacto con el auto del jugador.</summary>
         public event Action<ObstacleImpact> OnImpact;
@@ -163,12 +181,14 @@ namespace PrimerVolante.Environment
         {
             // Si el collider se apaga, OnCollisionExit puede no llegar: el contador no puede quedar pegado.
             m_ActiveContacts = 0;
+            m_LastContactEndTime = float.NegativeInfinity;
         }
 
         private void OnValidate()
         {
             m_CrashSpeedKmh = Mathf.Max(0f, m_CrashSpeedKmh);
             m_RearmSeconds = Mathf.Max(0f, m_RearmSeconds);
+            m_ContactGraceSeconds = Mathf.Max(0f, m_ContactGraceSeconds);
         }
 
         /// <summary>
@@ -183,6 +203,10 @@ namespace PrimerVolante.Environment
 
             // Los avisos llegan desde callbacks de física: se mide con el reloj fijo.
             float now = Time.fixedTime;
+
+            // El contacto se cortó hace un instante: es el mismo episodio, no un impacto nuevo.
+            if (now >= m_LastContactEndTime && now - m_LastContactEndTime < m_ContactGraceSeconds) return null;
+
             if (!LessonBoundaryMath.ShouldAlert(m_LastImpactTime, now, m_RearmSeconds)) return null;
 
             m_LastImpactTime = now;
@@ -226,6 +250,7 @@ namespace PrimerVolante.Environment
         public void EndContact(VehicleController vehicle)
         {
             if (m_ActiveContacts > 0) m_ActiveContacts--;
+            if (m_ActiveContacts == 0) m_LastContactEndTime = Time.fixedTime;
         }
     }
 }

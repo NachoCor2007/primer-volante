@@ -162,6 +162,17 @@ namespace PrimerVolante.Testing.Editor
             Assert(Mathf.Approximately(VehicleController.LimitSpeedToMeasured(5f, -1f), 0f),
                 "LimitSpeedToMeasured: medido negativo da 0", ref total, ref passed);
 
+            Assert(ObstacleImpactMath.IsPressingInto(Vector3.forward, Vector3.back),
+                "IsPressingInto: de frente contra la superficie empuja", ref total, ref passed);
+            Assert(!ObstacleImpactMath.IsPressingInto(Vector3.forward, Vector3.right),
+                "IsPressingInto: rozando de costado no empuja", ref total, ref passed);
+            Assert(!ObstacleImpactMath.IsPressingInto(Vector3.forward, new Vector3(-0.8f, 0f, -0.6f)),
+                "IsPressingInto: un contacto en diagonal (53°) se desliza y no empuja", ref total, ref passed);
+            Assert(!ObstacleImpactMath.IsPressingInto(Vector3.back, Vector3.back),
+                "IsPressingInto: separándose de la superficie no empuja", ref total, ref passed);
+            Assert(!ObstacleImpactMath.IsPressingInto(Vector3.zero, Vector3.back),
+                "IsPressingInto: sin dirección de avance no empuja", ref total, ref passed);
+
             Assert(LessonBoundaryMath.ShouldAlert(float.NegativeInfinity, 10f, 1f),
                 "Rearme: el primer evento siempre se emite", ref total, ref passed);
             Assert(!LessonBoundaryMath.ShouldAlert(10f, 10.5f, 1f),
@@ -202,18 +213,31 @@ namespace PrimerVolante.Testing.Editor
                     detector.EndContact(null);
                     Assert(detector.ActiveContacts == 0, "Detector: el contador no baja de 0", ref total, ref passed);
 
+                    // Primero se aísla el rearme (sin gracia de contacto) y después la gracia (sin rearme).
+                    var so = new SerializedObject(detector);
+                    so.FindProperty("m_ContactGraceSeconds").floatValue = 0f;
+                    so.ApplyModifiedPropertiesWithoutUndo();
+
                     ObstacleImpact? suppressed = detector.BeginContact(null, null);
                     Assert(!suppressed.HasValue && instanceEvents == 1,
                         "Detector: un nuevo episodio dentro de m_RearmSeconds se suprime", ref total, ref passed);
 
                     detector.EndContact(null);
-                    var so = new SerializedObject(detector);
                     so.FindProperty("m_RearmSeconds").floatValue = 0f;
+                    so.FindProperty("m_ContactGraceSeconds").floatValue = 0.3f;
+                    so.ApplyModifiedPropertiesWithoutUndo();
+
+                    ObstacleImpact? flicker = detector.BeginContact(null, null);
+                    Assert(!flicker.HasValue && instanceEvents == 1,
+                        "Detector: un contacto que parpadea (se corta y vuelve dentro de la gracia) es el mismo episodio", ref total, ref passed);
+
+                    detector.EndContact(null);
+                    so.FindProperty("m_ContactGraceSeconds").floatValue = 0f;
                     so.ApplyModifiedPropertiesWithoutUndo();
 
                     ObstacleImpact? again = detector.BeginContact(null, null);
                     Assert(again.HasValue && instanceEvents == 2,
-                        "Detector: con el rearme cumplido el nuevo episodio emite", ref total, ref passed);
+                        "Detector: con rearme y gracia cumplidos el nuevo episodio emite", ref total, ref passed);
                 }
                 finally
                 {

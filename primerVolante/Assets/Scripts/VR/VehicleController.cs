@@ -821,14 +821,17 @@ namespace PrimerVolante.VR
         {
             if (m_Rigidbody == null || m_Rigidbody.isKinematic) return;
 
-            Vector3 moveDir = GetForwardVector();
-            if (m_CurrentGear == GearState.Reverse)
-            {
-                moveDir = -moveDir;
-            }
-
-            float measured = Vector3.Dot(m_Rigidbody.linearVelocity, moveDir);
+            float measured = Vector3.Dot(m_Rigidbody.linearVelocity, GetTravelDirection());
             m_CurrentSpeedMs = LimitSpeedToMeasured(m_CurrentSpeedMs, measured);
+        }
+
+        /// <summary>
+        /// Dirección en que el auto avanza ahora: la del eje frontal, invertida en marcha atrás.
+        /// </summary>
+        public Vector3 GetTravelDirection()
+        {
+            Vector3 moveDir = GetForwardVector();
+            return m_CurrentGear == GearState.Reverse ? -moveDir : moveDir;
         }
 
         private float ReadTriggerValue(InputActionProperty property, InputAction defaultAction, XRNode handNode)
