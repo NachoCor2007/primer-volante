@@ -164,6 +164,7 @@ namespace PrimerVolante.Environment
         private float m_LastYaw;
         private bool m_IsPlaying;
         private bool m_StopRequested;
+        private bool m_IsEmergencyStopped;
         private bool m_ReportedEnd;
 
         /// <summary>Se dispara una vez al llegar al final de la ruta (solo modo Stop).</summary>
@@ -186,6 +187,15 @@ namespace PrimerVolante.Environment
 
         /// <summary>true mientras el NPC tiene velocidad.</summary>
         public bool IsMoving => m_State.Speed > 0.01f;
+
+        /// <summary>true si el seguidor está activo ejecutando su marcha.</summary>
+        public bool IsPlaying => m_IsPlaying;
+
+        /// <summary>true si se solicitó detener el avance.</summary>
+        public bool IsStopRequested => m_StopRequested;
+
+        /// <summary>true si el seguidor fue frenado en seco por emergencia.</summary>
+        public bool IsEmergencyStopped => m_IsEmergencyStopped;
 
         /// <summary>Velocidad crucero configurada en m/s.</summary>
         public float CruiseSpeed => m_CruiseSpeed;
@@ -265,6 +275,7 @@ namespace PrimerVolante.Environment
 
             if (m_State.Finished) TeleportToDistance(0f);
 
+            m_IsEmergencyStopped = false;
             m_StopRequested = false;
             m_IsPlaying = true;
         }
@@ -278,11 +289,31 @@ namespace PrimerVolante.Environment
         }
 
         /// <summary>
+        /// Frena en seco inmediatamente: velocidad y aceleración a cero en el frame actual.
+        /// Evita el avance cinemático mientras persista la emergencia. <see cref="Play"/> reanuda.
+        /// </summary>
+        public void EmergencyStop()
+        {
+            m_State.Speed = 0f;
+            m_CurrentAcceleration = 0f;
+            m_StopRequested = true;
+            m_IsEmergencyStopped = true;
+        }
+
+        /// <summary>
         /// Cambia la velocidad crucero en m/s.
         /// </summary>
         public void SetCruiseSpeed(float cruiseSpeed)
         {
             m_CruiseSpeed = Mathf.Max(0f, cruiseSpeed);
+        }
+
+        /// <summary>
+        /// Asigna directamente la velocidad actual para pruebas unitarias deterministas en Editor.
+        /// </summary>
+        public void SetSpeedForTesting(float speed)
+        {
+            m_State.Speed = Mathf.Max(0f, speed);
         }
 
         /// <summary>
@@ -300,6 +331,7 @@ namespace PrimerVolante.Environment
             m_State = new NPCPathState { Distance = clamped, Speed = 0f, Finished = false };
             m_CurrentAcceleration = 0f;
             m_CurrentYawRate = 0f;
+            m_IsEmergencyStopped = false;
             m_ReportedEnd = false;
 
             if (EvaluatePose(clamped, out Vector3 position, out Quaternion rotation))
@@ -356,6 +388,13 @@ namespace PrimerVolante.Environment
         private void FixedUpdate()
         {
             if (!m_IsPlaying || !HasPath) return;
+
+            if (m_IsEmergencyStopped)
+            {
+                m_State.Speed = 0f;
+                m_CurrentAcceleration = 0f;
+                return;
+            }
 
             float dt = Time.fixedDeltaTime;
             float previousSpeed = m_State.Speed;
