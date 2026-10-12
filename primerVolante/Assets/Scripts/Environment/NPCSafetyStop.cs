@@ -43,6 +43,9 @@ namespace PrimerVolante.Environment
         [Tooltip("Tiempo de seguridad en segundos con la vía completamente despejada antes de reanudar la marcha.")]
         [SerializeField] private float m_ResumeDelay = 0.5f;
 
+        [Tooltip("Margen de histéresis en metros sumado a la distancia de frenado mientras el NPC permanece detenido. Evita oscilaciones por contracción del sensor a velocidad cero.")]
+        [SerializeField] private float m_ResumeHysteresisDistance = 0.5f;
+
         [Header("Eventos")]
         [Tooltip("Evento Unity disparado al activarse el frenado de emergencia.")]
         [SerializeField] private UnityEvent onEmergencyBrakeEvent = new UnityEvent();
@@ -68,6 +71,7 @@ namespace PrimerVolante.Environment
         private bool m_IsEmergencyBraking = false;
         private bool m_WasMovingBeforeEmergencyBrake = false;
         private float m_ClearTimer = 0f;
+        private float m_BrakingDetectionDistance = 0f;
         private RaycastHit m_LastObstacleHit;
         private Collider m_LastObstacleCollider;
 
@@ -95,6 +99,16 @@ namespace PrimerVolante.Environment
             get => m_ResumeDelay;
             set => m_ResumeDelay = Mathf.Max(0f, value);
         }
+
+        /// <summary>Margen de histéresis sumado a la distancia de frenado mientras permanece detenido.</summary>
+        public float ResumeHysteresisDistance
+        {
+            get => m_ResumeHysteresisDistance;
+            set => m_ResumeHysteresisDistance = Mathf.Max(0f, value);
+        }
+
+        /// <summary>Distancia de detección frontal registrada al momento de entrar en frenado de emergencia.</summary>
+        public float BrakingDetectionDistance => m_BrakingDetectionDistance;
 
         /// <summary>Offset del origen del sensor relativo al objeto.</summary>
         public Vector3 SensorOffset
@@ -167,6 +181,7 @@ namespace PrimerVolante.Environment
         {
             m_DetectionDistance = Mathf.Max(0.1f, m_DetectionDistance);
             m_ResumeDelay = Mathf.Max(0f, m_ResumeDelay);
+            m_ResumeHysteresisDistance = Mathf.Max(0f, m_ResumeHysteresisDistance);
             m_SpeedLookaheadFactor = Mathf.Max(0f, m_SpeedLookaheadFactor);
         }
 
@@ -211,6 +226,7 @@ namespace PrimerVolante.Environment
                 if (!m_IsEmergencyBraking)
                 {
                     // Entrar en frenado de emergencia inmediato
+                    m_BrakingDetectionDistance = GetEffectiveDetectionDistance();
                     m_IsEmergencyBraking = true;
                     m_WasMovingBeforeEmergencyBrake = m_PathFollower.IsPlaying && !m_PathFollower.IsStopRequested;
 
@@ -242,6 +258,7 @@ namespace PrimerVolante.Environment
                     {
                         // Se cumplió el tiempo de seguridad con la vía despejada
                         m_IsEmergencyBraking = false;
+                        m_BrakingDetectionDistance = 0f;
                         m_ClearTimer = 0f;
 
                         if (m_WasMovingBeforeEmergencyBrake)
@@ -373,10 +390,19 @@ namespace PrimerVolante.Environment
         public float GetEffectiveDetectionDistance()
         {
             float distance = m_DetectionDistance;
+
+            // Si el NPC está en frenado de emergencia, nunca reducir la distancia del sensor al caer a velocidad cero:
+            // Mantener la distancia registrada al momento del frenado más el margen de histéresis.
+            if (m_IsEmergencyBraking && m_BrakingDetectionDistance > 0f)
+            {
+                return Mathf.Max(distance, m_BrakingDetectionDistance + m_ResumeHysteresisDistance);
+            }
+
             if (m_DynamicDistanceWithSpeed && m_PathFollower != null)
             {
                 distance += m_PathFollower.CurrentSpeed * m_SpeedLookaheadFactor;
             }
+
             return Mathf.Max(0.2f, distance);
         }
 
@@ -518,6 +544,7 @@ namespace PrimerVolante.Environment
             m_IsEmergencyBraking = false;
             m_WasMovingBeforeEmergencyBrake = false;
             m_ClearTimer = 0f;
+            m_BrakingDetectionDistance = 0f;
             m_LastObstacleHit = default;
             m_LastObstacleCollider = null;
         }
@@ -602,6 +629,7 @@ namespace PrimerVolante.Environment
 
             if (!m_IsEmergencyBraking)
             {
+                m_BrakingDetectionDistance = GetEffectiveDetectionDistance();
                 m_IsEmergencyBraking = true;
                 m_WasMovingBeforeEmergencyBrake = m_PathFollower.IsPlaying && !m_PathFollower.IsStopRequested;
                 m_PathFollower.EmergencyStop();

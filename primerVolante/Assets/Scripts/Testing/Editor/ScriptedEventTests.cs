@@ -418,6 +418,32 @@ namespace PrimerVolante.Testing.Editor
                 float distBase = safety.GetEffectiveDetectionDistance();
                 Assert(Mathf.Approximately(distBase, 5.0f), "Distancia efectiva base es 5.0m con v=0", ref total, ref passed);
 
+                // 5.1b Histéresis de detección: frenado en movimiento y retención de distancia extendida a v=0
+                npc.SetSpeedForTesting(8.0f);
+                float distAtSpeed = safety.GetEffectiveDetectionDistance();
+                Assert(Mathf.Approximately(distAtSpeed, 13.0f), "Distancia efectiva dinámica a 8 m/s es 13.0m (5m base + 8m lookahead)", ref total, ref passed);
+
+                // Simular obstáculo detectado a 10m mientras va a velocidad
+                safety.SetSimulatedObstacle(true, 10.0f);
+                safety.Tick(0.02f);
+
+                Assert(safety.IsEmergencyBraking, "NPCSafetyStop activa IsEmergencyBraking ante obstáculo a 10m", ref total, ref passed);
+                Assert(Mathf.Approximately(npc.CurrentSpeed, 0f), "Velocidad del NPC se reduce a 0 m/s por parada de emergencia", ref total, ref passed);
+                Assert(Mathf.Approximately(safety.BrakingDetectionDistance, 13.0f), "BrakingDetectionDistance retiene los 13.0m calculados al frenar", ref total, ref passed);
+
+                // La distancia efectiva DEBE mantenerse extendida (13.0m + 0.5m histéresis = 13.5m) a pesar de que v=0
+                float distWhileBraking = safety.GetEffectiveDetectionDistance();
+                Assert(Mathf.Approximately(distWhileBraking, 13.5f), "Distancia efectiva retiene 13.5m (13m frenado + 0.5m histéresis) mientras está detenido en emergencia (v=0)", ref total, ref passed);
+
+                // Vía despejada y reanudación tras ResumeDelay
+                safety.SetSimulatedObstacle(false);
+                safety.Tick(safety.ResumeDelay + 0.1f);
+
+                Assert(!safety.IsEmergencyBraking, "Frenado de emergencia desactivado tras transcurrir ResumeDelay", ref total, ref passed);
+                Assert(Mathf.Approximately(safety.BrakingDetectionDistance, 0f), "BrakingDetectionDistance se restablece a 0 al reanudar marcha", ref total, ref passed);
+                float distAfterResume = safety.GetEffectiveDetectionDistance();
+                Assert(Mathf.Approximately(distAfterResume, 5.0f), "Distancia efectiva vuelve a la base normal de 5.0m a velocidad cero tras reanudar", ref total, ref passed);
+
                 // 5.2 Filtro de colisiones propias: colliders del propio NPC o sus hijos
                 selfChildObj.transform.SetParent(npcObj.transform, false);
                 BoxCollider selfChildCol = selfChildObj.AddComponent<BoxCollider>();
@@ -526,6 +552,7 @@ namespace PrimerVolante.Testing.Editor
             {
                 Object.DestroyImmediate(triggerObj);
                 Object.DestroyImmediate(vehicleObj);
+                Object.DestroyImmediate(lightObj);
             }
         }
 

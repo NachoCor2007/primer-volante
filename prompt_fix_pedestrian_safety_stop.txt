@@ -1,58 +1,80 @@
 Eres el agente de automatización e ingeniería para el proyecto Unity "Primer Volante" (Unity 6 LTS, C#, PhysX).
 
-### PROBLEMA A CORREGIR:
-Al entrar con el auto en el primer trigger en la escena `CityMerged_ScriptedEvents.unity`, el NPC peatón (`NPC_Pedestrian_CrosswalkSurprise`) NO se mueve ni cruza la calle (se queda permanentemente frenado).
+### PROBLEMA REPORTADO (Efecto Acordeón / Aproximación a tirones):
+Tanto en vehículos NPC como en peatones, ocurre un comportamiento oscilatorio indeseado cuando el jugador se detiene frente a ellos:
+1. El NPC avanza hacia el jugador a velocidad normal. Su caja/área de detección frontal se extiende proporcionalmente por la velocidad (`m_DynamicDistanceWithSpeed` = true, lookahead).
+2. En cierto momento, el borde delantero de la caja de detección alcanza al vehículo del jugador y activa el frenado de emergencia (`EmergencyStop()`).
+3. Al detenerse el NPC (velocidad = 0 m/s), la distancia efectiva calculada por `GetEffectiveDetectionDistance()` se contrae súbitamente a solo `m_DetectionDistance` (la velocidad cayó a 0).
+4. Como la caja se achicó, el jugador (que estaba a mayor distancia) queda fuera del área contraída.
+5. El NPC cree erróneamente que la vía quedó despejada (`obstacleDetected = false`), espera el `m_ResumeDelay` (0.5s - 0.6s) y vuelve a arrancar (`Play()`).
+6. Al acelerar, la velocidad aumenta y la caja se estira de nuevo hacia adelante, redetectando al jugador unos milímetros o centímetros más cerca.
+7. Se vuelve a frenar a 0, la caja se vuelve a achicar, deja de detectarlo, espera y vuelve a avanzar...
+8. Resultado: El NPC avanza a pequeños tirones aproximándose progresivamente hasta colisionar físicamente con el jugador.
 
-### CAUSA RAÍZ DIAGNOSTICADA:
-1. En `NPCSafetyStop.cs`, la red de seguridad física (`OnCollisionEnter` y `OnCollisionStay`) y el sensor de solapamiento frontal (`OverlapBox`) estaban considerando el suelo / la acera / la calle (`Sidewalk`, `Road`, etc.) como un "obstáculo de colisión".
-2. `IsValidObstacleCollider` solo verificaba que el collider no fuera el propio peatón. Como el peatón está parado sobre la acera/calle y `m_ObstacleLayers` era `~0` con tag vacío, en cada frame de física PhysX dispara `OnCollisionStay` con el piso, provocando que `ForceEmergencyBrake` se invoque continuamente en cada frame contra el propio suelo.
-3. Además, el `OverlapBox` del sensor frontal tenía su base a `Y = 0.1m` o menos, solapando con la superficie de la acera/calle e interpretándola como un obstáculo frontal a 0 metros.
-4. Como consecuencia, el peatón queda clavado en `EmergencyStop` desde el frame 0, impidiendo que avance cuando el trigger del jugador intenta arrancarlo.
+---
+
+### CAUSA RAÍZ Y SOLUCIÓN DE INGENIERÍA:
+Falta de **Histéresis de Detección** (Detection Hysteresis) y persistencia del rango de frenado en `NPCSafetyStop.cs`:
+- Cuando el NPC entra en frenado de emergencia (`m_IsEmergencyBraking = true`), la distancia de detección frontal **NUNCA debe contraerse al caer la velocidad a cero**.
+- Debe retener la distancia efectiva que tenía al momento del frenado (`m_BrakingDetectionDistance`), más un margen de histéresis de seguridad (`m_ResumeHysteresisDistance`), asegurando que el obstáculo detectado permanezca dentro del sensor mientras siga en la misma posición.
 
 ---
 
 ### INSTRUCCIONES DE IMPLEMENTACIÓN:
 
 #### 1. En `Assets/Scripts/Environment/NPCSafetyStop.cs`:
-- **Depurar y robustecer `IsValidObstacleCollider(Collider col)`**:
-  - Si `col == null`, retornar `false`.
-  - Si `col.transform.root == transform.root || col.gameObject == gameObject`, retornar `false` (propio NPC).
-  - Si el objeto es estático del escenario (`col.gameObject.isStatic`), retornar `false`.
-  - Si el nombre del GameObject contiene palabras típicas de geometría de piso/entorno (`road`, `sidewalk`, `street`, `ground`, `terrain`, `asphalt`, `crosswalk`), retornar `false`.
-  - Si `(m_ObstacleLayers.value & (1 << col.gameObject.layer)) == 0`, retornar `false`.
-  - Si `!string.IsNullOrEmpty(m_ObstacleTag)`:
-    - Retornar `true` si coincide el tag en el collider o en su raíz; `false` en caso contrario.
-  - Si `string.IsNullOrEmpty(m_ObstacleTag)`:
-    - Si `col.attachedRigidbody == null`:
-      - Verificar si tiene componentes de tráfico/vehículo: `col.GetComponentInParent<VehicleController>() != null || col.GetComponentInParent<NPCVehicleController>() != null || col.GetComponentInParent<NPCPathFollower>() != null`.
-      - Si NO tiene ninguno de estos controladores y NO tiene un tag relevante como "Player" o "Vehicle", descartarlo (retornar `false`) para que ninguna geometría de la ciudad sin Rigidbody sea considerada obstáculo.
-      - Nota: Para compatibilidad con objetos de prueba unitaria tipo mock, si `col.name.StartsWith("TestObstacle")` o tiene `Rigidbody`, considerarlo válido.
-    - Si tiene `col.attachedRigidbody != null`, validar que no sea el propio NPC y considerarlo obstáculo válido (vehículo dinámico, auto del jugador, NPC cinemático, etc.).
-- **Filtrar contactos de apoyo vertical en colisiones físicas**:
-  - En `OnCollisionEnter(Collision collision)` y `OnCollisionStay(Collision collision)`:
-    - Recorrer los puntos de contacto `collision.contacts`.
-    - Si el contacto tiene una normal orientada hacia arriba (`contact.normal.y > 0.6f`), se trata de una superficie de piso/apoyo: IGNORAR y NO activar frenado de emergencia.
-    - Solo activar `ForceEmergencyBrake(collision.collider)` si el impacto es frontal/lateral (`contact.normal.y <= 0.6f`) Y `IsValidObstacleCollider(collision.collider)` es verdadero.
-- **Ajustar valores por defecto del sensor**:
-  - `m_SensorOffset = new Vector3(0f, 1.0f, 0f);` (elevado a la altura del torso/pecho).
-  - `m_BoxHalfExtents = new Vector3(0.6f, 0.45f, 0.3f);` (base de la caja a `0.55m` del suelo, por encima de las rodillas del peatón para jamás tocar el asfalto o la acera).
+- **Campos y propiedades de histéresis**:
+  - Agregar campo serializado:
+    ```csharp
+    [Tooltip("Margen de histéresis en metros sumado a la distancia de frenado mientras el NPC permanece detenido. Evita oscilaciones por contracción del sensor a velocidad cero.")]
+    [SerializeField] private float m_ResumeHysteresisDistance = 0.5f;
+    ```
+  - Exponer propiedad pública `public float ResumeHysteresisDistance { get => m_ResumeHysteresisDistance; set => m_ResumeHysteresisDistance = Mathf.Max(0f, value); }`.
+  - Campo privado: `private float m_BrakingDetectionDistance = 0f;`.
+- **Actualizar `GetEffectiveDetectionDistance()`**:
+  ```csharp
+  public float GetEffectiveDetectionDistance()
+  {
+      float distance = m_DetectionDistance;
 
-#### 2. En `Assets/Scripts/Testing/Editor/ScriptedEventSceneSetup.cs`:
-- En `SetupCase1_PedestrianCrosswalk`:
-  - `m_DetectionDistance`: `4.0f`.
-  - `m_ResumeDelay`: `0.6f`.
-  - `m_SensorOffset`: `new Vector3(0f, 1.0f, 0f)`.
-  - `m_BoxHalfExtents`: `new Vector3(0.6f, 0.45f, 0.3f)`.
-  - `m_DynamicDistanceWithSpeed`: `true`.
-  - `m_SpeedLookaheadFactor`: `1.0f`.
-- Ejecutar la configuración para actualizar y guardar la escena `CityMerged_ScriptedEvents.unity`.
-- NUNCA modificar `CityMerged.unity` ni `CityWithCar.unity`.
+      // Si el NPC está en frenado de emergencia, nunca reducir la distancia del sensor al caer a velocidad cero:
+      // Mantener la distancia registrada al momento del frenado más el margen de histéresis.
+      if (m_IsEmergencyBraking && m_BrakingDetectionDistance > 0f)
+      {
+          return Mathf.Max(distance, m_BrakingDetectionDistance + m_ResumeHysteresisDistance);
+      }
 
-#### 3. En `Assets/Scripts/Testing/Editor/ScriptedEventTests.cs`:
-- Asegurar que los objetos de prueba en los tests (ej. `TestObstacle_Overlap` y `TestObstacle_Contact`) incluyan un `Rigidbody` o cumplan con la validación de obstáculos.
-- Añadir un test específico que verifique que un collider de suelo/acera (por ejemplo con nombre "Road_Sidewalk" o estático) es IGNORADO por `NPCSafetyStop` y NO activa `IsEmergencyBraking`.
-- Ejecutar el runner de tests vía el menú `Tools/Primer Volante/Run Scripted Event Tests` y validar 100% pass sin errores.
+      if (m_DynamicDistanceWithSpeed && m_PathFollower != null)
+      {
+          distance += m_PathFollower.CurrentSpeed * m_SpeedLookaheadFactor;
+      }
 
-#### 4. REGLAS OBLIGATORIAS:
+      return Mathf.Max(0.2f, distance);
+  }
+  ```
+- **En `Tick(float deltaTime)`**:
+  - Cuando `obstacleDetected == true`:
+    - Si `!m_IsEmergencyBraking`:
+      - Registrar `m_BrakingDetectionDistance = GetEffectiveDetectionDistance();` ANTES de frenar el seguidor.
+      - Activar `m_IsEmergencyBraking = true;` y llamar a `m_PathFollower.EmergencyStop();`.
+    - Si `m_IsEmergencyBraking` ya era true:
+      - Mantener la parada de emergencia y no dejar que avance.
+  - Cuando `!obstacleDetected`:
+    - Al cumplirse `m_ClearTimer >= m_ResumeDelay`:
+      - Al reanudar la marcha y desactivar la emergencia (`m_IsEmergencyBraking = false`), restablecer `m_BrakingDetectionDistance = 0f;`.
+- **En `ForceEmergencyBrake(Collider col)`**:
+  - Si `!m_IsEmergencyBraking`:
+    - Registrar `m_BrakingDetectionDistance = GetEffectiveDetectionDistance();`.
+- **En `ResetSafetyState()`**:
+  - Restablecer `m_BrakingDetectionDistance = 0f;`.
+
+#### 2. En `Assets/Scripts/Testing/Editor/ScriptedEventTests.cs`:
+- Añadir o actualizar pruebas unitarias en `ScriptedEventTests.cs`:
+  - Validar que al activarse el frenado de emergencia con `DynamicDistanceWithSpeed = true`, la distancia efectiva devuelta por `GetEffectiveDetectionDistance()` se mantiene extendida (no se contrae a la base a velocidad cero) durante `IsEmergencyBraking == true`.
+  - Validar que al reanudar la marcha tras `ResumeDelay`, la distancia efectiva vuelve a la base normal con velocidad cero.
+- Ejecutar la suite completa mediante el menú de Unity `Tools/Primer Volante/Run Scripted Event Tests`.
+- Validar que el 100% de las pruebas pasen sin advertencias ni errores.
+
+#### 3. REGLAS OBLIGATORIAS:
 - NUNCA uses APIs obsoletas de Unity (CS0618). Usa `Object.FindAnyObjectByType<T>()`, JAMÁS `Object.FindFirstObjectByType<T>()`.
 - Mantén la integridad del proyecto.

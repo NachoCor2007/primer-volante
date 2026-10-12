@@ -309,6 +309,14 @@ namespace PrimerVolante.Environment
         }
 
         /// <summary>
+        /// Asigna directamente la velocidad actual para pruebas unitarias deterministas en Editor.
+        /// </summary>
+        public void SetSpeedForTesting(float speed)
+        {
+            m_State.Speed = Mathf.Max(0f, speed);
+        }
+
+        /// <summary>
         /// Coloca al NPC de inmediato en la distancia indicada, con velocidad cero.
         /// </summary>
         public void TeleportToDistance(float distance)
