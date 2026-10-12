@@ -134,7 +134,7 @@ PrefabInstance:
       addedObject: {fileID: 3412751858475836695}
     - targetCorrespondingSourceObject: {fileID: 5460708016456621143, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1780524437242939502}
+      addedObject: {fileID: 7270522973155924362}
   m_SourcePrefab: {fileID: 100100000, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
 --- !u!1 &8525037519266933002 stripped
 GameObject:
@@ -222,11 +222,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: db69ac7a7fe4f00469e45a7afa631cf3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.NPCPedestrianController
-  m_WalkReferenceSpeed: 1.5557727
+  m_WalkReferenceSpeed: 1.7096161
   m_SpeedDampTime: 0.1
   m_MaxAnimatorSpeed: 2
   m_BodyCollider: {fileID: 1514032483103215634}
---- !u!114 &1780524437242939502
+--- !u!114 &7270522973155924362
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -235,9 +235,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 8525037519266933002}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6b67de027f05ac647b97602adac6f23b, type: 3}
+  m_Script: {fileID: 11500000, guid: 113c9a6095349c14e99d9bbd65478c0a, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.NPCFootGrounding
-  m_HipsLift: 0.046224125
-  m_LeftPitchOffset: -37.043537
-  m_RightPitchOffset: -2.9812393
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.ObstacleCollisionDetector
+  m_Kind: 2
+  m_CrashSpeedKmh: 5
+  m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
+  m_LogEvents: 0

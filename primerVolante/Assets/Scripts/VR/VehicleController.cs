@@ -800,6 +800,40 @@ namespace PrimerVolante.VR
             return Mathf.Clamp(yawRate, -maxYawRate, maxYawRate);
         }
 
+        /// <summary>
+        /// Limita la velocidad interna a la velocidad de avance realmente medida. Solo puede bajarla, nunca subirla,
+        /// y una medición negativa (el auto fue empujado hacia atrás) da 0.
+        /// </summary>
+        /// <param name="internalSpeedMs">Velocidad interna del controlador en m/s.</param>
+        /// <param name="measuredForwardSpeedMs">Componente de avance de la velocidad del Rigidbody en m/s.</param>
+        public static float LimitSpeedToMeasured(float internalSpeedMs, float measuredForwardSpeedMs)
+        {
+            return Mathf.Max(0f, Mathf.Min(internalSpeedMs, measuredForwardSpeedMs));
+        }
+
+        /// <summary>
+        /// Baja la velocidad interna a la que el auto realmente lleva en su dirección de avance. Lo llama
+        /// <c>ObstacleContactSensor</c> mientras toca un obstáculo: <see cref="FixedUpdate"/> impone la velocidad
+        /// interna en cada paso, así que sin este ajuste el auto seguiría "empujando" contra el obstáculo y saldría
+        /// disparado al liberarse. Sin Rigidbody o con uno cinemático no hace nada.
+        /// </summary>
+        public void LimitSpeedToActualMotion()
+        {
+            if (m_Rigidbody == null || m_Rigidbody.isKinematic) return;
+
+            float measured = Vector3.Dot(m_Rigidbody.linearVelocity, GetTravelDirection());
+            m_CurrentSpeedMs = LimitSpeedToMeasured(m_CurrentSpeedMs, measured);
+        }
+
+        /// <summary>
+        /// Dirección en que el auto avanza ahora: la del eje frontal, invertida en marcha atrás.
+        /// </summary>
+        public Vector3 GetTravelDirection()
+        {
+            Vector3 moveDir = GetForwardVector();
+            return m_CurrentGear == GearState.Reverse ? -moveDir : moveDir;
+        }
+
         private float ReadTriggerValue(InputActionProperty property, InputAction defaultAction, XRNode handNode)
         {
             float val = 0f;

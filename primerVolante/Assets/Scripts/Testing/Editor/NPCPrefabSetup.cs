@@ -54,8 +54,8 @@ namespace PrimerVolante.Testing.Editor
             Debug.Log("[NPCPrefabSetup] 🧍 Configurando NPC (importers, Animator Controller y prefabs)...");
 
             bool clipsOk = ConfigureMixamoImporters();
-            float walkReference = ComputeUrbanManWalkReferenceSpeed();
-            AnimatorController controller = CreateOrUpdateAnimatorController(walkReference);
+            AnimatorController controller = CreateOrUpdateAnimatorController();
+            float walkReference = ComputeUrbanManWalkReferenceSpeed(controller);
 
             int vehicles = SetupVehiclePrefabs();
             int pedestrians = SetupPedestrianPrefabs(controller, walkReference);
@@ -70,12 +70,12 @@ namespace PrimerVolante.Testing.Editor
         // ------------------------------------------------------------------ Mixamo
 
         /// <summary>
-        /// Velocidad de referencia del clip Walking para el UrbanMan, medida sobre su esqueleto: es la velocidad
-        /// con la que retrocede el pie en apoyo. Si no se puede medir (faltan el clip o el avatar) se estima
-        /// escalando la medición de X Bot por la altura de cadera (<c>Animator.humanScale</c>), que sobrestima
-        /// el paso real: el UrbanMan da 1.6 m/s medidos contra 1.89 m/s estimados.
+        /// Velocidad de referencia del clip Walking para el UrbanMan, medida sobre su esqueleto con el Animator
+        /// Controller del peatón (blend tree y Foot IK): es la velocidad con la que retrocede el pie en apoyo. Si no
+        /// se puede medir (faltan el clip, el avatar o el controller) se estima escalando la medición de X Bot por la
+        /// altura de cadera (<c>Animator.humanScale</c>).
         /// </summary>
-        public static float ComputeUrbanManWalkReferenceSpeed()
+        public static float ComputeUrbanManWalkReferenceSpeed(RuntimeAnimatorController controller)
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(URBAN_MAN_PREFAB_PATH);
             var animator = prefab != null ? prefab.GetComponent<Animator>() : null;
@@ -85,8 +85,7 @@ namespace PrimerVolante.Testing.Editor
                 return XBOT_WALK_SPEED;
             }
 
-            AnimationClip walking = LoadClip(WALKING_FBX_PATH);
-            float measured = NPCFootSlidingAnalyzer.MeasureWalkReferenceSpeed(prefab, walking);
+            float measured = NPCFootSlidingAnalyzer.MeasureWalkReferenceSpeed(prefab, controller);
             if (measured > 0.5f && measured < 4f) return measured;
 
             Debug.LogWarning("[NPCPrefabSetup] ⚠️ No se pudo medir el paso del clip Walking; se estima por altura de cadera.");
@@ -94,9 +93,17 @@ namespace PrimerVolante.Testing.Editor
         }
 
         /// <summary>
-        /// Importa los FBX de Mixamo como Humanoid con avatar propio, clips en loop y *bake into pose*
-        /// de rotación, altura y posición XZ. Si falta algún FBX avisa y devuelve false sin fallar.
+        /// Importa los FBX de Mixamo como Humanoid, clips en loop y *bake into pose* de rotación, altura y posición
+        /// XZ. Si falta algún FBX avisa y devuelve false sin fallar.
         /// </summary>
+        /// <remarks>
+        /// Los FBX se descargaron sin malla, así que el avatar que Unity crea desde cada uno toma como pose de
+        /// referencia el primer frame de su animación. El de Walking arranca a mitad de paso (pie izquierdo en el
+        /// aire, −77° de pitch contra −39° del derecho), y retargetear con esa referencia hundía el cuerpo 4.6 cm y
+        /// hacía pisar con el talón izquierdo. Por eso solo Idle crea su avatar (su primer frame es una postura de pie
+        /// simétrica) y Walking lo copia: los dos clips comparten la misma referencia y no hace falta corregir nada
+        /// por script.
+        /// </remarks>
         public static bool ConfigureMixamoImporters()
         {
             bool allOk = true;
@@ -118,10 +125,28 @@ namespace PrimerVolante.Testing.Editor
                     changed = true;
                 }
 
-                if (importer.avatarSetup != ModelImporterAvatarSetup.CreateFromThisModel)
+                if (path == IDLE_FBX_PATH)
                 {
-                    importer.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel;
-                    changed = true;
+                    if (importer.avatarSetup != ModelImporterAvatarSetup.CreateFromThisModel)
+                    {
+                        importer.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel;
+                        changed = true;
+                    }
+                }
+                else
+                {
+                    Avatar idleAvatar = LoadAvatar(IDLE_FBX_PATH);
+                    if (idleAvatar == null)
+                    {
+                        Debug.LogWarning($"[NPCPrefabSetup] ⚠️ No hay avatar de Idle para compartir con {path}.");
+                        allOk = false;
+                    }
+                    else if (importer.avatarSetup != ModelImporterAvatarSetup.CopyFromOther || importer.sourceAvatar != idleAvatar)
+                    {
+                        importer.avatarSetup = ModelImporterAvatarSetup.CopyFromOther;
+                        importer.sourceAvatar = idleAvatar;
+                        changed = true;
+                    }
                 }
 
                 ModelImporterClipAnimation[] clips = importer.clipAnimations;
@@ -162,8 +187,19 @@ namespace PrimerVolante.Testing.Editor
         /// </summary>
         public static bool IsHumanWithValidAvatar(string fbxPath)
         {
-            Avatar avatar = AssetDatabase.LoadAllAssetsAtPath(fbxPath).OfType<Avatar>().FirstOrDefault();
+            ModelImporter importer = AssetImporter.GetAtPath(fbxPath) as ModelImporter;
+            Avatar avatar = importer != null && importer.avatarSetup == ModelImporterAvatarSetup.CopyFromOther
+                ? importer.sourceAvatar
+                : LoadAvatar(fbxPath);
             return avatar != null && avatar.isHuman && avatar.isValid;
+        }
+
+        /// <summary>
+        /// Avatar que el FBX crea desde su propio modelo (null si no crea ninguno).
+        /// </summary>
+        public static Avatar LoadAvatar(string fbxPath)
+        {
+            return AssetDatabase.LoadAllAssetsAtPath(fbxPath).OfType<Avatar>().FirstOrDefault();
         }
 
         /// <summary>
@@ -182,7 +218,7 @@ namespace PrimerVolante.Testing.Editor
         /// cadencia (Animator.speed). Un blend lento hasta la velocidad de referencia aplana el paso y los pies
         /// resbalan. Se conserva el asset (y su GUID) si ya existe. Si faltan clips avisa y lo deja sin movimientos.
         /// </summary>
-        public static AnimatorController CreateOrUpdateAnimatorController(float walkReferenceSpeed)
+        public static AnimatorController CreateOrUpdateAnimatorController()
         {
             var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(CONTROLLER_PATH);
             if (controller == null)
@@ -206,6 +242,7 @@ namespace PrimerVolante.Testing.Editor
             AnimatorStateMachine machine = controller.layers[0].stateMachine;
             if (HasExpectedBlendTree(machine, idle, walking))
             {
+                EnsureFootIK(machine.states[0].state);
                 return controller;
             }
 
@@ -214,17 +251,31 @@ namespace PrimerVolante.Testing.Editor
                 machine.RemoveState(child.state);
             }
 
-            controller.CreateBlendTreeInController("Locomotion", out BlendTree tree);
+            AnimatorState locomotion = controller.CreateBlendTreeInController("Locomotion", out BlendTree tree);
             tree.blendType = BlendTreeType.Simple1D;
             tree.blendParameter = NPCPedestrianController.SpeedParameter;
             tree.useAutomaticThresholds = false;
             tree.AddChild(idle, 0f);
             tree.AddChild(walking, NPCPedestrianController.WalkBlendEndSpeed);
+            EnsureFootIK(locomotion);
 
             EditorUtility.SetDirty(controller);
             Debug.Log($"[NPCPrefabSetup] 🎛️ Animator Controller listo: {CONTROLLER_PATH} " +
-                      $"(Walking a peso 1 desde {NPCPedestrianController.WalkBlendEndSpeed:F2} m/s; referencia de paso {walkReferenceSpeed:F2} m/s).");
+                      $"(Walking a peso 1 desde {NPCPedestrianController.WalkBlendEndSpeed:F2} m/s; Foot IK activo).");
             return controller;
+        }
+
+        /// <summary>
+        /// Activa Foot IK en el estado: los pies del UrbanMan van a la altura de los del clip original aunque las
+        /// proporciones de las piernas difieran de X Bot. Con el avatar compartido, el apoyo queda a menos de 1 cm
+        /// y 2° del pie plano en reposo.
+        /// </summary>
+        private static void EnsureFootIK(AnimatorState state)
+        {
+            if (state == null || state.iKOnFeet) return;
+
+            state.iKOnFeet = true;
+            EditorUtility.SetDirty(state);
         }
 
         /// <summary>
@@ -436,9 +487,11 @@ namespace PrimerVolante.Testing.Editor
             var box = GetOrAdd<BoxCollider>(root);
             FitBoxToStandingBody(root, box);
 
-            // Corrección del sesgo de los pies: se mide el apoyo al caminar contra el pie plano en reposo.
-            var grounding = GetOrAdd<NPCFootGrounding>(root);
-            CalibrateFootGrounding(grounding);
+            // El apoyo de los pies se resuelve en la importación (avatar compartido) y en el Animator (Foot IK). La
+            // corrección por script que existía antes (NPCFootGrounding) se borró: se limpia el componente huérfano
+            // que pueda haber quedado en prefabs generados con una versión anterior del setup.
+            int removed = GameObjectUtility.RemoveMonoBehavioursWithMissingScript(root);
+            if (removed > 0) Debug.Log($"[NPCPrefabSetup] 🧹 {root.name}: {removed} componente(s) sin script quitado(s).");
 
             var pedestrian = GetOrAdd<NPCPedestrianController>(root);
             var pedestrianSo = new SerializedObject(pedestrian);
@@ -496,38 +549,6 @@ namespace PrimerVolante.Testing.Editor
             body.isKinematic = true;
             body.useGravity = false;
             body.interpolation = RigidbodyInterpolation.Interpolate;
-        }
-
-        /// <summary>
-        /// Calibra <see cref="NPCFootGrounding"/> con el UrbanMan: elevación del esqueleto y pitch por pie que
-        /// llevan el apoyo del clip Walking a la pose de pie plano del clip Idle.
-        /// </summary>
-        public static void CalibrateFootGrounding(NPCFootGrounding grounding)
-        {
-            var urbanMan = AssetDatabase.LoadAssetAtPath<GameObject>(URBAN_MAN_PREFAB_PATH);
-            AnimationClip idle = LoadClip(IDLE_FBX_PATH);
-            AnimationClip walking = LoadClip(WALKING_FBX_PATH);
-
-            if (!NPCFootSlidingAnalyzer.MeasureRestFoot(urbanMan, idle, out float restAnkle, out float restPitch))
-            {
-                Debug.LogWarning("[NPCPrefabSetup] ⚠️ No se pudo medir el pie en reposo; NPCFootGrounding queda sin corrección.");
-                return;
-            }
-
-            NPCFootSlidingAnalyzer.StanceFoot[] stance = NPCFootSlidingAnalyzer.MeasureStanceFromClip(urbanMan, walking);
-            if (stance[0].Frames == 0 || stance[1].Frames == 0)
-            {
-                Debug.LogWarning("[NPCPrefabSetup] ⚠️ No se pudo medir el apoyo del clip Walking; NPCFootGrounding queda sin corrección.");
-                return;
-            }
-
-            float lift = restAnkle - (stance[0].AnkleHeight + stance[1].AnkleHeight) * 0.5f;
-            float leftOffset = restPitch - stance[0].Pitch;
-            float rightOffset = restPitch - stance[1].Pitch;
-            grounding.Calibrate(Mathf.Max(0f, lift), leftOffset, rightOffset);
-            Debug.Log($"[NPCPrefabSetup] 🦶 NPCFootGrounding: elevación {Mathf.Max(0f, lift) * 100f:F1} cm, " +
-                      $"pitch izquierdo {leftOffset:+0.0;-0.0}°, pitch derecho {rightOffset:+0.0;-0.0}° " +
-                      $"(reposo: tobillo {restAnkle:F3} m, pitch {restPitch:F0}°).");
         }
 
         /// <summary>

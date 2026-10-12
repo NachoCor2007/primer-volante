@@ -25,7 +25,8 @@ No hace falta agregar ni escribir ninguna clase: los prefabs ya vienen configura
 | `NPCPathFollower` | Ya viene en todos los prefabs `NPC_*` | Mueve al NPC por la spline. Es donde se asigna la ruta. |
 | `NPCVehicleController` | Ya viene en los prefabs de vehículo | Gira las ruedas y orienta las delanteras (modelo de bicicleta inverso). |
 | `NPCPedestrianController` | Ya viene en los prefabs de peatón | Escribe `Speed` en el Animator y ajusta su cadencia. |
-| `NPCFootGrounding` | Ya viene en los prefabs de peatón | Corrige el sesgo de retargeting de los pies. |
+
+El apoyo de los pies de los peatones no se corrige por script: el clip Walking de Mixamo comparte el avatar de Idle (el de su propio FBX tiene como referencia un frame a mitad de paso) y el estado `Locomotion` del `NPC_Pedestrian.controller` usa **Foot IK**. Lo configura `Tools/Primer Volante/Setup NPC Prefabs`.
 
 Los prefabs están en:
 
