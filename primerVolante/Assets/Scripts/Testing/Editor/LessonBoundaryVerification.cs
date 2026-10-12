@@ -17,6 +17,10 @@ namespace PrimerVolante.Testing.Editor
         private const string CAR08_PATH = "Assets/MadTroll_Studio/Low Poly 1970s Family Sedan 3D Model Free Download Car02/Prefabs/Car08.prefab";
         private const string CAR07_PATH = "Assets/MadTroll_Studio/Low Poly 1970s Family Sedan 3D Model Free Download Car02/Prefabs/Car07.prefab";
 
+        private const string SCENES_FOLDER = "Assets/SimplePoly City - Low Poly Assets/Demo/TestingScenes";
+        public const string BARRIERS_SCENE_PATH = SCENES_FOLDER + "/CityWithBarriers.unity";
+        public const string CAR_SCENE_PATH = SCENES_FOLDER + "/CityWithCar.unity";
+
         // Cordones esperados por pieza, medidos a mano sobre las mallas (tabla de §2 del prompt): normal (nx, nz),
         // offset del plano y tramo [s0, s1] sobre la tangente (-nz, nx).
         private static readonly Dictionary<string, (float nx, float nz, float d, float s0, float s1)[]> s_ExpectedFaces =
@@ -69,6 +73,8 @@ namespace PrimerVolante.Testing.Editor
             VerifyRoadPrefabs(ref total, ref passed);
             VerifyCurbTable(ref total, ref passed);
             VerifyWallGeometry(ref total, ref passed);
+            VerifySceneRoadInstances(BARRIERS_SCENE_PATH, ref total, ref passed);
+            VerifySceneRoadInstances(CAR_SCENE_PATH, ref total, ref passed);
             VerifyCarDetection(ref total, ref passed);
 
             Debug.Log("=========================================================");
@@ -309,6 +315,66 @@ namespace PrimerVolante.Testing.Editor
         {
             return physics.Raycast(new Vector3(x, 1f, z), Vector3.down, out RaycastHit hit, 2f, ~0, QueryTriggerInteraction.Ignore) &&
                    hit.point.y < RoadCurbWalls.GROUND_MAX_HEIGHT;
+        }
+
+        // ---------------------------------------------------------------- Instancias de calle en escenas
+
+        // Sin overrides de MeshCollider agregados y exactamente 1 MeshCollider efectivo (0 en Split Line).
+        private static void VerifySceneRoadInstances(string scenePath, ref int total, ref int passed)
+        {
+            string label = System.IO.Path.GetFileNameWithoutExtension(scenePath);
+            if (!System.IO.File.Exists(scenePath))
+            {
+                Assert(false, $"{label}: la escena {scenePath} debe existir", ref total, ref passed);
+                return;
+            }
+
+            Scene scene = SceneManager.GetSceneByPath(scenePath);
+            bool openedHere = false;
+            if (!scene.IsValid() || !scene.isLoaded)
+            {
+                // Aditiva: nunca se reemplaza una escena abierta.
+                scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Additive);
+                openedHere = true;
+            }
+
+            try
+            {
+                int instances = 0;
+                var withOverride = new List<string>();
+                var wrongCount = new List<string>();
+
+                foreach (GameObject root in scene.GetRootGameObjects())
+                {
+                    foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+                    {
+                        GameObject go = t.gameObject;
+                        if (!LessonBoundarySetup.IsRoadInstanceRoot(go)) continue;
+                        instances++;
+
+                        int added = PrefabUtility.GetAddedComponents(go).Count(a => a.instanceComponent is MeshCollider);
+                        if (added > 0) withOverride.Add(go.name);
+
+                        string source = PrefabUtility.GetCorrespondingObjectFromSource(go).name;
+                        int expected = source == LessonBoundarySetup.SPLIT_LINE_NAME ? 0 : 1;
+                        int actual = go.GetComponents<MeshCollider>().Length;
+                        if (actual != expected) wrongCount.Add($"{go.name}={actual}");
+                    }
+                }
+
+                Assert(instances > 0, $"{label}: debe tener instancias de calle ({instances})", ref total, ref passed);
+                Assert(withOverride.Count == 0,
+                    $"{label}: ninguna instancia de calle tiene un MeshCollider agregado como override ({withOverride.Count})",
+                    ref total, ref passed);
+                Assert(wrongCount.Count == 0,
+                    $"{label}: cada instancia tiene exactamente 1 MeshCollider efectivo, 0 en Split Line " +
+                    $"({wrongCount.Count} incorrectas{(wrongCount.Count == 0 ? "" : ": " + string.Join(", ", wrongCount.Take(5)))})",
+                    ref total, ref passed);
+            }
+            finally
+            {
+                if (openedHere) EditorSceneManager.CloseScene(scene, true);
+            }
         }
 
         // ---------------------------------------------------------------- Auto del jugador

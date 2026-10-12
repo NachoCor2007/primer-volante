@@ -1,7 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace PrimerVolante.Testing.Editor
 {
@@ -238,6 +240,80 @@ namespace PrimerVolante.Testing.Editor
         {
             box.isTrigger = false;
             box.sharedMaterial = noFriction;
+        }
+
+        // ------------------------------------------------------------------ Limpieza de overrides de escena
+
+        /// <summary>
+        /// Quita de la escena activa los <c>MeshCollider</c> agregados como override (*Added Component*) a las
+        /// instancias de pieza de calle: ahora el collider vive en el prefab y quedaría duplicado. No toca ningún
+        /// otro override ni componente.
+        /// </summary>
+        [MenuItem("Tools/Primer Volante/Remove Road Collider Overrides (Active Scene)")]
+        public static void RemoveRoadColliderOverridesActiveScene()
+        {
+            RemoveRoadColliderOverrides(SceneManager.GetActiveScene(), save: true);
+        }
+
+        /// <summary>
+        /// Quita los <c>MeshCollider</c> agregados a las instancias de calle de <paramref name="scene"/>. Se niega a
+        /// trabajar sobre una escena con cambios sin guardar. Devuelve la cantidad de overrides quitados o -1 si no
+        /// pudo trabajar.
+        /// </summary>
+        public static int RemoveRoadColliderOverrides(Scene scene, bool save)
+        {
+            if (!scene.IsValid() || !scene.isLoaded)
+            {
+                Debug.LogError("[LessonBoundarySetup] ❌ La escena no está cargada.");
+                return -1;
+            }
+
+            if (scene.isDirty)
+            {
+                Debug.LogError($"[LessonBoundarySetup] ❌ La escena {scene.name} tiene cambios sin guardar: guardalos o descartalos antes de limpiar.");
+                return -1;
+            }
+
+            int instances = 0, removed = 0;
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+                {
+                    GameObject go = t.gameObject;
+                    if (!IsRoadInstanceRoot(go)) continue;
+                    instances++;
+
+                    foreach (AddedComponent added in PrefabUtility.GetAddedComponents(go))
+                    {
+                        if (added.instanceComponent is MeshCollider)
+                        {
+                            added.Revert(InteractionMode.AutomatedAction);
+                            removed++;
+                        }
+                    }
+                }
+            }
+
+            if (removed > 0)
+            {
+                EditorSceneManager.MarkSceneDirty(scene);
+                if (save) EditorSceneManager.SaveScene(scene);
+            }
+
+            Debug.Log($"[LessonBoundarySetup] 🧹 {scene.name}: {removed} MeshCollider agregados quitados de {instances} instancias de calle.");
+            return removed;
+        }
+
+        /// <summary>true si <paramref name="go"/> es la raíz de una instancia de un prefab de <c>Prefab/Roads</c>.</summary>
+        public static bool IsRoadInstanceRoot(GameObject go)
+        {
+            if (!PrefabUtility.IsAnyPrefabInstanceRoot(go)) return false;
+
+            GameObject source = PrefabUtility.GetCorrespondingObjectFromSource(go);
+            if (source == null) return false;
+
+            string path = AssetDatabase.GetAssetPath(source);
+            return path.StartsWith(ROADS_FOLDER + "/") && System.IO.Path.GetFileName(path).StartsWith("Road");
         }
 
         // ------------------------------------------------------------------ Helpers
