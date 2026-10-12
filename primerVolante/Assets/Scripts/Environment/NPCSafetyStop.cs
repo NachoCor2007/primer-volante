@@ -389,6 +389,11 @@ namespace PrimerVolante.Environment
         /// </summary>
         public float GetEffectiveDetectionDistance()
         {
+            if (m_PathFollower == null)
+            {
+                m_PathFollower = GetComponent<NPCPathFollower>();
+            }
+
             float distance = m_DetectionDistance;
 
             // Si el NPC está en frenado de emergencia, nunca reducir la distancia del sensor al caer a velocidad cero:
