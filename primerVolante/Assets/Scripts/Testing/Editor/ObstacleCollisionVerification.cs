@@ -311,20 +311,24 @@ namespace PrimerVolante.Testing.Editor
 
         private static void VerifyScene(ref int total, ref int passed)
         {
-            // CityMerged no cambió: sin diferencias contra HEAD y sin ningún detector.
-            bool? clean = IsGitClean(ObstacleCollisionSetup.SOURCE_SCENE_PATH);
-            if (clean.HasValue)
-            {
-                Assert(clean.Value, "CityMerged.unity sin cambios (git diff --quiet)", ref total, ref passed);
-            }
-            else
-            {
-                Debug.LogWarning("[ObstacleCollisionVerification] ⚠️ No se pudo correr git: se omite la comparación de CityMerged.");
-            }
-
+            // CityMerged y la escena de eventos guionados (US31) no cambiaron: sin diferencias contra HEAD y sin detectores.
             string detectorGuid = AssetDatabase.AssetPathToGUID("Assets/Scripts/Environment/ObstacleCollisionDetector.cs");
-            string mergedText = System.IO.File.ReadAllText(ObstacleCollisionSetup.SOURCE_SCENE_PATH);
-            Assert(!mergedText.Contains(detectorGuid), "CityMerged.unity no referencia ObstacleCollisionDetector", ref total, ref passed);
+            foreach (string untouched in new[] { ObstacleCollisionSetup.SOURCE_SCENE_PATH, ObstacleCollisionSetup.SCRIPTED_EVENTS_SCENE_PATH })
+            {
+                string label = System.IO.Path.GetFileName(untouched);
+                bool? clean = IsGitClean(untouched);
+                if (clean.HasValue)
+                {
+                    Assert(clean.Value, $"{label} sin cambios (git diff --quiet)", ref total, ref passed);
+                }
+                else
+                {
+                    Debug.LogWarning($"[ObstacleCollisionVerification] ⚠️ No se pudo correr git: se omite la comparación de {label}.");
+                }
+
+                string text = System.IO.File.Exists(untouched) ? System.IO.File.ReadAllText(untouched) : "";
+                Assert(text.Length > 0 && !text.Contains(detectorGuid), $"{label} existe y no referencia ObstacleCollisionDetector", ref total, ref passed);
+            }
 
             Scene scene = SceneManager.GetSceneByPath(ObstacleCollisionSetup.SCENE_PATH);
             if (!scene.IsValid() || !scene.isLoaded)
@@ -332,19 +336,37 @@ namespace PrimerVolante.Testing.Editor
                 if (HasDirtyScene(out string dirty))
                 {
                     Debug.LogWarning($"[ObstacleCollisionVerification] ⚠️ {dirty} tiene cambios sin guardar: no se abre la escena de prueba.");
-                    Assert(false, "CityWithCollisionDetectors debe poder abrirse para verificarla", ref total, ref passed);
+                    Assert(false, "CityMerged2 debe poder abrirse para verificarla", ref total, ref passed);
                     return;
                 }
 
                 scene = EditorSceneManager.OpenScene(ObstacleCollisionSetup.SCENE_PATH, OpenSceneMode.Single);
             }
 
-            Assert(scene.IsValid() && scene.isLoaded, "CityWithCollisionDetectors.unity debe existir y abrirse", ref total, ref passed);
+            Assert(scene.IsValid() && scene.isLoaded, "CityMerged2.unity debe existir y abrirse", ref total, ref passed);
             if (!scene.IsValid() || !scene.isLoaded) return;
 
+            VerifyMergedScene(scene, ref total, ref passed);
             VerifyParkedVehicles(scene, ref total, ref passed);
             VerifyDemoZone(scene, ref total, ref passed);
             VerifySceneCar(scene, ref total, ref passed);
+        }
+
+        // La escena integrada conserva los eventos guionados de US31 y no arrastra restos de pruebas.
+        private static void VerifyMergedScene(Scene scene, ref int total, ref int passed)
+        {
+            GameObject scripted = LessonBoundarySetup.FindRootByName(scene, ScriptedEventSceneSetup.ROOT_GROUP_NAME);
+            Assert(scripted != null, $"CityMerged2 conserva el grupo {ScriptedEventSceneSetup.ROOT_GROUP_NAME} de US31", ref total, ref passed);
+            if (scripted != null)
+            {
+                int triggers = scripted.GetComponentsInChildren<TriggerScriptedEvent>(true).Length;
+                int safetyStops = scripted.GetComponentsInChildren<NPCSafetyStop>(true).Length;
+                Assert(triggers == 2 && safetyStops == 2,
+                    $"Los eventos guionados siguen completos (triggers {triggers}/2, NPC con NPCSafetyStop {safetyStops}/2)", ref total, ref passed);
+            }
+
+            Assert(LessonBoundarySetup.FindRootByName(scene, "TestTrafficLight") == null && LessonBoundarySetup.FindRootByName(scene, "ScaleTest") == null,
+                "CityMerged2 no tiene restos de pruebas (TestTrafficLight, ScaleTest)", ref total, ref passed);
         }
 
         private static void VerifyParkedVehicles(Scene scene, ref int total, ref int passed)

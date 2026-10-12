@@ -260,7 +260,7 @@ namespace PrimerVolante.Testing.Editor
         private static TrafficLightController SetupCase3_TrafficLightSync()
         {
             // Buscar los semáforos de la intersección. Usar FindObjectsByType conforme a AGENTS.md
-            TrafficLightController[] allLights = Object.FindObjectsByType<TrafficLightController>(FindObjectsSortMode.None);
+            TrafficLightController[] allLights = Object.FindObjectsByType<TrafficLightController>();
             TrafficLightController playerLaneLight = null;
 
             for (int i = 0; i < allLights.Length; i++)

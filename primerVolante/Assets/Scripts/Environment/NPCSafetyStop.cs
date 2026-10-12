@@ -398,6 +398,10 @@ namespace PrimerVolante.Environment
                 return Mathf.Max(distance, m_BrakingDetectionDistance + m_ResumeHysteresisDistance);
             }
 
+            // Igual que en Tick y ForceEmergencyBrake: si se consulta antes de Awake (p. ej. en tests de Editor)
+            // se resuelve el seguidor acá para no perder el lookahead por velocidad.
+            if (m_PathFollower == null) m_PathFollower = GetComponent<NPCPathFollower>();
+
             if (m_DynamicDistanceWithSpeed && m_PathFollower != null)
             {
                 distance += m_PathFollower.CurrentSpeed * m_SpeedLookaheadFactor;

@@ -226,7 +226,19 @@ namespace PrimerVolante.Testing.Editor
 
         public const string SCENES_FOLDER = "Assets/SimplePoly City - Low Poly Assets/Demo/TestingScenes";
         public const string SOURCE_SCENE_PATH = SCENES_FOLDER + "/CityMerged.unity";
-        public const string SCENE_PATH = SCENES_FOLDER + "/CityWithCollisionDetectors.unity";
+
+        /// <summary>Escena de eventos guionados de US31 (#23): base de la escena integrada. No se modifica.</summary>
+        public const string SCRIPTED_EVENTS_SCENE_PATH = SCENES_FOLDER + "/CityMerged_ScriptedEvents.unity";
+
+        /// <summary>
+        /// Escena de trabajo integrada: copia de <c>CityMerged_ScriptedEvents</c> con los obstáculos de US33. La zona de
+        /// demo va en otra calle que la de los eventos guionados, que usan la calle x = 60 frente al Car08.
+        /// </summary>
+        public const string SCENE_PATH = SCENES_FOLDER + "/CityMerged2.unity";
+
+        /// <summary>Escena de US33 previa a la integración (zona de demo en la calle x = 60). Se conserva como estaba.</summary>
+        public const string LEGACY_SCENE_PATH = SCENES_FOLDER + "/CityWithCollisionDetectors.unity";
+
         public const string DECORATIVE_VEHICLES_FOLDER = "Assets/SimplePoly City - Low Poly Assets/Prefab/Vehicles";
 
         public const string DEMO_GROUP_NAME = "Obstacle_Demo";
@@ -237,32 +249,37 @@ namespace PrimerVolante.Testing.Editor
         public const string DEMO_PEDESTRIAN_PREFAB = NPCPrefabSetup.PEDESTRIAN_OUTPUT_FOLDER + "/NPC_Pedestrian_01.prefab";
         public const int DEMO_CONE_COUNT = 5;
 
-        // Zona de práctica sobre la calle x = 60 (carriles de 7 m, mano derecha), por delante del Car08 (63.5, 95),
-        // que mira a +Z. El tramo entre los cruces (z = 69.5..110.4) es corto y tiene la línea de detención del T
-        // (StopLine_Trigger, z = 108..109, x = 60..67.2), así que el slalom la cruza: cinco conos cada 6 m en
-        // z = 98.5, 104.5, 110.5, 116.5 y 122.5 (el tercero queda a 1.5 m de la línea de detención y los dos últimos dentro
-        // del T, a más de 4 m del cordón norte en z = 127).
-        private const float DEMO_CONE_FIRST_Z = 98.5f;
-        private const float DEMO_CONE_SPACING = 6f;
-        private const float DEMO_CONE_X_LEFT = 62.5f;
-        private const float DEMO_CONE_X_RIGHT = 64.5f;
+        // Zona de práctica sobre la calle x = 120, entre los cruces de z = 60 y z = 120 (carriles de 7 m, mano derecha).
+        // La calle x = 60 frente al Car08 la ocupan los eventos guionados de US31 (peatón en la senda de z = 108.5,
+        // triggers en z = 101 y 111, auto que cruza el T en z = 123.5). Desde el inicio: hasta el T, a la derecha por
+        // z = 116.5 y otra vez a la derecha en el cruce (120, 120) para bajar por el carril oeste (x = 116.5) hacia −Z.
+        // El slalom va sobre la línea central, cada 6 m, y deja ~3 m de paso contra los dos autos decorativos que ya
+        // están estacionados en la calle (SUV en (116.6, 84.6) y auto en (123.9, 90.1)).
+        private static readonly Vector3[] s_DemoConePositions =
+        {
+            new Vector3(119f, 0f, 104f),
+            new Vector3(121f, 0f, 98f),
+            new Vector3(119f, 0f, 92f),
+            new Vector3(121f, 0f, 86f),
+            new Vector3(119f, 0f, 80f),
+        };
 
-        // Auto estacionado pegado al cordón oeste (cara del cordón en x = 53.4), mirando a −Z como el tránsito del
-        // carril oeste; entre el contenedor decorativo (z = 95) y la línea de detención.
-        private static readonly Vector3 s_DemoParkedCarPosition = new Vector3(54.9f, 0f, 103f);
-        private const float DEMO_PARKED_CAR_YAW = 180f;
+        // Auto estacionado pegado al cordón este (cara del cordón en x = 126.6), mirando a +Z como el carril este.
+        private static readonly Vector3 s_DemoParkedCarPosition = new Vector3(125.1f, 0f, 100f);
+        private const float DEMO_PARKED_CAR_YAW = 0f;
 
-        // Peatón quieto sobre la senda del cruce norte del T (z = 110.4..113.4, de x = 53.4 a 66.6), del lado del
-        // carril del jugador pero fuera de la trayectoria del slalom.
-        private static readonly Vector3 s_DemoPedestrianPosition = new Vector3(64.9f, 0f, 111.9f);
+        // Peatón quieto sobre la senda del cruce sur (z = 66.6..69.6), en el carril por el que se baja.
+        private static readonly Vector3 s_DemoPedestrianPosition = new Vector3(117.5f, 0f, 68f);
         private const float DEMO_PEDESTRIAN_YAW = 90f;
 
         /// <summary>Posición XZ del cono <paramref name="index"/> (0..4) de la zona de demo.</summary>
         public static Vector3 DemoConePosition(int index)
         {
-            float x = index % 2 == 0 ? DEMO_CONE_X_LEFT : DEMO_CONE_X_RIGHT;
-            return new Vector3(x, 0f, DEMO_CONE_FIRST_Z + DEMO_CONE_SPACING * index);
+            return s_DemoConePositions[index];
         }
+
+        /// <summary>Punto de referencia de la zona de demo (para reportes y pruebas): el centro del slalom.</summary>
+        public static Vector3 DemoCenter => (s_DemoConePositions[0] + s_DemoConePositions[DEMO_CONE_COUNT - 1]) * 0.5f;
 
         /// <summary>
         /// Agrega <see cref="ObstacleCollisionDetector"/> (tipo <see cref="ObstacleKind.Vehicle"/>) a cada instancia
@@ -287,10 +304,10 @@ namespace PrimerVolante.Testing.Editor
                 return -1;
             }
 
-            if (scene.path == SOURCE_SCENE_PATH)
+            if (scene.path == SOURCE_SCENE_PATH || scene.path == SCRIPTED_EVENTS_SCENE_PATH)
             {
-                Debug.LogError("[ObstacleCollisionSetup] ❌ CityMerged no se modifica: los autos estacionados solo registran contactos " +
-                               $"en {SCENE_PATH}.");
+                Debug.LogError($"[ObstacleCollisionSetup] ❌ {scene.name} no se modifica: los autos estacionados solo registran " +
+                               $"contactos en {SCENE_PATH}.");
                 return -1;
             }
 
@@ -363,11 +380,62 @@ namespace PrimerVolante.Testing.Editor
             return result;
         }
 
+        // Objetos que la escena integrada no lleva: el grupo de pruebas de escala (ya quitado en la escena de US33) y un
+        // TrafficLightController suelto que dejó una corrida de ScriptedEventTests en CityMerged_ScriptedEvents.
+        private static readonly string[] s_MergedSceneLeftovers = { "ScaleTest", "TestTrafficLight" };
+
         /// <summary>
-        /// Crea o actualiza en <c>CityWithCollisionDetectors</c> el grupo <c>Obstacle_Demo</c>: 5 conos en slalom,
-        /// un auto NPC estacionado y un peatón NPC quieto (ambos sin ruta y con Play On Start apagado). Idempotente.
+        /// Arma la escena integrada <c>CityMerged2</c>: copia <c>CityMerged_ScriptedEvents</c> (US31) si todavía no
+        /// existe, le quita los restos de pruebas, apaga los logs del Car08 (como en la escena de US33), agrega los
+        /// detectores a los autos decorativos y crea la zona de demo de US33 en la calle x = 120. Idempotente.
+        /// <c>CityMerged</c> y <c>CityMerged_ScriptedEvents</c> no se modifican.
         /// </summary>
-        [MenuItem("Tools/Primer Volante/Setup Obstacle Demo (CityWithCollisionDetectors)")]
+        [MenuItem("Tools/Primer Volante/Setup Merged Scene (CityMerged2)")]
+        public static void SetupMergedScene()
+        {
+            if (!TryGetCleanScene(SCENE_PATH, out Scene scene)) return;
+
+            bool changed = false;
+            foreach (string leftover in s_MergedSceneLeftovers)
+            {
+                GameObject root = LessonBoundarySetup.FindRootByName(scene, leftover);
+                if (root == null) continue;
+
+                Undo.DestroyObjectImmediate(root);
+                changed = true;
+                Debug.Log($"[ObstacleCollisionSetup] 🧹 {scene.name}: quitado '{leftover}'.");
+            }
+
+            VehicleController car = scene.GetRootGameObjects()
+                .SelectMany(root => root.GetComponentsInChildren<VehicleController>(true))
+                .FirstOrDefault(v => v.name == "Car08");
+            if (car != null)
+            {
+                var so = new SerializedObject(car);
+                SerializedProperty logs = so.FindProperty("m_EnableDebugLogs");
+                if (logs != null && logs.boolValue)
+                {
+                    logs.boolValue = false;
+                    so.ApplyModifiedProperties();
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                EditorSceneManager.MarkSceneDirty(scene);
+                EditorSceneManager.SaveScene(scene);
+            }
+
+            SetupParkedVehicleObstacles(scene, save: true);
+            SetupObstacleDemo();
+        }
+
+        /// <summary>
+        /// Crea o actualiza en <c>CityMerged2</c> el grupo <c>Obstacle_Demo</c>: 5 conos en slalom, un auto NPC
+        /// estacionado y un peatón NPC quieto (ambos sin ruta y con Play On Start apagado). Idempotente.
+        /// </summary>
+        [MenuItem("Tools/Primer Volante/Setup Obstacle Demo (CityMerged2)")]
         public static void SetupObstacleDemo()
         {
             if (!TryGetCleanScene(SCENE_PATH, out Scene scene)) return;
@@ -458,8 +526,9 @@ namespace PrimerVolante.Testing.Editor
         /// <summary>
         /// Controla la ubicación de la zona de demo: cada objeto apoya sobre una pieza <c>Road *</c> en el asfalto
         /// (y ≈ 0), no se superpone con ningún collider ajeno (autos decorativos, semáforos, vallas, edificios) y
-        /// queda a más de 3 m de las rutas de <c>NPC_Demo</c> y de <c>Lesson_Boundaries</c>, a más de 1 m de la
-        /// línea de detención y a más de 2.5 m de los semáforos. Devuelve la lista de problemas (vacía si está bien).
+        /// queda a más de 3 m de las rutas de los NPC de la escena y de <c>Lesson_Boundaries</c>, a más de 1 m de las
+        /// líneas de detención y triggers de eventos guionados, y a más de 2.5 m de los semáforos. Devuelve la lista de
+        /// problemas (vacía si está bien).
         /// </summary>
         public static List<string> ValidateDemoPlacement(Scene scene)
         {
@@ -473,25 +542,36 @@ namespace PrimerVolante.Testing.Editor
 
             Physics.SyncTransforms();
 
-            // Rutas y vallas con las que no se debe superponer.
+            // Rutas y vallas con las que no se debe superponer: las rutas de todos los NPC de la escena (NPC_Demo y los
+            // eventos guionados de US31), salvo las de la propia zona de demo.
             var routePoints = new List<Vector3>();
-            GameObject npcDemo = LessonBoundarySetup.FindRootByName(scene, "NPC_Demo");
-            if (npcDemo != null)
+            var routes = new HashSet<SplineContainer>();
+            foreach (GameObject root in scene.GetRootGameObjects())
             {
-                foreach (SplineContainer container in npcDemo.GetComponentsInChildren<SplineContainer>(true))
+                if (root == group) continue;
+                foreach (NPCPathFollower follower in root.GetComponentsInChildren<NPCPathFollower>(true))
                 {
-                    for (int s = 0; s < container.Splines.Count; s++)
-                    {
-                        foreach (var sample in NPCDemoRoutesSetup.SampleRoute(container, s, 1f)) routePoints.Add(sample.position);
-                    }
+                    if (follower.Path != null) routes.Add(follower.Path);
+                }
+            }
+
+            foreach (SplineContainer container in routes)
+            {
+                for (int s = 0; s < container.Splines.Count; s++)
+                {
+                    foreach (var sample in NPCDemoRoutesSetup.SampleRoute(container, s, 1f)) routePoints.Add(sample.position);
                 }
             }
 
             GameObject boundaries = LessonBoundarySetup.FindRootByName(scene, LessonBoundarySetup.BOUNDARIES_GROUP_NAME);
             Collider[] boundaryColliders = boundaries != null ? boundaries.GetComponentsInChildren<Collider>(true) : new Collider[0];
 
+            // Volúmenes trigger que el auto no debe activar al usar la zona: líneas de detención (US32) y triggers de
+            // eventos guionados (US31).
             Collider[] stopLines = Object.FindObjectsByType<RedLightViolationDetector>(FindObjectsInactive.Include)
                 .Select(detector => detector.GetComponent<Collider>())
+                .Concat(Object.FindObjectsByType<TriggerScriptedEvent>(FindObjectsInactive.Include)
+                    .Select(trigger => trigger.GetComponent<Collider>()))
                 .Where(collider => collider != null)
                 .ToArray();
 
@@ -536,12 +616,12 @@ namespace PrimerVolante.Testing.Editor
                     }
                 }
 
-                // Distancia a rutas de NPC_Demo (3 m), vallas de lección (3 m) y línea de detención (1.5 m).
+                // Distancia a rutas de NPC (3 m), vallas de lección (3 m) y volúmenes trigger (1 m).
                 var flat = new Vector2(position.x, position.z);
                 float minRoute = routePoints.Count == 0
                     ? float.PositiveInfinity
                     : routePoints.Min(p => Vector2.Distance(new Vector2(p.x, p.z), flat));
-                if (minRoute < 3f) problems.Add($"{item.name}: a {minRoute:F1} m de una ruta de NPC_Demo.");
+                if (minRoute < 3f) problems.Add($"{item.name}: a {minRoute:F1} m de la ruta de un NPC.");
 
                 foreach (Collider boundary in boundaryColliders)
                 {
@@ -557,7 +637,7 @@ namespace PrimerVolante.Testing.Editor
                     Vector3 closest = stopLine.ClosestPoint(position);
                     if (Vector2.Distance(new Vector2(closest.x, closest.z), flat) < 1.0f)
                     {
-                        problems.Add($"{item.name}: a menos de 1 m de la línea de detención {stopLine.name}.");
+                        problems.Add($"{item.name}: a menos de 1 m del trigger {stopLine.name}.");
                     }
                 }
 
@@ -572,8 +652,8 @@ namespace PrimerVolante.Testing.Editor
             return problems;
         }
 
-        // Escena cargada y sin cambios sin guardar. Si no existe, la crea como copia de CityMerged. Nunca abre
-        // en modo Single sobre cambios sin guardar.
+        // Escena cargada y sin cambios sin guardar. Si no existe, la crea como copia de la escena de eventos guionados
+        // (US31), que ya incluye todo CityMerged. Nunca abre en modo Single sobre cambios sin guardar.
         private static bool TryGetCleanScene(string scenePath, out Scene scene)
         {
             scene = SceneManager.GetSceneByPath(scenePath);
@@ -600,9 +680,9 @@ namespace PrimerVolante.Testing.Editor
 
             if (!System.IO.File.Exists(scenePath))
             {
-                if (!AssetDatabase.CopyAsset(SOURCE_SCENE_PATH, scenePath))
+                if (!AssetDatabase.CopyAsset(SCRIPTED_EVENTS_SCENE_PATH, scenePath))
                 {
-                    Debug.LogError($"[ObstacleCollisionSetup] ❌ No se pudo copiar {SOURCE_SCENE_PATH} a {scenePath}.");
+                    Debug.LogError($"[ObstacleCollisionSetup] ❌ No se pudo copiar {SCRIPTED_EVENTS_SCENE_PATH} a {scenePath}.");
                     return false;
                 }
             }
