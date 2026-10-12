@@ -89,6 +89,9 @@ namespace PrimerVolante.Testing.Editor
             Debug.Log("=========================================================");
             Debug.Log($"🏁 RESULTADO FINAL: {passed}/{total} pruebas pasadas con éxito!");
             Debug.Log("=========================================================");
+
+            // Informativo: no cuenta en el resultado.
+            AnalyzeRoadLeaks();
         }
 
         // ---------------------------------------------------------------- Prefabs de calle
@@ -833,6 +836,208 @@ namespace PrimerVolante.Testing.Editor
             Assert(suiteTotal > 0 && suitePassed == suiteTotal,
                 $"NPCVerification (y las suites Cockpit, VehicleLighting, SoundIntegration y TurnSignal) sigue pasando ({suitePassed}/{suiteTotal})",
                 ref total, ref passed);
+        }
+
+        // ---------------------------------------------------------------- Análisis de fugas (informativo)
+
+        // Grilla de 1 m sobre x ∈ [−20, 260], z ∈ [−40, 240].
+        private const float k_LeakXMin = -20f, k_LeakXMax = 260f, k_LeakZMin = -40f, k_LeakZMax = 240f;
+
+        private enum CellKind : byte
+        {
+            Other = 0,      // sin suelo conocido o bloqueada
+            Road = 1,       // calzada: asfalto de una pieza Road* a y < 0.1, sin muro ni obstáculo
+            Sidewalk = 2,   // vereda (pieza Road* a y >= 0.1)
+            Fallback = 3,   // solo el Ground_FallbackCollider debajo y nada que bloquee: el auto puede dejar la red
+        }
+
+        /// <summary>
+        /// Recorre la grilla de la escena activa y lista las fugas: celdas de calzada alcanzables desde el Car08 cuyo
+        /// vecino solo tiene el <c>Ground_FallbackCollider</c> debajo. No falla: es un informe para decidir qué cerrar.
+        /// </summary>
+        [MenuItem("Tools/Primer Volante/Run Road Leak Analysis")]
+        public static void RunLeakAnalysis()
+        {
+            Debug.Log("[LessonBoundaryVerification] 🕳️ Analizando fugas de la red de calles...");
+            AnalyzeRoadLeaks();
+        }
+
+        private static void AnalyzeRoadLeaks()
+        {
+            Physics.SyncTransforms();
+
+            int nx = Mathf.RoundToInt(k_LeakXMax - k_LeakXMin);
+            int nz = Mathf.RoundToInt(k_LeakZMax - k_LeakZMin);
+            var kind = new CellKind[nx * nz];
+            var pieceName = new string[nx * nz];
+
+            var overlap = new Collider[16];
+            var halfExtents = new Vector3(0.45f, 0.75f, 0.45f);
+
+            for (int ix = 0; ix < nx; ix++)
+            {
+                for (int iz = 0; iz < nz; iz++)
+                {
+                    float x = k_LeakXMin + ix + 0.5f;
+                    float z = k_LeakZMin + iz + 0.5f;
+                    int index = ix * nz + iz;
+
+                    // Suelo: primer collider no trigger bajo la celda.
+                    if (!Physics.Raycast(new Vector3(x, 0.5f, z), Vector3.down, out RaycastHit hit, 3f, ~0, QueryTriggerInteraction.Ignore))
+                    {
+                        continue;
+                    }
+
+                    string rootName = hit.collider.transform.root.name;
+                    bool isRoad = rootName.StartsWith("Road");
+                    bool isFallback = rootName.StartsWith("Ground");
+                    if (!isRoad && !isFallback) continue;
+
+                    // Obstáculos entre 0.3 y 1.8 m: muros de cordón, edificios, vallas, vehículos.
+                    int count = Physics.OverlapBoxNonAlloc(new Vector3(x, 1.05f, z), halfExtents, overlap, Quaternion.identity, ~0,
+                        QueryTriggerInteraction.Ignore);
+                    bool blocked = false;
+                    for (int i = 0; i < count && !blocked; i++)
+                    {
+                        Collider c = overlap[i];
+                        string name = c.transform.root.name;
+
+                        // El piso de la calle (MeshCollider de la raíz Road*) y el suelo de respaldo no cuentan.
+                        if (c is MeshCollider && name.StartsWith("Road")) continue;
+                        if (name.StartsWith("Ground")) continue;
+
+                        // El propio auto del jugador y el rig XR no son obstáculos.
+                        VehicleController owner = c.GetComponentInParent<VehicleController>();
+                        if (owner != null && owner.name == "Car08") continue;
+                        if (name.Contains("XR")) continue;
+
+                        blocked = true;
+                    }
+
+                    if (blocked) continue;
+
+                    if (isRoad)
+                    {
+                        kind[index] = hit.point.y < RoadCurbWalls.GROUND_MAX_HEIGHT ? CellKind.Road : CellKind.Sidewalk;
+                        pieceName[index] = rootName;
+                    }
+                    else
+                    {
+                        kind[index] = CellKind.Fallback;
+                    }
+                }
+            }
+
+            // Celda de inicio: la del Car08.
+            VehicleController car = Object.FindObjectsByType<VehicleController>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+                .FirstOrDefault(v => v.name == "Car08");
+            if (car == null)
+            {
+                Debug.LogWarning("[LessonBoundaryVerification] ⚠️ No hay Car08 en la escena activa; no se puede rellenar desde su celda.");
+                return;
+            }
+
+            int startX = Mathf.FloorToInt(car.transform.position.x - k_LeakXMin);
+            int startZ = Mathf.FloorToInt(car.transform.position.z - k_LeakZMin);
+            if (startX < 0 || startX >= nx || startZ < 0 || startZ >= nz || kind[startX * nz + startZ] != CellKind.Road)
+            {
+                Debug.LogWarning($"[LessonBoundaryVerification] ⚠️ La celda del Car08 ({startX}, {startZ}) no es calzada libre; no se rellena.");
+                return;
+            }
+
+            // Relleno por inundación (4 vecinos).
+            var reached = new bool[nx * nz];
+            var queue = new Queue<int>();
+            queue.Enqueue(startX * nz + startZ);
+            reached[startX * nz + startZ] = true;
+            var neighbors = new[] { (1, 0), (-1, 0), (0, 1), (0, -1) };
+
+            // Fuga: (celda de salida sobre suelo de respaldo, pieza de calle desde la que se llega).
+            var exits = new Dictionary<int, string>();
+            int reachedCount = 0;
+
+            while (queue.Count > 0)
+            {
+                int current = queue.Dequeue();
+                reachedCount++;
+                int cx = current / nz, cz = current % nz;
+
+                foreach (var (dx, dz) in neighbors)
+                {
+                    int px = cx + dx, pz = cz + dz;
+                    if (px < 0 || px >= nx || pz < 0 || pz >= nz) continue;
+
+                    int next = px * nz + pz;
+                    CellKind nextKind = kind[next];
+
+                    if (nextKind == CellKind.Fallback)
+                    {
+                        if (!exits.ContainsKey(next)) exits[next] = pieceName[current];
+                    }
+                    else if (nextKind == CellKind.Road && !reached[next])
+                    {
+                        reached[next] = true;
+                        queue.Enqueue(next);
+                    }
+                }
+            }
+
+            int roadCells = kind.Count(k => k == CellKind.Road);
+            Debug.Log($"[LessonBoundaryVerification] 🕳️ Calzada libre: {roadCells} celdas de 1 m², {reachedCount} alcanzables desde el Car08.");
+
+            // Agrupar las salidas contiguas (8 vecinos).
+            var clusters = new List<List<int>>();
+            var assigned = new HashSet<int>();
+            foreach (int cell in exits.Keys.OrderBy(c => c))
+            {
+                if (assigned.Contains(cell)) continue;
+
+                var cluster = new List<int>();
+                var open = new Queue<int>();
+                open.Enqueue(cell);
+                assigned.Add(cell);
+                while (open.Count > 0)
+                {
+                    int c = open.Dequeue();
+                    cluster.Add(c);
+                    int cx = c / nz, cz = c % nz;
+                    for (int dx = -1; dx <= 1; dx++)
+                    {
+                        for (int dz = -1; dz <= 1; dz++)
+                        {
+                            int px = cx + dx, pz = cz + dz;
+                            if (px < 0 || px >= nx || pz < 0 || pz >= nz) continue;
+                            int n = px * nz + pz;
+                            if (exits.ContainsKey(n) && assigned.Add(n)) open.Enqueue(n);
+                        }
+                    }
+                }
+
+                clusters.Add(cluster);
+            }
+
+            Debug.Log($"[LessonBoundaryVerification] 🕳️ FUGAS: {exits.Count} celdas de salida en {clusters.Count} grupos " +
+                      "(celdas con solo el Ground_FallbackCollider debajo, adyacentes a calzada alcanzable).");
+
+            foreach (List<int> cluster in clusters.OrderByDescending(c => c.Count).Take(60))
+            {
+                int minX = cluster.Min(c => c / nz), maxX = cluster.Max(c => c / nz);
+                int minZ = cluster.Min(c => c % nz), maxZ = cluster.Max(c => c % nz);
+                string pieces = string.Join(", ", cluster.Select(c => exits[c]).Distinct().OrderBy(n => n).Take(4));
+                Debug.Log($"[LessonBoundaryVerification]    · x[{k_LeakXMin + minX:F0}..{k_LeakXMin + maxX + 1:F0}] " +
+                          $"z[{k_LeakZMin + minZ:F0}..{k_LeakZMin + maxZ + 1:F0}] {cluster.Count} celdas · desde: {pieces}");
+            }
+
+            if (clusters.Count > 60) Debug.Log($"[LessonBoundaryVerification]    … y {clusters.Count - 60} grupos más.");
+
+            // Resumen por tipo de pieza responsable.
+            var perType = exits.Values
+                .GroupBy(n => System.Text.RegularExpressions.Regex.Replace(n, @"\s*\(\d+\)$", ""))
+                .OrderByDescending(g => g.Count());
+            foreach (var group in perType)
+            {
+                Debug.Log($"[LessonBoundaryVerification]    Σ {group.Key}: {group.Count()} celdas de salida");
+            }
         }
 
         // ---------------------------------------------------------------- Helpers
