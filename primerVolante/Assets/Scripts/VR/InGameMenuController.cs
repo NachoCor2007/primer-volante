@@ -10,7 +10,10 @@ namespace PrimerVolante.VR
 {
     /// <summary>
     /// Controla la apertura/cierre del menú in-game (Canvas World Space) y su posicionamiento
-    /// frente a la cabeza del usuario. No pausa el juego (no modifica Time.timeScale).
+    /// frente a la cabeza del usuario. Mientras está abierto detiene la simulación (Time.timeScale = 0):
+    /// física, vehículos, NPC, semáforos y animaciones quedan congelados, pero el seguimiento de la cabeza,
+    /// los rayos de los controles y la UI siguen respondiendo porque corren en Update sin depender del tiempo
+    /// escalado. Al cerrarlo se restaura la escala de tiempo que había.
     /// Se abre/cierra con el botón Menu físico del control VR (leído vía la API legada
     /// UnityEngine.XR.InputDevices, la única que en este proyecto refleja en vivo el estado
     /// de los controles OpenXR; la capa de dispositivos del nuevo Input System no se actualiza
@@ -53,10 +56,25 @@ namespace PrimerVolante.VR
                  "Normalmente el juego lo mantiene apagado para no interferir con agarrar controles.")]
         [SerializeField] private NearFarInteractor[] m_FarCastInteractors;
 
+        [Header("Pausa")]
+        [Tooltip("Detiene la simulación (Time.timeScale = 0) mientras el menú está abierto. La cabeza, los rayos y la UI siguen funcionando.")]
+        [SerializeField] private bool m_PauseSimulation = true;
+
+        [Tooltip("Pausa también el audio del mundo (motor, viento, guiños) mientras la simulación está detenida.")]
+        [SerializeField] private bool m_PauseAudio = true;
+
         private bool m_MenuButtonWasPressed = false;
         private bool[] m_FarCastPreviousStates;
 
+        private bool m_IsSimulationPaused;
+        private bool m_PausedAudio;
+        private float m_TimeScaleBeforePause = 1f;
+        private bool m_AudioPauseBeforePause;
+
         public bool IsOpen => m_MenuRoot != null && m_MenuRoot.activeSelf;
+
+        /// <summary>true mientras el menú tiene la simulación detenida.</summary>
+        public bool IsSimulationPaused => m_IsSimulationPaused;
 
         private void Awake()
         {
@@ -90,6 +108,9 @@ namespace PrimerVolante.VR
             {
                 m_DriverSeatFollower.CalibrationOffsetChanged -= OnCalibrationOffsetChanged;
             }
+
+            // Si el menú se destruye o desactiva abierto (cambio de escena), la simulación no puede quedar congelada.
+            SetSimulationPaused(false);
         }
 
         /// <summary>
@@ -159,10 +180,11 @@ namespace PrimerVolante.VR
             m_MenuRoot.SetActive(true);
             ShowMainPanel();
             SetFarCastingForMenu(true);
+            SetSimulationPaused(true);
         }
 
         /// <summary>
-        /// Cierra el menú ("Reanudar"). El juego continúa corriendo mientras el menú estaba abierto.
+        /// Cierra el menú ("Reanudar") y reanuda la simulación.
         /// </summary>
         public void CloseMenu()
         {
@@ -170,6 +192,39 @@ namespace PrimerVolante.VR
 
             m_MenuRoot.SetActive(false);
             SetFarCastingForMenu(false);
+            SetSimulationPaused(false);
+        }
+
+        /// <summary>
+        /// Detiene o reanuda la simulación. Guarda la escala de tiempo y el estado del audio previos para
+        /// restaurarlos tal cual estaban (no asume que el juego corría a escala 1).
+        /// </summary>
+        private void SetSimulationPaused(bool paused)
+        {
+            if (paused == m_IsSimulationPaused) return;
+
+            if (paused)
+            {
+                if (!m_PauseSimulation) return;
+
+                m_TimeScaleBeforePause = Time.timeScale;
+                Time.timeScale = 0f;
+
+                m_PausedAudio = m_PauseAudio;
+                if (m_PausedAudio)
+                {
+                    m_AudioPauseBeforePause = AudioListener.pause;
+                    AudioListener.pause = true;
+                }
+            }
+            else
+            {
+                Time.timeScale = m_TimeScaleBeforePause;
+                if (m_PausedAudio) AudioListener.pause = m_AudioPauseBeforePause;
+                m_PausedAudio = false;
+            }
+
+            m_IsSimulationPaused = paused;
         }
 
         /// <summary>
