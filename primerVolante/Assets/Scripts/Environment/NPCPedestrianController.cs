@@ -42,6 +42,7 @@ namespace PrimerVolante.Environment
         private NPCPathFollower m_Follower;
         private Animator m_Animator;
         private UrbanManCustomizer m_Customizer;
+        private NPCSafetyStop m_SafetyStop;
 
         /// <summary>Velocidad de referencia del clip Walking en m/s.</summary>
         public float WalkReferenceSpeed => m_WalkReferenceSpeed;
@@ -64,6 +65,7 @@ namespace PrimerVolante.Environment
             m_Animator = GetComponent<Animator>();
             m_Animator.applyRootMotion = false;
             m_Customizer = GetComponent<UrbanManCustomizer>();
+            m_SafetyStop = GetComponent<NPCSafetyStop>();
         }
 
         private void OnEnable()
@@ -78,6 +80,7 @@ namespace PrimerVolante.Environment
 
         private void Start()
         {
+            if (m_SafetyStop == null) m_SafetyStop = GetComponent<NPCSafetyStop>();
             DisablePartColliders();
         }
 
@@ -99,7 +102,17 @@ namespace PrimerVolante.Environment
         {
             if (m_Animator.runtimeAnimatorController == null) return;
 
-            float speed = m_Follower.CurrentSpeed;
+            bool isEmergency = (m_SafetyStop != null && m_SafetyStop.IsEmergencyBraking) ||
+                               (m_Follower != null && m_Follower.IsEmergencyStopped);
+
+            if (isEmergency)
+            {
+                m_Animator.SetFloat(s_SpeedHash, 0f);
+                m_Animator.speed = 1f;
+                return;
+            }
+
+            float speed = m_Follower != null ? m_Follower.CurrentSpeed : 0f;
             m_Animator.SetFloat(s_SpeedHash, speed, m_SpeedDampTime, Time.deltaTime);
             m_Animator.speed = ComputeAnimatorSpeed(speed, m_WalkReferenceSpeed, m_MaxAnimatorSpeed);
         }
