@@ -347,6 +347,7 @@ namespace PrimerVolante.Testing.Editor
                 GameObject contactObj = new GameObject("TestObstacle_Contact");
                 try
                 {
+                    contactObj.AddComponent<Rigidbody>();
                     BoxCollider contactCol = contactObj.AddComponent<BoxCollider>();
                     safety.ResetSafetyState();
                     npc.Play();
@@ -363,6 +364,7 @@ namespace PrimerVolante.Testing.Editor
                 GameObject overlapObj = new GameObject("TestObstacle_Overlap");
                 try
                 {
+                    overlapObj.AddComponent<Rigidbody>();
                     overlapObj.transform.position = safety.GetSensorOrigin();
                     overlapObj.AddComponent<BoxCollider>().size = Vector3.one;
 
@@ -423,12 +425,53 @@ namespace PrimerVolante.Testing.Editor
                 Assert(!safety.IsValidObstacleCollider(selfChildCol), "Collider hijo del propio NPC es ignorado por IsValidObstacleCollider", ref total, ref passed);
 
                 // 5.3 Collider de un obstáculo externo
+                externalObstacleObj.AddComponent<Rigidbody>();
                 BoxCollider extCol = externalObstacleObj.AddComponent<BoxCollider>();
-                Assert(safety.IsValidObstacleCollider(extCol), "Collider externo ajeno es aceptado como obstáculo válido", ref total, ref passed);
+                Assert(safety.IsValidObstacleCollider(extCol), "Collider externo ajeno con Rigidbody es aceptado como obstáculo válido", ref total, ref passed);
 
                 // 5.4 Filtro por ObstacleTag
                 safety.ObstacleTag = "Player";
                 Assert(!safety.IsValidObstacleCollider(extCol), "Obstáculo externo sin tag 'Player' es rechazado cuando ObstacleTag='Player'", ref total, ref passed);
+
+                // 5.5 Validación de que colisionadores de suelo/acera son ignorados y no activan frenado de emergencia
+                safety.ObstacleTag = "";
+                GameObject groundObj = new GameObject("Road_Sidewalk");
+                try
+                {
+                    groundObj.isStatic = true;
+                    groundObj.transform.position = safety.GetSensorOrigin();
+                    BoxCollider groundCol = groundObj.AddComponent<BoxCollider>();
+                    groundCol.size = Vector3.one;
+
+                    Assert(!safety.IsValidObstacleCollider(groundCol), "Collider de suelo/acera ('Road_Sidewalk') es ignorado por IsValidObstacleCollider", ref total, ref passed);
+
+                    safety.ClearSimulatedObstacle();
+                    safety.ResetSafetyState();
+
+                    // El sensor frontal debe ignorar el suelo/acera
+                    bool detectedGround = safety.CastFrontalSensor(out _);
+                    Assert(!detectedGround, "Sensor frontal ignora collider de suelo/acera ('Road_Sidewalk')", ref total, ref passed);
+
+                    safety.Tick(0.02f);
+                    Assert(!safety.IsEmergencyBraking, "NPCSafetyStop NO activa IsEmergencyBraking ante suelo o acera", ref total, ref passed);
+                }
+                finally
+                {
+                    Object.DestroyImmediate(groundObj);
+                }
+
+                // 5.6 Validación de que objetos estáticos del entorno son ignorados
+                GameObject staticPropObj = new GameObject("Building_Static");
+                try
+                {
+                    staticPropObj.isStatic = true;
+                    BoxCollider staticCol = staticPropObj.AddComponent<BoxCollider>();
+                    Assert(!safety.IsValidObstacleCollider(staticCol), "Objeto estático del escenario es ignorado por IsValidObstacleCollider", ref total, ref passed);
+                }
+                finally
+                {
+                    Object.DestroyImmediate(staticPropObj);
+                }
             }
             finally
             {

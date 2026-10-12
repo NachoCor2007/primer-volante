@@ -4201,118 +4201,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 31bbda51eeab02f44a8e92a7da2f5ff8, type: 3}
---- !u!1 &152744293
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 152744295}
-  - component: {fileID: 152744294}
-  m_Layer: 0
-  m_Name: Route_Vehicle_IntersectionCross
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &152744294
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 152744293}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dab5c7d4c32e743048dfca98e2d5914f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.Splines::UnityEngine.Splines.SplineContainer
-  m_Spline:
-    m_EditModeType: 1
-    m_Knots: []
-    m_MetaData: []
-    m_Closed: 0
-    m_IntData:
-      m_Data: []
-    m_FloatData:
-      m_Data: []
-    m_Float4Data:
-      m_Data: []
-    m_ObjectData:
-      m_Data: []
-  m_Splines:
-  - m_EditModeType: 1
-    m_Knots:
-    - Position:
-        x: 45
-        y: 0
-        z: 123.5
-      TangentIn:
-        x: 0
-        y: 0
-        z: 0
-      TangentOut:
-        x: 0
-        y: 0
-        z: 0
-      Rotation:
-        value:
-          x: 0
-          y: 0
-          z: 0
-          w: 1
-    - Position:
-        x: 75
-        y: 0
-        z: 123.5
-      TangentIn:
-        x: 0
-        y: 0
-        z: 0
-      TangentOut:
-        x: 0
-        y: 0
-        z: 0
-      Rotation:
-        value:
-          x: 0
-          y: 0
-          z: 0
-          w: 1
-    m_MetaData:
-    - Mode: 4
-      Tension: 0.5
-    - Mode: 4
-      Tension: 0.5
-    m_Closed: 0
-    m_IntData:
-      m_Data: []
-    m_FloatData:
-      m_Data: []
-    m_Float4Data:
-      m_Data: []
-    m_ObjectData:
-      m_Data: []
-  m_Knots:
-    m_KnotsLink: []
---- !u!4 &152744295
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 152744293}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 272302686}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &154844686
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6944,43 +6832,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: b82e76f4092b7d24aaeecddf36fe8d3b, type: 3}
---- !u!1 &272302685
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 272302686}
-  m_Layer: 0
-  m_Name: Scripted_Events
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &272302686
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 272302685}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 876556571}
-  - {fileID: 1502971026}
-  - {fileID: 152744295}
-  - {fileID: 1791146297}
-  - {fileID: 2094988598}
-  - {fileID: 1995353480}
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &273599203
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -10081,6 +9932,158 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 2.958062, y: 2.433641, z: 6.3205423}
   m_Center: {x: -0.006408453, y: 1.2162137, z: -0.19318247}
+--- !u!1 &399546399
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 399546401}
+  - component: {fileID: 399546400}
+  m_Layer: 0
+  m_Name: Route_Pedestrian_CrosswalkSurprise
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &399546400
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 399546399}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dab5c7d4c32e743048dfca98e2d5914f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Splines::UnityEngine.Splines.SplineContainer
+  m_Spline:
+    m_EditModeType: 1
+    m_Knots: []
+    m_MetaData: []
+    m_Closed: 0
+    m_IntData:
+      m_Data: []
+    m_FloatData:
+      m_Data: []
+    m_Float4Data:
+      m_Data: []
+    m_ObjectData:
+      m_Data: []
+  m_Splines:
+  - m_EditModeType: 1
+    m_Knots:
+    - Position:
+        x: 67.5
+        y: 0.2
+        z: 108.5
+      TangentIn:
+        x: 0
+        y: 0
+        z: 0
+      TangentOut:
+        x: 0
+        y: 0
+        z: 0
+      Rotation:
+        value:
+          x: 0
+          y: 0
+          z: 0
+          w: 1
+    - Position:
+        x: 65.8
+        y: 0
+        z: 108.5
+      TangentIn:
+        x: 0
+        y: 0
+        z: 0
+      TangentOut:
+        x: 0
+        y: 0
+        z: 0
+      Rotation:
+        value:
+          x: 0
+          y: 0
+          z: 0
+          w: 1
+    - Position:
+        x: 54.2
+        y: 0
+        z: 108.5
+      TangentIn:
+        x: 0
+        y: 0
+        z: 0
+      TangentOut:
+        x: 0
+        y: 0
+        z: 0
+      Rotation:
+        value:
+          x: 0
+          y: 0
+          z: 0
+          w: 1
+    - Position:
+        x: 52.5
+        y: 0.2
+        z: 108.5
+      TangentIn:
+        x: 0
+        y: 0
+        z: 0
+      TangentOut:
+        x: 0
+        y: 0
+        z: 0
+      Rotation:
+        value:
+          x: 0
+          y: 0
+          z: 0
+          w: 1
+    m_MetaData:
+    - Mode: 4
+      Tension: 0.5
+    - Mode: 4
+      Tension: 0.5
+    - Mode: 4
+      Tension: 0.5
+    - Mode: 4
+      Tension: 0.5
+    m_Closed: 0
+    m_IntData:
+      m_Data: []
+    m_FloatData:
+      m_Data: []
+    m_Float4Data:
+      m_Data: []
+    m_ObjectData:
+      m_Data: []
+  m_Knots:
+    m_KnotsLink: []
+--- !u!4 &399546401
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 399546399}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 933808511}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &400011731
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -20758,6 +20761,128 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 18.271511, y: 6.9995446, z: 8.263669}
   m_Center: {x: -0.22107792, y: 3.5002534, z: 0.049095154}
+--- !u!1001 &781587206
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 933808511}
+    m_Modifications:
+    - target: {fileID: 2207637954954309026, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
+      propertyPath: m_Path
+      value: 
+      objectReference: {fileID: 1099914450}
+    - target: {fileID: 2207637954954309026, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
+      propertyPath: m_CruiseSpeed
+      value: 6.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2207637954954309026, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
+      propertyPath: m_PlayOnStart
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9056338062686612967, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
+      propertyPath: m_Name
+      value: NPC_Vehicle_IntersectionCross
+      objectReference: {fileID: 0}
+    - target: {fileID: 9056338062687039943, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 45
+      objectReference: {fileID: 0}
+    - target: {fileID: 9056338062687039943, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9056338062687039943, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 123.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 9056338062687039943, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 9056338062687039943, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9056338062687039943, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9056338062687039943, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9056338062687039943, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9056338062687039943, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9056338062687039943, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 9056338062686612967, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 781587210}
+  m_SourcePrefab: {fileID: 100100000, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
+--- !u!114 &781587207 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 2207637954954309026, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
+  m_PrefabInstance: {fileID: 781587206}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 781587208}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: edc4e8dc36ee76d4d9decb744a79dcae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.NPCPathFollower
+--- !u!1 &781587208 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 9056338062686612967, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
+  m_PrefabInstance: {fileID: 781587206}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &781587209 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 9056338062687039943, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
+  m_PrefabInstance: {fileID: 781587206}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &781587210
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 781587208}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e78bbe4c9bd63d743b96c58009df53ec, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.NPCSafetyStop
+  m_DetectionDistance: 5.5
+  m_DynamicDistanceWithSpeed: 1
+  m_SpeedLookaheadFactor: 1
+  m_SensorOffset: {x: 0, y: 0.7, z: 0}
+  m_BoxHalfExtents: {x: 0.9, y: 0.6, z: 0.2}
+  m_ObstacleLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ObstacleTag: 
+  m_QueryTriggerInteraction: 1
+  m_ResumeDelay: 0.5
+  onEmergencyBrakeEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  onResumeMovementEvent:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1001 &782327803
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -23765,158 +23890,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 2509cc5763ca17f4598bf61fd585a93e, type: 3}
---- !u!1 &876556569
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 876556571}
-  - component: {fileID: 876556570}
-  m_Layer: 0
-  m_Name: Route_Pedestrian_CrosswalkSurprise
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &876556570
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 876556569}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dab5c7d4c32e743048dfca98e2d5914f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.Splines::UnityEngine.Splines.SplineContainer
-  m_Spline:
-    m_EditModeType: 1
-    m_Knots: []
-    m_MetaData: []
-    m_Closed: 0
-    m_IntData:
-      m_Data: []
-    m_FloatData:
-      m_Data: []
-    m_Float4Data:
-      m_Data: []
-    m_ObjectData:
-      m_Data: []
-  m_Splines:
-  - m_EditModeType: 1
-    m_Knots:
-    - Position:
-        x: 67.5
-        y: 0.2
-        z: 108.5
-      TangentIn:
-        x: 0
-        y: 0
-        z: 0
-      TangentOut:
-        x: 0
-        y: 0
-        z: 0
-      Rotation:
-        value:
-          x: 0
-          y: 0
-          z: 0
-          w: 1
-    - Position:
-        x: 65.8
-        y: 0
-        z: 108.5
-      TangentIn:
-        x: 0
-        y: 0
-        z: 0
-      TangentOut:
-        x: 0
-        y: 0
-        z: 0
-      Rotation:
-        value:
-          x: 0
-          y: 0
-          z: 0
-          w: 1
-    - Position:
-        x: 54.2
-        y: 0
-        z: 108.5
-      TangentIn:
-        x: 0
-        y: 0
-        z: 0
-      TangentOut:
-        x: 0
-        y: 0
-        z: 0
-      Rotation:
-        value:
-          x: 0
-          y: 0
-          z: 0
-          w: 1
-    - Position:
-        x: 52.5
-        y: 0.2
-        z: 108.5
-      TangentIn:
-        x: 0
-        y: 0
-        z: 0
-      TangentOut:
-        x: 0
-        y: 0
-        z: 0
-      Rotation:
-        value:
-          x: 0
-          y: 0
-          z: 0
-          w: 1
-    m_MetaData:
-    - Mode: 4
-      Tension: 0.5
-    - Mode: 4
-      Tension: 0.5
-    - Mode: 4
-      Tension: 0.5
-    - Mode: 4
-      Tension: 0.5
-    m_Closed: 0
-    m_IntData:
-      m_Data: []
-    m_FloatData:
-      m_Data: []
-    m_Float4Data:
-      m_Data: []
-    m_ObjectData:
-      m_Data: []
-  m_Knots:
-    m_KnotsLink: []
---- !u!4 &876556571
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 876556569}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 272302686}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &879991235
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -25003,6 +24976,43 @@ MonoBehaviour:
   m_ShadowLayerMask: 1
   m_RenderingLayers: 1
   m_ShadowRenderingLayers: 1
+--- !u!1 &933808510
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 933808511}
+  m_Layer: 0
+  m_Name: Scripted_Events
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &933808511
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 933808510}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 399546401}
+  - {fileID: 1886052371}
+  - {fileID: 1099914451}
+  - {fileID: 781587209}
+  - {fileID: 1715621521}
+  - {fileID: 1595898392}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &939177595
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -29731,6 +29741,118 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: b8ee657c6800ab849bb30b4375d02323, type: 3}
+--- !u!1 &1099914449
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1099914451}
+  - component: {fileID: 1099914450}
+  m_Layer: 0
+  m_Name: Route_Vehicle_IntersectionCross
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1099914450
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1099914449}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dab5c7d4c32e743048dfca98e2d5914f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Splines::UnityEngine.Splines.SplineContainer
+  m_Spline:
+    m_EditModeType: 1
+    m_Knots: []
+    m_MetaData: []
+    m_Closed: 0
+    m_IntData:
+      m_Data: []
+    m_FloatData:
+      m_Data: []
+    m_Float4Data:
+      m_Data: []
+    m_ObjectData:
+      m_Data: []
+  m_Splines:
+  - m_EditModeType: 1
+    m_Knots:
+    - Position:
+        x: 45
+        y: 0
+        z: 123.5
+      TangentIn:
+        x: 0
+        y: 0
+        z: 0
+      TangentOut:
+        x: 0
+        y: 0
+        z: 0
+      Rotation:
+        value:
+          x: 0
+          y: 0
+          z: 0
+          w: 1
+    - Position:
+        x: 75
+        y: 0
+        z: 123.5
+      TangentIn:
+        x: 0
+        y: 0
+        z: 0
+      TangentOut:
+        x: 0
+        y: 0
+        z: 0
+      Rotation:
+        value:
+          x: 0
+          y: 0
+          z: 0
+          w: 1
+    m_MetaData:
+    - Mode: 4
+      Tension: 0.5
+    - Mode: 4
+      Tension: 0.5
+    m_Closed: 0
+    m_IntData:
+      m_Data: []
+    m_FloatData:
+      m_Data: []
+    m_Float4Data:
+      m_Data: []
+    m_ObjectData:
+      m_Data: []
+  m_Knots:
+    m_KnotsLink: []
+--- !u!4 &1099914451
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1099914449}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 933808511}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1102017836
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -42648,136 +42770,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 17.255001, y: 9.610818, z: 14.407763}
   m_Center: {x: -0.07696676, y: 4.7428584, z: -0.17988753}
---- !u!1001 &1502971023
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 272302686}
-    m_Modifications:
-    - target: {fileID: 274145519724538971, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
-      propertyPath: m_Path
-      value: 
-      objectReference: {fileID: 876556570}
-    - target: {fileID: 274145519724538971, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
-      propertyPath: m_CruiseSpeed
-      value: 1.8
-      objectReference: {fileID: 0}
-    - target: {fileID: 274145519724538971, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
-      propertyPath: m_PlayOnStart
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 274145519724538971, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
-      propertyPath: m_Acceleration
-      value: 2
-      objectReference: {fileID: 0}
-    - target: {fileID: 274145519724538971, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
-      propertyPath: m_Deceleration
-      value: 3
-      objectReference: {fileID: 0}
-    - target: {fileID: 6593214619266670358, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 67.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 6593214619266670358, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0.2
-      objectReference: {fileID: 0}
-    - target: {fileID: 6593214619266670358, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 108.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 6593214619266670358, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 6593214619266670358, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6593214619266670358, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6593214619266670358, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6593214619266670358, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6593214619266670358, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6593214619266670358, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7621850811790351019, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
-      propertyPath: m_Name
-      value: NPC_Pedestrian_CrosswalkSurprise
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 7621850811790351019, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1502971027}
-  m_SourcePrefab: {fileID: 100100000, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
---- !u!114 &1502971024 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 274145519724538971, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
-  m_PrefabInstance: {fileID: 1502971023}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1502971025}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: edc4e8dc36ee76d4d9decb744a79dcae, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.NPCPathFollower
---- !u!1 &1502971025 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 7621850811790351019, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
-  m_PrefabInstance: {fileID: 1502971023}
-  m_PrefabAsset: {fileID: 0}
---- !u!4 &1502971026 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 6593214619266670358, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
-  m_PrefabInstance: {fileID: 1502971023}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &1502971027
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1502971025}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e78bbe4c9bd63d743b96c58009df53ec, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.NPCSafetyStop
-  m_DetectionDistance: 4
-  m_DynamicDistanceWithSpeed: 1
-  m_SpeedLookaheadFactor: 1
-  m_SensorOffset: {x: 0, y: 0.9, z: 0}
-  m_BoxHalfExtents: {x: 0.6, y: 0.8, z: 0.3}
-  m_ObstacleLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_ObstacleTag: 
-  m_QueryTriggerInteraction: 1
-  m_ResumeDelay: 0.6
-  onEmergencyBrakeEvent:
-    m_PersistentCalls:
-      m_Calls: []
-  onResumeMovementEvent:
-    m_PersistentCalls:
-      m_Calls: []
 --- !u!1001 &1503496313
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -44443,6 +44435,88 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 2.958062, y: 2.317875, z: 6.320543}
   m_Center: {x: 0.0017923117, y: 1.1553164, z: -0.1931827}
+--- !u!1 &1595898391
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1595898392}
+  - component: {fileID: 1595898394}
+  - component: {fileID: 1595898393}
+  m_Layer: 0
+  m_Name: Trigger_Scripted_IntersectionTraffic
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1595898392
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1595898391}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 63.5, y: 1.5, z: 111}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 933808511}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1595898393
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1595898391}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 86687ec4eef4d4c4e837938f9cdde6d8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.TriggerScriptedEvent
+  m_CheckVehicleController: 1
+  m_RequiredTag: 
+  m_TriggerLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_TargetNPCs:
+  - {fileID: 781587207}
+  m_TargetTrafficLights:
+  - {fileID: 1935918427}
+  m_TrafficLightInitialState: 0
+  m_StartTrafficLightCycle: 1
+  m_Delay: 0.2
+  m_TriggerOnce: 1
+  onTriggerActivatedEvent:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!65 &1595898394
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1595898391}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 8, y: 3, z: 4}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1001 &1596278060
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -48346,6 +48420,87 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: b14aef9a05449784da6735de9ec90b24, type: 3}
+--- !u!1 &1715621520
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1715621521}
+  - component: {fileID: 1715621523}
+  - component: {fileID: 1715621522}
+  m_Layer: 0
+  m_Name: Trigger_Scripted_PedestrianCrossing
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1715621521
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1715621520}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 63.5, y: 1.5, z: 101}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 933808511}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1715621522
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1715621520}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 86687ec4eef4d4c4e837938f9cdde6d8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.TriggerScriptedEvent
+  m_CheckVehicleController: 1
+  m_RequiredTag: 
+  m_TriggerLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_TargetNPCs:
+  - {fileID: 1886052369}
+  m_TargetTrafficLights: []
+  m_TrafficLightInitialState: 0
+  m_StartTrafficLightCycle: 1
+  m_Delay: 0
+  m_TriggerOnce: 1
+  onTriggerActivatedEvent:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!65 &1715621523
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1715621520}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 8, y: 3, z: 4}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1001 &1716847835
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -50627,128 +50782,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1788878015}
   m_CullTransparentMesh: 1
---- !u!1001 &1791146294
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 272302686}
-    m_Modifications:
-    - target: {fileID: 2207637954954309026, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
-      propertyPath: m_Path
-      value: 
-      objectReference: {fileID: 152744294}
-    - target: {fileID: 2207637954954309026, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
-      propertyPath: m_CruiseSpeed
-      value: 6.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 2207637954954309026, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
-      propertyPath: m_PlayOnStart
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 9056338062686612967, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
-      propertyPath: m_Name
-      value: NPC_Vehicle_IntersectionCross
-      objectReference: {fileID: 0}
-    - target: {fileID: 9056338062687039943, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 45
-      objectReference: {fileID: 0}
-    - target: {fileID: 9056338062687039943, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 9056338062687039943, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 123.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 9056338062687039943, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 9056338062687039943, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 9056338062687039943, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 9056338062687039943, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 9056338062687039943, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 9056338062687039943, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 9056338062687039943, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 9056338062686612967, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1791146298}
-  m_SourcePrefab: {fileID: 100100000, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
---- !u!114 &1791146295 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 2207637954954309026, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
-  m_PrefabInstance: {fileID: 1791146294}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1791146296}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: edc4e8dc36ee76d4d9decb744a79dcae, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.NPCPathFollower
---- !u!1 &1791146296 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 9056338062686612967, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
-  m_PrefabInstance: {fileID: 1791146294}
-  m_PrefabAsset: {fileID: 0}
---- !u!4 &1791146297 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 9056338062687039943, guid: eff8052d67d3e634586a5c534aabd8d2, type: 3}
-  m_PrefabInstance: {fileID: 1791146294}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &1791146298
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1791146296}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e78bbe4c9bd63d743b96c58009df53ec, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.NPCSafetyStop
-  m_DetectionDistance: 5.5
-  m_DynamicDistanceWithSpeed: 1
-  m_SpeedLookaheadFactor: 1
-  m_SensorOffset: {x: 0, y: 0.7, z: 0}
-  m_BoxHalfExtents: {x: 0.9, y: 0.6, z: 0.2}
-  m_ObstacleLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_ObstacleTag: 
-  m_QueryTriggerInteraction: 1
-  m_ResumeDelay: 0.5
-  onEmergencyBrakeEvent:
-    m_PersistentCalls:
-      m_Calls: []
-  onResumeMovementEvent:
-    m_PersistentCalls:
-      m_Calls: []
 --- !u!1001 &1791757532
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -53751,6 +53784,136 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 18}
   m_SizeDelta: {x: 220, y: 90}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1001 &1886052368
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 933808511}
+    m_Modifications:
+    - target: {fileID: 274145519724538971, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
+      propertyPath: m_Path
+      value: 
+      objectReference: {fileID: 399546400}
+    - target: {fileID: 274145519724538971, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
+      propertyPath: m_CruiseSpeed
+      value: 1.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 274145519724538971, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
+      propertyPath: m_PlayOnStart
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 274145519724538971, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
+      propertyPath: m_Acceleration
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 274145519724538971, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
+      propertyPath: m_Deceleration
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6593214619266670358, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 67.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6593214619266670358, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 6593214619266670358, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 108.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6593214619266670358, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6593214619266670358, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6593214619266670358, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6593214619266670358, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6593214619266670358, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6593214619266670358, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6593214619266670358, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7621850811790351019, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
+      propertyPath: m_Name
+      value: NPC_Pedestrian_CrosswalkSurprise
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 7621850811790351019, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1886052372}
+  m_SourcePrefab: {fileID: 100100000, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
+--- !u!114 &1886052369 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 274145519724538971, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
+  m_PrefabInstance: {fileID: 1886052368}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1886052370}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: edc4e8dc36ee76d4d9decb744a79dcae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.NPCPathFollower
+--- !u!1 &1886052370 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7621850811790351019, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
+  m_PrefabInstance: {fileID: 1886052368}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1886052371 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6593214619266670358, guid: 88be0d789513d4a4584247e78bc12877, type: 3}
+  m_PrefabInstance: {fileID: 1886052368}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1886052372
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1886052370}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e78bbe4c9bd63d743b96c58009df53ec, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.NPCSafetyStop
+  m_DetectionDistance: 4
+  m_DynamicDistanceWithSpeed: 1
+  m_SpeedLookaheadFactor: 1
+  m_SensorOffset: {x: 0, y: 1, z: 0}
+  m_BoxHalfExtents: {x: 0.6, y: 0.45, z: 0.3}
+  m_ObstacleLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ObstacleTag: 
+  m_QueryTriggerInteraction: 1
+  m_ResumeDelay: 0.6
+  onEmergencyBrakeEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  onResumeMovementEvent:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1001 &1888146381
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -57312,88 +57475,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 17.891638, y: 9.053619, z: 12.602821}
   m_Center: {x: -0.56064415, y: 4.5260267, z: -0.13327432}
---- !u!1 &1995353479
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1995353480}
-  - component: {fileID: 1995353482}
-  - component: {fileID: 1995353481}
-  m_Layer: 0
-  m_Name: Trigger_Scripted_IntersectionTraffic
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1995353480
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1995353479}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 63.5, y: 1.5, z: 111}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 272302686}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1995353481
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1995353479}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 86687ec4eef4d4c4e837938f9cdde6d8, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.TriggerScriptedEvent
-  m_CheckVehicleController: 1
-  m_RequiredTag: 
-  m_TriggerLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_TargetNPCs:
-  - {fileID: 1791146295}
-  m_TargetTrafficLights:
-  - {fileID: 1935918427}
-  m_TrafficLightInitialState: 0
-  m_StartTrafficLightCycle: 1
-  m_Delay: 0.2
-  m_TriggerOnce: 1
-  onTriggerActivatedEvent:
-    m_PersistentCalls:
-      m_Calls: []
---- !u!65 &1995353482
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1995353479}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 1
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 8, y: 3, z: 4}
-  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1001 &1995820352
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -61132,87 +61213,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 0ee6d569ec3227e40888e8151b331e0f, type: 3}
---- !u!1 &2094988597
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2094988598}
-  - component: {fileID: 2094988600}
-  - component: {fileID: 2094988599}
-  m_Layer: 0
-  m_Name: Trigger_Scripted_PedestrianCrossing
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &2094988598
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2094988597}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 63.5, y: 1.5, z: 101}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 272302686}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2094988599
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2094988597}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 86687ec4eef4d4c4e837938f9cdde6d8, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.TriggerScriptedEvent
-  m_CheckVehicleController: 1
-  m_RequiredTag: 
-  m_TriggerLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_TargetNPCs:
-  - {fileID: 1502971024}
-  m_TargetTrafficLights: []
-  m_TrafficLightInitialState: 0
-  m_StartTrafficLightCycle: 1
-  m_Delay: 0
-  m_TriggerOnce: 1
-  onTriggerActivatedEvent:
-    m_PersistentCalls:
-      m_Calls: []
---- !u!65 &2094988600
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2094988597}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 1
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 8, y: 3, z: 4}
-  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1001 &2100492090
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -63006,4 +63006,4 @@ SceneRoots:
   - {fileID: 1785635598}
   - {fileID: 1655105046}
   - {fileID: 1519389714}
-  - {fileID: 272302686}
+  - {fileID: 933808511}

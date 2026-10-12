@@ -180,8 +180,8 @@ namespace PrimerVolante.Testing.Editor
             var soSafety = new SerializedObject(safety);
             SetSerializedProperty(soSafety, "m_DetectionDistance", 4.0f);
             SetSerializedProperty(soSafety, "m_ResumeDelay", 0.6f);
-            SetSerializedProperty(soSafety, "m_SensorOffset", new Vector3(0f, 0.9f, 0f));
-            SetSerializedProperty(soSafety, "m_BoxHalfExtents", new Vector3(0.6f, 0.8f, 0.3f));
+            SetSerializedProperty(soSafety, "m_SensorOffset", new Vector3(0f, 1.0f, 0f));
+            SetSerializedProperty(soSafety, "m_BoxHalfExtents", new Vector3(0.6f, 0.45f, 0.3f));
             SetSerializedProperty(soSafety, "m_DynamicDistanceWithSpeed", true);
             SetSerializedProperty(soSafety, "m_SpeedLookaheadFactor", 1.0f);
             soSafety.ApplyModifiedPropertiesWithoutUndo();
