@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.Splines;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -9,19 +10,25 @@ using UnityEditor;
 namespace PrimerVolante.Environment
 {
     /// <summary>
-    /// Pose de una valla de la línea: posición (altura incluida), yaw a lo largo de la cuerda del tramo y el
-    /// tramo de spline (distancias) que cubre.
+    /// Pose de una valla de la línea: posición (altura incluida), yaw a lo largo de la cuerda del tramo, el
+    /// tramo de spline (distancias) que cubre y cuánto se estira a lo largo respecto del ancho natural.
     /// </summary>
     public struct BarrierPose
     {
         public Vector3 Position;
         public Quaternion Rotation;
 
-        /// <summary>Distancia sobre la spline donde empieza el tramo. Puede exceder el largo en splines cerradas.</summary>
+        /// <summary>Distancia sobre la spline donde empieza el tramo.</summary>
         public float StartDistance;
 
-        /// <summary>Distancia sobre la spline donde termina el tramo. Puede exceder el largo en splines cerradas.</summary>
+        /// <summary>Distancia sobre la spline donde termina el tramo.</summary>
         public float EndDistance;
+
+        /// <summary>
+        /// Factor sobre el eje X (el largo) de la valla: tramo / ancho natural. 1 = sin deformar. Solo es distinto
+        /// de 1 con <c>stretchToFit</c>, que reparte el ancho sobrante o faltante entre todas las vallas por igual.
+        /// </summary>
+        public float LengthScale;
     }
 
     /// <summary>
@@ -30,8 +37,8 @@ namespace PrimerVolante.Environment
     /// </summary>
     public static class LessonBoundaryMath
     {
-        // Avance mínimo entre vallas (m): evita bucles degenerados si el solape es casi el largo de la valla.
-        private const float k_MinStep = 0.1f;
+        // Ancho mínimo de un tramo (m): evita vallas degeneradas con splines casi vacías.
+        private const float k_MinWidth = 0.05f;
 
         // Tolerancia al redondear la cantidad de vallas, para que un largo exacto no sume una valla de más.
         private const float k_CountEpsilon = 1e-4f;
@@ -39,76 +46,73 @@ namespace PrimerVolante.Environment
         // Distancia a cada lado del punto medio con que se obtiene la dirección si la cuerda es degenerada.
         private const float k_FallbackProbe = 0.05f;
 
-        /// <summary>Avance entre el inicio de dos vallas contiguas: largo menos solape.</summary>
-        public static float Step(float barrierLength, float overlap)
-        {
-            float step = barrierLength - Mathf.Max(0f, overlap);
-            return step >= k_MinStep ? step : Mathf.Max(barrierLength, k_MinStep);
-        }
-
         /// <summary>
-        /// Distancia que debe cubrir la línea: el largo de la spline y, si es cerrada, el solape extra con que
-        /// la última valla se monta sobre la primera para que la costura no deje hueco.
+        /// Cantidad de vallas para una spline de <paramref name="length"/> metros. Con <paramref name="stretchToFit"/>
+        /// es la que mejor se ajusta (la valla se estira o encoge un poco para llenar el espacio); sin él es la
+        /// mayor cantidad que entra sin pisarse y el sobrante queda repartido como separación.
         /// </summary>
-        private static float Reach(float length, bool closed, float overlap)
-        {
-            return closed ? length + Mathf.Max(0f, overlap) : length;
-        }
-
-        /// <summary>Cantidad de vallas necesarias para cubrir una spline de <paramref name="length"/> metros.</summary>
-        public static int CountBarriers(float length, bool closed, float barrierLength, float overlap)
+        public static int CountBarriers(float length, bool closed, float barrierLength, float gap, bool stretchToFit = true)
         {
             if (length <= 0f || barrierLength <= 0f) return 0;
 
-            float step = Step(barrierLength, overlap);
-            float reach = Reach(length, closed, overlap);
-            float extra = reach - Mathf.Max(0f, overlap);
-            return Mathf.Max(1, Mathf.CeilToInt(extra / step - k_CountEpsilon));
+            float safeGap = Mathf.Max(0f, gap);
+            float pitch = barrierLength + safeGap;
+
+            // Abierta: n vallas y n−1 separaciones. Cerrada: n vallas y n separaciones (hay una en la costura).
+            float ratio = closed ? length / pitch : (length + safeGap) / pitch;
+            int count = stretchToFit ? Mathf.RoundToInt(ratio) : Mathf.FloorToInt(ratio + k_CountEpsilon);
+            return Mathf.Max(1, count);
         }
 
         /// <summary>
-        /// Reparte vallas a lo largo de una spline. Avanza en pasos de <c>largo − solape</c>; cada valla se ubica
-        /// en el punto medio de su tramo y se orienta con su eje X a lo largo de la cuerda entre el inicio y el fin
-        /// del tramo (yaw en XZ, sin pitch ni roll; la altura sale de la spline). La última valla retrocede para
-        /// terminar justo en el final sin pasarse. En una spline cerrada termina <paramref name="overlap"/> metros
-        /// después del cierre, montada sobre la primera, así que no queda hueco en la costura.
+        /// Reparte vallas a lo largo de una spline sin que se pisen: todas miden lo mismo, quedan separadas por una
+        /// distancia pareja y la primera arranca en el inicio y la última termina justo en el final (en una spline
+        /// cerrada también queda separación en la costura). Cada valla se ubica en el punto medio de su tramo y se
+        /// orienta con su eje X a lo largo de la cuerda entre el inicio y el fin del tramo (yaw en XZ, sin pitch ni
+        /// roll; la altura sale de la spline).
         /// </summary>
         /// <param name="length">Largo de la spline en metros.</param>
         /// <param name="closed">true si la spline es cerrada.</param>
-        /// <param name="barrierLength">Ancho de cada valla en metros.</param>
-        /// <param name="overlap">Solape entre vallas contiguas en metros.</param>
+        /// <param name="barrierLength">Ancho natural de cada valla en metros.</param>
+        /// <param name="gap">Separación deseada entre vallas contiguas en metros.</param>
         /// <param name="evaluate">Posición de mundo de la spline a una distancia dada (0..largo).</param>
+        /// <param name="stretchToFit">
+        /// true: la cantidad se redondea y cada valla se estira o encoge lo mismo para que la separación sea
+        /// exactamente <paramref name="gap"/> (nunca quedan huecos por donde pase el auto). false: no se deforma
+        /// ninguna valla y la separación crece para repartir el sobrante.
+        /// </param>
         public static List<BarrierPose> ComputePoses(
-            float length, bool closed, float barrierLength, float overlap, Func<float, Vector3> evaluate)
+            float length, bool closed, float barrierLength, float gap, Func<float, Vector3> evaluate, bool stretchToFit = true)
         {
             var poses = new List<BarrierPose>();
-            int count = CountBarriers(length, closed, barrierLength, overlap);
+            int count = CountBarriers(length, closed, barrierLength, gap, stretchToFit);
             if (count == 0 || evaluate == null) return poses;
 
-            float step = Step(barrierLength, overlap);
-            float reach = Reach(length, closed, overlap);
+            float safeGap = Mathf.Max(0f, gap);
+            float width;
+            float spacing;
+
+            if (stretchToFit)
+            {
+                float gaps = closed ? count : count - 1;
+                width = Mathf.Max(k_MinWidth, (length - gaps * safeGap) / count);
+                spacing = safeGap;
+            }
+            else
+            {
+                width = barrierLength;
+                float gaps = closed ? count : count - 1;
+                spacing = gaps > 0f ? Mathf.Max(0f, (length - count * width) / gaps) : 0f;
+            }
+
+            // Una sola valla en una spline abierta: se centra en la línea.
+            float offset = (!stretchToFit && count == 1 && !closed) ? (length - width) * 0.5f : 0f;
 
             for (int i = 0; i < count; i++)
             {
-                float start, end;
-                if (i < count - 1)
-                {
-                    start = i * step;
-                    end = start + barrierLength;
-                }
-                else if (count == 1)
-                {
-                    // Un tramo más corto que la valla: se centra en la línea.
-                    start = 0f;
-                    end = reach;
-                }
-                else
-                {
-                    end = reach;
-                    start = reach - barrierLength;
-                }
-
-                poses.Add(MakePose(length, closed, start, end, evaluate));
+                float start = offset + i * (width + spacing);
+                float end = start + width;
+                poses.Add(MakePose(length, closed, start, end, barrierLength, evaluate));
             }
 
             return poses;
@@ -125,7 +129,8 @@ namespace PrimerVolante.Environment
             return now - lastAlertTime >= Mathf.Max(0f, cooldownSeconds);
         }
 
-        private static BarrierPose MakePose(float length, bool closed, float start, float end, Func<float, Vector3> evaluate)
+        private static BarrierPose MakePose(
+            float length, bool closed, float start, float end, float barrierLength, Func<float, Vector3> evaluate)
         {
             Vector3 from = evaluate(WrapDistance(start, length, closed));
             Vector3 to = evaluate(WrapDistance(end, length, closed));
@@ -149,6 +154,7 @@ namespace PrimerVolante.Environment
                 Rotation = Quaternion.AngleAxis(yaw, Vector3.up),
                 StartDistance = start,
                 EndDistance = end,
+                LengthScale = barrierLength > 0f ? (end - start) / barrierLength : 1f,
             };
         }
 
@@ -178,6 +184,10 @@ namespace PrimerVolante.Environment
         /// <summary>Nombre del contenedor de vallas generadas.</summary>
         public const string CONTAINER_NAME = "Barriers";
 
+        // Alto y espesor del sólido si el prefab no tiene BoxCollider (solo se usan para los gizmos).
+        private const float k_FallbackSolidHeight = 2.05f;
+        private const float k_FallbackSolidThickness = 0.4f;
+
         [Header("Vallas")]
         [Tooltip("Prefab de valla a repartir (LessonBarrier).")]
         [SerializeField] private GameObject m_BarrierPrefab;
@@ -185,11 +195,18 @@ namespace PrimerVolante.Environment
         [Tooltip("Índice de la spline dentro del SplineContainer.")]
         [SerializeField] private int m_SplineIndex = 0;
 
-        [Tooltip("Ancho de cada valla en metros (el de la malla: 3.6).")]
+        [Tooltip("Si está activo, el ancho de cada valla sale del prefab (BoxCollider × escala), así que cambiar la escala del prefab no desarma la línea. Si no, se usa Barrier Length.")]
+        [SerializeField] private bool m_UsePrefabWidth = true;
+
+        [Tooltip("Ancho natural de la valla en metros. Solo se usa con Use Prefab Width desactivado.")]
         [SerializeField] private float m_BarrierLength = 3.6f;
 
-        [Tooltip("Solape entre vallas contiguas en metros, para no dejar rendijas en las curvas.")]
-        [SerializeField] private float m_Overlap = 0.1f;
+        [FormerlySerializedAs("m_Overlap")]
+        [Tooltip("Separación entre vallas contiguas en metros: evita que queden pegadas o acopladas.")]
+        [SerializeField] private float m_Gap = 0.1f;
+
+        [Tooltip("Ajusta la cantidad de vallas a la distancia y las estira o encoge un poco (todas por igual) para que la separación sea siempre la indicada. Desactivado: no se deforman, y el sobrante agranda la separación.")]
+        [SerializeField] private bool m_StretchToFit = true;
 
         [Header("Aviso")]
         [Tooltip("Segundos durante los que no se repite el aviso para el mismo auto. El auto puede tocar dos vallas contiguas a la vez.")]
@@ -210,9 +227,30 @@ namespace PrimerVolante.Environment
 
         public GameObject BarrierPrefab => m_BarrierPrefab;
         public int SplineIndex => m_SplineIndex;
-        public float BarrierLength => m_BarrierLength;
-        public float Overlap => m_Overlap;
+        public float Gap => m_Gap;
+        public bool StretchToFit => m_StretchToFit;
         public float AlertCooldownSeconds => m_AlertCooldownSeconds;
+
+        /// <summary>
+        /// Ancho natural de una valla en metros: el del prefab (collider sólido × escala) o, si no se puede leer
+        /// o se desactivó <c>Use Prefab Width</c>, el campo <c>Barrier Length</c>.
+        /// </summary>
+        public float BarrierWidth
+        {
+            get
+            {
+                if (m_UsePrefabWidth && m_BarrierPrefab != null)
+                {
+                    var solid = m_BarrierPrefab.GetComponent<BoxCollider>();
+                    if (solid != null && solid.size.x > 0f)
+                    {
+                        return solid.size.x * Mathf.Abs(m_BarrierPrefab.transform.lossyScale.x);
+                    }
+                }
+
+                return m_BarrierLength;
+            }
+        }
 
         private void OnEnable()
         {
@@ -274,7 +312,7 @@ namespace PrimerVolante.Environment
             }
 
             splineLength = worldLength;
-            poses = LessonBoundaryMath.ComputePoses(worldLength, spline.Closed, m_BarrierLength, m_Overlap, Evaluate);
+            poses = LessonBoundaryMath.ComputePoses(worldLength, spline.Closed, BarrierWidth, m_Gap, Evaluate, m_StretchToFit);
             return true;
         }
 
@@ -336,10 +374,18 @@ namespace PrimerVolante.Environment
                 Undo.RegisterCreatedObjectUndo(instance, "Reconstruir barreras");
                 instance.name = $"Barrier_{i:00}";
                 instance.transform.SetPositionAndRotation(poses[i].Position, poses[i].Rotation);
+
+                // El estirado va solo sobre el eje del largo; alto y espesor conservan la escala del prefab.
+                Vector3 scale = instance.transform.localScale;
+                scale.x *= poses[i].LengthScale;
+                instance.transform.localScale = scale;
             }
 
             Undo.CollapseUndoOperations(undoGroup);
-            Debug.Log($"[LessonBoundary] 🚧 {name}: {poses.Count} vallas sobre {splineLength:F1} m de spline.");
+
+            float gap = poses.Count > 1 ? poses[1].StartDistance - poses[0].EndDistance : 0f;
+            Debug.Log($"[LessonBoundary] 🚧 {name}: {poses.Count} vallas sobre {splineLength:F1} m de spline " +
+                      $"(ancho {BarrierWidth * (poses.Count > 0 ? poses[0].LengthScale : 1f):F2} m, separación {gap:F2} m).");
             return true;
 #else
             Debug.LogWarning("[LessonBoundary] ⚠️ RebuildBarriers solo está disponible en el Editor.");
@@ -349,8 +395,8 @@ namespace PrimerVolante.Environment
 
         private void OnValidate()
         {
-            m_BarrierLength = Mathf.Max(0.5f, m_BarrierLength);
-            m_Overlap = Mathf.Clamp(m_Overlap, 0f, m_BarrierLength * 0.5f);
+            m_BarrierLength = Mathf.Max(0.1f, m_BarrierLength);
+            m_Gap = Mathf.Clamp(m_Gap, 0f, 1f);
             m_AlertCooldownSeconds = Mathf.Max(0f, m_AlertCooldownSeconds);
             m_SplineIndex = Mathf.Max(0, m_SplineIndex);
         }
@@ -370,16 +416,24 @@ namespace PrimerVolante.Environment
             Gizmos.color = new Color(1f, 0.55f, 0.1f, 1f);
 
             // Rectángulo de cada valla (largo × alto × espesor del sólido), visible aunque el renderer esté oculto.
-            // Alto y espesor salen del collider sólido del prefab para que sigan al prefab si se redimensiona.
-            var size = new Vector3(m_BarrierLength, 2.05f, 0.4f);
+            // Alto y espesor salen del collider sólido y de la escala del prefab.
+            float width = BarrierWidth;
+            float height = k_FallbackSolidHeight;
+            float thickness = k_FallbackSolidThickness;
             if (m_BarrierPrefab != null)
             {
-                BoxCollider solid = m_BarrierPrefab.GetComponent<BoxCollider>();
-                if (solid != null) size = new Vector3(m_BarrierLength, solid.size.y, solid.size.z);
+                var solid = m_BarrierPrefab.GetComponent<BoxCollider>();
+                if (solid != null)
+                {
+                    Vector3 prefabScale = m_BarrierPrefab.transform.lossyScale;
+                    height = solid.size.y * Mathf.Abs(prefabScale.y);
+                    thickness = solid.size.z * Mathf.Abs(prefabScale.z);
+                }
             }
 
             foreach (BarrierPose pose in poses)
             {
+                var size = new Vector3(width * pose.LengthScale, height, thickness);
                 Gizmos.matrix = Matrix4x4.TRS(pose.Position + Vector3.up * (size.y * 0.5f), pose.Rotation, Vector3.one);
                 Gizmos.DrawWireCube(Vector3.zero, size);
             }

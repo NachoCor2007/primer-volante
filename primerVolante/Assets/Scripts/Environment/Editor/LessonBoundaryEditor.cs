@@ -20,7 +20,11 @@ namespace PrimerVolante.Testing.Editor
 
             if (boundary.TryComputePoses(out var poses, out float length))
             {
-                EditorGUILayout.HelpBox($"Spline de {length:F1} m: {poses.Count} vallas.", MessageType.Info);
+                float width = poses.Count > 0 ? boundary.BarrierWidth * poses[0].LengthScale : 0f;
+                float gap = poses.Count > 1 ? poses[1].StartDistance - poses[0].EndDistance : 0f;
+                EditorGUILayout.HelpBox(
+                    $"Spline de {length:F1} m: {poses.Count} vallas de {width:F2} m (natural {boundary.BarrierWidth:F2} m), " +
+                    $"separadas {gap:F2} m.", MessageType.Info);
             }
             else
             {

@@ -427,8 +427,9 @@ namespace PrimerVolante.Testing.Editor
             var so = new SerializedObject(boundary);
             so.FindProperty("m_BarrierPrefab").objectReferenceValue = barrierPrefab;
             so.FindProperty("m_SplineIndex").intValue = 0;
-            so.FindProperty("m_BarrierLength").floatValue = BARRIER_WIDTH;
-            so.FindProperty("m_Overlap").floatValue = 0.1f;
+            so.FindProperty("m_UsePrefabWidth").boolValue = true;
+            so.FindProperty("m_Gap").floatValue = 0.1f;
+            so.FindProperty("m_StretchToFit").boolValue = true;
             so.FindProperty("m_AlertCooldownSeconds").floatValue = 1f;
             so.ApplyModifiedPropertiesWithoutUndo();
 

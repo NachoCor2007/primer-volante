@@ -481,48 +481,70 @@ namespace PrimerVolante.Testing.Editor
 
         private static void VerifyBoundaryMath(ref int total, ref int passed)
         {
-            const float len = 3.6f, overlap = 0.1f;
+            const float len = 3.6f, gap = 0.1f;
 
-            // Cantidad de vallas: ceil((largo − solape) / (3.6 − 0.1)).
-            AssertCount(0f, false, 0, ref total, ref passed);
-            AssertCount(3.6f, false, 1, ref total, ref passed);
-            AssertCount(7f, false, 2, ref total, ref passed);
-            AssertCount(10f, false, 3, ref total, ref passed);
-            AssertCount(36f, false, 11, ref total, ref passed);
-            AssertCount(40f, true, 12, ref total, ref passed);
+            // Cantidad con estirado: round((largo + sep) / (ancho + sep)); cerrada: round(largo / (ancho + sep)).
+            AssertCount(0f, false, true, 0, ref total, ref passed);
+            AssertCount(3.6f, false, true, 1, ref total, ref passed);
+            AssertCount(7f, false, true, 2, ref total, ref passed);
+            AssertCount(10f, false, true, 3, ref total, ref passed);
+            AssertCount(36f, false, true, 10, ref total, ref passed);
+            AssertCount(40f, true, true, 11, ref total, ref passed);
+            // Sin estirar: la mayor cantidad que entra sin pisarse.
+            AssertCount(10f, false, false, 2, ref total, ref passed);
+            AssertCount(40f, true, false, 10, ref total, ref passed);
 
-            // Línea recta abierta: sin huecos, sin pasarse del final, vallas del largo de la malla.
-            foreach (float length in new[] { 7f, 10f, 36f, 53.7f })
+            // Línea recta abierta: de punta a punta, separación pareja exacta, vallas iguales y poco deformadas.
+            foreach (float length in new[] { 5.5f, 7f, 10f, 36f, 53.7f })
             {
-                List<BarrierPose> poses = LessonBoundaryMath.ComputePoses(length, false, len, overlap, d => new Vector3(d, 0.3f, 0f));
-                bool startsAtZero = poses.Count > 0 && Mathf.Abs(poses[0].StartDistance) < 1e-3f;
-                bool endsAtLength = poses.Count > 0 && Mathf.Abs(poses[poses.Count - 1].EndDistance - length) < 1e-3f;
-                bool noGaps = true, noOvershoot = true, fullLength = true;
+                List<BarrierPose> poses = LessonBoundaryMath.ComputePoses(length, false, len, gap, d => new Vector3(d, 0.3f, 0f));
+                bool endToEnd = poses.Count > 0 && Mathf.Abs(poses[0].StartDistance) < 1e-3f &&
+                                Mathf.Abs(poses[poses.Count - 1].EndDistance - length) < 1e-3f;
+                bool evenGaps = true, sameWidth = true, mildScale = true;
                 for (int i = 0; i < poses.Count; i++)
                 {
-                    if (poses[i].EndDistance > length + 1e-3f) noOvershoot = false;
-                    if (Mathf.Abs(poses[i].EndDistance - poses[i].StartDistance - len) > 1e-3f) fullLength = false;
-                    if (i > 0 && poses[i].StartDistance > poses[i - 1].EndDistance + 1e-3f) noGaps = false;
+                    float width = poses[i].EndDistance - poses[i].StartDistance;
+                    if (Mathf.Abs(width - (poses[0].EndDistance - poses[0].StartDistance)) > 1e-3f) sameWidth = false;
+                    if (poses[i].LengthScale < 0.7f || poses[i].LengthScale > 1.3f) mildScale = false;
+                    if (i > 0 && Mathf.Abs(poses[i].StartDistance - poses[i - 1].EndDistance - gap) > 1e-3f) evenGaps = false;
                 }
 
-                Assert(startsAtZero && endsAtLength && noGaps && noOvershoot && fullLength,
-                    $"Reparto en recta de {length:F1} m: {poses.Count} vallas sin huecos, sin pasarse y cerrando en el final",
+                Assert(endToEnd && evenGaps && sameWidth && mildScale,
+                    $"Reparto en recta de {length:F1} m: {poses.Count} vallas de punta a punta, separación pareja de {gap:F2} m, " +
+                    $"sin pisarse y con escala {(poses.Count > 0 ? poses[0].LengthScale : 0f):F2}",
                     ref total, ref passed);
             }
 
             // Posición en el punto medio del tramo y altura tomada de la spline.
             {
-                List<BarrierPose> poses = LessonBoundaryMath.ComputePoses(10f, false, len, overlap, d => new Vector3(d, 0.3f, 0f));
+                List<BarrierPose> poses = LessonBoundaryMath.ComputePoses(10f, false, len, gap, d => new Vector3(d, 0.3f, 0f));
                 bool ok = poses.Count == 3 &&
-                          Mathf.Abs(poses[0].Position.x - 1.8f) < 1e-3f && Mathf.Abs(poses[1].Position.x - 5.3f) < 1e-3f &&
-                          Mathf.Abs(poses[2].Position.x - 8.2f) < 1e-3f && poses.All(p => Mathf.Abs(p.Position.y - 0.3f) < 1e-4f);
+                          Mathf.Abs(poses[0].Position.x - 1.6333f) < 1e-3f && Mathf.Abs(poses[1].Position.x - 5f) < 1e-3f &&
+                          Mathf.Abs(poses[2].Position.x - 8.3667f) < 1e-3f && poses.All(p => Mathf.Abs(p.Position.y - 0.3f) < 1e-4f);
                 Assert(ok, "Cada valla se ubica en el punto medio de su tramo con la altura de la spline", ref total, ref passed);
+            }
+
+            // Una sola valla: ocupa toda la línea corta.
+            {
+                List<BarrierPose> poses = LessonBoundaryMath.ComputePoses(3f, false, len, gap, d => new Vector3(d, 0f, 0f));
+                bool ok = poses.Count == 1 && Mathf.Abs(poses[0].StartDistance) < 1e-3f && Mathf.Abs(poses[0].EndDistance - 3f) < 1e-3f &&
+                          Mathf.Abs(poses[0].LengthScale - 3f / len) < 1e-3f;
+                Assert(ok, "Una línea más corta que la valla lleva una sola valla ajustada a su largo", ref total, ref passed);
+            }
+
+            // Sin estirar: ninguna valla se deforma y el sobrante se reparte como separación (nunca menor a la pedida).
+            {
+                List<BarrierPose> poses = LessonBoundaryMath.ComputePoses(10f, false, len, gap, d => new Vector3(d, 0f, 0f), false);
+                bool ok = poses.Count == 2 && poses.All(p => Mathf.Abs(p.LengthScale - 1f) < 1e-4f) &&
+                          Mathf.Abs(poses[0].StartDistance) < 1e-3f && Mathf.Abs(poses[1].EndDistance - 10f) < 1e-3f &&
+                          poses[1].StartDistance - poses[0].EndDistance >= gap;
+                Assert(ok, "Sin estirar: vallas sin deformar, de punta a punta y con la separación repartida", ref total, ref passed);
             }
 
             // Orientación: el eje X de la valla va a lo largo de la cuerda, sin pitch ni roll.
             {
                 var direction = new Vector3(Mathf.Cos(30f * Mathf.Deg2Rad), 0f, Mathf.Sin(30f * Mathf.Deg2Rad));
-                List<BarrierPose> poses = LessonBoundaryMath.ComputePoses(20f, false, len, overlap, d => direction * d + Vector3.up * (0.05f * d));
+                List<BarrierPose> poses = LessonBoundaryMath.ComputePoses(20f, false, len, gap, d => direction * d + Vector3.up * (0.05f * d));
                 bool alongChord = poses.All(p => Vector3.Dot(p.Rotation * Vector3.right, direction) > 0.9999f);
                 bool noTilt = poses.All(p => Vector3.Dot(p.Rotation * Vector3.up, Vector3.up) > 0.9999f);
                 Assert(poses.Count > 0 && alongChord && noTilt,
@@ -539,7 +561,7 @@ namespace PrimerVolante.Testing.Editor
                     return new Vector3(Mathf.Sin(a) * radius, 0f, (1f - Mathf.Cos(a)) * radius);
                 }
 
-                List<BarrierPose> poses = LessonBoundaryMath.ComputePoses(arc, false, len, overlap, OnArc);
+                List<BarrierPose> poses = LessonBoundaryMath.ComputePoses(arc, false, len, gap, OnArc);
                 bool chordOk = poses.Count > 2 && poses.All(p =>
                 {
                     Vector3 chord = OnArc(p.EndDistance) - OnArc(p.StartDistance);
@@ -549,7 +571,7 @@ namespace PrimerVolante.Testing.Editor
                 Assert(chordOk, $"En una curva cada valla sigue la cuerda de su tramo ({poses.Count} vallas)", ref total, ref passed);
             }
 
-            // Spline cerrada: cuadrado de 10 m de lado; la costura no deja hueco.
+            // Spline cerrada: cuadrado de 10 m de lado; también queda separación en la costura.
             {
                 const float side = 10f, perimeter = 40f;
                 Vector3 OnSquare(float d)
@@ -561,18 +583,18 @@ namespace PrimerVolante.Testing.Editor
                     return new Vector3(0f, 0f, side - (d - 3f * side));
                 }
 
-                List<BarrierPose> poses = LessonBoundaryMath.ComputePoses(perimeter, true, len, overlap, OnSquare);
-                bool noGaps = true;
+                List<BarrierPose> poses = LessonBoundaryMath.ComputePoses(perimeter, true, len, gap, OnSquare);
+                bool evenGaps = true;
                 for (int i = 1; i < poses.Count; i++)
                 {
-                    if (poses[i].StartDistance > poses[i - 1].EndDistance + 1e-3f) noGaps = false;
+                    if (Mathf.Abs(poses[i].StartDistance - poses[i - 1].EndDistance - gap) > 1e-3f) evenGaps = false;
                 }
 
-                // La última valla debe llegar hasta el inicio de la primera más el solape (una vuelta completa).
-                bool seamClosed = poses.Count > 1 &&
-                                  poses[poses.Count - 1].EndDistance - perimeter >= poses[0].StartDistance + overlap - 1e-3f;
-                Assert(poses.Count == 12 && noGaps && seamClosed,
-                    $"Spline cerrada: {poses.Count} vallas sin huecos y la costura cierra con solape", ref total, ref passed);
+                // Costura: el final de la última más la separación da la vuelta completa hasta el inicio de la primera.
+                bool seamGap = poses.Count > 1 &&
+                               Mathf.Abs(poses[0].StartDistance + perimeter - poses[poses.Count - 1].EndDistance - gap) < 1e-3f;
+                Assert(poses.Count == 11 && evenGaps && seamGap,
+                    $"Spline cerrada: {poses.Count} vallas con separación pareja de {gap:F2} m, también en la costura", ref total, ref passed);
             }
 
             // Deduplicación: el segundo aviso dentro del enfriamiento se suprime, el que viene después no.
@@ -586,11 +608,11 @@ namespace PrimerVolante.Testing.Editor
                 "Dedup: si el reloj retrocede (reinicio) el aviso pasa", ref total, ref passed);
         }
 
-        private static void AssertCount(float length, bool closed, int expected, ref int total, ref int passed)
+        private static void AssertCount(float length, bool closed, bool stretch, int expected, ref int total, ref int passed)
         {
-            int count = LessonBoundaryMath.CountBarriers(length, closed, 3.6f, 0.1f);
+            int count = LessonBoundaryMath.CountBarriers(length, closed, 3.6f, 0.1f, stretch);
             Assert(count == expected,
-                $"CountBarriers({length:F1} m, {(closed ? "cerrada" : "abierta")}) = {expected} (obtuvo {count})",
+                $"CountBarriers({length:F1} m, {(closed ? "cerrada" : "abierta")}, {(stretch ? "estirando" : "sin estirar")}) = {expected} (obtuvo {count})",
                 ref total, ref passed);
         }
 
@@ -617,9 +639,17 @@ namespace PrimerVolante.Testing.Editor
                 so.FindProperty("m_BarrierPrefab").objectReferenceValue = barrierPrefab;
                 so.ApplyModifiedPropertiesWithoutUndo();
 
+                // El ancho sale del prefab (collider sólido × escala): si se cambia la escala del prefab, la línea sigue bien.
+                var solidAsset = barrierPrefab.GetComponent<BoxCollider>();
+                float expectedWidth = solidAsset.size.x * Mathf.Abs(barrierPrefab.transform.lossyScale.x);
+                Assert(Mathf.Abs(boundary.BarrierWidth - expectedWidth) < 1e-3f,
+                    $"LessonBoundary: el ancho de la valla sale del prefab ({boundary.BarrierWidth:F2} m = collider × escala {barrierPrefab.transform.lossyScale.x:F2})",
+                    ref total, ref passed);
+
+                int expectedCount = LessonBoundaryMath.CountBarriers(36f, false, boundary.BarrierWidth, boundary.Gap, boundary.StretchToFit);
                 bool computed = boundary.TryComputePoses(out List<BarrierPose> poses, out float length);
-                Assert(computed && Mathf.Abs(length - 36f) < 0.01f && poses.Count == 11,
-                    $"LessonBoundary: spline de 36 m reparte 11 vallas (obtuvo {(poses != null ? poses.Count : 0)}, largo {length:F2})",
+                Assert(computed && Mathf.Abs(length - 36f) < 0.01f && poses.Count == expectedCount,
+                    $"LessonBoundary: spline de 36 m reparte {expectedCount} vallas (obtuvo {(poses != null ? poses.Count : 0)}, largo {length:F2})",
                     ref total, ref passed);
 
                 // Idempotente: regenerar dos veces deja un solo contenedor con la misma cantidad de vallas.
@@ -628,16 +658,37 @@ namespace PrimerVolante.Testing.Editor
                 int containers = go.transform.Cast<Transform>().Count(c => c.name == LessonBoundary.CONTAINER_NAME);
                 Transform barriers = go.transform.Find(LessonBoundary.CONTAINER_NAME);
                 int children = barriers != null ? barriers.childCount : -1;
-                Assert(containers == 1 && children == 11,
-                    $"LessonBoundary: reconstruir dos veces deja 1 contenedor con 11 vallas (contenedores {containers}, vallas {children})",
+                Assert(containers == 1 && children == expectedCount,
+                    $"LessonBoundary: reconstruir dos veces deja 1 contenedor con {expectedCount} vallas (contenedores {containers}, vallas {children})",
                     ref total, ref passed);
 
                 int barrierScripts = go.GetComponentsInChildren<LessonBarrier>(true).Length;
                 bool prefabInstances = barriers != null && barriers.Cast<Transform>().All(c =>
                     PrefabUtility.IsAnyPrefabInstanceRoot(c.gameObject) &&
                     AssetDatabase.GetAssetPath(PrefabUtility.GetCorrespondingObjectFromSource(c.gameObject)) == LessonBoundarySetup.BARRIER_PREFAB_PATH);
-                Assert(barrierScripts == 11 && prefabInstances,
+                Assert(barrierScripts == expectedCount && prefabInstances,
                     "LessonBoundary: las vallas son instancias del prefab LessonBarrier, cada una con su aviso", ref total, ref passed);
+
+                // Físicamente: los sólidos no se pisan y entre dos vecinos queda la separación pedida.
+                if (barriers != null && barriers.childCount >= 2)
+                {
+                    float minGap = float.MaxValue, maxGap = float.MinValue;
+                    for (int i = 1; i < barriers.childCount; i++)
+                    {
+                        Transform a = barriers.GetChild(i - 1), b = barriers.GetChild(i);
+                        var solidA = a.GetComponent<BoxCollider>();
+                        var solidB = b.GetComponent<BoxCollider>();
+                        float halfA = solidA.size.x * Mathf.Abs(a.lossyScale.x) * 0.5f;
+                        float halfB = solidB.size.x * Mathf.Abs(b.lossyScale.x) * 0.5f;
+                        float between = Vector3.Distance(a.position, b.position) - halfA - halfB;
+                        minGap = Mathf.Min(minGap, between);
+                        maxGap = Mathf.Max(maxGap, between);
+                    }
+
+                    Assert(minGap > 0f && Mathf.Abs(minGap - boundary.Gap) < 0.02f && Mathf.Abs(maxGap - boundary.Gap) < 0.02f,
+                        $"LessonBoundary: las vallas generadas no se tocan y quedan separadas {minGap:F2}–{maxGap:F2} m (pedido {boundary.Gap:F2} m)",
+                        ref total, ref passed);
+                }
             }
             finally
             {
@@ -688,7 +739,7 @@ namespace PrimerVolante.Testing.Editor
                     Transform barriers = boundary.transform.Find(LessonBoundary.CONTAINER_NAME);
 
                     Assert(computed && barriers != null && barriers.childCount == poses.Count && poses.Count > 0,
-                        $"{label}: las vallas están generadas y guardadas en la escena ({(barriers != null ? barriers.childCount : 0)} de {(poses != null ? poses.Count : 0)})",
+                        $"{label}: las vallas generadas están al día con la spline y los parámetros ({(barriers != null ? barriers.childCount : 0)} en escena, {(poses != null ? poses.Count : 0)} esperadas; si no coincide, usá Reconstruir barreras)",
                         ref total, ref passed);
 
                     Assert(boundary.BarrierPrefab != null &&
@@ -696,41 +747,46 @@ namespace PrimerVolante.Testing.Editor
                         $"{label}: usa el prefab LessonBarrier", ref total, ref passed);
                     if (!computed || barriers == null) continue;
 
-                    // La línea corta la calle de cordón a cordón: cada extremo termina contra un muro de cordón.
-                    var container = boundary.GetComponent<SplineContainer>();
-                    Spline spline = container.Splines[boundary.SplineIndex];
-                    Vector3 first = container.transform.TransformPoint((Vector3)spline[0].Position);
-                    Vector3 last = container.transform.TransformPoint((Vector3)spline[spline.Count - 1].Position);
-                    Vector3 direction = (last - first).normalized;
-                    Assert(!spline.Closed && spline.Count == 2, $"{label}: spline abierta de dos nudos", ref total, ref passed);
-
-                    float gapStart = DistanceToCurbWall(first + direction * 0.5f, -direction, boundary.transform);
-                    float gapEnd = DistanceToCurbWall(last - direction * 0.5f, direction, boundary.transform);
-                    Assert(gapStart >= 0f && gapStart <= 0.65f && gapEnd >= 0f && gapEnd <= 0.65f,
-                        $"{label}: cada extremo llega al cordón (distancia a los muros {gapStart:F2} y {gapEnd:F2} m)",
-                        ref total, ref passed);
-
-                    // Largo de la línea: de cordón a cordón (≈ 14 m), sin invadir otra calle.
-                    Assert(Mathf.Abs(length - 14f) < 0.5f, $"{label}: largo de la línea ≈ 14 m ({length:F1} m)", ref total, ref passed);
-
-                    // No cruza ninguna ruta de NPC_Demo.
-                    float minRoute = float.MaxValue;
-                    if (npcGroup != null)
+                    // Los chequeos geométricos de abajo son de la demo (la línea que corta la calle de cordón a
+                    // cordón); las líneas que diseñe el usuario solo se validan en lo genérico.
+                    if (boundary.name == LessonBoundarySetup.DEMO_BOUNDARY_NAME)
                     {
-                        foreach (SplineContainer route in npcGroup.GetComponentsInChildren<SplineContainer>(true))
+                        // La línea corta la calle de cordón a cordón: cada extremo termina contra un muro de cordón.
+                        var container = boundary.GetComponent<SplineContainer>();
+                        Spline spline = container.Splines[boundary.SplineIndex];
+                        Vector3 first = container.transform.TransformPoint((Vector3)spline[0].Position);
+                        Vector3 last = container.transform.TransformPoint((Vector3)spline[spline.Count - 1].Position);
+                        Vector3 direction = (last - first).normalized;
+                        Assert(!spline.Closed && spline.Count == 2, $"{label}: spline abierta de dos nudos", ref total, ref passed);
+
+                        float gapStart = DistanceToCurbWall(first + direction * 0.5f, -direction, boundary.transform);
+                        float gapEnd = DistanceToCurbWall(last - direction * 0.5f, direction, boundary.transform);
+                        Assert(gapStart >= 0f && gapStart <= 0.65f && gapEnd >= 0f && gapEnd <= 0.65f,
+                            $"{label}: cada extremo llega al cordón (distancia a los muros {gapStart:F2} y {gapEnd:F2} m)",
+                            ref total, ref passed);
+
+                        // Largo de la línea: de cordón a cordón (≈ 14 m), sin invadir otra calle.
+                        Assert(Mathf.Abs(length - 14f) < 0.5f, $"{label}: largo de la línea ≈ 14 m ({length:F1} m)", ref total, ref passed);
+
+                        // No cruza ninguna ruta de NPC_Demo.
+                        float minRoute = float.MaxValue;
+                        if (npcGroup != null)
                         {
-                            minRoute = Mathf.Min(minRoute, MinDistanceToRoute(route, first, last));
+                            foreach (SplineContainer route in npcGroup.GetComponentsInChildren<SplineContainer>(true))
+                            {
+                                minRoute = Mathf.Min(minRoute, MinDistanceToRoute(route, first, last));
+                            }
                         }
-                    }
 
-                    Assert(minRoute > 1.5f, $"{label}: a más de 1.5 m de toda ruta de NPC_Demo ({minRoute:F1} m)", ref total, ref passed);
+                        Assert(minRoute > 1.5f, $"{label}: a más de 1.5 m de toda ruta de NPC_Demo ({minRoute:F1} m)", ref total, ref passed);
 
-                    // Lejos del punto de inicio del Car08.
-                    if (car != null)
-                    {
-                        float away = Vector3.Distance(new Vector3(car.transform.position.x, 0f, car.transform.position.z),
-                            new Vector3((first.x + last.x) * 0.5f, 0f, (first.z + last.z) * 0.5f));
-                        Assert(away > 30f, $"{label}: lejos del inicio del Car08 ({away:F0} m)", ref total, ref passed);
+                        // Lejos del punto de inicio del Car08.
+                        if (car != null)
+                        {
+                            float away = Vector3.Distance(new Vector3(car.transform.position.x, 0f, car.transform.position.z),
+                                new Vector3((first.x + last.x) * 0.5f, 0f, (first.z + last.z) * 0.5f));
+                            Assert(away > 30f, $"{label}: lejos del inicio del Car08 ({away:F0} m)", ref total, ref passed);
+                        }
                     }
 
                     // Ningún prop o edificio dentro de las vallas.
@@ -812,6 +868,22 @@ namespace PrimerVolante.Testing.Editor
         // preexistente de Car06 ya contemplado), así que su resultado final cubre las cinco suites.
         private static void VerifyExistingSuites(ref int total, ref int passed)
         {
+            // Las suites existentes (Sound, Haptics) guardan la escena abierta si estaba sucia: si hay cambios
+            // sin guardar no se corren, para no escribir en disco trabajo del usuario sin que lo decida.
+            var dirtyScenes = new List<string>();
+            for (int i = 0; i < SceneManager.sceneCount; i++)
+            {
+                Scene open = SceneManager.GetSceneAt(i);
+                if (open.isDirty) dirtyScenes.Add(open.name);
+            }
+
+            if (dirtyScenes.Count > 0)
+            {
+                Debug.LogWarning($"[LessonBoundaryVerification] ⚠️ Escenas con cambios sin guardar ({string.Join(", ", dirtyScenes)}): " +
+                                 "no se corren las suites existentes porque guardan la escena abierta. Guardá la escena y volvé a correr.");
+                return;
+            }
+
             int suitePassed = 0, suiteTotal = 0;
             void OnLog(string message, string stack, LogType type)
             {
