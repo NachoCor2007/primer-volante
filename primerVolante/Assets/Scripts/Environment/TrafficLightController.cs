@@ -27,8 +27,11 @@ namespace PrimerVolante.Environment
         [Tooltip("Duración de la fase de luz roja.")]
         [SerializeField] private float m_RedDuration = 8f;
 
-        [Tooltip("Duración de la fase de luz amarilla.")]
+        [Tooltip("Duración de la fase de luz amarilla (Verde -> Rojo).")]
         [SerializeField] private float m_YellowDuration = 2.5f;
+
+        [Tooltip("Duración de la fase de luz amarilla previa a verde (Rojo -> Amarillo -> Verde). Si es <= 0, usa m_YellowDuration.")]
+        [SerializeField] private float m_YellowToGreenDuration = 2.0f;
 
         [Tooltip("Duración de la fase de luz verde.")]
         [SerializeField] private float m_GreenDuration = 8f;
@@ -106,6 +109,7 @@ namespace PrimerVolante.Environment
 
         // Estado interno en tiempo de ejecución
         private TrafficLightState m_CurrentState = TrafficLightState.Red;
+        private TrafficLightState m_PreviousState = TrafficLightState.Yellow;
         private float m_TimeRemainingInState = 0f;
         private bool m_IsCycleActive = false;
         private bool m_IsPaused = false;
@@ -117,6 +121,23 @@ namespace PrimerVolante.Environment
 
         /// <summary>Estado actual de la señal de tráfico.</summary>
         public TrafficLightState CurrentState => m_CurrentState;
+
+        /// <summary>Estado inmediatamente anterior en el ciclo del semáforo.</summary>
+        public TrafficLightState PreviousState => m_PreviousState;
+
+        /// <summary>Indica si el semáforo se encuentra en la fase amarilla preparatoria previa a pasar a verde.</summary>
+        public bool IsTransitioningToGreen => (m_CurrentState == TrafficLightState.Yellow && m_PreviousState == TrafficLightState.Red);
+
+        /// <summary>Próximo estado objetivo hacia el cual se dirige el ciclo actual.</summary>
+        public TrafficLightState TargetState
+        {
+            get
+            {
+                if (m_CurrentState == TrafficLightState.Green) return TrafficLightState.Yellow;
+                if (m_CurrentState == TrafficLightState.Red) return TrafficLightState.Yellow;
+                return (m_PreviousState == TrafficLightState.Red) ? TrafficLightState.Green : TrafficLightState.Red;
+            }
+        }
 
         /// <summary>Tiempo restante en segundos para la fase actual.</summary>
         public float TimeRemainingInState => Mathf.Max(0f, m_TimeRemainingInState);
@@ -143,11 +164,18 @@ namespace PrimerVolante.Environment
             set => m_RedDuration = Mathf.Max(0.1f, value);
         }
 
-        /// <summary>Duración configurable de la luz amarilla en segundos.</summary>
+        /// <summary>Duración configurable de la luz amarilla (Verde -> Rojo) en segundos.</summary>
         public float YellowDuration
         {
             get => m_YellowDuration;
             set => m_YellowDuration = Mathf.Max(0.1f, value);
+        }
+
+        /// <summary>Duración configurable de la luz amarilla previa a verde (Rojo -> Verde) en segundos.</summary>
+        public float YellowToGreenDuration
+        {
+            get => (m_YellowToGreenDuration > 0f) ? m_YellowToGreenDuration : m_YellowDuration;
+            set => m_YellowToGreenDuration = Mathf.Max(0.1f, value);
         }
 
         /// <summary>Duración configurable de la luz verde en segundos.</summary>
@@ -256,7 +284,8 @@ namespace PrimerVolante.Environment
         private void Awake()
         {
             m_CurrentState = m_InitialState;
-            m_TimeRemainingInState = GetDurationForState(m_InitialState);
+            m_PreviousState = (m_InitialState == TrafficLightState.Green) ? TrafficLightState.Red : TrafficLightState.Green;
+            m_TimeRemainingInState = GetDurationForState(m_InitialState, m_PreviousState);
             m_EmissionColorPropId = Shader.PropertyToID(m_EmissionColorProperty);
             m_PropertyBlock = new MaterialPropertyBlock();
             m_LensPropertyBlock = new MaterialPropertyBlock();
@@ -272,7 +301,7 @@ namespace PrimerVolante.Environment
             {
                 m_IsCycleActive = false;
                 m_IsPaused = false;
-                m_TimeRemainingInState = GetDurationForState(m_InitialState);
+                m_TimeRemainingInState = GetDurationForState(m_InitialState, m_PreviousState);
                 UpdateVisuals();
             }
         }
@@ -287,11 +316,16 @@ namespace PrimerVolante.Environment
             m_RedDuration = Mathf.Max(0.1f, m_RedDuration);
             m_YellowDuration = Mathf.Max(0.1f, m_YellowDuration);
             m_GreenDuration = Mathf.Max(0.1f, m_GreenDuration);
+            if (m_YellowToGreenDuration > 0f)
+            {
+                m_YellowToGreenDuration = Mathf.Max(0.1f, m_YellowToGreenDuration);
+            }
 
             if (!Application.isPlaying)
             {
                 m_CurrentState = m_InitialState;
-                m_TimeRemainingInState = GetDurationForState(m_InitialState);
+                m_PreviousState = (m_InitialState == TrafficLightState.Green) ? TrafficLightState.Red : TrafficLightState.Green;
+                m_TimeRemainingInState = GetDurationForState(m_InitialState, m_PreviousState);
                 UpdateVisuals();
             }
         }
@@ -307,7 +341,8 @@ namespace PrimerVolante.Environment
         public void TriggerStart(TrafficLightState initialState = TrafficLightState.Red)
         {
             m_CurrentState = initialState;
-            m_TimeRemainingInState = GetDurationForState(initialState);
+            m_PreviousState = (initialState == TrafficLightState.Green) ? TrafficLightState.Yellow : TrafficLightState.Green;
+            m_TimeRemainingInState = GetDurationForState(initialState, m_PreviousState);
             m_IsCycleActive = true;
             m_IsPaused = false;
 
@@ -321,8 +356,20 @@ namespace PrimerVolante.Environment
         /// <param name="state">Nuevo estado a imponer.</param>
         public void SetState(TrafficLightState state)
         {
+            if (state == TrafficLightState.Yellow)
+            {
+                if (m_CurrentState == TrafficLightState.Red || m_CurrentState == TrafficLightState.Green)
+                {
+                    m_PreviousState = m_CurrentState;
+                }
+            }
+            else
+            {
+                m_PreviousState = (state == TrafficLightState.Green) ? TrafficLightState.Yellow : TrafficLightState.Green;
+            }
+
             m_CurrentState = state;
-            m_TimeRemainingInState = GetDurationForState(state);
+            m_TimeRemainingInState = GetDurationForState(state, m_PreviousState);
 
             UpdateVisuals();
             NotifyStateChanged();
@@ -350,7 +397,8 @@ namespace PrimerVolante.Environment
         public void ResetCycle()
         {
             m_CurrentState = m_InitialState;
-            m_TimeRemainingInState = GetDurationForState(m_InitialState);
+            m_PreviousState = (m_InitialState == TrafficLightState.Green) ? TrafficLightState.Red : TrafficLightState.Green;
+            m_TimeRemainingInState = GetDurationForState(m_InitialState, m_PreviousState);
             m_IsPaused = false;
             m_IsCycleActive = m_AutoStart;
 
@@ -374,8 +422,8 @@ namespace PrimerVolante.Environment
 
             while (m_TimeRemainingInState <= 0f)
             {
-                TrafficLightState nextState = GetNextState(m_CurrentState);
-                float nextDuration = GetDurationForState(nextState);
+                TrafficLightState nextState = GetNextState(m_CurrentState, m_PreviousState);
+                float nextDuration = GetDurationForState(nextState, m_CurrentState);
 
                 if (nextDuration <= 0f)
                 {
@@ -383,6 +431,7 @@ namespace PrimerVolante.Environment
                     break;
                 }
 
+                m_PreviousState = m_CurrentState;
                 m_CurrentState = nextState;
                 m_TimeRemainingInState += nextDuration;
 
@@ -392,34 +441,56 @@ namespace PrimerVolante.Environment
         }
 
         /// <summary>
-        /// Obtiene el estado subsiguiente en el ciclo estándar:
-        /// Green -> Yellow -> Red -> Green.
+        /// Obtiene el estado subsiguiente a partir del estado actual y previo del controlador.
         /// </summary>
-        public static TrafficLightState GetNextState(TrafficLightState current)
+        public TrafficLightState GetNextState()
+        {
+            return GetNextState(m_CurrentState, m_PreviousState);
+        }
+
+        /// <summary>
+        /// Obtiene el estado subsiguiente en la secuencia de ciclo:
+        /// Green -> Yellow -> Red -> Yellow -> Green...
+        /// De Verde a Rojo pasa por Amarillo; de Rojo a Verde también pasa por Amarillo.
+        /// </summary>
+        public static TrafficLightState GetNextState(TrafficLightState current, TrafficLightState previous = TrafficLightState.Green)
         {
             switch (current)
             {
                 case TrafficLightState.Green:
                     return TrafficLightState.Yellow;
                 case TrafficLightState.Yellow:
-                    return TrafficLightState.Red;
+                    return (previous == TrafficLightState.Red) ? TrafficLightState.Green : TrafficLightState.Red;
                 case TrafficLightState.Red:
-                    return TrafficLightState.Green;
+                    return TrafficLightState.Yellow;
                 default:
                     return TrafficLightState.Red;
             }
         }
 
         /// <summary>
-        /// Retorna la duración configurada para un estado determinado.
+        /// Retorna la duración configurada para un estado determinado, considerando el estado previo si es Yellow.
         /// </summary>
         public float GetDurationForState(TrafficLightState state)
+        {
+            return GetDurationForState(state, m_PreviousState);
+        }
+
+        /// <summary>
+        /// Retorna la duración configurada para un estado determinado según el estado precedente.
+        /// Permite duración independiente para la fase amarilla de advertencia previa a verde.
+        /// </summary>
+        public float GetDurationForState(TrafficLightState state, TrafficLightState previousState)
         {
             switch (state)
             {
                 case TrafficLightState.Green:
                     return m_GreenDuration;
                 case TrafficLightState.Yellow:
+                    if (previousState == TrafficLightState.Red && m_YellowToGreenDuration > 0f)
+                    {
+                        return m_YellowToGreenDuration;
+                    }
                     return m_YellowDuration;
                 case TrafficLightState.Red:
                     return m_RedDuration;
@@ -615,7 +686,7 @@ namespace PrimerVolante.Environment
                         break;
                     case TrafficLightState.Yellow:
                         style.normal.textColor = new Color(1f, 0.85f, 0.2f);
-                        stateText = "YELLOW";
+                        stateText = (m_PreviousState == TrafficLightState.Red) ? "YELLOW (->GREEN)" : "YELLOW (->RED)";
                         break;
                     case TrafficLightState.Green:
                         style.normal.textColor = new Color(0.3f, 1f, 0.4f);

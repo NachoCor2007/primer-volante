@@ -163,7 +163,8 @@ namespace PrimerVolante.Testing.Editor
             float yellowDur,
             float redDur,
             bool autoStart,
-            TrafficLightState initialState)
+            TrafficLightState initialState,
+            float yellowToGreenDur = 2.0f)
         {
             if (controller == null) return;
 
@@ -172,12 +173,14 @@ namespace PrimerVolante.Testing.Editor
 
             SerializedProperty greenProp = so.FindProperty("m_GreenDuration");
             SerializedProperty yellowProp = so.FindProperty("m_YellowDuration");
+            SerializedProperty yellowToGreenProp = so.FindProperty("m_YellowToGreenDuration");
             SerializedProperty redProp = so.FindProperty("m_RedDuration");
             SerializedProperty autoStartProp = so.FindProperty("m_AutoStart");
             SerializedProperty initProp = so.FindProperty("m_InitialState");
 
             if (greenProp != null) greenProp.floatValue = greenDur;
             if (yellowProp != null) yellowProp.floatValue = yellowDur;
+            if (yellowToGreenProp != null) yellowToGreenProp.floatValue = yellowToGreenDur;
             if (redProp != null) redProp.floatValue = redDur;
             if (autoStartProp != null) autoStartProp.boolValue = autoStart;
             if (initProp != null) initProp.enumValueIndex = (int)initialState;

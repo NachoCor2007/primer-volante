@@ -43,7 +43,22 @@ namespace PrimerVolante.Testing.Editor
             Debug.Log("=========================================================");
         }
 
-        #region 1. Transiciones de Ciclo (Green -> Yellow -> Red -> Green)
+        public static string RunAllTestsSummary()
+        {
+            int totalTests = 0;
+            int passedTests = 0;
+
+            TestCycleTransitions(ref totalTests, ref passedTests);
+            TestTriggerStart(ref totalTests, ref passedTests);
+            TestControlMethods(ref totalTests, ref passedTests);
+            TestVisualLighting(ref totalTests, ref passedTests);
+            TestPrefabsConfiguration(ref totalTests, ref passedTests);
+            TestRedLightViolationDetector(ref totalTests, ref passedTests);
+
+            return $"{passedTests}/{totalTests} passed (Failures: {totalTests - passedTests})";
+        }
+
+        #region 1. Transiciones de Ciclo (Green -> Yellow -> Red -> Yellow -> Green)
 
         private static void TestCycleTransitions(ref int total, ref int passed)
         {
@@ -53,6 +68,7 @@ namespace PrimerVolante.Testing.Editor
                 TrafficLightController controller = go.AddComponent<TrafficLightController>();
                 controller.GreenDuration = 8f;
                 controller.YellowDuration = 2.5f;
+                controller.YellowToGreenDuration = 2.0f;
                 controller.RedDuration = 8f;
 
                 List<TrafficLightState> receivedEvents = new List<TrafficLightState>();
@@ -70,12 +86,16 @@ namespace PrimerVolante.Testing.Editor
                 Assert(controller.IsGreen && Mathf.Approximately(controller.TimeRemainingInState, 4f),
                     "Permanece en Green tras 4s con 4s restantes", ref total, ref passed);
 
-                // Completamos los 4s restantes -> transiciona a Yellow
+                // Completamos los 4s restantes -> transiciona a Yellow (hacia Red)
                 controller.Tick(4f);
                 Assert(controller.IsYellow && controller.CurrentState == TrafficLightState.Yellow,
                     "Transición Green -> Yellow tras cumplir greenDuration", ref total, ref passed);
+                Assert(!controller.IsTransitioningToGreen,
+                    "Fase Yellow no es transición hacia verde (es hacia rojo)", ref total, ref passed);
+                Assert(controller.TargetState == TrafficLightState.Red,
+                    "TargetState en Yellow (venía de Green) es Red", ref total, ref passed);
                 Assert(Mathf.Approximately(controller.TimeRemainingInState, 2.5f),
-                    "Tiempo restante en Yellow es 2.5s", ref total, ref passed);
+                    "Tiempo restante en Yellow (hacia Red) es 2.5s", ref total, ref passed);
 
                 // Avanzamos 2.5s -> transiciona a Red
                 controller.Tick(2.5f);
@@ -84,18 +104,47 @@ namespace PrimerVolante.Testing.Editor
                 Assert(Mathf.Approximately(controller.TimeRemainingInState, 8f),
                     "Tiempo restante en Red es 8s", ref total, ref passed);
 
-                // Avanzamos 8s -> transiciona a Green nuevamente
+                // Avanzamos 8s -> transiciona a Yellow PREVIO A VERDE (Fase preparatoria de aviso)
                 controller.Tick(8f);
-                Assert(controller.IsGreen && controller.CurrentState == TrafficLightState.Green,
-                    "Transición Red -> Green tras cumplir redDuration", ref total, ref passed);
+                Assert(controller.IsYellow && controller.CurrentState == TrafficLightState.Yellow,
+                    "Transición Red -> Yellow (aviso previo a verde) tras cumplir redDuration", ref total, ref passed);
+                Assert(controller.IsTransitioningToGreen,
+                    "Fase Yellow es transición hacia verde (IsTransitioningToGreen = true)", ref total, ref passed);
+                Assert(controller.TargetState == TrafficLightState.Green,
+                    "TargetState en Yellow (venía de Red) es Green", ref total, ref passed);
+                Assert(Mathf.Approximately(controller.TimeRemainingInState, 2.0f),
+                    "Tiempo restante en Yellow previo a verde es yellowToGreenDuration (2.0s)", ref total, ref passed);
 
-                // Validamos que los eventos se emitieron en el orden exacto
-                Assert(receivedEvents.Count >= 4 &&
+                // Avanzamos 2.0s -> transiciona a Green finalmente
+                controller.Tick(2.0f);
+                Assert(controller.IsGreen && controller.CurrentState == TrafficLightState.Green,
+                    "Transición Yellow -> Green tras cumplir yellowToGreenDuration", ref total, ref passed);
+                Assert(Mathf.Approximately(controller.TimeRemainingInState, 8f),
+                    "Tiempo restante en Green es 8s", ref total, ref passed);
+
+                // Validamos que los eventos se emitieron en el orden exacto de 4 fases
+                Assert(receivedEvents.Count >= 5 &&
                        receivedEvents[0] == TrafficLightState.Green &&
                        receivedEvents[1] == TrafficLightState.Yellow &&
                        receivedEvents[2] == TrafficLightState.Red &&
-                       receivedEvents[3] == TrafficLightState.Green,
-                    "Eventos OnStateChanged emitidos en secuencia: Green -> Yellow -> Red -> Green", ref total, ref passed);
+                       receivedEvents[3] == TrafficLightState.Yellow &&
+                       receivedEvents[4] == TrafficLightState.Green,
+                    "Eventos OnStateChanged emitidos en secuencia completa: Green -> Yellow -> Red -> Yellow -> Green", ref total, ref passed);
+
+                // Sub-prueba: Iniciar directamente en Red y comprobar Red -> Yellow -> Green
+                receivedEvents.Clear();
+                controller.TriggerStart(TrafficLightState.Red);
+                controller.Tick(8f);
+                Assert(controller.IsYellow && controller.IsTransitioningToGreen,
+                    "Al iniciar en Red, tras redDuration pasa a Yellow (hacia Verde)", ref total, ref passed);
+                controller.Tick(2f);
+                Assert(controller.IsGreen,
+                    "Tras yellowToGreenDuration pasa a Green", ref total, ref passed);
+                Assert(receivedEvents.Count >= 3 &&
+                       receivedEvents[0] == TrafficLightState.Red &&
+                       receivedEvents[1] == TrafficLightState.Yellow &&
+                       receivedEvents[2] == TrafficLightState.Green,
+                    "Secuencia Red -> Yellow -> Green validada correctamente", ref total, ref passed);
             }
             finally
             {
@@ -307,6 +356,43 @@ namespace PrimerVolante.Testing.Editor
             Assert(controller.YellowLensRenderer != null, $"{prefabName} tiene referencia asignada a YellowLensRenderer", ref total, ref passed);
             Assert(controller.GreenLensRenderer != null, $"{prefabName} tiene referencia asignada a GreenLensRenderer", ref total, ref passed);
 
+            // Verificación de Malla Low Poly y Escala Aumentada (~0.32)
+            Mesh lowPolyMesh = AssetDatabase.LoadAssetAtPath<Mesh>(TrafficLightPrefabSetup.LOW_POLY_LENS_MESH_PATH);
+            Assert(lowPolyMesh != null, "Asset Props_TrafficLightLens_LowPoly.asset existe", ref total, ref passed);
+
+            if (controller.RedLensRenderer != null)
+            {
+                MeshFilter redMf = controller.RedLensRenderer.GetComponent<MeshFilter>();
+                Assert(redMf != null && redMf.sharedMesh == lowPolyMesh,
+                    $"{prefabName} RedLens tiene asignada la malla Low Poly facetada", ref total, ref passed);
+
+                Vector3 scale = controller.RedLensRenderer.transform.localScale;
+                Assert(Mathf.Abs(scale.x - 0.32f) < 0.02f && Mathf.Abs(scale.y - 0.32f) < 0.02f,
+                    $"{prefabName} RedLens tiene escala aumentada ~0.32f ({scale.x:F2}, {scale.y:F2})", ref total, ref passed);
+            }
+
+            if (controller.YellowLensRenderer != null)
+            {
+                MeshFilter yellowMf = controller.YellowLensRenderer.GetComponent<MeshFilter>();
+                Assert(yellowMf != null && yellowMf.sharedMesh == lowPolyMesh,
+                    $"{prefabName} YellowLens tiene asignada la malla Low Poly facetada", ref total, ref passed);
+
+                Vector3 scale = controller.YellowLensRenderer.transform.localScale;
+                Assert(Mathf.Abs(scale.x - 0.32f) < 0.02f && Mathf.Abs(scale.y - 0.32f) < 0.02f,
+                    $"{prefabName} YellowLens tiene escala aumentada ~0.32f ({scale.x:F2}, {scale.y:F2})", ref total, ref passed);
+            }
+
+            if (controller.GreenLensRenderer != null)
+            {
+                MeshFilter greenMf = controller.GreenLensRenderer.GetComponent<MeshFilter>();
+                Assert(greenMf != null && greenMf.sharedMesh == lowPolyMesh,
+                    $"{prefabName} GreenLens tiene asignada la malla Low Poly facetada", ref total, ref passed);
+
+                Vector3 scale = controller.GreenLensRenderer.transform.localScale;
+                Assert(Mathf.Abs(scale.x - 0.32f) < 0.02f && Mathf.Abs(scale.y - 0.32f) < 0.02f,
+                    $"{prefabName} GreenLens tiene escala aumentada ~0.32f ({scale.x:F2}, {scale.y:F2})", ref total, ref passed);
+            }
+
             if (controller.RedLight != null)
             {
                 Assert(controller.RedLight.type == LightType.Point, $"{prefabName} RedLight es Point Light", ref total, ref passed);
@@ -324,8 +410,8 @@ namespace PrimerVolante.Testing.Editor
                 Assert(controller.GreenLight.type == LightType.Point, $"{prefabName} GreenLight es Point Light", ref total, ref passed);
             }
 
-            Assert(controller.RedDuration > 0f && controller.YellowDuration > 0f && controller.GreenDuration > 0f,
-                $"{prefabName} tiene duraciones de fase positivas por defecto", ref total, ref passed);
+            Assert(controller.RedDuration > 0f && controller.YellowDuration > 0f && controller.GreenDuration > 0f && controller.YellowToGreenDuration > 0f,
+                $"{prefabName} tiene duraciones de fase positivas por defecto (incluyendo yellowToGreen)", ref total, ref passed);
         }
 
         #endregion
@@ -379,12 +465,21 @@ namespace PrimerVolante.Testing.Editor
                 Assert(!result3 && detector.TotalViolationsRecorded == 1,
                     "No se registra infracción cuando el semáforo está en VERDE", ref total, ref passed);
 
-                // Prueba 4: Cruce en AMARILLO -> NO debe registrar infracción
+                // Prueba 4: Cruce en AMARILLO (hacia Rojo) -> NO debe registrar infracción
                 detector.ResetCooldown();
                 tl.SetState(TrafficLightState.Yellow);
                 bool result4 = detector.TryRecordViolation(vehicleCollider);
                 Assert(!result4 && detector.TotalViolationsRecorded == 1,
-                    "No se registra infracción cuando el semáforo está en AMARILLO", ref total, ref passed);
+                    "No se registra infracción cuando el semáforo está en AMARILLO (hacia Rojo)", ref total, ref passed);
+
+                // Prueba 4b: Cruce en AMARILLO (aviso previo a Verde) -> NO debe registrar infracción
+                detector.ResetCooldown();
+                tl.TriggerStart(TrafficLightState.Red);
+                tl.Tick(8f); // Pasa a Yellow previo a Verde
+                Assert(tl.IsYellow && tl.IsTransitioningToGreen, "Semáforo en fase amarilla previa a verde", ref total, ref passed);
+                bool result4b = detector.TryRecordViolation(vehicleCollider);
+                Assert(!result4b && detector.TotalViolationsRecorded == 1,
+                    "No se registra infracción en fase amarilla previa a verde (aviso preparatorio)", ref total, ref passed);
 
                 // Prueba 5: Cruce de objeto NO vehículo (sin VehicleController ni tag) -> ignorado
                 detector.ResetCooldown();
