@@ -3,8 +3,11 @@ using System.Linq;
 using PrimerVolante.Environment;
 using PrimerVolante.VR;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Audio;
+using UnityEngine.SceneManagement;
+using UnityEngine.Splines;
 
 namespace PrimerVolante.Testing.Editor
 {
@@ -217,6 +220,391 @@ namespace PrimerVolante.Testing.Editor
             }
 
             return count;
+        }
+
+        // ------------------------------------------------------------------ Escena de prueba
+
+        public const string SCENES_FOLDER = "Assets/SimplePoly City - Low Poly Assets/Demo/TestingScenes";
+        public const string SOURCE_SCENE_PATH = SCENES_FOLDER + "/CityMerged.unity";
+        public const string SCENE_PATH = SCENES_FOLDER + "/CityWithCollisionDetectors.unity";
+        public const string DECORATIVE_VEHICLES_FOLDER = "Assets/SimplePoly City - Low Poly Assets/Prefab/Vehicles";
+
+        public const string DEMO_GROUP_NAME = "Obstacle_Demo";
+        public const string DEMO_CONE_PREFIX = "Cone_";
+        public const string DEMO_PARKED_CAR_NAME = "NPC_ParkedCar";
+        public const string DEMO_PEDESTRIAN_NAME = "NPC_Pedestrian_Standing";
+        public const string DEMO_PARKED_CAR_PREFAB = NPCPrefabSetup.VEHICLE_OUTPUT_FOLDER + "/NPC_Car_color02.prefab";
+        public const string DEMO_PEDESTRIAN_PREFAB = NPCPrefabSetup.PEDESTRIAN_OUTPUT_FOLDER + "/NPC_Pedestrian_01.prefab";
+        public const int DEMO_CONE_COUNT = 5;
+
+        // Zona de práctica sobre la calle x = 60 (carriles de 7 m, mano derecha), por delante del Car08 (63.5, 95),
+        // que mira a +Z. El tramo entre los cruces (z = 69.5..110.4) es corto y tiene la línea de detención del T
+        // (StopLine_Trigger, z = 108..109, x = 60..67.2), así que el slalom la cruza: cinco conos cada 6 m en
+        // z = 98.5, 104.5, 110.5, 116.5 y 122.5 (el tercero queda a 1.5 m de la línea de detención y los dos últimos dentro
+        // del T, a más de 4 m del cordón norte en z = 127).
+        private const float DEMO_CONE_FIRST_Z = 98.5f;
+        private const float DEMO_CONE_SPACING = 6f;
+        private const float DEMO_CONE_X_LEFT = 62.5f;
+        private const float DEMO_CONE_X_RIGHT = 64.5f;
+
+        // Auto estacionado pegado al cordón oeste (cara del cordón en x = 53.4), mirando a −Z como el tránsito del
+        // carril oeste; entre el contenedor decorativo (z = 95) y la línea de detención.
+        private static readonly Vector3 s_DemoParkedCarPosition = new Vector3(54.9f, 0f, 103f);
+        private const float DEMO_PARKED_CAR_YAW = 180f;
+
+        // Peatón quieto sobre la senda del cruce norte del T (z = 110.4..113.4, de x = 53.4 a 66.6), del lado del
+        // carril del jugador pero fuera de la trayectoria del slalom.
+        private static readonly Vector3 s_DemoPedestrianPosition = new Vector3(64.9f, 0f, 111.9f);
+        private const float DEMO_PEDESTRIAN_YAW = 90f;
+
+        /// <summary>Posición XZ del cono <paramref name="index"/> (0..4) de la zona de demo.</summary>
+        public static Vector3 DemoConePosition(int index)
+        {
+            float x = index % 2 == 0 ? DEMO_CONE_X_LEFT : DEMO_CONE_X_RIGHT;
+            return new Vector3(x, 0f, DEMO_CONE_FIRST_Z + DEMO_CONE_SPACING * index);
+        }
+
+        /// <summary>
+        /// Agrega <see cref="ObstacleCollisionDetector"/> (tipo <see cref="ObstacleKind.Vehicle"/>) a cada instancia
+        /// de los autos decorativos de la escena activa. Solo para la escena nueva: <c>CityMerged</c> no se toca.
+        /// </summary>
+        [MenuItem("Tools/Primer Volante/Setup Parked Vehicle Obstacles (Active Scene)")]
+        public static void SetupParkedVehicleObstaclesActiveScene()
+        {
+            SetupParkedVehicleObstacles(SceneManager.GetActiveScene(), save: true);
+        }
+
+        /// <summary>
+        /// Para cada instancia de un prefab de <c>Prefab/Vehicles/</c> con un collider no trigger en su raíz agrega
+        /// el detector (o actualiza su tipo si ya lo tiene). Idempotente y con Undo. Se niega a trabajar sobre
+        /// <c>CityMerged</c> o sobre una escena con cambios sin guardar. Devuelve cuántas instancias procesó o −1.
+        /// </summary>
+        public static int SetupParkedVehicleObstacles(Scene scene, bool save)
+        {
+            if (!scene.IsValid() || !scene.isLoaded)
+            {
+                Debug.LogError("[ObstacleCollisionSetup] ❌ La escena no está cargada.");
+                return -1;
+            }
+
+            if (scene.path == SOURCE_SCENE_PATH)
+            {
+                Debug.LogError("[ObstacleCollisionSetup] ❌ CityMerged no se modifica: los autos estacionados solo registran contactos " +
+                               $"en {SCENE_PATH}.");
+                return -1;
+            }
+
+            if (scene.isDirty)
+            {
+                Debug.LogError($"[ObstacleCollisionSetup] ❌ {scene.name} tiene cambios sin guardar: guardalos o descartalos antes de seguir.");
+                return -1;
+            }
+
+            int processed = 0, added = 0;
+            foreach (GameObject go in FindDecorativeVehicleRoots(scene))
+            {
+                processed++;
+                var detector = go.GetComponent<ObstacleCollisionDetector>();
+                if (detector == null)
+                {
+                    detector = Undo.AddComponent<ObstacleCollisionDetector>(go);
+                    added++;
+                }
+
+                var so = new SerializedObject(detector);
+                SerializedProperty kind = so.FindProperty("m_Kind");
+                if (kind.enumValueIndex != (int)ObstacleKind.Vehicle)
+                {
+                    kind.enumValueIndex = (int)ObstacleKind.Vehicle;
+                    so.ApplyModifiedProperties();
+                }
+            }
+
+            if (added > 0)
+            {
+                EditorSceneManager.MarkSceneDirty(scene);
+                if (save) EditorSceneManager.SaveScene(scene);
+            }
+
+            Debug.Log($"[ObstacleCollisionSetup] 🚗 {scene.name}: {processed} autos decorativos con detector ({added} agregados).");
+            return processed;
+        }
+
+        /// <summary>
+        /// Raíces de instancia de los prefabs de <c>Prefab/Vehicles/</c> que tienen un collider no trigger en la raíz.
+        /// Los <c>NPC_*</c> y el auto del jugador son de otra carpeta y quedan afuera.
+        /// </summary>
+        public static List<GameObject> FindDecorativeVehicleRoots(Scene scene)
+        {
+            var result = new List<GameObject>();
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+                {
+                    GameObject go = t.gameObject;
+                    if (!PrefabUtility.IsAnyPrefabInstanceRoot(go)) continue;
+                    if (go.GetComponent<VehicleController>() != null) continue;
+
+                    GameObject source = PrefabUtility.GetCorrespondingObjectFromSource(go);
+                    if (source == null) continue;
+
+                    string path = AssetDatabase.GetAssetPath(source);
+                    if (!path.StartsWith(DECORATIVE_VEHICLES_FOLDER + "/")) continue;
+
+                    Collider collider = go.GetComponent<Collider>();
+                    if (collider == null || collider.isTrigger) continue;
+
+                    result.Add(go);
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Crea o actualiza en <c>CityWithCollisionDetectors</c> el grupo <c>Obstacle_Demo</c>: 5 conos en slalom,
+        /// un auto NPC estacionado y un peatón NPC quieto (ambos sin ruta y con Play On Start apagado). Idempotente.
+        /// </summary>
+        [MenuItem("Tools/Primer Volante/Setup Obstacle Demo (CityWithCollisionDetectors)")]
+        public static void SetupObstacleDemo()
+        {
+            if (!TryGetCleanScene(SCENE_PATH, out Scene scene)) return;
+
+            var conePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(CONE_PREFAB_PATH);
+            var carPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(DEMO_PARKED_CAR_PREFAB);
+            var pedestrianPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(DEMO_PEDESTRIAN_PREFAB);
+            if (conePrefab == null || carPrefab == null || pedestrianPrefab == null)
+            {
+                Debug.LogError("[ObstacleCollisionSetup] ❌ Faltan prefabs (cono o NPC). Corré los setups de NPC y de cono primero.");
+                return;
+            }
+
+            GameObject group = LessonBoundarySetup.FindRootByName(scene, DEMO_GROUP_NAME);
+            if (group == null)
+            {
+                group = new GameObject(DEMO_GROUP_NAME);
+                SceneManager.MoveGameObjectToScene(group, scene);
+            }
+
+            group.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            group.transform.localScale = Vector3.one;
+            Physics.SyncTransforms();
+
+            for (int i = 0; i < DEMO_CONE_COUNT; i++)
+            {
+                GameObject cone = GetOrInstantiate(group.transform, $"{DEMO_CONE_PREFIX}{i + 1:00}", conePrefab, scene);
+                cone.transform.SetPositionAndRotation(OnGround(DemoConePosition(i)), Quaternion.identity);
+            }
+
+            GameObject car = GetOrInstantiate(group.transform, DEMO_PARKED_CAR_NAME, carPrefab, scene);
+            car.transform.SetPositionAndRotation(OnGround(s_DemoParkedCarPosition), Quaternion.Euler(0f, DEMO_PARKED_CAR_YAW, 0f));
+            DisablePlayOnStart(car);
+
+            GameObject pedestrian = GetOrInstantiate(group.transform, DEMO_PEDESTRIAN_NAME, pedestrianPrefab, scene);
+            pedestrian.transform.SetPositionAndRotation(OnGround(s_DemoPedestrianPosition), Quaternion.Euler(0f, DEMO_PEDESTRIAN_YAW, 0f));
+            DisablePlayOnStart(pedestrian);
+
+            Physics.SyncTransforms();
+            List<string> problems = ValidateDemoPlacement(scene);
+            foreach (string problem in problems) Debug.LogWarning($"[ObstacleCollisionSetup] ⚠️ {problem}");
+
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            Debug.Log($"[ObstacleCollisionSetup] ✅ {DEMO_GROUP_NAME} listo en {scene.name}: {DEMO_CONE_COUNT} conos, " +
+                      $"auto estacionado en {s_DemoParkedCarPosition}, peatón en {s_DemoPedestrianPosition} " +
+                      $"({problems.Count} advertencias de ubicación).");
+        }
+
+        private static GameObject GetOrInstantiate(Transform parent, string name, GameObject prefab, Scene scene)
+        {
+            Transform existing = parent.Find(name);
+            if (existing != null) return existing.gameObject;
+
+            var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, scene);
+            instance.name = name;
+            instance.transform.SetParent(parent, false);
+            return instance;
+        }
+
+        // Sin ruta y sin Play On Start el NPC queda quieto y no emite warnings.
+        private static void DisablePlayOnStart(GameObject npc)
+        {
+            var follower = npc.GetComponent<NPCPathFollower>();
+            if (follower == null) return;
+
+            var so = new SerializedObject(follower);
+            NPCPrefabSetup.RequireProperty(so, "m_PlayOnStart").boolValue = false;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// Apoya la posición sobre el asfalto: primera pieza <c>Road *</c> bajo el punto. Si no hay ninguna deja y = 0.
+        /// </summary>
+        public static Vector3 OnGround(Vector3 position)
+        {
+            RaycastHit[] hits = Physics.RaycastAll(new Vector3(position.x, 5f, position.z), Vector3.down, 10f, ~0,
+                QueryTriggerInteraction.Ignore);
+            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            foreach (RaycastHit hit in hits)
+            {
+                if (hit.collider.transform.root.name.StartsWith("Road")) return new Vector3(position.x, hit.point.y, position.z);
+            }
+
+            return new Vector3(position.x, 0f, position.z);
+        }
+
+        /// <summary>
+        /// Controla la ubicación de la zona de demo: cada objeto apoya sobre una pieza <c>Road *</c> en el asfalto
+        /// (y ≈ 0), no se superpone con ningún collider ajeno (autos decorativos, semáforos, vallas, edificios) y
+        /// queda a más de 3 m de las rutas de <c>NPC_Demo</c> y de <c>Lesson_Boundaries</c>, a más de 1 m de la
+        /// línea de detención y a más de 2.5 m de los semáforos. Devuelve la lista de problemas (vacía si está bien).
+        /// </summary>
+        public static List<string> ValidateDemoPlacement(Scene scene)
+        {
+            var problems = new List<string>();
+            GameObject group = LessonBoundarySetup.FindRootByName(scene, DEMO_GROUP_NAME);
+            if (group == null)
+            {
+                problems.Add($"No existe el grupo {DEMO_GROUP_NAME}.");
+                return problems;
+            }
+
+            Physics.SyncTransforms();
+
+            // Rutas y vallas con las que no se debe superponer.
+            var routePoints = new List<Vector3>();
+            GameObject npcDemo = LessonBoundarySetup.FindRootByName(scene, "NPC_Demo");
+            if (npcDemo != null)
+            {
+                foreach (SplineContainer container in npcDemo.GetComponentsInChildren<SplineContainer>(true))
+                {
+                    for (int s = 0; s < container.Splines.Count; s++)
+                    {
+                        foreach (var sample in NPCDemoRoutesSetup.SampleRoute(container, s, 1f)) routePoints.Add(sample.position);
+                    }
+                }
+            }
+
+            GameObject boundaries = LessonBoundarySetup.FindRootByName(scene, LessonBoundarySetup.BOUNDARIES_GROUP_NAME);
+            Collider[] boundaryColliders = boundaries != null ? boundaries.GetComponentsInChildren<Collider>(true) : new Collider[0];
+
+            Collider[] stopLines = Object.FindObjectsByType<RedLightViolationDetector>(FindObjectsInactive.Include)
+                .Select(detector => detector.GetComponent<Collider>())
+                .Where(collider => collider != null)
+                .ToArray();
+
+            var overlaps = new Collider[32];
+            foreach (Transform item in group.transform)
+            {
+                Collider[] own = item.GetComponentsInChildren<Collider>(true).Where(c => c.enabled && !c.isTrigger).ToArray();
+                if (own.Length == 0)
+                {
+                    problems.Add($"{item.name}: no tiene collider.");
+                    continue;
+                }
+
+                // Apoyo: asfalto de una pieza Road * bajo el pivote.
+                Vector3 position = item.position;
+                Vector3 ground = OnGround(position);
+                RaycastHit[] hits = Physics.RaycastAll(new Vector3(position.x, 5f, position.z), Vector3.down, 10f, ~0,
+                    QueryTriggerInteraction.Ignore);
+                bool onRoad = hits.Any(hit => hit.collider.transform.root.name.StartsWith("Road") && hit.point.y < 0.1f);
+                if (!onRoad) problems.Add($"{item.name}: no apoya sobre el asfalto de una pieza Road * en {position}.");
+                if (Mathf.Abs(position.y - ground.y) > 0.05f) problems.Add($"{item.name}: y = {position.y:F2}, el asfalto está en {ground.y:F2}.");
+
+                // Superposición con colliders ajenos.
+                foreach (Collider collider in own)
+                {
+                    Bounds bounds = collider.bounds;
+                    bounds.Expand(0.1f);
+                    int count = Physics.OverlapBoxNonAlloc(bounds.center, bounds.extents, overlaps, Quaternion.identity, ~0,
+                        QueryTriggerInteraction.Ignore);
+                    for (int i = 0; i < count; i++)
+                    {
+                        Collider other = overlaps[i];
+                        if (other == collider || other.transform.IsChildOf(group.transform)) continue;
+
+                        string rootName = other.transform.root.name;
+                        if (rootName.StartsWith("Ground")) continue;
+                        if (rootName.StartsWith("Road") && other is MeshCollider) continue; // piso de la calle
+
+                        problems.Add($"{item.name}: se superpone con {rootName}/{other.name}.");
+                    }
+                }
+
+                // Distancia a rutas de NPC_Demo (3 m), vallas de lección (3 m) y línea de detención (1.5 m).
+                var flat = new Vector2(position.x, position.z);
+                float minRoute = routePoints.Count == 0
+                    ? float.PositiveInfinity
+                    : routePoints.Min(p => Vector2.Distance(new Vector2(p.x, p.z), flat));
+                if (minRoute < 3f) problems.Add($"{item.name}: a {minRoute:F1} m de una ruta de NPC_Demo.");
+
+                foreach (Collider boundary in boundaryColliders)
+                {
+                    if (Vector3.Distance(boundary.ClosestPoint(position), position) < 3f)
+                    {
+                        problems.Add($"{item.name}: a menos de 3 m de {LessonBoundarySetup.BOUNDARIES_GROUP_NAME}.");
+                        break;
+                    }
+                }
+
+                foreach (Collider stopLine in stopLines)
+                {
+                    Vector3 closest = stopLine.ClosestPoint(position);
+                    if (Vector2.Distance(new Vector2(closest.x, closest.z), flat) < 1.0f)
+                    {
+                        problems.Add($"{item.name}: a menos de 1 m de la línea de detención {stopLine.name}.");
+                    }
+                }
+
+                // Semáforos: los postes deben quedar a más de 2.5 m.
+                foreach (TrafficLightController signal in Object.FindObjectsByType<TrafficLightController>(FindObjectsInactive.Include))
+                {
+                    float distance = Vector2.Distance(new Vector2(signal.transform.position.x, signal.transform.position.z), flat);
+                    if (distance < 2.5f) problems.Add($"{item.name}: a {distance:F1} m del semáforo {signal.name}.");
+                }
+            }
+
+            return problems;
+        }
+
+        // Escena cargada y sin cambios sin guardar. Si no existe, la crea como copia de CityMerged. Nunca abre
+        // en modo Single sobre cambios sin guardar.
+        private static bool TryGetCleanScene(string scenePath, out Scene scene)
+        {
+            scene = SceneManager.GetSceneByPath(scenePath);
+            if (scene.IsValid() && scene.isLoaded)
+            {
+                if (scene.isDirty)
+                {
+                    Debug.LogError($"[ObstacleCollisionSetup] ❌ {scene.name} tiene cambios sin guardar: guardalos o descartalos antes de seguir.");
+                    return false;
+                }
+
+                return true;
+            }
+
+            for (int i = 0; i < SceneManager.sceneCount; i++)
+            {
+                Scene open = SceneManager.GetSceneAt(i);
+                if (open.isDirty)
+                {
+                    Debug.LogError($"[ObstacleCollisionSetup] ❌ {open.name} tiene cambios sin guardar: guardalos antes de abrir {scenePath}.");
+                    return false;
+                }
+            }
+
+            if (!System.IO.File.Exists(scenePath))
+            {
+                if (!AssetDatabase.CopyAsset(SOURCE_SCENE_PATH, scenePath))
+                {
+                    Debug.LogError($"[ObstacleCollisionSetup] ❌ No se pudo copiar {SOURCE_SCENE_PATH} a {scenePath}.");
+                    return false;
+                }
+            }
+
+            scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
+            return scene.IsValid() && scene.isLoaded;
         }
 
         // ------------------------------------------------------------------ Helpers
