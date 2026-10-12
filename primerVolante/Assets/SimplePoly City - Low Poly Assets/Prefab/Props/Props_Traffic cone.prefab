@@ -129,4 +129,5 @@ MonoBehaviour:
   m_Kind: 0
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0

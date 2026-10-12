@@ -71,7 +71,9 @@ namespace PrimerVolante.Environment
             ObstacleCollisionDetector detector = FindDetector(collision);
             if (detector == null) return;
 
-            m_Touching.RemoveAll(touching => touching == null);
+            // Un obstáculo desactivado o destruido en pleno contacto ya reseteó su contador y OnCollisionExit puede
+            // no haber llegado: se descartan sus entradas para que no desbalanceen el contador al reactivarse.
+            m_Touching.RemoveAll(touching => touching == null || !touching.isActiveAndEnabled);
             m_Touching.Add(detector);
 
             // La gravedad se decide con la velocidad del jugador antes de que el ajuste de abajo la baje.

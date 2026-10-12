@@ -197,6 +197,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!4 &3746858605376012017 stripped
 Transform:

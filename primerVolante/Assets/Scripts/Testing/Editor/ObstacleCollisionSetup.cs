@@ -300,12 +300,13 @@ namespace PrimerVolante.Testing.Editor
                 return -1;
             }
 
-            int processed = 0, added = 0;
+            int processed = 0, added = 0, corrected = 0;
             foreach (GameObject go in FindDecorativeVehicleRoots(scene))
             {
                 processed++;
                 var detector = go.GetComponent<ObstacleCollisionDetector>();
-                if (detector == null)
+                bool isNew = detector == null;
+                if (isNew)
                 {
                     detector = Undo.AddComponent<ObstacleCollisionDetector>(go);
                     added++;
@@ -316,17 +317,18 @@ namespace PrimerVolante.Testing.Editor
                 if (kind.enumValueIndex != (int)ObstacleKind.Vehicle)
                 {
                     kind.enumValueIndex = (int)ObstacleKind.Vehicle;
+                    if (!isNew) corrected++;
                     so.ApplyModifiedProperties();
                 }
             }
 
-            if (added > 0)
+            if (added + corrected > 0)
             {
                 EditorSceneManager.MarkSceneDirty(scene);
                 if (save) EditorSceneManager.SaveScene(scene);
             }
 
-            Debug.Log($"[ObstacleCollisionSetup] 🚗 {scene.name}: {processed} autos decorativos con detector ({added} agregados).");
+            Debug.Log($"[ObstacleCollisionSetup] 🚗 {scene.name}: {processed} autos decorativos con detector ({added} agregados, {corrected} con el tipo corregido).");
             return processed;
         }
 
@@ -493,6 +495,8 @@ namespace PrimerVolante.Testing.Editor
                 .Where(collider => collider != null)
                 .ToArray();
 
+            TrafficLightController[] signals = Object.FindObjectsByType<TrafficLightController>(FindObjectsInactive.Include);
+
             var overlaps = new Collider[32];
             foreach (Transform item in group.transform)
             {
@@ -558,7 +562,7 @@ namespace PrimerVolante.Testing.Editor
                 }
 
                 // Semáforos: los postes deben quedar a más de 2.5 m.
-                foreach (TrafficLightController signal in Object.FindObjectsByType<TrafficLightController>(FindObjectsInactive.Include))
+                foreach (TrafficLightController signal in signals)
                 {
                     float distance = Vector2.Distance(new Vector2(signal.transform.position.x, signal.transform.position.z), flat);
                     if (distance < 2.5f) problems.Add($"{item.name}: a {distance:F1} m del semáforo {signal.name}.");

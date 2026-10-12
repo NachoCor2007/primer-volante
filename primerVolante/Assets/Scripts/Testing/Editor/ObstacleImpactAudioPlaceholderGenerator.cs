@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using PrimerVolante.Environment;
 using UnityEditor;
@@ -48,29 +49,40 @@ namespace PrimerVolante.Testing.Editor
         {
             Directory.CreateDirectory(AUDIO_FOLDER);
 
-            int created = 0;
-            created += Write("cone_graze.wav", GenConeGraze(), k_GrazePeak);
-            created += Write("cone_crash.wav", GenConeCrash(), k_HitPeak);
-            created += Write("vehicle_graze.wav", GenVehicleGraze(), k_GrazePeak);
-            created += Write("vehicle_crash.wav", GenVehicleCrash(), k_HitPeak);
-            created += Write("pedestrian_crash.wav", GenPedestrianCrash(), k_HitPeak);
+            var created = new List<string>();
+            void Generate(string fileName, float[] samples, float peak)
+            {
+                if (Write(fileName, samples, peak) == 1) created.Add(fileName);
+            }
+
+            Generate("cone_graze.wav", GenConeGraze(), k_GrazePeak);
+            Generate("cone_crash.wav", GenConeCrash(), k_HitPeak);
+            Generate("vehicle_graze.wav", GenVehicleGraze(), k_GrazePeak);
+            Generate("vehicle_crash.wav", GenVehicleCrash(), k_HitPeak);
+            Generate("pedestrian_crash.wav", GenPedestrianCrash(), k_HitPeak);
 
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
-            ApplyImportSettings();
+
+            // Solo se configuran los clips recién generados: un clip real que reemplazó al placeholder conserva
+            // la importación que se le haya dado.
+            ApplyImportSettings(created);
 
             ObstacleImpactAudioProfile profile = CreateOrUpdateProfile();
-            Debug.Log($"[ObstacleImpactAudioPlaceholderGenerator] 🔊 Placeholders generados: {created} nuevos " +
+            Debug.Log($"[ObstacleImpactAudioPlaceholderGenerator] 🔊 Placeholders generados: {created.Count} nuevos " +
                       "(los existentes no se tocan). Perfil en " + PROFILE_PATH);
             return profile;
         }
 
         /// <summary>
         /// Configura la importación de los clips: mono forzado, descomprimidos al cargar, ADPCM (one-shots cortos).
+        /// Sin argumento configura los cinco; con una lista, solo esos archivos.
         /// </summary>
-        public static void ApplyImportSettings()
+        public static void ApplyImportSettings(ICollection<string> onlyFiles = null)
         {
             foreach (string file in s_Files)
             {
+                if (onlyFiles != null && !onlyFiles.Contains(file)) continue;
+
                 var importer = AssetImporter.GetAtPath($"{AUDIO_FOLDER}/{file}") as AudioImporter;
                 if (importer == null) continue;
 

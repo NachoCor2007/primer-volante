@@ -1851,6 +1851,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &63897698
 PrefabInstance:
@@ -2242,6 +2243,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &73134002
 PrefabInstance:
@@ -3123,6 +3125,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &119100821
 PrefabInstance:
@@ -3510,6 +3513,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &127126588
 PrefabInstance:
@@ -4116,6 +4120,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &144045354
 PrefabInstance:
@@ -4274,6 +4279,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &146223418
 PrefabInstance:
@@ -5074,6 +5080,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &174753946
 PrefabInstance:
@@ -5620,6 +5627,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &210913731
 PrefabInstance:
@@ -6231,6 +6239,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &247763731
 PrefabInstance:
@@ -6605,6 +6614,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &260412541
 PrefabInstance:
@@ -7049,6 +7059,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &268394419
 PrefabInstance:
@@ -7407,6 +7418,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &277443409
 PrefabInstance:
@@ -7847,6 +7859,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &302893913
 PrefabInstance:
@@ -8005,6 +8018,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &310335017
 PrefabInstance:
@@ -8398,6 +8412,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &324491880
 PrefabInstance:
@@ -9007,6 +9022,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &348826372
 PrefabInstance:
@@ -9359,6 +9375,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &355488847
 PrefabInstance:
@@ -9644,6 +9661,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &363009366
 PrefabInstance:
@@ -10416,6 +10434,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &400011731
 PrefabInstance:
@@ -10815,6 +10834,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &412353157
 PrefabInstance:
@@ -11026,6 +11046,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &415806040
 PrefabInstance:
@@ -11184,6 +11205,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &422293474
 PrefabInstance:
@@ -11634,6 +11656,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &428534179
 PrefabInstance:
@@ -12314,6 +12337,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &450333034
 PrefabInstance:
@@ -13128,6 +13152,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &479307635
 PrefabInstance:
@@ -14958,6 +14983,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &547118818
 PrefabInstance:
@@ -15361,6 +15387,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1 &555092420
 GameObject:
@@ -17302,6 +17329,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &630888693
 PrefabInstance:
@@ -17468,6 +17496,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &632322709
 PrefabInstance:
@@ -18033,6 +18062,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &655917966
 PrefabInstance:
@@ -18338,6 +18368,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &662699770
 PrefabInstance:
@@ -18919,6 +18950,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1 &686530649 stripped
 GameObject:
@@ -19099,6 +19131,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &693260870
 PrefabInstance:
@@ -19429,6 +19462,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &699497903
 PrefabInstance:
@@ -20168,7 +20202,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 52f3bf47c9c62af4588469ff668b805c, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 239.249634
+      value: 239.24963
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 52f3bf47c9c62af4588469ff668b805c, type: 3}
       propertyPath: m_LocalPosition.y
@@ -20176,7 +20210,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 52f3bf47c9c62af4588469ff668b805c, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 139.009995
+      value: 139.01
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 52f3bf47c9c62af4588469ff668b805c, type: 3}
       propertyPath: m_LocalRotation.w
@@ -20184,7 +20218,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 52f3bf47c9c62af4588469ff668b805c, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 2.18556941e-08
+      value: 0.000000021855694
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 52f3bf47c9c62af4588469ff668b805c, type: 3}
       propertyPath: m_LocalRotation.y
@@ -20356,6 +20390,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &727388323
 PrefabInstance:
@@ -20465,6 +20500,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &730099740
 PrefabInstance:
@@ -20570,6 +20606,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &733211883
 PrefabInstance:
@@ -21742,6 +21779,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &788196955
 PrefabInstance:
@@ -22162,6 +22200,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &811469920
 PrefabInstance:
@@ -22726,6 +22765,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &825842961
 PrefabInstance:
@@ -22884,6 +22924,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &829387548
 PrefabInstance:
@@ -22993,6 +23034,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &834262249
 PrefabInstance:
@@ -23908,6 +23950,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1 &861851959
 GameObject:
@@ -24479,6 +24522,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &873283521
 PrefabInstance:
@@ -25148,6 +25192,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &910561176
 PrefabInstance:
@@ -25257,6 +25302,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1 &914877361
 GameObject:
@@ -26055,6 +26101,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &949949622
 PrefabInstance:
@@ -27147,6 +27194,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &991844443
 PrefabInstance:
@@ -28862,6 +28910,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1044600039
 PrefabInstance:
@@ -29486,6 +29535,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!114 &1064489149 stripped
 MonoBehaviour:
@@ -29655,6 +29705,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1067884083
 PrefabInstance:
@@ -30018,6 +30069,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1085444485
 PrefabInstance:
@@ -30435,6 +30487,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1093869378
 PrefabInstance:
@@ -31108,6 +31161,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1125168404
 PrefabInstance:
@@ -31315,6 +31369,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1129429075
 PrefabInstance:
@@ -31645,6 +31700,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1133998098
 PrefabInstance:
@@ -32043,6 +32099,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1144857837
 PrefabInstance:
@@ -32418,6 +32475,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1152701545
 PrefabInstance:
@@ -32809,6 +32867,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1168276177
 PrefabInstance:
@@ -32967,6 +33026,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1170756287
 PrefabInstance:
@@ -33268,6 +33328,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1185754801
 PrefabInstance:
@@ -33716,6 +33777,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1 &1195575243
 GameObject:
@@ -35571,6 +35633,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1262789718
 PrefabInstance:
@@ -36489,6 +36552,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1288774995
 PrefabInstance:
@@ -36696,6 +36760,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1296181261
 PrefabInstance:
@@ -36952,6 +37017,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1303604205
 PrefabInstance:
@@ -37106,6 +37172,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1310705254
 PrefabInstance:
@@ -37865,6 +37932,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1344844905
 PrefabInstance:
@@ -38835,6 +38903,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!21 &1370890711
 Material:
@@ -39349,6 +39418,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1 &1384010428
 GameObject:
@@ -40284,6 +40354,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1400259589
 PrefabInstance:
@@ -40781,6 +40852,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1411695262
 PrefabInstance:
@@ -40890,6 +40962,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1415932981
 PrefabInstance:
@@ -41743,6 +41816,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1428523129
 PrefabInstance:
@@ -41901,6 +41975,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1438110120
 PrefabInstance:
@@ -42010,6 +42085,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1438189181
 PrefabInstance:
@@ -43037,6 +43113,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1 &1465008754
 GameObject:
@@ -43458,6 +43535,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1473259742
 PrefabInstance:
@@ -43911,6 +43989,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1493529757
 PrefabInstance:
@@ -44016,6 +44095,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1496775005
 PrefabInstance:
@@ -45199,6 +45279,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1570451155
 PrefabInstance:
@@ -45382,6 +45463,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1576551584
 PrefabInstance:
@@ -45740,6 +45822,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1596278060
 PrefabInstance:
@@ -46005,7 +46088,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 52f3bf47c9c62af4588469ff668b805c, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 239.249634
+      value: 239.24963
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 52f3bf47c9c62af4588469ff668b805c, type: 3}
       propertyPath: m_LocalPosition.y
@@ -46013,7 +46096,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 52f3bf47c9c62af4588469ff668b805c, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 144.529999
+      value: 144.53
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 52f3bf47c9c62af4588469ff668b805c, type: 3}
       propertyPath: m_LocalRotation.w
@@ -46021,7 +46104,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 52f3bf47c9c62af4588469ff668b805c, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 2.18556941e-08
+      value: 0.000000021855694
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 52f3bf47c9c62af4588469ff668b805c, type: 3}
       propertyPath: m_LocalRotation.y
@@ -46517,6 +46600,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1611375111
 PrefabInstance:
@@ -47128,6 +47212,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1638829743
 PrefabInstance:
@@ -47772,6 +47857,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1657379430
 PrefabInstance:
@@ -47975,6 +48061,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1658475264
 PrefabInstance:
@@ -48329,6 +48416,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1665714232
 PrefabInstance:
@@ -48438,6 +48526,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1668161445
 PrefabInstance:
@@ -48706,7 +48795,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 52f3bf47c9c62af4588469ff668b805c, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 239.249634
+      value: 239.24963
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 52f3bf47c9c62af4588469ff668b805c, type: 3}
       propertyPath: m_LocalPosition.y
@@ -48714,7 +48803,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 52f3bf47c9c62af4588469ff668b805c, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 146.690002
+      value: 146.69
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 52f3bf47c9c62af4588469ff668b805c, type: 3}
       propertyPath: m_LocalRotation.w
@@ -48722,7 +48811,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 52f3bf47c9c62af4588469ff668b805c, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 2.18556941e-08
+      value: 0.000000021855694
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 52f3bf47c9c62af4588469ff668b805c, type: 3}
       propertyPath: m_LocalRotation.y
@@ -49225,6 +49314,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1699463626
 PrefabInstance:
@@ -49947,6 +50037,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1717667877
 PrefabInstance:
@@ -51156,6 +51247,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1 &1764082689
 GameObject:
@@ -51807,6 +51899,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1784568240
 PrefabInstance:
@@ -52551,6 +52644,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1804227158
 PrefabInstance:
@@ -53946,6 +54040,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1852333446
 PrefabInstance:
@@ -55440,6 +55535,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1891736564
 PrefabInstance:
@@ -55823,6 +55919,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1900955119
 PrefabInstance:
@@ -56402,7 +56499,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 52f3bf47c9c62af4588469ff668b805c, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 239.249634
+      value: 239.24963
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 52f3bf47c9c62af4588469ff668b805c, type: 3}
       propertyPath: m_LocalPosition.y
@@ -56410,7 +56507,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 52f3bf47c9c62af4588469ff668b805c, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 141.899994
+      value: 141.9
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 52f3bf47c9c62af4588469ff668b805c, type: 3}
       propertyPath: m_LocalRotation.w
@@ -56418,7 +56515,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 52f3bf47c9c62af4588469ff668b805c, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 2.18556941e-08
+      value: 0.000000021855694
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 52f3bf47c9c62af4588469ff668b805c, type: 3}
       propertyPath: m_LocalRotation.y
@@ -56872,6 +56969,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1933517356
 PrefabInstance:
@@ -57810,6 +57908,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &1964084094
 PrefabInstance:
@@ -60995,6 +61094,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &2037291644
 PrefabInstance:
@@ -61104,6 +61204,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &2037587521
 PrefabInstance:
@@ -62274,6 +62375,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &2075768646
 PrefabInstance:
@@ -62628,6 +62730,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1001 &2088078140
 PrefabInstance:
@@ -63751,6 +63854,7 @@ MonoBehaviour:
   m_Kind: 1
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
+  m_ContactGraceSeconds: 0.3
   m_LogEvents: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
