@@ -415,6 +415,9 @@ namespace PrimerVolante.VR
                 m_Rigidbody.isKinematic = false;
                 m_Rigidbody.useGravity = true;
                 m_Rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
+                // Detección continua contra colliders estáticos: a 60 km/h el auto avanza ~0.33 m por paso y
+                // con detección Discrete podría atravesar muros y vallas delgadas.
+                m_Rigidbody.collisionDetectionMode = CollisionDetectionMode.Continuous;
                 m_Rigidbody.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
             }
 
