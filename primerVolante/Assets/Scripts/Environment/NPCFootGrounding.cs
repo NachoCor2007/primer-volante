@@ -30,6 +30,14 @@ namespace PrimerVolante.Environment
         private Transform m_RightToes;
         private bool m_Resolved;
 
+        // Pose que dejó la última corrección. Si en el siguiente LateUpdate los huesos siguen así, el Animator no los
+        // reescribió (p. ej. con Culling Mode = Cull Update Transforms y el peatón fuera de cámara) y volver a sumar los
+        // offsets los acumularía: la cadera subiría sin límite y el peatón desaparecería.
+        private bool m_HasApplied;
+        private Vector3 m_AppliedHipsLocalPosition;
+        private Quaternion m_AppliedLeftFootLocalRotation;
+        private Quaternion m_AppliedRightFootLocalRotation;
+
         /// <summary>Elevación del esqueleto en metros.</summary>
         public float HipsLift => m_HipsLift;
 
@@ -47,6 +55,7 @@ namespace PrimerVolante.Environment
             m_HipsLift = hipsLift;
             m_LeftPitchOffset = leftPitchOffset;
             m_RightPitchOffset = rightPitchOffset;
+            m_HasApplied = false;
         }
 
         private void LateUpdate()
@@ -56,15 +65,38 @@ namespace PrimerVolante.Environment
 
         /// <summary>
         /// Aplica la corrección sobre la pose que acaba de evaluar el Animator. Es pública para poder medirla
-        /// en el Editor avanzando el Animator a mano, sin pasar por LateUpdate.
+        /// en el Editor avanzando el Animator a mano, sin pasar por LateUpdate. Si el Animator no reescribió los
+        /// huesos desde la última corrección no hace nada: los offsets son relativos a la pose animada y no se
+        /// pueden sumar dos veces.
         /// </summary>
         public void Apply()
         {
             if (!Resolve()) return;
+            if (m_HasApplied && !PoseChangedSinceLastApply()) return;
 
             m_Hips.position += Vector3.up * m_HipsLift;
             Pitch(m_LeftFoot, m_LeftToes, m_LeftPitchOffset);
             Pitch(m_RightFoot, m_RightToes, m_RightPitchOffset);
+
+            m_AppliedHipsLocalPosition = m_Hips.localPosition;
+            m_AppliedLeftFootLocalRotation = m_LeftFoot.localRotation;
+            m_AppliedRightFootLocalRotation = m_RightFoot.localRotation;
+            m_HasApplied = true;
+        }
+
+        // Comparación exacta a propósito: el Animator escribe la pose sin corregir, que nunca coincide con la corregida.
+        private bool PoseChangedSinceLastApply()
+        {
+            Vector3 hips = m_Hips.localPosition;
+            return hips.x != m_AppliedHipsLocalPosition.x || hips.y != m_AppliedHipsLocalPosition.y ||
+                   hips.z != m_AppliedHipsLocalPosition.z ||
+                   !SameRotation(m_LeftFoot.localRotation, m_AppliedLeftFootLocalRotation) ||
+                   !SameRotation(m_RightFoot.localRotation, m_AppliedRightFootLocalRotation);
+        }
+
+        private static bool SameRotation(Quaternion a, Quaternion b)
+        {
+            return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w;
         }
 
         /// <summary>
