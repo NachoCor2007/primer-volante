@@ -1,0 +1,86 @@
+Eres el agente de automatización e ingeniería para el proyecto Unity "Primer Volante" (Unity 6 LTS, C#, PhysX).
+
+### CONTEXTO Y PROBLEMA A RESOLVER:
+En la escena de pruebas de eventos guionados (`CityMerged_ScriptedEvents.unity`), se configuró un peatón (`NPC_Pedestrian_CrosswalkSurprise`) que cruza la senda peatonal al activarse el trigger del jugador.
+Sin embargo, durante las pruebas de jugabilidad ocurrió un comportamiento indeseado y físicamente irreal:
+- El jugador se interpuso en el camino del peatón con el vehículo (`Car08`).
+- El NPC peatón no se frenó con la suficiente anticipación e inmediatez; colisionó contra el lateral del auto del jugador y lo empujó físicamente desplazándolo ("efecto aplanadora").
+
+### CAUSA RAÍZ TÉCNICA:
+1. `NPCPathFollower` traslada el Rigidbody de forma cinemática (`m_Rigidbody.isKinematic = true`, `MovePosition(position)`). En PhysX de Unity, los Rigidbodies cinemáticos tienen masa infinita y aplican fuerzas ilimitadas sobre Rigidbodies dinámicos como el auto del jugador.
+2. `NPCSafetyStop` llamaba a `m_PathFollower.Stop()`, el cual aplica desaceleración gradual (`deceleration`). Por ende, el peatón sigue avanzando cinemáticamente varios metros antes de detenerse a 0 m/s.
+3. `Physics.BoxCastAll` no detecta colisionadores que ya intersectan o tocan el origen del cast (`origin`). Si el vehículo ya está solapado o entra en contacto estrecho, el BoxCast puede pasarlo por alto.
+4. La caja de detección del peatón (`m_BoxHalfExtents` = 0.4m y `m_DetectionDistance` = 2.5m) era demasiado angosta y corta para anticipar un vehículo cruzándose a velocidad normal.
+5. `NPCPedestrianController` suavizaba la animación con `m_SpeedDampTime`, haciendo que el personaje siguiera visualmente moviendo los pies contra la carrocería del auto.
+6. Ausencia de callbacks físicos de seguridad (`OnCollisionEnter`, `OnCollisionStay`): si el peatón toca un obstáculo o vehículo, debe clavar el freno cinemático a 0 en el frame 0.
+
+---
+
+### TAREAS ESPECÍFICAS A IMPLEMENTAR:
+
+#### 1. En `Assets/Scripts/Environment/NPCPathFollower.cs`:
+- Añadir el método público `public void EmergencyStop()`:
+  - Fija inmediatamente `m_State.Speed = 0f`.
+  - Fija `m_CurrentAcceleration = 0f`.
+  - Activa `m_StopRequested = true`.
+  - Activa una bandera booleana `m_IsEmergencyStopped = true`.
+- En `FixedUpdate()`:
+  - Si `m_IsEmergencyStopped` es true, la velocidad objetivo (`target`) es 0f y `m_State.Speed` se mantiene en 0f (no avanza distancia en la spline ni desplaza cinemáticamente el Rigidbody hacia adelante).
+- En `Play()`:
+  - Desactiva `m_IsEmergencyStopped = false` al reanudar la marcha.
+- Exponer propiedad pública `public bool IsEmergencyStopped => m_IsEmergencyStopped;`.
+
+#### 2. En `Assets/Scripts/Environment/NPCSafetyStop.cs`:
+- Agregar soporte de **Detección Dual (Overlap + BoxCast)**:
+  - En `CastFrontalSensor(out RaycastHit nearestObstacleHit)`:
+    - Primero realizar un `Physics.OverlapBox(origin, m_BoxHalfExtents, transform.rotation, m_ObstacleLayers, m_QueryTriggerInteraction)`.
+    - Si algún collider solapado es un obstáculo válido (`IsValidObstacleCollider`), devolver inmediatamente `true` con distancia 0m y dicho collider.
+    - Luego realizar el `Physics.BoxCastAll(...)` frontal como hasta ahora para detectar obstáculos a mayor distancia.
+- En `Tick(float deltaTime)`:
+  - Al detectar obstáculo (`obstacleDetected == true`):
+    - Llamar inmediatamente a `m_PathFollower.EmergencyStop()` (en lugar de solo `Stop()` gradual).
+    - Disparar `OnEmergencyBrake` y `onEmergencyBrakeEvent`.
+    - Garantizar que mientras `obstacleDetected` siga siendo true en los siguientes frames, se mantenga la parada de emergencia y no se mueva el NPC.
+  - Al despejarse la vía (`!obstacleDetected`):
+    - Contar el temporizador `m_ClearTimer += deltaTime`.
+    - Al alcanzar `m_ResumeDelay`:
+      - Desactivar `m_IsEmergencyBraking = false`.
+      - Si `m_WasMovingBeforeEmergencyBrake` era true, llamar a `m_PathFollower.Play()` para que reanude suavemente su marcha en la spline.
+      - Disparar `OnResumeMovement` y `onResumeMovementEvent`.
+- **Red de seguridad física (Anti-Empuje)**:
+  - Implementar `OnCollisionEnter(Collision collision)` y `OnCollisionStay(Collision collision)`:
+    - Si `IsValidObstacleCollider(collision.collider)`, forzar de inmediato `m_IsEmergencyBraking = true`, `m_ClearTimer = 0f`, y llamar a `m_PathFollower.EmergencyStop()`.
+  - Implementar `OnTriggerStay(Collider other)`:
+    - Si no es trigger de evento y `IsValidObstacleCollider(other)`, activar la misma parada inmediata.
+- En `ResetSafetyState()`:
+  - Restablecer las variables y asegurar compatibilidad completa con pruebas.
+
+#### 3. En `Assets/Scripts/Environment/NPCPedestrianController.cs`:
+- En `Awake()` / `Start()`:
+  - Obtener referencia a `NPCSafetyStop` si existe en el GameObject (`GetComponent<NPCSafetyStop>()`).
+- En `Update()`:
+  - Si el peatón está en frenado de emergencia (`safetyStop != null && safetyStop.IsEmergencyBraking`) o si `m_Follower.IsEmergencyStopped` es true:
+    - Cortar inmediatamente la animación escribiendo el float `Speed` a 0f de forma directa sin damp time (`m_Animator.SetFloat(s_SpeedHash, 0f);`).
+    - Configurar `m_Animator.speed = 1f;` (cadencia natural de reposo/Idle).
+  - En caso contrario, continuar con el suavizado habitual de caminata.
+
+#### 4. En `Assets/Scripts/Testing/Editor/ScriptedEventSceneSetup.cs`:
+- Actualizar la configuración del peatón en `SetupCase1_PedestrianCrosswalk`:
+  - `m_DetectionDistance`: ajustar a `4.0f` (metros de anticipación).
+  - `m_BoxHalfExtents`: ajustar a `new Vector3(0.6f, 0.8f, 0.3f)` (buena cobertura frontal para abarcar el ancho del vehículo al cruzar).
+  - `m_ResumeDelay`: ajustar a `0.6f`.
+  - `m_DynamicDistanceWithSpeed`: `true`.
+  - `m_SpeedLookaheadFactor`: `1.0f`.
+- Regenerar/actualizar la escena `CityMerged_ScriptedEvents.unity` ejecutando la configuración correspondiente desde Editor para que la escena guarde los nuevos valores actualizados.
+
+#### 5. En `Assets/Scripts/Testing/Editor/ScriptedEventTests.cs`:
+- Actualizar y enriquecer las pruebas automatizadas de `NPCSafetyStop`:
+  - Validar que al activarse el obstáculo, `npc.IsEmergencyStopped` es `true` y la velocidad se congela en 0.
+  - Validar que al despejarse la vía y cumplirse `ResumeDelay`, `npc.IsEmergencyStopped` pasa a `false` y `npc.IsPlaying` es `true`.
+  - Validar detección por solapamiento inmediato (`OverlapBox`) o simulación de obstáculo a 0m.
+- Mantener y verificar que el 100% de las pruebas del suite pasen (ejecutar vía menú `Tools/Primer Volante/Run Scripted Event Tests`).
+
+#### 6. REGLAS OBLIGATORIAS:
+- NUNCA uses APIs obsoletas de Unity (CS0618). Usa `Object.FindAnyObjectByType<T>()`, JAMÁS `Object.FindFirstObjectByType<T>()`.
+- NO modifiques `CityMerged.unity` ni `CityWithCar.unity`; todos los cambios de escena deben aplicarse exclusivamente a `CityMerged_ScriptedEvents.unity`.
+- Compila sin errores ni warnings y ejecuta las pruebas automatizadas al finalizar.

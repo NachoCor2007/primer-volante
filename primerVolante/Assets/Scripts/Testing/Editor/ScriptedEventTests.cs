@@ -310,6 +310,8 @@ namespace PrimerVolante.Testing.Editor
                 safety.Tick(0.02f);
 
                 Assert(safety.IsEmergencyBraking, "Frenado de emergencia activado (IsEmergencyBraking == true)", ref total, ref passed);
+                Assert(npc.IsEmergencyStopped, "NPCPathFollower tiene IsEmergencyStopped == true al activarse el obstáculo", ref total, ref passed);
+                Assert(Mathf.Approximately(npc.CurrentSpeed, 0f), "Velocidad de NPC se congela inmediatamente en 0 m/s", ref total, ref passed);
                 Assert(npc.IsStopRequested, "NPCPathFollower tiene Stop solicitado", ref total, ref passed);
                 Assert(emergencyBrakeFired, "Evento OnEmergencyBrake disparado", ref total, ref passed);
                 Assert(Mathf.Approximately(safety.LastObstacleHit.distance, 3.0f), "Distancia registrada del obstáculo es 3.0m", ref total, ref passed);
@@ -328,9 +330,53 @@ namespace PrimerVolante.Testing.Editor
                 // 4.5 Transcurre el tiempo restante (0.35s más -> total 0.55s >= 0.5s)
                 safety.Tick(0.35f);
                 Assert(!safety.IsEmergencyBraking, "Frenado de emergencia liberado tras despejarse la vía", ref total, ref passed);
+                Assert(!npc.IsEmergencyStopped, "npc.IsEmergencyStopped pasa a false al reanudar", ref total, ref passed);
                 Assert(npc.IsPlaying, "NPC reanudó la marcha automáticamente llamando a Play()", ref total, ref passed);
                 Assert(!npc.IsStopRequested, "Stop solicitado fue limpiado", ref total, ref passed);
                 Assert(resumeFired, "Evento OnResumeMovement disparado al reanudar", ref total, ref passed);
+
+                // 4.6 Detección por obstáculo a 0m (simulación inmediata)
+                safety.ResetSafetyState();
+                safety.SetSimulatedObstacle(true, 0.0f);
+                safety.Tick(0.02f);
+                Assert(safety.IsEmergencyBraking, "Frenado de emergencia activado ante obstáculo a 0m", ref total, ref passed);
+                Assert(npc.IsEmergencyStopped, "npc.IsEmergencyStopped es true ante obstáculo a 0m", ref total, ref passed);
+                Assert(Mathf.Approximately(safety.LastObstacleHit.distance, 0f), "Distancia registrada es 0m", ref total, ref passed);
+
+                // 4.7 Detección de colisión directa / Red de seguridad física
+                GameObject contactObj = new GameObject("TestObstacle_Contact");
+                try
+                {
+                    BoxCollider contactCol = contactObj.AddComponent<BoxCollider>();
+                    safety.ResetSafetyState();
+                    npc.Play();
+                    safety.ForceEmergencyBrake(contactCol);
+                    Assert(safety.IsEmergencyBraking, "Red de seguridad física (ForceEmergencyBrake) activa frenado de emergencia", ref total, ref passed);
+                    Assert(npc.IsEmergencyStopped, "ForceEmergencyBrake fija npc.IsEmergencyStopped == true", ref total, ref passed);
+                }
+                finally
+                {
+                    Object.DestroyImmediate(contactObj);
+                }
+
+                // 4.8 Detección dual vía OverlapBox en sensor frontal
+                GameObject overlapObj = new GameObject("TestObstacle_Overlap");
+                try
+                {
+                    overlapObj.transform.position = safety.GetSensorOrigin();
+                    overlapObj.AddComponent<BoxCollider>().size = Vector3.one;
+
+                    safety.ClearSimulatedObstacle();
+                    safety.ResetSafetyState();
+
+                    bool detected = safety.CastFrontalSensor(out RaycastHit overlapHit);
+                    Assert(detected, "Detección dual OverlapBox detecta colisionador solapado en origen", ref total, ref passed);
+                    Assert(Mathf.Approximately(overlapHit.distance, 0f), "Distancia de obstáculo solapado es 0m", ref total, ref passed);
+                }
+                finally
+                {
+                    Object.DestroyImmediate(overlapObj);
+                }
             }
             finally
             {

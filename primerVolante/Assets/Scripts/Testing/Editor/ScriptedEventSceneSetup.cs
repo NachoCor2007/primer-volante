@@ -63,7 +63,7 @@ namespace PrimerVolante.Testing.Editor
             Undo.RegisterCreatedObjectUndo(rootObj, "Create Scripted Events Root");
 
             // 4. Configurar Caso 1: Peatón Sorpresivo en senda peatonal (Z = 108.5m)
-            SetupCase1_PedestrianCrossing(rootObj.transform, scene, out NPCPathFollower pedestrianFollower);
+            SetupCase1_PedestrianCrosswalk(rootObj.transform, scene, out NPCPathFollower pedestrianFollower);
 
             // 5. Configurar Caso 2: Vehículo NPC cruzando la bocacalle (Z = 120m / Z = 123.5m)
             SetupCase2_IntersectionVehicle(rootObj.transform, scene, out NPCPathFollower intersectionVehicleFollower);
@@ -127,7 +127,7 @@ namespace PrimerVolante.Testing.Editor
 
         #region Caso 1: Peatón Sorpresivo
 
-        private static void SetupCase1_PedestrianCrossing(Transform parent, Scene scene, out NPCPathFollower follower)
+        private static void SetupCase1_PedestrianCrosswalk(Transform parent, Scene scene, out NPCPathFollower follower)
         {
             follower = null;
 
@@ -178,11 +178,12 @@ namespace PrimerVolante.Testing.Editor
             if (safety == null) safety = instance.AddComponent<NPCSafetyStop>();
 
             var soSafety = new SerializedObject(safety);
-            SetSerializedProperty(soSafety, "m_DetectionDistance", 2.5f);
+            SetSerializedProperty(soSafety, "m_DetectionDistance", 4.0f);
             SetSerializedProperty(soSafety, "m_ResumeDelay", 0.6f);
             SetSerializedProperty(soSafety, "m_SensorOffset", new Vector3(0f, 0.9f, 0f));
-            SetSerializedProperty(soSafety, "m_BoxHalfExtents", new Vector3(0.4f, 0.6f, 0.2f));
-            SetSerializedProperty(soSafety, "m_DynamicDistanceWithSpeed", false);
+            SetSerializedProperty(soSafety, "m_BoxHalfExtents", new Vector3(0.6f, 0.8f, 0.3f));
+            SetSerializedProperty(soSafety, "m_DynamicDistanceWithSpeed", true);
+            SetSerializedProperty(soSafety, "m_SpeedLookaheadFactor", 1.0f);
             soSafety.ApplyModifiedPropertiesWithoutUndo();
 
             Debug.Log("[ScriptedEventSceneSetup] 🧍 Caso 1: Peatón sorpresivo en senda peatonal configurado.");

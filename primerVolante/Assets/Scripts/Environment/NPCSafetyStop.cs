@@ -68,11 +68,13 @@ namespace PrimerVolante.Environment
         private bool m_WasMovingBeforeEmergencyBrake = false;
         private float m_ClearTimer = 0f;
         private RaycastHit m_LastObstacleHit;
+        private Collider m_LastObstacleCollider;
 
         // Soporte de simulación para pruebas unitarias deterministas
         private bool m_SimulateObstacle = false;
         private bool m_SimulatedHasObstacle = false;
         private RaycastHit m_SimulatedHit;
+        private Collider m_SimulatedCollider;
 
         #region Propiedades Públicas
 
@@ -141,6 +143,9 @@ namespace PrimerVolante.Environment
         /// <summary>Último obstáculo detectado.</summary>
         public RaycastHit LastObstacleHit => m_LastObstacleHit;
 
+        /// <summary>Último collider detectado como obstáculo.</summary>
+        public Collider LastObstacleCollider => m_LastObstacleCollider;
+
         /// <summary>Seguidor de ruta asociado.</summary>
         public NPCPathFollower PathFollower => m_PathFollower;
 
@@ -196,22 +201,34 @@ namespace PrimerVolante.Environment
             if (obstacleDetected)
             {
                 m_LastObstacleHit = hit;
+                if (hit.collider != null)
+                {
+                    m_LastObstacleCollider = hit.collider;
+                }
                 m_ClearTimer = 0f;
 
                 if (!m_IsEmergencyBraking)
                 {
-                    // Entrar en frenado de emergencia
+                    // Entrar en frenado de emergencia inmediato
                     m_IsEmergencyBraking = true;
                     m_WasMovingBeforeEmergencyBrake = m_PathFollower.IsPlaying && !m_PathFollower.IsStopRequested;
 
-                    m_PathFollower.Stop();
+                    m_PathFollower.EmergencyStop();
 
-                    string obstacleName = hit.collider != null ? hit.collider.name : "Obstáculo";
+                    string obstacleName = hit.collider != null ? hit.collider.name : (m_LastObstacleCollider != null ? m_LastObstacleCollider.name : "Obstáculo");
                     float dist = hit.distance > 0f ? hit.distance : 0f;
                     Debug.LogWarning($"[NPCSafetyStop] 🛑 ¡Frenado de emergencia en '{name}'! '{obstacleName}' detectado a {dist:F2}m en trayectoria frontal.", this);
 
                     OnEmergencyBrake?.Invoke();
                     onEmergencyBrakeEvent?.Invoke();
+                }
+                else
+                {
+                    // Garantizar que mientras el obstáculo siga detectado se mantenga la parada de emergencia
+                    if (!m_PathFollower.IsEmergencyStopped)
+                    {
+                        m_PathFollower.EmergencyStop();
+                    }
                 }
             }
             else
@@ -247,6 +264,7 @@ namespace PrimerVolante.Environment
 
         /// <summary>
         /// Realiza el barrido frontal buscando obstáculos en la trayectoria.
+        /// Utiliza detección dual (OverlapBox para solapamiento inmediato a 0m + BoxCastAll para anticipación).
         /// </summary>
         /// <param name="nearestObstacleHit">Información del impacto más cercano detectado.</param>
         /// <returns>True si hay al menos un obstáculo válido en riesgo inminente; false en caso contrario.</returns>
@@ -257,6 +275,10 @@ namespace PrimerVolante.Environment
             if (m_SimulateObstacle)
             {
                 nearestObstacleHit = m_SimulatedHit;
+                if (m_SimulatedCollider != null)
+                {
+                    m_LastObstacleCollider = m_SimulatedCollider;
+                }
                 return m_SimulatedHasObstacle;
             }
 
@@ -264,6 +286,26 @@ namespace PrimerVolante.Environment
             Vector3 direction = transform.forward;
             float maxDistance = GetEffectiveDetectionDistance();
 
+            // 1. Detección inmediata por solapamiento (OverlapBox)
+            Collider[] overlaps = Physics.OverlapBox(
+                origin,
+                m_BoxHalfExtents,
+                transform.rotation,
+                m_ObstacleLayers,
+                m_QueryTriggerInteraction);
+
+            for (int i = 0; i < overlaps.Length; i++)
+            {
+                Collider col = overlaps[i];
+                if (IsValidObstacleCollider(col))
+                {
+                    nearestObstacleHit = CreateHitForCollider(col, origin);
+                    m_LastObstacleCollider = col;
+                    return true;
+                }
+            }
+
+            // 2. Detección frontal por barrido (BoxCastAll)
             RaycastHit[] hits = Physics.BoxCastAll(
                 origin,
                 m_BoxHalfExtents,
@@ -285,12 +327,35 @@ namespace PrimerVolante.Environment
                     {
                         closestDistance = hit.distance;
                         nearestObstacleHit = hit;
+                        m_LastObstacleCollider = hit.collider;
                         found = true;
                     }
                 }
             }
 
             return found;
+        }
+
+        private RaycastHit CreateHitForCollider(Collider col, Vector3 origin)
+        {
+            RaycastHit hit = default;
+            if (col != null)
+            {
+                Vector3 center = col.bounds.center;
+                Vector3 diff = origin - center;
+                Vector3 dir = diff.sqrMagnitude > 1e-4f ? diff.normalized : Vector3.up;
+                float extent = Mathf.Max(col.bounds.size.magnitude + 2f, 3f);
+                Vector3 rayOrigin = center + dir * extent;
+                Ray ray = new Ray(rayOrigin, -dir);
+                if (col.Raycast(ray, out RaycastHit surfaceHit, extent * 2f))
+                {
+                    hit = surfaceHit;
+                }
+            }
+
+            hit.point = origin;
+            hit.distance = 0f;
+            return hit;
         }
 
         /// <summary>
@@ -365,11 +430,16 @@ namespace PrimerVolante.Environment
         {
             m_SimulateObstacle = true;
             m_SimulatedHasObstacle = hasObstacle;
+            m_SimulatedCollider = obstacleCollider;
             m_SimulatedHit = new RaycastHit
             {
                 distance = distance,
                 point = GetSensorOrigin() + transform.forward * distance
             };
+            if (hasObstacle && obstacleCollider != null)
+            {
+                m_LastObstacleCollider = obstacleCollider;
+            }
         }
 
         /// <summary>
@@ -379,6 +449,7 @@ namespace PrimerVolante.Environment
         {
             m_SimulateObstacle = false;
             m_SimulatedHasObstacle = false;
+            m_SimulatedCollider = null;
             m_SimulatedHit = default;
         }
 
@@ -391,6 +462,85 @@ namespace PrimerVolante.Environment
             m_WasMovingBeforeEmergencyBrake = false;
             m_ClearTimer = 0f;
             m_LastObstacleHit = default;
+            m_LastObstacleCollider = null;
+        }
+
+        #endregion
+
+        #region Red de Seguridad Física (Anti-Empuje)
+
+        private void OnCollisionEnter(Collision collision)
+        {
+            if (collision != null && IsValidObstacleCollider(collision.collider))
+            {
+                ForceEmergencyBrake(collision.collider);
+            }
+        }
+
+        private void OnCollisionStay(Collision collision)
+        {
+            if (collision != null && IsValidObstacleCollider(collision.collider))
+            {
+                ForceEmergencyBrake(collision.collider);
+            }
+        }
+
+        private void OnTriggerEnter(Collider other)
+        {
+            if (other != null && !IsEventTrigger(other) && IsValidObstacleCollider(other))
+            {
+                ForceEmergencyBrake(other);
+            }
+        }
+
+        private void OnTriggerStay(Collider other)
+        {
+            if (other != null && !IsEventTrigger(other) && IsValidObstacleCollider(other))
+            {
+                ForceEmergencyBrake(other);
+            }
+        }
+
+        private static bool IsEventTrigger(Collider col)
+        {
+            if (col == null) return false;
+            return col.GetComponent<TriggerScriptedEvent>() != null ||
+                   col.GetComponentInParent<TriggerScriptedEvent>() != null;
+        }
+
+        /// <summary>
+        /// Fuerza de inmediato el frenado de emergencia ante contacto físico directo con un obstáculo.
+        /// </summary>
+        public void ForceEmergencyBrake(Collider col)
+        {
+            if (m_PathFollower == null)
+            {
+                m_PathFollower = GetComponent<NPCPathFollower>();
+                if (m_PathFollower == null) return;
+            }
+
+            m_ClearTimer = 0f;
+            m_LastObstacleCollider = col;
+
+            if (!m_IsEmergencyBraking)
+            {
+                m_IsEmergencyBraking = true;
+                m_WasMovingBeforeEmergencyBrake = m_PathFollower.IsPlaying && !m_PathFollower.IsStopRequested;
+                m_PathFollower.EmergencyStop();
+
+                string obstacleName = col != null ? col.name : "Obstáculo";
+                Debug.LogWarning($"[NPCSafetyStop] 🛑 ¡Contacto físico en '{name}'! '{obstacleName}' detectado en colisión/trigger.", this);
+
+                OnEmergencyBrake?.Invoke();
+                onEmergencyBrakeEvent?.Invoke();
+            }
+            else
+            {
+                if (!m_PathFollower.IsEmergencyStopped)
+                {
+                    m_PathFollower.EmergencyStop();
+                }
+            }
         }
 
         #endregion
