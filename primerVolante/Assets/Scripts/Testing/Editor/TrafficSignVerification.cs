@@ -216,7 +216,8 @@ namespace PrimerVolante.Testing.Editor
             {
                 "Assets/Scripts/Environment/SpeedLimitSignDisplay.cs",
                 "Assets/Scripts/Environment/SpeedLimitEvaluator.cs",
-                "Assets/Scripts/Testing/Editor/TrafficSignSetup.cs"
+                "Assets/Scripts/Testing/Editor/TrafficSignSetup.cs",
+                "Assets/Scripts/Testing/Editor/TrafficSignSceneSetup.cs"
             };
 
             string deprecatedTarget = "Find" + "FirstObjectByType";
@@ -246,6 +247,33 @@ namespace PrimerVolante.Testing.Editor
 
             var sceneAsset = AssetDatabase.LoadAssetAtPath<SceneAsset>(TrafficSignSetup.TEST_SCENE_PATH);
             Assert(sceneAsset != null, "SceneAsset es válido y cargable", ref total, ref passed);
+
+            // Verificación de integridad de escenas de ciudad y TrafficSignSceneSetup
+            Assert(File.Exists(TrafficSignSceneSetup.ORIGINAL_SCENE_PATH),
+                $"Escena original protegida debe existir intacta en {TrafficSignSceneSetup.ORIGINAL_SCENE_PATH}", ref total, ref passed);
+
+            Assert(File.Exists("Assets/SimplePoly City - Low Poly Assets/Demo/TestingScenes/CityMerged.unity"),
+                "Escena CityMerged.unity original existe intacta", ref total, ref passed);
+
+            Assert(File.Exists("Assets/SimplePoly City - Low Poly Assets/Demo/TestingScenes/CityWithCar.unity"),
+                "Escena CityWithCar.unity original existe intacta", ref total, ref passed);
+
+            if (File.Exists(TrafficSignSceneSetup.TARGET_SCENE_PATH))
+            {
+                var targetSceneAsset = AssetDatabase.LoadAssetAtPath<SceneAsset>(TrafficSignSceneSetup.TARGET_SCENE_PATH);
+                Assert(targetSceneAsset != null, $"SceneAsset {TrafficSignSceneSetup.TARGET_SCENE_PATH} es válido y cargable", ref total, ref passed);
+            }
+        }
+
+        public static string RunAllTestsSummary()
+        {
+            int total = 0, passed = 0;
+            VerifyTypographyCalibration(ref total, ref passed);
+            VerifyPureEvaluationLogic(ref total, ref passed);
+            VerifyAssetsAndPrefabs(ref total, ref passed);
+            VerifyNoDeprecatedAPIs(ref total, ref passed);
+            VerifyTestScene(ref total, ref passed);
+            return $"{passed}/{total} passed (Failures: {total - passed})";
         }
 
         // ---------------------------------------------------------------- Helper Assert
