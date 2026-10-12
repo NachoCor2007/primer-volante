@@ -187,6 +187,12 @@ namespace PrimerVolante.Environment
         /// <summary>true mientras el NPC tiene velocidad.</summary>
         public bool IsMoving => m_State.Speed > 0.01f;
 
+        /// <summary>true si el seguidor está activo ejecutando su marcha.</summary>
+        public bool IsPlaying => m_IsPlaying;
+
+        /// <summary>true si se solicitó detener el avance.</summary>
+        public bool IsStopRequested => m_StopRequested;
+
         /// <summary>Velocidad crucero configurada en m/s.</summary>
         public float CruiseSpeed => m_CruiseSpeed;
 
