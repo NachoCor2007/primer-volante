@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using PrimerVolante.Environment;
 using PrimerVolante.VR;
 using Unity.Mathematics;
@@ -82,6 +83,8 @@ namespace PrimerVolante.Testing.Editor
             VerifyBarrierPrefab(ref total, ref passed);
             VerifyBoundaryMath(ref total, ref passed);
             VerifyBoundaryComponent(ref total, ref passed);
+            VerifyDemoScene(ref total, ref passed);
+            VerifyExistingSuites(ref total, ref passed);
 
             Debug.Log("=========================================================");
             Debug.Log($"🏁 RESULTADO FINAL: {passed}/{total} pruebas pasadas con éxito!");
@@ -637,6 +640,199 @@ namespace PrimerVolante.Testing.Editor
             {
                 EditorSceneManager.ClosePreviewScene(preview);
             }
+        }
+
+        // ---------------------------------------------------------------- Escena de demo
+
+        private static void VerifyDemoScene(ref int total, ref int passed)
+        {
+            string scenePath = LessonBoundarySetup.DEMO_SCENE_PATH;
+            Scene scene = SceneManager.GetSceneByPath(scenePath);
+            bool openedHere = false;
+            if (!scene.IsValid() || !scene.isLoaded)
+            {
+                if (!System.IO.File.Exists(scenePath))
+                {
+                    Assert(false, $"La escena {scenePath} debe existir", ref total, ref passed);
+                    return;
+                }
+
+                // Aditiva: nunca se reemplaza una escena abierta.
+                scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Additive);
+                openedHere = true;
+            }
+
+            try
+            {
+                Physics.SyncTransforms();
+
+                GameObject group = LessonBoundarySetup.FindRootByName(scene, LessonBoundarySetup.BOUNDARIES_GROUP_NAME);
+                Assert(group != null, $"CityWithBarriers debe tener el grupo {LessonBoundarySetup.BOUNDARIES_GROUP_NAME}", ref total, ref passed);
+                if (group == null) return;
+
+                var boundaries = group.GetComponentsInChildren<LessonBoundary>(true);
+                Assert(boundaries.Length >= 1, $"El grupo debe tener al menos una línea de barreras ({boundaries.Length})", ref total, ref passed);
+
+                Transform npcGroup = LessonBoundarySetup.FindRootByName(scene, "NPC_Demo")?.transform;
+                VehicleController car = scene.GetRootGameObjects()
+                    .SelectMany(r => r.GetComponentsInChildren<VehicleController>(true))
+                    .FirstOrDefault(v => v.name == "Car08");
+
+                foreach (LessonBoundary boundary in boundaries)
+                {
+                    string label = boundary.name;
+                    bool computed = boundary.TryComputePoses(out List<BarrierPose> poses, out float length);
+                    Transform barriers = boundary.transform.Find(LessonBoundary.CONTAINER_NAME);
+
+                    Assert(computed && barriers != null && barriers.childCount == poses.Count && poses.Count > 0,
+                        $"{label}: las vallas están generadas y guardadas en la escena ({(barriers != null ? barriers.childCount : 0)} de {(poses != null ? poses.Count : 0)})",
+                        ref total, ref passed);
+
+                    Assert(boundary.BarrierPrefab != null &&
+                           AssetDatabase.GetAssetPath(boundary.BarrierPrefab) == LessonBoundarySetup.BARRIER_PREFAB_PATH,
+                        $"{label}: usa el prefab LessonBarrier", ref total, ref passed);
+                    if (!computed || barriers == null) continue;
+
+                    // La línea corta la calle de cordón a cordón: cada extremo termina contra un muro de cordón.
+                    var container = boundary.GetComponent<SplineContainer>();
+                    Spline spline = container.Splines[boundary.SplineIndex];
+                    Vector3 first = container.transform.TransformPoint((Vector3)spline[0].Position);
+                    Vector3 last = container.transform.TransformPoint((Vector3)spline[spline.Count - 1].Position);
+                    Vector3 direction = (last - first).normalized;
+                    Assert(!spline.Closed && spline.Count == 2, $"{label}: spline abierta de dos nudos", ref total, ref passed);
+
+                    float gapStart = DistanceToCurbWall(first + direction * 0.5f, -direction, boundary.transform);
+                    float gapEnd = DistanceToCurbWall(last - direction * 0.5f, direction, boundary.transform);
+                    Assert(gapStart >= 0f && gapStart <= 0.65f && gapEnd >= 0f && gapEnd <= 0.65f,
+                        $"{label}: cada extremo llega al cordón (distancia a los muros {gapStart:F2} y {gapEnd:F2} m)",
+                        ref total, ref passed);
+
+                    // Largo de la línea: de cordón a cordón (≈ 14 m), sin invadir otra calle.
+                    Assert(Mathf.Abs(length - 14f) < 0.5f, $"{label}: largo de la línea ≈ 14 m ({length:F1} m)", ref total, ref passed);
+
+                    // No cruza ninguna ruta de NPC_Demo.
+                    float minRoute = float.MaxValue;
+                    if (npcGroup != null)
+                    {
+                        foreach (SplineContainer route in npcGroup.GetComponentsInChildren<SplineContainer>(true))
+                        {
+                            minRoute = Mathf.Min(minRoute, MinDistanceToRoute(route, first, last));
+                        }
+                    }
+
+                    Assert(minRoute > 1.5f, $"{label}: a más de 1.5 m de toda ruta de NPC_Demo ({minRoute:F1} m)", ref total, ref passed);
+
+                    // Lejos del punto de inicio del Car08.
+                    if (car != null)
+                    {
+                        float away = Vector3.Distance(new Vector3(car.transform.position.x, 0f, car.transform.position.z),
+                            new Vector3((first.x + last.x) * 0.5f, 0f, (first.z + last.z) * 0.5f));
+                        Assert(away > 30f, $"{label}: lejos del inicio del Car08 ({away:F0} m)", ref total, ref passed);
+                    }
+
+                    // Ningún prop o edificio dentro de las vallas.
+                    var intruders = new List<string>();
+                    foreach (BoxCollider solid in barriers.GetComponentsInChildren<BoxCollider>(true).Where(b => !b.isTrigger))
+                    {
+                        Vector3 center = solid.transform.TransformPoint(solid.center);
+                        Vector3 half = Vector3.Scale(solid.size * 0.5f, solid.transform.lossyScale) * 0.95f;
+                        foreach (Collider hit in Physics.OverlapBox(center, half, solid.transform.rotation, ~0, QueryTriggerInteraction.Ignore))
+                        {
+                            if (hit.transform.IsChildOf(boundary.transform)) continue;
+                            if (hit.transform.root.name.StartsWith("Road")) continue;
+                            intruders.Add(hit.transform.root.name);
+                        }
+                    }
+
+                    Assert(intruders.Count == 0,
+                        $"{label}: ningún collider ajeno dentro de las vallas{(intruders.Count == 0 ? "" : " (" + string.Join(", ", intruders.Distinct()) + ")")}",
+                        ref total, ref passed);
+                }
+            }
+            finally
+            {
+                if (openedHere) EditorSceneManager.CloseScene(scene, true);
+            }
+        }
+
+        // Distancia al primer muro de cordón en la dirección dada (ignora lo que cuelga de la propia línea);
+        // -1 si no hay ninguno en 1.5 m. El rayo va a 1 m de altura, donde ya no hay malla de calle.
+        private static float DistanceToCurbWall(Vector3 origin, Vector3 direction, Transform boundary)
+        {
+            origin.y = 1f;
+            RaycastHit[] hits = Physics.RaycastAll(origin, direction, 1.5f, ~0, QueryTriggerInteraction.Ignore);
+            float best = float.MaxValue;
+            foreach (RaycastHit hit in hits)
+            {
+                Transform t = hit.collider.transform;
+                if (t.IsChildOf(boundary)) continue;
+
+                // Un muro de cordón es una caja sobre CurbWalls o sobre uno de sus hijos (tramos diagonales).
+                bool isCurbWall = t.name == LessonBoundarySetup.CURB_WALLS_NAME ||
+                                  (t.parent != null && t.parent.name == LessonBoundarySetup.CURB_WALLS_NAME);
+                if (!isCurbWall) continue;
+
+                best = Mathf.Min(best, hit.distance);
+            }
+
+            return best == float.MaxValue ? -1f : best;
+        }
+
+        // Distancia mínima en XZ entre una ruta muestreada cada 0.5 m y el segmento a–b.
+        private static float MinDistanceToRoute(SplineContainer route, Vector3 a, Vector3 b)
+        {
+            float min = float.MaxValue;
+            if (route.Splines.Count == 0) return min;
+
+            float length = route.CalculateLength(0);
+            for (float d = 0f; d <= length; d += 0.5f)
+            {
+                float t = route.Splines[0].ConvertIndexUnit(d / (length / route.Splines[0].GetLength()), PathIndexUnit.Distance, PathIndexUnit.Normalized);
+                Vector3 p = route.EvaluatePosition(0, t);
+                min = Mathf.Min(min, DistancePointToSegmentXZ(p, a, b));
+            }
+
+            return min;
+        }
+
+        private static float DistancePointToSegmentXZ(Vector3 p, Vector3 a, Vector3 b)
+        {
+            var pa = new Vector2(p.x - a.x, p.z - a.z);
+            var ab = new Vector2(b.x - a.x, b.z - a.z);
+            float t = ab.sqrMagnitude < 1e-8f ? 0f : Mathf.Clamp01(Vector2.Dot(pa, ab) / ab.sqrMagnitude);
+            return (pa - ab * t).magnitude;
+        }
+
+        // ---------------------------------------------------------------- Suites existentes
+
+        // NPCVerification vuelve a correr Cockpit, VehicleLighting, SoundIntegration y TurnSignal (con su único fallo
+        // preexistente de Car06 ya contemplado), así que su resultado final cubre las cinco suites.
+        private static void VerifyExistingSuites(ref int total, ref int passed)
+        {
+            int suitePassed = 0, suiteTotal = 0;
+            void OnLog(string message, string stack, LogType type)
+            {
+                Match match = Regex.Match(message, @"RESULTADO FINAL:\s*(\d+)/(\d+)");
+                if (match.Success)
+                {
+                    suitePassed = int.Parse(match.Groups[1].Value);
+                    suiteTotal = int.Parse(match.Groups[2].Value);
+                }
+            }
+
+            Application.logMessageReceived += OnLog;
+            try
+            {
+                EditorApplication.ExecuteMenuItem("Tools/Primer Volante/Run NPC Verification");
+            }
+            finally
+            {
+                Application.logMessageReceived -= OnLog;
+            }
+
+            Assert(suiteTotal > 0 && suitePassed == suiteTotal,
+                $"NPCVerification (y las suites Cockpit, VehicleLighting, SoundIntegration y TurnSignal) sigue pasando ({suitePassed}/{suiteTotal})",
+                ref total, ref passed);
         }
 
         // ---------------------------------------------------------------- Helpers

@@ -1,10 +1,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using PrimerVolante.Environment;
+using Unity.Mathematics;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.Splines;
 
 namespace PrimerVolante.Testing.Editor
 {
@@ -356,6 +358,118 @@ namespace PrimerVolante.Testing.Editor
         {
             var component = target.GetComponent<T>();
             return component != null ? component : target.AddComponent<T>();
+        }
+
+        // ------------------------------------------------------------------ Escena de demo
+
+        public const string DEMO_SCENE_PATH = "Assets/SimplePoly City - Low Poly Assets/Demo/TestingScenes/CityWithBarriers.unity";
+        public const string BOUNDARIES_GROUP_NAME = "Lesson_Boundaries";
+        public const string DEMO_BOUNDARY_NAME = "Boundary_Demo";
+
+        // Tramo Road Lane_01 en (120, 140), yaw 0: calle a lo largo de Z con los cordones en x = 113 y x = 127. La
+        // línea va en z = 134: a ~70 m del inicio del Car08, fuera de las tres rutas de NPC_Demo (el bloque del auto
+        // NPC llega hasta z = 56.5 y los peatones hasta z = 88) y antes del contenedor estacionado en z ≈ 139..145.
+        private static readonly Vector3 s_DemoCenter = new Vector3(120f, 0f, 134f);
+        private const float DEMO_HALF_WIDTH = 7f;
+
+        /// <summary>
+        /// Crea en <c>CityWithBarriers</c> el grupo <c>Lesson_Boundaries</c> con una línea de vallas que corta la
+        /// calle de cordón a cordón. Idempotente: si ya existe, actualiza la spline y regenera las vallas.
+        /// </summary>
+        [MenuItem("Tools/Primer Volante/Setup Lesson Boundary Demo (CityWithBarriers)")]
+        public static void SetupLessonBoundaryDemo()
+        {
+            if (!TryGetCleanScene(DEMO_SCENE_PATH, out Scene scene)) return;
+
+            var barrierPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(BARRIER_PREFAB_PATH);
+            if (barrierPrefab == null)
+            {
+                Debug.LogError($"[LessonBoundarySetup] ❌ Falta {BARRIER_PREFAB_PATH}. Corré 'Setup Lesson Barrier Prefab' primero.");
+                return;
+            }
+
+            // Grupo y línea (reutiliza los existentes).
+            GameObject group = FindRootByName(scene, BOUNDARIES_GROUP_NAME);
+            if (group == null)
+            {
+                group = new GameObject(BOUNDARIES_GROUP_NAME);
+                SceneManager.MoveGameObjectToScene(group, scene);
+            }
+
+            Transform line = group.transform.Find(DEMO_BOUNDARY_NAME);
+            if (line == null)
+            {
+                var go = new GameObject(DEMO_BOUNDARY_NAME);
+                go.transform.SetParent(group.transform, false);
+                line = go.transform;
+            }
+
+            line.position = s_DemoCenter;
+            line.rotation = Quaternion.identity;
+            line.localScale = Vector3.one;
+
+            var container = GetOrAdd<SplineContainer>(line.gameObject);
+            if (container.Splines.Count == 0) container.AddSpline(new Spline());
+            Spline spline = container.Splines[0];
+            spline.Clear();
+            spline.Closed = false;
+            spline.Add(new BezierKnot(new float3(-DEMO_HALF_WIDTH, 0f, 0f)), TangentMode.Linear);
+            spline.Add(new BezierKnot(new float3(DEMO_HALF_WIDTH, 0f, 0f)), TangentMode.Linear);
+
+            var boundary = GetOrAdd<LessonBoundary>(line.gameObject);
+            var so = new SerializedObject(boundary);
+            so.FindProperty("m_BarrierPrefab").objectReferenceValue = barrierPrefab;
+            so.FindProperty("m_SplineIndex").intValue = 0;
+            so.FindProperty("m_BarrierLength").floatValue = BARRIER_WIDTH;
+            so.FindProperty("m_Overlap").floatValue = 0.1f;
+            so.FindProperty("m_AlertCooldownSeconds").floatValue = 1f;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            boundary.RebuildBarriers();
+
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            Debug.Log($"[LessonBoundarySetup] ✅ Demo de barreras lista en {scene.name}: {BOUNDARIES_GROUP_NAME}/{DEMO_BOUNDARY_NAME} en {s_DemoCenter}.");
+        }
+
+        // Escena cargada y sin cambios sin guardar. Nunca abre en modo Single sobre cambios sin guardar.
+        private static bool TryGetCleanScene(string scenePath, out Scene scene)
+        {
+            scene = SceneManager.GetSceneByPath(scenePath);
+            if (scene.IsValid() && scene.isLoaded)
+            {
+                if (scene.isDirty)
+                {
+                    Debug.LogError($"[LessonBoundarySetup] ❌ {scene.name} tiene cambios sin guardar: guardalos o descartalos antes de seguir.");
+                    return false;
+                }
+
+                return true;
+            }
+
+            if (!System.IO.File.Exists(scenePath))
+            {
+                Debug.LogError($"[LessonBoundarySetup] ❌ No existe la escena {scenePath}.");
+                return false;
+            }
+
+            for (int i = 0; i < SceneManager.sceneCount; i++)
+            {
+                Scene open = SceneManager.GetSceneAt(i);
+                if (open.isDirty)
+                {
+                    Debug.LogError($"[LessonBoundarySetup] ❌ {open.name} tiene cambios sin guardar: guardalos antes de abrir {scenePath}.");
+                    return false;
+                }
+            }
+
+            scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
+            return scene.IsValid() && scene.isLoaded;
+        }
+
+        public static GameObject FindRootByName(Scene scene, string name)
+        {
+            return scene.GetRootGameObjects().FirstOrDefault(go => go.name == name);
         }
 
         // ------------------------------------------------------------------ Limpieza de overrides de escena
