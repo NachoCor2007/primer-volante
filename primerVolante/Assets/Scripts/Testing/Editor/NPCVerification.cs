@@ -185,7 +185,8 @@ namespace PrimerVolante.Testing.Editor
             Assert(idle != null && idle.length > 8f && idle.length < 8.7f,
                 $"Clip Idle debe durar ~8.33 s (actual: {(idle != null ? idle.length : 0f):F2})", ref total, ref passed);
 
-            float reference = NPCPrefabSetup.ComputeUrbanManWalkReferenceSpeed();
+            float reference = NPCPrefabSetup.ComputeUrbanManWalkReferenceSpeed(
+                AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(NPCPrefabSetup.CONTROLLER_PATH));
             Assert(reference > 1f && reference < 3f, $"Velocidad de referencia de Walking del UrbanMan en rango (actual: {reference:F2} m/s)", ref total, ref passed);
         }
 
@@ -208,7 +209,20 @@ namespace PrimerVolante.Testing.Editor
 
             // Apoyo plano: en la fase de apoyo el tobillo y los dedos deben estar a la altura del pie plano en reposo
             // (antes del arreglo el pie izquierdo pisaba con el talón: dedos a 7 cm y pitch +8° contra -29° plano).
-            Assert(prefab.GetComponent<NPCFootGrounding>() != null, "NPC_Pedestrian_01 debe tener NPCFootGrounding", ref total, ref passed);
+            // Se resuelve sin scripts: Walking comparte el avatar de Idle y el estado Locomotion usa Foot IK.
+            var walkingImporter = AssetImporter.GetAtPath(NPCPrefabSetup.WALKING_FBX_PATH) as ModelImporter;
+            Avatar idleAvatar = NPCPrefabSetup.LoadAvatar(NPCPrefabSetup.IDLE_FBX_PATH);
+            Assert(walkingImporter != null && idleAvatar != null &&
+                   walkingImporter.avatarSetup == ModelImporterAvatarSetup.CopyFromOther && walkingImporter.sourceAvatar == idleAvatar,
+                "Walking usa el avatar de Idle (la referencia de su propio FBX es un frame a mitad de paso)", ref total, ref passed);
+
+            var pedestrianController = AssetDatabase.LoadAssetAtPath<UnityEditor.Animations.AnimatorController>(NPCPrefabSetup.CONTROLLER_PATH);
+            Assert(pedestrianController != null && pedestrianController.layers[0].stateMachine.states.Length > 0 &&
+                   pedestrianController.layers[0].stateMachine.states.All(s => s.state.iKOnFeet),
+                "El estado Locomotion del peatón usa Foot IK", ref total, ref passed);
+
+            Assert(prefab.GetComponents<Component>().All(c => c != null),
+                "NPC_Pedestrian_01 no tiene componentes sin script (la corrección NPCFootGrounding ya no existe)", ref total, ref passed);
             NPCFootSlidingAnalyzer.MeasureRestFoot(prefab, NPCPrefabSetup.LoadClip(NPCPrefabSetup.IDLE_FBX_PATH), out float restAnkle, out float restPitch);
             NPCFootSlidingAnalyzer.StanceFoot[] stance = NPCFootSlidingAnalyzer.MeasureStance(prefab, NPCPedestrianController.DefaultCruiseSpeed);
             string[] sides = { "izquierdo", "derecho" };
@@ -221,11 +235,10 @@ namespace PrimerVolante.Testing.Editor
                     $"Pie {sides[foot]} en apoyo: pitch {s.Pitch:F0}°, plano en reposo {restPitch:F0}° (tolerancia 10°)", ref total, ref passed);
             }
 
-            AnimationClip walking = NPCPrefabSetup.LoadClip(NPCPrefabSetup.WALKING_FBX_PATH);
-            float measured = NPCFootSlidingAnalyzer.MeasureWalkReferenceSpeed(prefab, walking);
+            float measured = NPCFootSlidingAnalyzer.MeasureWalkReferenceSpeed(prefab);
             var controller = prefab.GetComponent<NPCPedestrianController>();
             Assert(controller != null && measured > 0f && Mathf.Abs(controller.WalkReferenceSpeed - measured) < 0.05f,
-                $"La velocidad de referencia del prefab ({controller?.WalkReferenceSpeed:F2}) coincide con la medida en el esqueleto ({measured:F2})", ref total, ref passed);
+                $"La velocidad de referencia del prefab ({controller?.WalkReferenceSpeed:F2}) coincide con la medida en el esqueleto con su Animator ({measured:F2})", ref total, ref passed);
         }
 
         // ---------------------------------------------------------------- Matemática pura del follower

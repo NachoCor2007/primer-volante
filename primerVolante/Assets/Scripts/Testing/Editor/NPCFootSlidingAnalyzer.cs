@@ -28,33 +28,48 @@ namespace PrimerVolante.Testing.Editor
         private const float STANCE_FRACTION = 0.15f;
 
         /// <summary>
-        /// Velocidad (m/s) a la que el pie retrocede respecto del cuerpo durante el apoyo cuando el clip se
-        /// reproduce a velocidad 1: es la velocidad del cuerpo con la que el paso del clip no desliza. Se mide
-        /// sobre el esqueleto del propio personaje, así que incluye su largo de piernas.
+        /// Velocidad (m/s) a la que el pie retrocede respecto del cuerpo durante el apoyo cuando Walking se
+        /// reproduce a peso 1 y velocidad 1: es la velocidad del cuerpo con la que el paso no desliza. Se mide
+        /// sobre el esqueleto del propio personaje y con el mismo Animator Controller que en ejecución (blend tree y
+        /// Foot IK), igual que <see cref="MeasureFootSliding"/>: Foot IK alarga el apoyo y muestrear el clip crudo
+        /// subestimaba el paso (1.49 m/s contra 1.71 m/s reales), lo que hacía resbalar los pies.
         /// </summary>
-        public static float MeasureWalkReferenceSpeed(GameObject pedestrianPrefab, AnimationClip walkingClip)
+        /// <param name="pedestrianPrefab">Personaje con Animator humanoide.</param>
+        /// <param name="controller">Controller a usar; si es null se usa el que ya tiene el prefab.</param>
+        public static float MeasureWalkReferenceSpeed(GameObject pedestrianPrefab, RuntimeAnimatorController controller = null)
         {
-            if (pedestrianPrefab == null || walkingClip == null) return 0f;
+            if (pedestrianPrefab == null) return 0f;
 
             Scene preview = EditorSceneManager.NewPreviewScene();
             try
             {
                 var instance = (GameObject)PrefabUtility.InstantiatePrefab(pedestrianPrefab, preview);
                 var animator = instance.GetComponent<Animator>();
+                if (animator == null) return 0f;
+                if (controller != null) animator.runtimeAnimatorController = controller;
+                if (animator.runtimeAnimatorController == null) return 0f;
+
                 animator.applyRootMotion = false;
+                animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
                 animator.Rebind();
 
                 Transform leftFoot = animator.GetBoneTransform(HumanBodyBones.LeftFoot);
                 Transform rightFoot = animator.GetBoneTransform(HumanBodyBones.RightFoot);
                 if (leftFoot == null || rightFoot == null) return 0f;
 
-                int frames = Mathf.Max(8, Mathf.RoundToInt(walkingClip.length / STEP));
-                float dt = walkingClip.length / frames;
+                animator.SetFloat(NPCPedestrianController.SpeedParameter, NPCPedestrianController.WalkBlendEndSpeed);
+                animator.speed = 1f;
+                for (int i = 0; i < 90; i++)
+                {
+                    animator.Update(STEP);
+                }
+
+                const int frames = 360;
                 var z = new float[2, frames];
                 var y = new float[2, frames];
                 for (int i = 0; i < frames; i++)
                 {
-                    walkingClip.SampleAnimation(instance, i * dt);
+                    animator.Update(STEP);
                     Vector3 left = instance.transform.InverseTransformPoint(leftFoot.position);
                     Vector3 right = instance.transform.InverseTransformPoint(rightFoot.position);
                     z[0, i] = left.z; y[0, i] = left.y;
@@ -69,7 +84,7 @@ namespace PrimerVolante.Testing.Editor
                     for (int i = 1; i < frames; i++)
                     {
                         if (y[foot, i] > threshold) continue;
-                        backward += -(z[foot, i] - z[foot, i - 1]) / dt;
+                        backward += -(z[foot, i] - z[foot, i - 1]) / STEP;
                         count++;
                     }
                 }
@@ -84,7 +99,7 @@ namespace PrimerVolante.Testing.Editor
 
         /// <summary>
         /// Mide con el clip de reposo (Idle) y el pie plano: altura del tobillo sobre el suelo y pitch del vector
-        /// tobillo → dedos (grados). Son los valores de referencia de <see cref="NPCFootGrounding"/>.
+        /// tobillo → dedos (grados). Es la pose contra la que se compara el apoyo al caminar.
         /// </summary>
         public static bool MeasureRestFoot(GameObject pedestrianPrefab, AnimationClip idleClip, out float ankleHeight, out float pitch)
         {
@@ -134,8 +149,8 @@ namespace PrimerVolante.Testing.Editor
 
         /// <summary>
         /// Pose media de cada pie (0 = izquierdo, 1 = derecho) durante el apoyo, muestreando el clip directamente
-        /// sobre el esqueleto del personaje (sin Animator Controller ni correcciones). Es la medición que
-        /// calibra <see cref="NPCFootGrounding"/>.
+        /// sobre el esqueleto del personaje (sin Animator Controller ni Foot IK): muestra el sesgo que deja el
+        /// retargeting por sí solo.
         /// </summary>
         public static StanceFoot[] MeasureStanceFromClip(GameObject pedestrianPrefab, AnimationClip clip)
         {
@@ -213,7 +228,7 @@ namespace PrimerVolante.Testing.Editor
 
         /// <summary>
         /// Pose media de cada pie (0 = izquierdo, 1 = derecho) durante el apoyo al caminar a
-        /// <paramref name="bodySpeed"/>, ya con la corrección de <see cref="NPCFootGrounding"/> si el prefab la tiene.
+        /// <paramref name="bodySpeed"/> con el Animator Controller del prefab (blend tree y Foot IK), como en el juego.
         /// </summary>
         public static StanceFoot[] MeasureStance(GameObject pedestrianPrefab, float bodySpeed)
         {
@@ -226,7 +241,6 @@ namespace PrimerVolante.Testing.Editor
                 var instance = (GameObject)PrefabUtility.InstantiatePrefab(pedestrianPrefab, preview);
                 var animator = instance.GetComponent<Animator>();
                 var pedestrian = instance.GetComponent<NPCPedestrianController>();
-                var grounding = instance.GetComponent<NPCFootGrounding>();
                 if (animator == null || pedestrian == null || animator.runtimeAnimatorController == null) return result;
 
                 animator.applyRootMotion = false;
@@ -250,7 +264,6 @@ namespace PrimerVolante.Testing.Editor
                 for (int i = 0; i < 90; i++)
                 {
                     animator.Update(STEP);
-                    if (grounding != null) grounding.Apply();
                 }
 
                 const int frames = 360;
@@ -260,7 +273,6 @@ namespace PrimerVolante.Testing.Editor
                 for (int i = 0; i < frames; i++)
                 {
                     animator.Update(STEP);
-                    if (grounding != null) grounding.Apply();
 
                     for (int f = 0; f < 2; f++)
                     {
@@ -334,11 +346,9 @@ namespace PrimerVolante.Testing.Editor
                 animator.speed = NPCPedestrianController.ComputeAnimatorSpeed(
                     bodySpeed, pedestrian.WalkReferenceSpeed, pedestrian.MaxAnimatorSpeed);
 
-                var grounding = instance.GetComponent<NPCFootGrounding>();
                 for (int i = 0; i < 90; i++)
                 {
                     animator.Update(STEP);
-                    if (grounding != null) grounding.Apply();
                 }
 
                 const int frames = 360;
@@ -347,7 +357,6 @@ namespace PrimerVolante.Testing.Editor
                 for (int i = 0; i < frames; i++)
                 {
                     animator.Update(STEP);
-                    if (grounding != null) grounding.Apply();
                     Vector3 left = instance.transform.InverseTransformPoint(leftFoot.position);
                     Vector3 right = instance.transform.InverseTransformPoint(rightFoot.position);
                     z[0, i] = left.z; y[0, i] = left.y;
