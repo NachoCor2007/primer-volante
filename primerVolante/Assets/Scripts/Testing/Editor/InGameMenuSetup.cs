@@ -32,6 +32,18 @@ namespace PrimerVolante.Testing.Editor
                 scene = EditorSceneManager.OpenScene(CockpitIntegrationSetup.SCENE_INTEGRATION_PATH, OpenSceneMode.Single);
             }
 
+            EnsureInGameMenuInActiveScene();
+
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+
+            Debug.Log("[InGameMenuSetup] ✅ ¡Menú in-game configurado y guardado exitosamente! " +
+                      "El botón Menu del control izquierdo (Meta Quest Touch Plus / Quest 3S, leído vía " +
+                      "UnityEngine.XR.InputDevices) y la tecla Escape ya abren/cierran el menú.");
+        }
+
+        public static InGameMenuController EnsureInGameMenuInActiveScene()
+        {
             EnsureEventSystem();
 
             GameObject xrOriginObj = GameObject.Find("XR Origin (XR Rig)");
@@ -110,15 +122,11 @@ namespace PrimerVolante.Testing.Editor
 
             EditorUtility.SetDirty(menuController);
             EditorUtility.SetDirty(calibrationUI);
-            EditorSceneManager.MarkSceneDirty(scene);
-            EditorSceneManager.SaveScene(scene);
 
-            Debug.Log("[InGameMenuSetup] ✅ ¡Menú in-game configurado y guardado exitosamente! " +
-                      "El botón Menu del control izquierdo (Meta Quest Touch Plus / Quest 3S, leído vía " +
-                      "UnityEngine.XR.InputDevices) y la tecla Escape ya abren/cierran el menú.");
+            return menuController;
         }
 
-        private static void EnsureEventSystem()
+        public static void EnsureEventSystem()
         {
             EventSystem eventSystem = Object.FindAnyObjectByType<EventSystem>();
             GameObject eventSystemObj;
