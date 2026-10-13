@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.XR.Interaction.Toolkit.Interactors;
 using PrimerVolante.VR;
 
 namespace PrimerVolante.Lessons
@@ -8,8 +9,8 @@ namespace PrimerVolante.Lessons
     /// <summary>
     /// Panel HUD en espacio de mundo situado sobre el volante en la cabina del vehículo.
     /// Muestra la información del paso actual, la instrucción para el conductor,
-    /// controles de calibración rápida del asiento y el botón de confirmación/avance.
-    /// Al terminar la lección, muestra la pantalla de felicitaciones.
+    /// y el botón interactivo de confirmación/avance mediante raycast de VR.
+    /// Al terminar la lección, presenta el panel de felicitaciones.
     /// </summary>
     public class LessonHUDPanel : MonoBehaviour
     {
@@ -37,22 +38,6 @@ namespace PrimerVolante.Lessons
         [Tooltip("Texto dentro del botón Continuar/Confirmar.")]
         [SerializeField] private TextMeshProUGUI m_ContinueButtonText;
 
-        [Header("Panel de Ajuste Rápido de Asiento")]
-        [Tooltip("Subpanel de calibración de asiento (visible en el paso 1).")]
-        [SerializeField] private GameObject m_SeatAdjustmentPanel;
-
-        [Tooltip("Seguidor de asiento del conductor.")]
-        [SerializeField] private DriverSeatFollower m_DriverSeatFollower;
-
-        [Tooltip("Slider para regular la altura de la vista (Eje Y).")]
-        [SerializeField] private Slider m_HeightSlider;
-
-        [Tooltip("Slider para regular la distancia adelante/atrás (Eje Z).")]
-        [SerializeField] private Slider m_DepthSlider;
-
-        [Tooltip("Botón para restablecer la calibración a cero.")]
-        [SerializeField] private Button m_ResetSeatButton;
-
         [Header("Panel de Felicitaciones / Fin de Lección")]
         [Tooltip("Contenedor mostrado al completar todos los pasos.")]
         [SerializeField] private GameObject m_CompletionPanel;
@@ -66,47 +51,54 @@ namespace PrimerVolante.Lessons
         [Tooltip("Botón para reiniciar la lección.")]
         [SerializeField] private Button m_RestartButton;
 
+        [Header("Interacción VR (Raycast / Far Casting)")]
+        [Tooltip("Near-Far Interactors de las manos VR a los que se les habilita el rayo a distancia " +
+                 "mientras se interactúa con el HUD de la lección.")]
+        [SerializeField] private NearFarInteractor[] m_FarCastInteractors;
+
+        private Canvas m_Canvas;
+        private bool[] m_FarCastPreviousStates;
+        private bool m_FarCastingActive = false;
+
         // Propiedades públicas para acceso e inspección en tests
         public TextMeshProUGUI LessonTitleText => m_LessonTitleText;
         public TextMeshProUGUI StepProgressText => m_StepProgressText;
         public TextMeshProUGUI InstructionText => m_InstructionText;
         public Button ContinueButton => m_ContinueButton;
-        public GameObject SeatAdjustmentPanel => m_SeatAdjustmentPanel;
+        public TextMeshProUGUI ContinueButtonText => m_ContinueButtonText;
+        public GameObject StepContentPanel => m_StepContentPanel;
         public GameObject CompletionPanel => m_CompletionPanel;
-        public DriverSeatFollower SeatFollower => m_DriverSeatFollower;
+        public Button RestartButton => m_RestartButton;
+        public NearFarInteractor[] FarCastInteractors => m_FarCastInteractors;
+        public Canvas Canvas => m_Canvas != null ? m_Canvas : (m_Canvas = GetComponent<Canvas>());
+        public Camera WorldCamera => Canvas != null ? Canvas.worldCamera : null;
+        public bool FarCastingActive => m_FarCastingActive;
 
         private void Awake()
         {
+            m_Canvas = GetComponent<Canvas>();
+            if (m_Canvas != null && m_Canvas.worldCamera == null)
+            {
+                m_Canvas.worldCamera = Camera.main;
+            }
+
             if (m_LessonManager == null)
             {
                 m_LessonManager = UnityEngine.Object.FindAnyObjectByType<LessonManager>();
             }
 
-            if (m_DriverSeatFollower == null)
-            {
-                m_DriverSeatFollower = UnityEngine.Object.FindAnyObjectByType<DriverSeatFollower>();
-            }
-
-            SetupContinueButton();
-            SetupSeatAdjustmentControls();
+            DiscoverFarCastInteractors();
+            SetupButtons();
         }
 
         private void OnEnable()
         {
-            if (m_DriverSeatFollower != null)
-            {
-                m_DriverSeatFollower.CalibrationOffsetChanged += OnSeatOffsetChanged;
-            }
-
-            RefreshSlidersFromOffset();
+            SetFarCasting(true);
         }
 
         private void OnDisable()
         {
-            if (m_DriverSeatFollower != null)
-            {
-                m_DriverSeatFollower.CalibrationOffsetChanged -= OnSeatOffsetChanged;
-            }
+            SetFarCasting(false);
         }
 
         public void BindToLessonManager(LessonManager manager)
@@ -114,7 +106,20 @@ namespace PrimerVolante.Lessons
             m_LessonManager = manager;
         }
 
-        private void SetupContinueButton()
+        public void SetFarCastInteractors(NearFarInteractor[] interactors)
+        {
+            m_FarCastInteractors = interactors;
+        }
+
+        private void DiscoverFarCastInteractors()
+        {
+            if (m_FarCastInteractors == null || m_FarCastInteractors.Length == 0)
+            {
+                m_FarCastInteractors = UnityEngine.Object.FindObjectsByType<NearFarInteractor>(FindObjectsInactive.Include);
+            }
+        }
+
+        private void SetupButtons()
         {
             if (m_ContinueButton != null)
             {
@@ -129,33 +134,47 @@ namespace PrimerVolante.Lessons
             }
         }
 
-        private void SetupSeatAdjustmentControls()
+        /// <summary>
+        /// Habilita o restaura el cast a distancia de los NearFarInteractors del jugador
+        /// para permitir interactuar con el botón Continuar del HUD mediante puntero láser.
+        /// </summary>
+        public void SetFarCasting(bool enabled)
         {
-            if (m_DriverSeatFollower == null) return;
-
-            Vector3 min = m_DriverSeatFollower.CalibrationLimitsMin;
-            Vector3 max = m_DriverSeatFollower.CalibrationLimitsMax;
-
-            if (m_HeightSlider != null)
+            if (m_FarCastInteractors == null || m_FarCastInteractors.Length == 0)
             {
-                m_HeightSlider.minValue = min.y;
-                m_HeightSlider.maxValue = max.y;
-                m_HeightSlider.onValueChanged.RemoveAllListeners();
-                m_HeightSlider.onValueChanged.AddListener(OnHeightChanged);
+                DiscoverFarCastInteractors();
+                if (m_FarCastInteractors == null || m_FarCastInteractors.Length == 0) return;
             }
 
-            if (m_DepthSlider != null)
+            if (enabled)
             {
-                m_DepthSlider.minValue = min.z;
-                m_DepthSlider.maxValue = max.z;
-                m_DepthSlider.onValueChanged.RemoveAllListeners();
-                m_DepthSlider.onValueChanged.AddListener(OnDepthChanged);
+                if (!m_FarCastingActive)
+                {
+                    m_FarCastPreviousStates = new bool[m_FarCastInteractors.Length];
+                    for (int i = 0; i < m_FarCastInteractors.Length; i++)
+                    {
+                        if (m_FarCastInteractors[i] != null)
+                        {
+                            m_FarCastPreviousStates[i] = m_FarCastInteractors[i].enableFarCasting;
+                            m_FarCastInteractors[i].enableFarCasting = true;
+                        }
+                    }
+                    m_FarCastingActive = true;
+                }
             }
-
-            if (m_ResetSeatButton != null)
+            else
             {
-                m_ResetSeatButton.onClick.RemoveAllListeners();
-                m_ResetSeatButton.onClick.AddListener(OnResetSeatClicked);
+                if (m_FarCastingActive && m_FarCastPreviousStates != null)
+                {
+                    for (int i = 0; i < m_FarCastInteractors.Length; i++)
+                    {
+                        if (m_FarCastInteractors[i] != null && i < m_FarCastPreviousStates.Length)
+                        {
+                            m_FarCastInteractors[i].enableFarCasting = m_FarCastPreviousStates[i];
+                        }
+                    }
+                    m_FarCastingActive = false;
+                }
             }
         }
 
@@ -172,57 +191,6 @@ namespace PrimerVolante.Lessons
             if (m_LessonManager != null && m_LessonManager.ActiveLesson != null)
             {
                 m_LessonManager.StartLesson(m_LessonManager.ActiveLesson);
-            }
-        }
-
-        private void OnHeightChanged(float value)
-        {
-            if (m_DriverSeatFollower != null)
-            {
-                m_DriverSeatFollower.SetCalibrationAxis(1, value);
-            }
-        }
-
-        private void OnDepthChanged(float value)
-        {
-            if (m_DriverSeatFollower != null)
-            {
-                m_DriverSeatFollower.SetCalibrationAxis(2, value);
-            }
-        }
-
-        private void OnResetSeatClicked()
-        {
-            if (m_DriverSeatFollower != null)
-            {
-                m_DriverSeatFollower.ResetCalibration();
-                RefreshSlidersFromOffset();
-            }
-        }
-
-        private void OnSeatOffsetChanged(Vector3 delta)
-        {
-            RefreshSlidersFromOffset();
-        }
-
-        private void RefreshSlidersFromOffset()
-        {
-            if (m_DriverSeatFollower == null) return;
-
-            Vector3 offset = m_DriverSeatFollower.CalibrationOffset;
-
-            if (m_HeightSlider != null)
-            {
-                m_HeightSlider.onValueChanged.RemoveListener(OnHeightChanged);
-                m_HeightSlider.value = offset.y;
-                m_HeightSlider.onValueChanged.AddListener(OnHeightChanged);
-            }
-
-            if (m_DepthSlider != null)
-            {
-                m_DepthSlider.onValueChanged.RemoveListener(OnDepthChanged);
-                m_DepthSlider.value = offset.z;
-                m_DepthSlider.onValueChanged.AddListener(OnDepthChanged);
             }
         }
 
@@ -249,22 +217,9 @@ namespace PrimerVolante.Lessons
                 m_InstructionText.text = step.instructionText;
             }
 
-            // Mostrar u ocultar el panel de ajuste rápido según corresponda
-            if (m_SeatAdjustmentPanel != null)
-            {
-                // El paso 0 es el ajuste del asiento
-                bool isSeatStep = (stepIndex == 0) || (step.stepTitle.ToLower().Contains("asiento"));
-                m_SeatAdjustmentPanel.SetActive(isSeatStep);
-            }
-
-            // Etiqueta del botón
             if (m_ContinueButtonText != null)
             {
-                if (stepIndex == 0)
-                {
-                    m_ContinueButtonText.text = "Confirmar Posición";
-                }
-                else if (stepIndex == totalSteps - 1)
+                if (stepIndex == totalSteps - 1)
                 {
                     m_ContinueButtonText.text = "Finalizar Calibración";
                 }
@@ -274,7 +229,7 @@ namespace PrimerVolante.Lessons
                 }
             }
 
-            RefreshSlidersFromOffset();
+            SetFarCasting(true);
         }
 
         /// <summary>
@@ -294,6 +249,8 @@ namespace PrimerVolante.Lessons
             {
                 m_CompletionDescriptionText.text = $"Has completado satisfactoriamente la {lesson.lessonTitle}.\nTu ambiente y vista de manejo han sido calibrados de manera óptima.";
             }
+
+            SetFarCasting(true);
         }
     }
 }

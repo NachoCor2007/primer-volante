@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Lesson01_Step01_SeatCalibration
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: Ajuste de Asiento y Postura
-  instructionText: "Ajusta la altura y distancia de tu asiento usando los sliders del HUD hasta tener una visi\xF3n c\xF3moda del camino, el tablero y los espejos retrovisores.\nSi tu posici\xF3n inicial ya es \xF3ptima, presiona 'Confirmar Posici\xF3n'."
+  instructionText: "Para ajustar tu postura, altura y distancia del asiento, presiona el bot\xF3n Menu en tu control izquierdo (o tecla Escape) para abrir el men\xFA de calibraci\xF3n.\n\nUna vez ajustado a tu comodidad, o si la posici\xF3n inicial ya es \xF3ptima, apunta con el rayo y presiona 'Continuar'."
   completionMode: 0
   allowedControls: 1
   highlightTargetName: 

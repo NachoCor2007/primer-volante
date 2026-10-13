@@ -6,6 +6,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnityEngine.XR.Interaction.Toolkit.Interactors;
 using UnityEngine.XR.Interaction.Toolkit.UI;
 using PrimerVolante.Lessons;
 using PrimerVolante.VR;
@@ -75,19 +76,16 @@ namespace PrimerVolante.Testing.Editor
             }
             EditorUtility.SetDirty(highlighter);
 
-            DriverSeatFollower seatFollower = UnityEngine.Object.FindAnyObjectByType<DriverSeatFollower>();
-            if (seatFollower == null)
-            {
-                Debug.LogWarning("[Lesson01SceneSetup] ⚠️ No se encontró DriverSeatFollower en la escena.");
-            }
+            // 6. Asegurar InGameMenu y EventSystem con XRUIInputModule en la escena
+            InGameMenuSetup.EnsureInGameMenuInActiveScene();
 
-            // 6. Configurar o crear el LessonHUDPanel sobre el volante
-            LessonHUDPanel hudPanel = SetupLessonHUD(car08, seatFollower);
+            // 7. Configurar o crear el LessonHUDPanel sobre el volante
+            LessonHUDPanel hudPanel = SetupLessonHUD(car08);
 
-            // 7. Configurar el LessonManager en la escena
+            // 8. Configurar el LessonManager en la escena
             SetupLessonManager(scene, car08, lessonData, lockManager, highlighter, hudPanel);
 
-            // 8. Guardar escena y assets
+            // 9. Guardar escena y assets
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             AssetDatabase.SaveAssets();
@@ -182,7 +180,7 @@ namespace PrimerVolante.Testing.Editor
             // Paso 1: Asiento y Postura
             LessonStepSO step1 = CreateOrUpdateStep("Lesson01_Step01_SeatCalibration",
                 "Ajuste de Asiento y Postura",
-                "Ajusta la altura y distancia de tu asiento usando los sliders del HUD hasta tener una visión cómoda del camino, el tablero y los espejos retrovisores.\nSi tu posición inicial ya es óptima, presiona 'Confirmar Posición'.",
+                "Para ajustar tu postura, altura y distancia del asiento, presiona el botón Menu en tu control izquierdo (o tecla Escape) para abrir el menú de calibración.\n\nUna vez ajustado a tu comodidad, o si la posición inicial ya es óptima, apunta con el rayo y presiona 'Continuar'.",
                 LessonStepCompletionMode.ManualContinue,
                 CockpitControlFlags.SteeringWheel,
                 "");
@@ -246,7 +244,7 @@ namespace PrimerVolante.Testing.Editor
             return null;
         }
 
-        private static LessonHUDPanel SetupLessonHUD(GameObject car08, DriverSeatFollower seatFollower)
+        private static LessonHUDPanel SetupLessonHUD(GameObject car08)
         {
             TMP_FontAsset fontAsset = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FONT_PATH);
 
@@ -268,17 +266,25 @@ namespace PrimerVolante.Testing.Editor
             canvasObj.transform.SetParent(parentBody, false);
 
             Vector3 wheelLocalPos = wheelPivot != null ? wheelPivot.localPosition : new Vector3(-0.298f, 0.944f, 0.13f);
-            // Posicionado directamente arriba del aro del volante (aprox Y: +0.20m por encima del centro, +0.08m adelantado en Z)
+            // Posicionado directamente arriba del aro del volante (aprox Y: +0.22m por encima del centro, +0.08m adelantado en Z)
             canvasObj.transform.localPosition = new Vector3(wheelLocalPos.x, wheelLocalPos.y + 0.22f, wheelLocalPos.z + 0.08f);
             // Ligera inclinación hacia la vista del conductor
             canvasObj.transform.localRotation = Quaternion.Euler(15f, 0f, 0f);
             canvasObj.transform.localScale = Vector3.one * 0.00075f;
 
             RectTransform canvasRect = canvasObj.AddComponent<RectTransform>();
-            canvasRect.sizeDelta = new Vector2(620f, 380f);
+            canvasRect.sizeDelta = new Vector2(600f, 260f);
 
             Canvas canvas = canvasObj.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.WorldSpace;
+
+            GameObject xrOriginObj = GameObject.Find("XR Origin (XR Rig)");
+            Transform headTransform = FindHeadTransform(xrOriginObj);
+            Camera headCam = headTransform != null ? headTransform.GetComponent<Camera>() : Camera.main;
+            if (headCam != null)
+            {
+                canvas.worldCamera = headCam;
+            }
 
             CanvasScaler scaler = canvasObj.AddComponent<CanvasScaler>();
             scaler.dynamicPixelsPerUnit = 10f;
@@ -323,49 +329,25 @@ namespace PrimerVolante.Testing.Editor
             // Título de la lección
             TextMeshProUGUI titleText = CreateText("LessonTitle", stepContent.transform, fontAsset,
                 "Lección 1: Calibración del Ambiente de Manejo", 22f, FontStyles.Bold,
-                new Vector2(0f, -28f), new Vector2(580f, 32f), new Color(0.35f, 0.75f, 1f, 1f));
+                new Vector2(0f, -24f), new Vector2(560f, 30f), new Color(0.35f, 0.75f, 1f, 1f));
 
             // Indicador de progreso del paso
             TextMeshProUGUI progressText = CreateText("StepProgress", stepContent.transform, fontAsset,
-                "Paso 1 de 3: Ajuste de Asiento y Postura", 18f, FontStyles.Normal,
-                new Vector2(0f, -60f), new Vector2(580f, 26f), new Color(0.85f, 0.85f, 0.90f, 1f));
+                "Paso 1 de 3: Ajuste de Asiento y Postura", 17f, FontStyles.Normal,
+                new Vector2(0f, -54f), new Vector2(560f, 24f), new Color(0.85f, 0.85f, 0.90f, 1f));
 
             // Instrucción detallada
             TextMeshProUGUI instructionText = CreateText("InstructionText", stepContent.transform, fontAsset,
-                "Ajusta tu asiento hasta tener una visión cómoda del tablero y los espejos retrovisores.\nSi tu posición actual ya es óptima, presiona 'Confirmar Posición'.",
-                16f, FontStyles.Normal, new Vector2(0f, -108f), new Vector2(560f, 60f), Color.white);
+                "Para ajustar tu postura, altura y distancia del asiento, presiona el botón Menu en tu control izquierdo (o tecla Escape) para abrir el menú de calibración.\n\nUna vez ajustado a tu comodidad, o si la posición inicial ya es óptima, apunta con el rayo y presiona 'Continuar'.",
+                15f, FontStyles.Normal, new Vector2(0f, -118f), new Vector2(560f, 85f), Color.white);
             instructionText.textWrappingMode = TextWrappingModes.Normal;
 
-            // 4. Subpanel de Ajuste Rápido de Asiento
-            GameObject seatPanel = new GameObject("SeatAdjustmentPanel");
-            seatPanel.transform.SetParent(stepContent.transform, false);
-            RectTransform spRect = seatPanel.AddComponent<RectTransform>();
-            spRect.anchorMin = new Vector2(0.5f, 1f);
-            spRect.anchorMax = new Vector2(0.5f, 1f);
-            spRect.pivot = new Vector2(0.5f, 1f);
-            spRect.anchoredPosition = new Vector2(0f, -155f);
-            spRect.sizeDelta = new Vector2(560f, 140f);
-
-            // Altura (Y)
-            CreateText("LabelHeight", seatPanel.transform, fontAsset, "Altura del Asiento", 15f, FontStyles.Normal,
-                new Vector2(-150f, -15f), new Vector2(240f, 22f), new Color(0.8f, 0.85f, 0.95f, 1f));
-            Slider heightSlider = CreateSlider("Slider_Height", seatPanel.transform, new Vector2(-150f, -38f), new Vector2(240f, 20f));
-
-            // Distancia / Profundidad (Z)
-            CreateText("LabelDepth", seatPanel.transform, fontAsset, "Distancia Adelante / Atrás", 15f, FontStyles.Normal,
-                new Vector2(150f, -15f), new Vector2(240f, 22f), new Color(0.8f, 0.85f, 0.95f, 1f));
-            Slider depthSlider = CreateSlider("Slider_Depth", seatPanel.transform, new Vector2(150f, -38f), new Vector2(240f, 20f));
-
-            // Botón Reset Asiento
-            Button resetSeatBtn = CreateButton("Button_ResetSeat", seatPanel.transform, fontAsset, "Restablecer Posición Inicial",
-                new Vector2(0f, -85f), new Vector2(300f, 34f), new Color(0.25f, 0.28f, 0.35f, 1f));
-
-            // 5. Botón Continuar / Confirmar Posición
-            Button continueBtn = CreateButton("Button_Continue", stepContent.transform, fontAsset, "Confirmar Posición",
-                new Vector2(0f, -325f), new Vector2(320f, 48f), new Color(0.12f, 0.55f, 0.40f, 1f));
+            // Botón Continuar / Confirmar Posición
+            Button continueBtn = CreateButton("Button_Continue", stepContent.transform, fontAsset, "Continuar",
+                new Vector2(0f, -198f), new Vector2(280f, 46f), new Color(0.12f, 0.55f, 0.40f, 1f));
             TextMeshProUGUI continueBtnText = continueBtn.GetComponentInChildren<TextMeshProUGUI>();
 
-            // 6. Subpanel de Felicitaciones / Fin de Lección (oculto inicialmente)
+            // 4. Subpanel de Felicitaciones / Fin de Lección (oculto inicialmente)
             GameObject completionPanel = new GameObject("CompletionPanel");
             completionPanel.transform.SetParent(canvasObj.transform, false);
             RectTransform cpRect = completionPanel.AddComponent<RectTransform>();
@@ -375,21 +357,30 @@ namespace PrimerVolante.Testing.Editor
             cpRect.offsetMax = Vector2.zero;
 
             TextMeshProUGUI compTitle = CreateText("CompletionTitle", completionPanel.transform, fontAsset,
-                "¡Excelente Trabajo!", 28f, FontStyles.Bold,
-                new Vector2(0f, -70f), new Vector2(560f, 45f), new Color(0.3f, 0.95f, 0.55f, 1f));
+                "¡Excelente Trabajo!", 26f, FontStyles.Bold,
+                new Vector2(0f, -50f), new Vector2(560f, 40f), new Color(0.3f, 0.95f, 0.55f, 1f));
 
             TextMeshProUGUI compDesc = CreateText("CompletionDesc", completionPanel.transform, fontAsset,
                 "Has completado con éxito la Lección 1.\nTu ambiente de manejo ha quedado calibrado correctamente.",
-                18f, FontStyles.Normal,
-                new Vector2(0f, -150f), new Vector2(540f, 80f), Color.white);
+                15f, FontStyles.Normal,
+                new Vector2(0f, -115f), new Vector2(540f, 70f), Color.white);
             compDesc.textWrappingMode = TextWrappingModes.Normal;
 
             Button restartBtn = CreateButton("Button_Restart", completionPanel.transform, fontAsset, "Repetir Lección",
-                new Vector2(0f, -280f), new Vector2(280f, 44f), new Color(0.25f, 0.45f, 0.70f, 1f));
+                new Vector2(0f, -195f), new Vector2(260f, 46f), new Color(0.25f, 0.45f, 0.70f, 1f));
 
             completionPanel.SetActive(false);
 
-            // 7. Cablear referencias en LessonHUDPanel mediante reflexión / serialized fields
+            // 5. Asignar capa UI (Layer 5) a todos los elementos del HUD
+            int uiLayer = LayerMask.NameToLayer("UI") >= 0 ? LayerMask.NameToLayer("UI") : 5;
+            SetLayerRecursively(canvasObj, uiLayer);
+
+            // 6. Detectar NearFarInteractors del jugador
+            NearFarInteractor[] farCastInteractors = xrOriginObj != null
+                ? xrOriginObj.GetComponentsInChildren<NearFarInteractor>(true)
+                : UnityEngine.Object.FindObjectsByType<NearFarInteractor>(FindObjectsInactive.Include);
+
+            // 7. Cablear referencias en LessonHUDPanel mediante SerializedObject
             var so = new SerializedObject(hudPanel);
             so.FindProperty("m_LessonTitleText").objectReferenceValue = titleText;
             so.FindProperty("m_StepProgressText").objectReferenceValue = progressText;
@@ -397,16 +388,22 @@ namespace PrimerVolante.Testing.Editor
             so.FindProperty("m_StepContentPanel").objectReferenceValue = stepContent;
             so.FindProperty("m_ContinueButton").objectReferenceValue = continueBtn;
             so.FindProperty("m_ContinueButtonText").objectReferenceValue = continueBtnText;
-            so.FindProperty("m_SeatAdjustmentPanel").objectReferenceValue = seatPanel;
-            so.FindProperty("m_DriverSeatFollower").objectReferenceValue = seatFollower;
-            so.FindProperty("m_HeightSlider").objectReferenceValue = heightSlider;
-            so.FindProperty("m_DepthSlider").objectReferenceValue = depthSlider;
-            so.FindProperty("m_ResetSeatButton").objectReferenceValue = resetSeatBtn;
             so.FindProperty("m_CompletionPanel").objectReferenceValue = completionPanel;
             so.FindProperty("m_CompletionTitleText").objectReferenceValue = compTitle;
             so.FindProperty("m_CompletionDescriptionText").objectReferenceValue = compDesc;
             so.FindProperty("m_RestartButton").objectReferenceValue = restartBtn;
-            so.ApplyModifiedPropertiesWithoutUndo();
+
+            SerializedProperty farCastProp = so.FindProperty("m_FarCastInteractors");
+            if (farCastProp != null)
+            {
+                farCastProp.arraySize = farCastInteractors.Length;
+                for (int i = 0; i < farCastInteractors.Length; i++)
+                {
+                    farCastProp.GetArrayElementAtIndex(i).objectReferenceValue = farCastInteractors[i];
+                }
+            }
+
+            so.ApplyModifiedProperties();
 
             EditorUtility.SetDirty(hudPanel);
             return hudPanel;
@@ -452,6 +449,31 @@ namespace PrimerVolante.Testing.Editor
 
             EditorUtility.SetDirty(manager);
             EditorUtility.SetDirty(hudPanel);
+        }
+
+        private static Transform FindHeadTransform(GameObject xrOriginObj)
+        {
+            if (xrOriginObj == null) return null;
+
+            Transform cameraOffset = xrOriginObj.transform.Find("Camera Offset");
+            if (cameraOffset != null)
+            {
+                Transform mainCamera = cameraOffset.Find("Main Camera");
+                if (mainCamera != null) return mainCamera;
+            }
+
+            Camera cam = xrOriginObj.GetComponentInChildren<Camera>();
+            return cam != null ? cam.transform : null;
+        }
+
+        private static void SetLayerRecursively(GameObject obj, int layer)
+        {
+            if (obj == null) return;
+            obj.layer = layer;
+            foreach (Transform child in obj.transform)
+            {
+                if (child != null) SetLayerRecursively(child.gameObject, layer);
+            }
         }
 
         // =========================================================================
@@ -526,73 +548,6 @@ namespace PrimerVolante.Testing.Editor
             tmp.color = Color.white;
 
             return btn;
-        }
-
-        private static Slider CreateSlider(string name, Transform parent, Vector2 anchoredPosition, Vector2 sizeDelta)
-        {
-            GameObject sliderObj = new GameObject(name);
-            sliderObj.transform.SetParent(parent, false);
-
-            RectTransform rect = sliderObj.AddComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0.5f, 1f);
-            rect.anchorMax = new Vector2(0.5f, 1f);
-            rect.pivot = new Vector2(0.5f, 1f);
-            rect.anchoredPosition = anchoredPosition;
-            rect.sizeDelta = sizeDelta;
-
-            // Background
-            GameObject bg = new GameObject("Background");
-            bg.transform.SetParent(sliderObj.transform, false);
-            RectTransform bgRect = bg.AddComponent<RectTransform>();
-            bgRect.anchorMin = Vector2.zero;
-            bgRect.anchorMax = Vector2.one;
-            bgRect.offsetMin = Vector2.zero;
-            bgRect.offsetMax = Vector2.zero;
-            Image bgImg = bg.AddComponent<Image>();
-            bgImg.color = new Color(0.18f, 0.20f, 0.25f, 1f);
-
-            // Fill Area
-            GameObject fillArea = new GameObject("Fill Area");
-            fillArea.transform.SetParent(sliderObj.transform, false);
-            RectTransform fillAreaRect = fillArea.AddComponent<RectTransform>();
-            fillAreaRect.anchorMin = new Vector2(0f, 0.25f);
-            fillAreaRect.anchorMax = new Vector2(1f, 0.75f);
-            fillAreaRect.offsetMin = new Vector2(5f, 0f);
-            fillAreaRect.offsetMax = new Vector2(-5f, 0f);
-
-            GameObject fill = new GameObject("Fill");
-            fill.transform.SetParent(fillArea.transform, false);
-            RectTransform fillRect = fill.AddComponent<RectTransform>();
-            fillRect.anchorMin = Vector2.zero;
-            fillRect.anchorMax = new Vector2(0.5f, 1f);
-            fillRect.offsetMin = Vector2.zero;
-            fillRect.offsetMax = Vector2.zero;
-            Image fillImg = fill.AddComponent<Image>();
-            fillImg.color = new Color(0.28f, 0.65f, 0.95f, 1f);
-
-            // Handle Slide Area
-            GameObject handleArea = new GameObject("Handle Slide Area");
-            handleArea.transform.SetParent(sliderObj.transform, false);
-            RectTransform handleAreaRect = handleArea.AddComponent<RectTransform>();
-            handleAreaRect.anchorMin = Vector2.zero;
-            handleAreaRect.anchorMax = Vector2.one;
-            handleAreaRect.offsetMin = new Vector2(10f, 0f);
-            handleAreaRect.offsetMax = new Vector2(-10f, 0f);
-
-            GameObject handle = new GameObject("Handle");
-            handle.transform.SetParent(handleArea.transform, false);
-            RectTransform handleRect = handle.AddComponent<RectTransform>();
-            handleRect.sizeDelta = new Vector2(20f, 20f);
-            Image handleImg = handle.AddComponent<Image>();
-            handleImg.color = Color.white;
-
-            Slider slider = sliderObj.AddComponent<Slider>();
-            slider.fillRect = fillRect;
-            slider.handleRect = handleRect;
-            slider.targetGraphic = handleImg;
-            slider.direction = Slider.Direction.LeftToRight;
-
-            return slider;
         }
     }
 }

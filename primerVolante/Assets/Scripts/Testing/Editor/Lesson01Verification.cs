@@ -4,9 +4,11 @@ using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
+using UnityEngine.XR.Interaction.Toolkit.Interactors;
 using UnityEngine.XR.Interaction.Toolkit.UI;
 using PrimerVolante.Lessons;
 using PrimerVolante.VR;
@@ -14,10 +16,9 @@ using PrimerVolante.VR;
 namespace PrimerVolante.Testing.Editor
 {
     /// <summary>
-    /// Suite de verificación automatizada en Editor para la arquitectura de lecciones
-    /// y la Lección 1 ("Calibración del ambiente de manejo") - TASK-204 / Issue #19.
-    /// Valida existencia de escena y asset, bloqueo selectivo de mandos, interactividad
-    /// del volante, montaje del HUD sobre el volante y ausencia de APIs obsoletas de Unity.
+    /// Suite de verificación automatizada para la arquitectura de lecciones y Lección 1 (TASK-204 / Issue #19).
+    /// Valida idempotencia, bloqueo selectivo de controles, posicionamiento del HUD, raycasting VR,
+    /// disponibilidad de InGameMenuController y conformidad estricta con las reglas de AGENTS.md (cero APIs obsoletas).
     /// </summary>
     public static class Lesson01Verification
     {
@@ -25,7 +26,7 @@ namespace PrimerVolante.Testing.Editor
         public static bool RunVerification()
         {
             Debug.Log("=================================================================");
-            Debug.Log("🔍 [Lesson01Verification] Iniciando Verificación de Lección 1...");
+            Debug.Log("🧪 [Lesson01Verification] Iniciando suite de pruebas de Lección 1...");
             Debug.Log("=================================================================");
 
             int totalTests = 0;
@@ -90,10 +91,10 @@ namespace PrimerVolante.Testing.Editor
             bool dataAssetExists = AssetDatabase.LoadAssetAtPath<LessonDefinitionSO>(Lesson01SceneSetup.LESSON_DATA_PATH) != null ||
                                    File.Exists(Lesson01SceneSetup.LESSON_DATA_PATH) ||
                                    File.Exists(Path.Combine(Application.dataPath, "../", Lesson01SceneSetup.LESSON_DATA_PATH));
-            Assert(dataAssetExists, $"El asset de datos debe existir en {Lesson01SceneSetup.LESSON_DATA_PATH}", ref total, ref passed);
+            Assert(dataAssetExists, $"El asset de definición debe existir en {Lesson01SceneSetup.LESSON_DATA_PATH}", ref total, ref passed);
 
             LessonDefinitionSO lesson = AssetDatabase.LoadAssetAtPath<LessonDefinitionSO>(Lesson01SceneSetup.LESSON_DATA_PATH);
-            Assert(lesson != null, "LessonData_01.asset debe cargarse como LessonDefinitionSO válido", ref total, ref passed);
+            Assert(lesson != null, "El asset LessonDefinitionSO debe cargarse correctamente", ref total, ref passed);
 
             if (lesson != null)
             {
@@ -114,6 +115,12 @@ namespace PrimerVolante.Testing.Editor
                             Assert(!string.IsNullOrEmpty(step.instructionText), $"El paso {i + 1} debe tener instructionText", ref total, ref passed);
                             Assert(step.allowedControls == CockpitControlFlags.SteeringWheel,
                                 $"En la Lección 1, el paso {i + 1} solo debe permitir SteeringWheel (tiene: {step.allowedControls})", ref total, ref passed);
+
+                            if (i == 0)
+                            {
+                                bool mentionsMenu = step.instructionText.Contains("Menu") || step.instructionText.Contains("Escape");
+                                Assert(mentionsMenu, "El Paso 1 debe instruir al conductor a usar el botón Menu / tecla Escape para calibrar", ref total, ref passed);
+                            }
                         }
                     }
                 }
@@ -126,7 +133,7 @@ namespace PrimerVolante.Testing.Editor
 
         private static void VerifySceneAndComponents(ref int total, ref int passed)
         {
-            Debug.Log("--- 2. Verificación de Escena, Mandos y HUD ---");
+            Debug.Log("--- 2. Verificación de Escena, Mandos, HUD y InGameMenu ---");
 
             Scene scene = EditorSceneManager.OpenScene(Lesson01SceneSetup.TARGET_SCENE_PATH, OpenSceneMode.Single);
             Assert(scene.IsValid() && scene.isLoaded, $"La escena {Lesson01SceneSetup.TARGET_SCENE_PATH} debe cargarse correctamente", ref total, ref passed);
@@ -156,14 +163,14 @@ namespace PrimerVolante.Testing.Editor
                 // Probar bloqueo selectivo de la Lección 1
                 lockManager.ApplyAllowedControls(CockpitControlFlags.SteeringWheel);
 
-                // El volante debe permanecer interactivo
+                // El volante DEBE permanecer libre e interactivo
                 XRBaseInteractable wheelInteractable = lockManager.GetInteractable(CockpitControlFlags.SteeringWheel);
                 Assert(wheelInteractable != null && wheelInteractable.interactionLayers.value != 0,
-                    "VRSteeringWheel NO debe estar bloqueado (interactionLayers != 0)", ref total, ref passed);
+                    "VRSteeringWheel DEBE permanecer interactivo en la Lección 1 (interactionLayers != 0)", ref total, ref passed);
 
-                // Todos los demás mandos deben estar bloqueados (interactionLayers == 0)
-                XRBaseInteractable gearInteractable = lockManager.GetInteractable(CockpitControlFlags.GearShifter);
-                Assert(gearInteractable != null && gearInteractable.interactionLayers.value == 0,
+                // Todos los demás controles DEBEN estar bloqueados (interactionLayers == 0)
+                XRBaseInteractable shifterInteractable = lockManager.GetInteractable(CockpitControlFlags.GearShifter);
+                Assert(shifterInteractable != null && shifterInteractable.interactionLayers.value == 0,
                     "VRGearShifter DEBE estar bloqueado en la Lección 1 (interactionLayers == 0)", ref total, ref passed);
 
                 XRBaseInteractable handbrakeInteractable = lockManager.GetInteractable(CockpitControlFlags.Handbrake);
@@ -203,12 +210,41 @@ namespace PrimerVolante.Testing.Editor
                 TrackedDeviceGraphicRaycaster tdgr = hudPanel.GetComponent<TrackedDeviceGraphicRaycaster>();
                 Assert(tdgr != null, "El HUD debe incluir TrackedDeviceGraphicRaycaster para interacción VR", ref total, ref passed);
 
+                Assert(hudPanel.gameObject.layer == 5, "El Canvas del HUD debe estar en la capa UI (Layer 5)", ref total, ref passed);
+
                 Assert(hudPanel.LessonTitleText != null, "hudPanel.LessonTitleText debe estar asignado", ref total, ref passed);
                 Assert(hudPanel.StepProgressText != null, "hudPanel.StepProgressText debe estar asignado", ref total, ref passed);
                 Assert(hudPanel.InstructionText != null, "hudPanel.InstructionText debe estar asignado", ref total, ref passed);
                 Assert(hudPanel.ContinueButton != null, "hudPanel.ContinueButton debe estar asignado", ref total, ref passed);
-                Assert(hudPanel.SeatAdjustmentPanel != null, "hudPanel.SeatAdjustmentPanel debe estar asignado", ref total, ref passed);
                 Assert(hudPanel.CompletionPanel != null, "hudPanel.CompletionPanel debe estar asignado", ref total, ref passed);
+
+                // REGLA CLAVE 1: NO debe haber panel de ajuste ni sliders embebidos en el HUD
+                bool hasSeatPanel = hudPanel.transform.Find("StepContentPanel/SeatAdjustmentPanel") != null;
+                Assert(!hasSeatPanel, "LessonHUDPanel NO debe poseer subpanel de sliders de asiento embebidos", ref total, ref passed);
+                Slider[] embeddedSliders = hudPanel.GetComponentsInChildren<Slider>(true);
+                Assert(embeddedSliders.Length == 0, $"LessonHUDPanel NO debe contener sliders embebidos (encontrados: {embeddedSliders.Length})", ref total, ref passed);
+
+                // REGLA CLAVE 2: NearFarInteractors y WorldCamera asignados para Raycasting
+                Assert(hudPanel.FarCastInteractors != null && hudPanel.FarCastInteractors.Length > 0,
+                    $"LessonHUDPanel debe tener NearFarInteractors asignados para far-casting ({hudPanel.FarCastInteractors?.Length ?? 0} encontrados)",
+                    ref total, ref passed);
+                Assert(hudPanel.WorldCamera != null, "LessonHUDPanel debe tener worldCamera asignada", ref total, ref passed);
+
+                // Validar que SetFarCasting active enableFarCasting en los interactors
+                hudPanel.SetFarCasting(true);
+                bool anyFarCastingEnabled = false;
+                if (hudPanel.FarCastInteractors != null)
+                {
+                    foreach (var interactor in hudPanel.FarCastInteractors)
+                    {
+                        if (interactor != null && interactor.enableFarCasting)
+                        {
+                            anyFarCastingEnabled = true;
+                            break;
+                        }
+                    }
+                }
+                Assert(anyFarCastingEnabled, "SetFarCasting(true) debe habilitar enableFarCasting en los interactores de VR", ref total, ref passed);
 
                 // Comprobar posición local por encima del volante
                 VRSteeringWheel wheel = car08.GetComponentInChildren<VRSteeringWheel>(true);
@@ -220,6 +256,27 @@ namespace PrimerVolante.Testing.Editor
                         $"La posición local Y del HUD ({hudLocalY:F3}) debe estar por encima del centro del volante ({wheelLocalY:F3})",
                         ref total, ref passed);
                 }
+            }
+
+            // InGameMenuController y InGameMenu_Canvas
+            InGameMenuController menuController = UnityEngine.Object.FindAnyObjectByType<InGameMenuController>();
+            Assert(menuController != null, "InGameMenuController debe existir en la escena de la lección", ref total, ref passed);
+
+            GameObject menuCanvas = GameObject.Find("InGameMenu_Canvas");
+            Assert(menuCanvas != null, "InGameMenu_Canvas debe existir en la escena de la lección", ref total, ref passed);
+            if (menuCanvas != null)
+            {
+                TrackedDeviceGraphicRaycaster tdgrMenu = menuCanvas.GetComponent<TrackedDeviceGraphicRaycaster>();
+                Assert(tdgrMenu != null, "InGameMenu_Canvas debe incluir TrackedDeviceGraphicRaycaster para interacción VR", ref total, ref passed);
+            }
+
+            // EventSystem con XRUIInputModule
+            EventSystem eventSystem = UnityEngine.Object.FindAnyObjectByType<EventSystem>();
+            Assert(eventSystem != null, "EventSystem debe existir en la escena", ref total, ref passed);
+            if (eventSystem != null)
+            {
+                XRUIInputModule xrModule = eventSystem.GetComponent<XRUIInputModule>();
+                Assert(xrModule != null, "EventSystem debe contar con XRUIInputModule configurado", ref total, ref passed);
             }
 
             // LessonManager
