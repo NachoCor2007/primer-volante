@@ -142,13 +142,10 @@ namespace PrimerVolante.Lessons
             // 2. Gestionar resaltado visual de interactuable objetivo
             if (m_Highlighter != null)
             {
+                m_Highlighter.ClearHighlight();
                 if (!string.IsNullOrWhiteSpace(step.highlightTargetName))
                 {
                     m_Highlighter.HighlightByName(step.highlightTargetName, m_VehicleRoot);
-                }
-                else
-                {
-                    m_Highlighter.ClearHighlight();
                 }
             }
 

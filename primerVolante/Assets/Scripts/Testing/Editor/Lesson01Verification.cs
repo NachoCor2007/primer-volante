@@ -22,9 +22,12 @@ namespace PrimerVolante.Testing.Editor
     /// </summary>
     public static class Lesson01Verification
     {
+        public static readonly System.Collections.Generic.List<string> LastFailures = new System.Collections.Generic.List<string>();
+
         [MenuItem("Tools/Primer Volante/Lessons/Verify Lesson 1")]
         public static bool RunVerification()
         {
+            LastFailures.Clear();
             Debug.Log("=================================================================");
             Debug.Log("🧪 [Lesson01Verification] Iniciando suite de pruebas de Lección 1...");
             Debug.Log("=================================================================");
@@ -118,8 +121,23 @@ namespace PrimerVolante.Testing.Editor
 
                             if (i == 0)
                             {
-                                bool mentionsMenu = step.instructionText.Contains("Menu") || step.instructionText.Contains("Escape");
-                                Assert(mentionsMenu, "El Paso 1 debe instruir al conductor a usar el botón Menu / tecla Escape para calibrar", ref total, ref passed);
+                                bool mentionsMenu = step.instructionText.Contains("Menu");
+                                bool mentionsContinue = step.instructionText.Contains("Continuar");
+                                Assert(mentionsMenu && mentionsContinue, "El Paso 1 debe instruir al conductor a usar el botón Menu y presionar 'Continuar'", ref total, ref passed);
+                            }
+                            else if (i == 1)
+                            {
+                                bool mentionsGrip = step.instructionText.Contains("grip");
+                                bool mentionsWheel = step.instructionText.Contains("volante");
+                                Assert(mentionsGrip && mentionsWheel, "El Paso 2 debe instruir a tomar el volante presionando el grip", ref total, ref passed);
+                                Assert(step.highlightTargetName == "SteeringWheel_Pivot", "El Paso 2 debe resaltar 'SteeringWheel_Pivot'", ref total, ref passed);
+                            }
+                            else if (i == 2)
+                            {
+                                bool mentionsMirrors = step.instructionText.Contains("espejos retrovisores");
+                                bool mentionsFinalize = step.instructionText.Contains("Finalizar Calibración");
+                                Assert(mentionsMirrors && mentionsFinalize, "El Paso 3 debe instruir a verificar espejos retrovisores y presionar 'Finalizar Calibración'", ref total, ref passed);
+                                Assert(step.highlightTargetName == "VRRearviewMirror", "El Paso 3 debe tener highlightTargetName 'VRRearviewMirror'", ref total, ref passed);
                             }
                         }
                     }
@@ -135,7 +153,10 @@ namespace PrimerVolante.Testing.Editor
         {
             Debug.Log("--- 2. Verificación de Escena, Mandos, HUD y InGameMenu ---");
 
-            Scene scene = EditorSceneManager.OpenScene(Lesson01SceneSetup.TARGET_SCENE_PATH, OpenSceneMode.Single);
+            Scene currentScene = EditorSceneManager.GetActiveScene();
+            Scene scene = (currentScene.IsValid() && currentScene.path == Lesson01SceneSetup.TARGET_SCENE_PATH)
+                ? currentScene
+                : EditorSceneManager.OpenScene(Lesson01SceneSetup.TARGET_SCENE_PATH, OpenSceneMode.Single);
             Assert(scene.IsValid() && scene.isLoaded, $"La escena {Lesson01SceneSetup.TARGET_SCENE_PATH} debe cargarse correctamente", ref total, ref passed);
 
             // Vehículo
@@ -289,6 +310,60 @@ namespace PrimerVolante.Testing.Editor
                 Assert(lessonManager.Highlighter != null, "LessonManager.Highlighter debe estar asignado", ref total, ref passed);
                 Assert(lessonManager.HUDPanel != null, "LessonManager.HUDPanel debe estar asignado", ref total, ref passed);
             }
+
+            // Ensamble de retrovisores en Car08 (Paso 3)
+            VRRearviewMirror mirrorComponent = car08.GetComponentInChildren<VRRearviewMirror>(true);
+            Assert(mirrorComponent != null, "VRRearviewMirror debe existir en los componentes hijos de Car08", ref total, ref passed);
+
+            Transform rearviewMount = null;
+            Transform rearviewCasing = null;
+            foreach (Transform t in car08.GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name == "RearviewMirror_Mount") rearviewMount = t;
+                if (t.name == "RearviewMirror_Casing") rearviewCasing = t;
+            }
+            Assert(rearviewMount != null, "RearviewMirror_Mount debe existir en Car08", ref total, ref passed);
+            Assert(rearviewCasing != null, "RearviewMirror_Casing debe existir en Car08", ref total, ref passed);
+
+            Transform casingMesh = rearviewCasing != null ? rearviewCasing.Find("Casing_Mesh") : null;
+            Assert(casingMesh != null, "Casing_Mesh debe existir como hijo de RearviewMirror_Casing", ref total, ref passed);
+            if (casingMesh != null)
+            {
+                Renderer casingRenderer = casingMesh.GetComponent<Renderer>();
+                Assert(casingRenderer != null, "Casing_Mesh debe tener un componente Renderer para el brillo pulsante", ref total, ref passed);
+            }
+
+            // Verificación del resaltado visual y su transición entre pasos
+            InteractableHighlighter highlighter = car08.GetComponent<InteractableHighlighter>();
+            Assert(highlighter != null, "InteractableHighlighter debe existir en Car08", ref total, ref passed);
+
+            if (lessonManager != null && highlighter != null && lessonManager.ActiveLesson != null)
+            {
+                lessonManager.StartLesson(lessonManager.ActiveLesson);
+
+                // Paso 1: Sin resaltado visual
+                Assert(!highlighter.IsHighlighting && highlighter.CurrentTarget == null,
+                    "En Paso 1 no debe haber objetivo resaltado", ref total, ref passed);
+
+                // Paso 2: Volante resaltado
+                lessonManager.GoToStep(1);
+                Assert(highlighter.IsHighlighting, "En Paso 2 el resaltado debe estar activo", ref total, ref passed);
+                Assert(highlighter.CurrentTarget != null && highlighter.CurrentTarget.name == "SteeringWheel_Pivot",
+                    $"En Paso 2 el objetivo resaltado debe ser SteeringWheel_Pivot (actual: {highlighter.CurrentTarget?.name})", ref total, ref passed);
+
+                // Paso 3: Retrovisor resaltado y volante apagado
+                lessonManager.GoToStep(2);
+                Assert(highlighter.IsHighlighting, "En Paso 3 el resaltado debe estar activo", ref total, ref passed);
+                Assert(highlighter.CurrentTarget != null && highlighter.CurrentTarget.name != "SteeringWheel_Pivot",
+                    "En Paso 3 el volante ya NO debe permanecer resaltado", ref total, ref passed);
+                Assert(highlighter.CurrentTarget != null && highlighter.CurrentTarget.name == "RearviewMirror_Casing",
+                    $"En Paso 3 el objetivo resaltado debe ser RearviewMirror_Casing (actual: {highlighter.CurrentTarget?.name})", ref total, ref passed);
+
+                // Limpieza final
+                highlighter.ClearHighlight();
+                Assert(!highlighter.IsHighlighting && highlighter.CurrentTarget == null,
+                    "ClearHighlight() debe apagar el resaltado y limpiar CurrentTarget", ref total, ref passed);
+            }
         }
 
         // =========================================================================
@@ -344,6 +419,7 @@ namespace PrimerVolante.Testing.Editor
             }
             else
             {
+                LastFailures.Add(testName);
                 Debug.LogError($"  ❌ [FAIL] {testName}");
             }
         }

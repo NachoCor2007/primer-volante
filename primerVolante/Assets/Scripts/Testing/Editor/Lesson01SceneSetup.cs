@@ -61,6 +61,14 @@ namespace PrimerVolante.Testing.Editor
                 return;
             }
 
+            // Asegurar que Car08 tenga el ensamble de retrovisores
+            VRRearviewMirror mirror = car08.GetComponentInChildren<VRRearviewMirror>(true);
+            if (mirror == null)
+            {
+                Debug.Log("[Lesson01SceneSetup] 🪞 Ensamblando retrovisores en Car08 con VehicleMirrorSetupEditor...");
+                VehicleMirrorSetupEditor.ConfigureMirrorsOnCar(car08);
+            }
+
             CockpitControlLockManager lockManager = car08.GetComponent<CockpitControlLockManager>();
             if (lockManager == null)
             {
@@ -155,18 +163,29 @@ namespace PrimerVolante.Testing.Editor
                 isNew = true;
             }
 
-            step.stepTitle = title;
-            step.instructionText = instruction;
-            step.completionMode = mode;
-            step.allowedControls = allowedControls;
-            step.highlightTargetName = highlightTarget;
-
             if (isNew)
             {
+                step.stepTitle = title;
+                step.instructionText = instruction;
+                step.completionMode = mode;
+                step.allowedControls = allowedControls;
+                step.highlightTargetName = highlightTarget;
                 AssetDatabase.CreateAsset(step, path);
             }
             else
             {
+                // Preservar textos existentes actualizados en commit 80c0d1b
+                if (string.IsNullOrEmpty(step.stepTitle))
+                {
+                    step.stepTitle = title;
+                }
+                if (string.IsNullOrEmpty(step.instructionText) || step.instructionText.Contains("con ambas manos"))
+                {
+                    step.instructionText = instruction;
+                }
+                step.completionMode = mode;
+                step.allowedControls = allowedControls;
+                step.highlightTargetName = highlightTarget;
                 EditorUtility.SetDirty(step);
             }
 
@@ -177,26 +196,26 @@ namespace PrimerVolante.Testing.Editor
         {
             EnsureDirectories();
 
-            // Paso 1: Asiento y Postura
+            // Paso 1: Asiento y Postura (commit 80c0d1b)
             LessonStepSO step1 = CreateOrUpdateStep("Lesson01_Step01_SeatCalibration",
                 "Ajuste de Asiento y Postura",
-                "Para ajustar tu postura, altura y distancia del asiento, presiona el botón Menu en tu control izquierdo (o tecla Escape) para abrir el menú de calibración.\n\nUna vez ajustado a tu comodidad, o si la posición inicial ya es óptima, apunta con el rayo y presiona 'Continuar'.",
+                "Para ajustar tu postura, altura y distancia del asiento, presiona el botón Menu en tu control izquierdo para abrir el menú de calibración.\nUna vez ajustado a tu comodidad, o si la posición inicial ya es óptima, apunta con el rayo y presiona 'Continuar'.",
                 LessonStepCompletionMode.ManualContinue,
                 CockpitControlFlags.SteeringWheel,
                 "");
 
-            // Paso 2: Volante
+            // Paso 2: Volante (commit 80c0d1b)
             LessonStepSO step2 = CreateOrUpdateStep("Lesson01_Step02_SteeringWheelCheck",
                 "Comprobación del Volante",
-                "Toma el volante con ambas manos y gíralo suavemente hacia ambos lados para familiarizarte con su recorrido y verificar que tus brazos tengan la flexión adecuada.\nPresiona 'Continuar' cuando estés listo.",
+                "Toma el volante presionando el grip de cualquier controlador y gíralo suavemente hacia ambos lados para familiarizarte con su recorrido y verificar que tus brazos tengan la flexión adecuada.\nPresiona 'Continuar' cuando estés listo.",
                 LessonStepCompletionMode.ManualContinue,
                 CockpitControlFlags.SteeringWheel,
                 "SteeringWheel_Pivot");
 
-            // Paso 3: Espejos
+            // Paso 3: Espejos (commit 80c0d1b)
             LessonStepSO step3 = CreateOrUpdateStep("Lesson01_Step03_MirrorsCheck",
                 "Visibilidad de Espejos y Entorno",
-                "Verifica la visibilidad de los tres espejos retrovisores (central y laterales). Debes observar el tráfico posterior sin desviar en exceso la cabeza.\nPresiona 'Finalizar Calibración' para concluir la lección.",
+                "Verifica la visibilidad de los tres espejos retrovisores (central y laterales). Debes observar el tráfico posterior sin desviar en exceso la cabeza. \nPresiona 'Finalizar Calibración' para concluir la lección.",
                 LessonStepCompletionMode.ManualContinue,
                 CockpitControlFlags.SteeringWheel,
                 "VRRearviewMirror");

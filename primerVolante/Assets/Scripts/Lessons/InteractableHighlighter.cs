@@ -21,6 +21,7 @@ namespace PrimerVolante.Lessons
         private GameObject m_CurrentTarget;
         private readonly List<Renderer> m_TargetRenderers = new List<Renderer>();
         private MaterialPropertyBlock m_PropertyBlock;
+        private MaterialPropertyBlock PropertyBlock => m_PropertyBlock ??= new MaterialPropertyBlock();
         private bool m_IsHighlighting = false;
 
         public bool IsHighlighting => m_IsHighlighting;
@@ -28,7 +29,10 @@ namespace PrimerVolante.Lessons
 
         private void Awake()
         {
-            m_PropertyBlock = new MaterialPropertyBlock();
+            if (m_PropertyBlock == null)
+            {
+                m_PropertyBlock = new MaterialPropertyBlock();
+            }
         }
 
         private void Update()
@@ -44,9 +48,9 @@ namespace PrimerVolante.Lessons
                 Renderer r = m_TargetRenderers[i];
                 if (r == null) continue;
 
-                r.GetPropertyBlock(m_PropertyBlock);
-                m_PropertyBlock.SetColor(EmissionColorPropertyId, pulseColor);
-                r.SetPropertyBlock(m_PropertyBlock);
+                r.GetPropertyBlock(PropertyBlock);
+                PropertyBlock.SetColor(EmissionColorPropertyId, pulseColor);
+                r.SetPropertyBlock(PropertyBlock);
             }
         }
 
@@ -84,13 +88,16 @@ namespace PrimerVolante.Lessons
         }
 
         /// <summary>
-        /// Busca un interactuable por nombre o tag y lo resalta.
+        /// Busca un interactuable por nombre o tipo de componente y lo resalta.
+        /// Garantiza la limpieza previa de cualquier resaltado anterior.
         /// </summary>
         public void HighlightByName(string targetName, Transform searchRoot = null)
         {
+            // Siempre limpiar el resaltado previo al iniciar
+            ClearHighlight();
+
             if (string.IsNullOrWhiteSpace(targetName))
             {
-                ClearHighlight();
                 return;
             }
 
@@ -98,16 +105,48 @@ namespace PrimerVolante.Lessons
 
             if (searchRoot != null)
             {
+                // 1. Búsqueda exacta directa por jerarquía
                 Transform exact = searchRoot.Find(targetName);
                 if (exact != null)
                 {
                     found = exact.gameObject;
                 }
-                else
+
+                // 2. Búsqueda recursiva por nombre de GameObject o Tag en searchRoot
+                if (found == null)
                 {
                     foreach (Transform child in searchRoot.GetComponentsInChildren<Transform>(true))
                     {
-                        if (child.name == targetName || child.CompareTag(targetName))
+                        if (child.name == targetName ||
+                            child.name.Equals(targetName, System.StringComparison.OrdinalIgnoreCase) ||
+                            child.CompareTag(targetName))
+                        {
+                            found = child.gameObject;
+                            break;
+                        }
+                    }
+                }
+
+                // 3. Búsqueda recursiva por tipo de Componente en searchRoot (ej. "VRRearviewMirror")
+                if (found == null)
+                {
+                    foreach (Component comp in searchRoot.GetComponentsInChildren<Component>(true))
+                    {
+                        if (comp != null && (comp.GetType().Name == targetName ||
+                                             comp.GetType().Name.Equals(targetName, System.StringComparison.OrdinalIgnoreCase)))
+                        {
+                            found = comp.gameObject;
+                            break;
+                        }
+                    }
+                }
+
+                // 4. Aliases comunes de cabina si no se encontró directamente
+                if (found == null && targetName.IndexOf("mirror", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    foreach (Transform child in searchRoot.GetComponentsInChildren<Transform>(true))
+                    {
+                        if (child.name == "RearviewMirror_Casing" || child.name == "RearviewMirror_Mount")
                         {
                             found = child.gameObject;
                             break;
@@ -116,9 +155,42 @@ namespace PrimerVolante.Lessons
                 }
             }
 
+            // 5. Búsqueda global en escena como fallback
             if (found == null)
             {
                 found = GameObject.Find(targetName);
+            }
+
+            if (found == null)
+            {
+                var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+                if (activeScene.IsValid() && activeScene.isLoaded)
+                {
+                    foreach (GameObject root in activeScene.GetRootGameObjects())
+                    {
+                        foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+                        {
+                            if (child.name == targetName ||
+                                child.name.Equals(targetName, System.StringComparison.OrdinalIgnoreCase))
+                            {
+                                found = child.gameObject;
+                                break;
+                            }
+                        }
+                        if (found != null) break;
+
+                        foreach (Component comp in root.GetComponentsInChildren<Component>(true))
+                        {
+                            if (comp != null && (comp.GetType().Name == targetName ||
+                                                 comp.GetType().Name.Equals(targetName, System.StringComparison.OrdinalIgnoreCase)))
+                            {
+                                found = comp.gameObject;
+                                break;
+                            }
+                        }
+                        if (found != null) break;
+                    }
+                }
             }
 
             if (found != null)
@@ -127,7 +199,8 @@ namespace PrimerVolante.Lessons
             }
             else
             {
-                Debug.LogWarning($"[InteractableHighlighter] No se encontró el objeto '{targetName}' para resaltar.");
+                ClearHighlight();
+                Debug.LogWarning($"[InteractableHighlighter] No se encontró el objeto o componente '{targetName}' para resaltar.");
             }
         }
 
@@ -143,9 +216,9 @@ namespace PrimerVolante.Lessons
                     Renderer r = m_TargetRenderers[i];
                     if (r == null) continue;
 
-                    r.GetPropertyBlock(m_PropertyBlock);
-                    m_PropertyBlock.SetColor(EmissionColorPropertyId, Color.black);
-                    r.SetPropertyBlock(m_PropertyBlock);
+                    r.GetPropertyBlock(PropertyBlock);
+                    PropertyBlock.SetColor(EmissionColorPropertyId, Color.black);
+                    r.SetPropertyBlock(PropertyBlock);
                 }
                 m_TargetRenderers.Clear();
             }
