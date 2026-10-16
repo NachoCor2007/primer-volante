@@ -90,7 +90,24 @@ namespace PrimerVolante.VR
 
             if (m_MenuRoot != null)
             {
+                MoveMenuToUILayer();
                 m_MenuRoot.SetActive(false);
+            }
+        }
+
+        /// <summary>
+        /// Pasa toda la jerarquía del menú a la capa "UI". Mientras el menú está abierto, UIOnlyFarCasting
+        /// restringe el raycastMask del rayo a esa capa, y el TrackedDeviceGraphicRaycaster descarta los
+        /// gráficos que estén fuera de la máscara; los menús ya construidos en escenas quedaron en Default.
+        /// </summary>
+        private void MoveMenuToUILayer()
+        {
+            int uiLayer = LayerMask.NameToLayer("UI");
+            if (uiLayer < 0) return;
+
+            foreach (Transform t in m_MenuRoot.GetComponentsInChildren<Transform>(true))
+            {
+                t.gameObject.layer = uiLayer;
             }
         }
 
