@@ -237,6 +237,16 @@ namespace PrimerVolante.Testing.Editor
             resetButton = CreateButton("Button_Reset", calibrationPanel.transform, fontAsset, "Restablecer", new Vector2(-160f, -340f), new Vector2(260f, 55f));
             backButton = CreateButton("Button_Back", calibrationPanel.transform, fontAsset, "Volver", new Vector2(160f, -340f), new Vector2(260f, 55f));
 
+            // Capa UI: con el menú abierto, el rayo a distancia solo raycastea esa capa (UIOnlyFarCasting).
+            int uiLayer = LayerMask.NameToLayer("UI");
+            if (uiLayer >= 0)
+            {
+                foreach (Transform t in canvasRoot.GetComponentsInChildren<Transform>(true))
+                {
+                    t.gameObject.layer = uiLayer;
+                }
+            }
+
             return canvasRoot;
         }
 
