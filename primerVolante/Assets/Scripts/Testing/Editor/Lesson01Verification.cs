@@ -316,6 +316,37 @@ namespace PrimerVolante.Testing.Editor
                 }
                 Assert(restored, "SetFarCasting(false) debe restaurar enableFarCasting y raycastMask originales", ref total, ref passed);
 
+                // El rayo visible: cada interactor debe tener un CurveVisualController localizable con su LineRenderer
+                bool allVisuals = farInteractors.Count > 0;
+                var visualEnabled = new System.Collections.Generic.List<bool>();
+                var lineEnabled = new System.Collections.Generic.List<bool>();
+                var visuals = new System.Collections.Generic.List<UnityEngine.XR.Interaction.Toolkit.Interactors.Visuals.CurveVisualController>();
+                foreach (var interactor in farInteractors)
+                {
+                    UnityEngine.XR.Interaction.Toolkit.Interactors.Visuals.CurveVisualController found = null;
+                    foreach (var v in interactor.GetComponentsInChildren<UnityEngine.XR.Interaction.Toolkit.Interactors.Visuals.CurveVisualController>(true))
+                    {
+                        if ((UnityEngine.Object)v.curveInteractionDataProvider == interactor) { found = v; break; }
+                    }
+                    LineRenderer lr = found != null ? found.GetComponentInChildren<LineRenderer>(true) : null;
+                    if (found == null || lr == null) { allVisuals = false; continue; }
+                    visuals.Add(found);
+                    visualEnabled.Add(found.enabled);
+                    lineEnabled.Add(lr.enabled);
+                }
+                Assert(allVisuals, "Cada NearFarInteractor del HUD debe tener un CurveVisualController (con LineRenderer) localizable", ref total, ref passed);
+
+                // Tras SetFarCasting(true)/(false) el visual y el LineRenderer deben volver a su estado original
+                hudPanel.SetFarCasting(true);
+                hudPanel.SetFarCasting(false);
+                bool visualsRestored = true;
+                for (int i = 0; i < visuals.Count; i++)
+                {
+                    LineRenderer lr = visuals[i].GetComponentInChildren<LineRenderer>(true);
+                    if (visuals[i].enabled != visualEnabled[i] || lr.enabled != lineEnabled[i]) visualsRestored = false;
+                }
+                Assert(visualsRestored, "SetFarCasting(false) debe restaurar el enabled original del CurveVisualController y del LineRenderer", ref total, ref passed);
+
                 // Se deja el estado del HUD como estaba antes de esta verificación
                 if (hudWasActive) hudPanel.SetFarCasting(true);
 
