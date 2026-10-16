@@ -9,6 +9,7 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
+using UnityEngine.XR.Interaction.Toolkit.Interactors.Casters;
 using UnityEngine.XR.Interaction.Toolkit.UI;
 using PrimerVolante.Lessons;
 using PrimerVolante.VR;
@@ -251,21 +252,72 @@ namespace PrimerVolante.Testing.Editor
                     ref total, ref passed);
                 Assert(hudPanel.WorldCamera != null, "LessonHUDPanel debe tener worldCamera asignada", ref total, ref passed);
 
-                // Validar que SetFarCasting active enableFarCasting en los interactors
-                hudPanel.SetFarCasting(true);
-                bool anyFarCastingEnabled = false;
+                // Validar que SetFarCasting active enableFarCasting y restrinja el rayo a la capa UI
+                int uiMask = LayerMask.GetMask("UI");
+                var originalEnable = new System.Collections.Generic.List<bool>();
+                var originalMask = new System.Collections.Generic.List<int>();
+                var farInteractors = new System.Collections.Generic.List<NearFarInteractor>();
                 if (hudPanel.FarCastInteractors != null)
                 {
                     foreach (var interactor in hudPanel.FarCastInteractors)
                     {
-                        if (interactor != null && interactor.enableFarCasting)
-                        {
-                            anyFarCastingEnabled = true;
-                            break;
-                        }
+                        if (interactor == null) continue;
+                        farInteractors.Add(interactor);
+                        originalEnable.Add(interactor.enableFarCasting);
+                        var c = interactor.farInteractionCaster as CurveInteractionCaster;
+                        originalMask.Add(c != null ? c.raycastMask.value : 0);
                     }
                 }
-                Assert(anyFarCastingEnabled, "SetFarCasting(true) debe habilitar enableFarCasting en los interactores de VR", ref total, ref passed);
+
+                bool hudWasActive = hudPanel.FarCastingActive;
+                hudPanel.SetFarCasting(false); // partir de un estado limpio para comparar contra los valores originales
+                originalEnable.Clear();
+                originalMask.Clear();
+                foreach (var interactor in farInteractors)
+                {
+                    originalEnable.Add(interactor.enableFarCasting);
+                    var c = interactor.farInteractionCaster as CurveInteractionCaster;
+                    originalMask.Add(c != null ? c.raycastMask.value : 0);
+                }
+
+                hudPanel.SetFarCasting(true);
+                hudPanel.SetFarCasting(true); // idempotente
+                bool allEnabled = farInteractors.Count > 0;
+                bool allUiOnly = farInteractors.Count > 0;
+                foreach (var interactor in farInteractors)
+                {
+                    if (!interactor.enableFarCasting) allEnabled = false;
+                    var caster = interactor.farInteractionCaster as CurveInteractionCaster;
+                    if (caster == null || caster.raycastMask.value != uiMask) allUiOnly = false;
+                }
+                Assert(allEnabled, "SetFarCasting(true) debe habilitar enableFarCasting en los interactores de VR", ref total, ref passed);
+                Assert(allUiOnly, "SetFarCasting(true) debe restringir el raycastMask del far caster exactamente a la capa UI", ref total, ref passed);
+
+                VRSteeringWheel wheelForMask = car08.GetComponentInChildren<VRSteeringWheel>(true);
+                if (wheelForMask != null)
+                {
+                    int wheelLayerBit = 1 << wheelForMask.gameObject.layer;
+                    bool excludesCabin = farInteractors.Count > 0;
+                    foreach (var interactor in farInteractors)
+                    {
+                        var caster = interactor.farInteractionCaster as CurveInteractionCaster;
+                        if (caster == null || (caster.raycastMask.value & wheelLayerBit) != 0) excludesCabin = false;
+                    }
+                    Assert(excludesCabin, "Con el HUD activo, el rayo a distancia no debe incluir la capa de los interactuables de cabina (VRSteeringWheel)", ref total, ref passed);
+                }
+
+                hudPanel.SetFarCasting(false);
+                bool restored = true;
+                for (int i = 0; i < farInteractors.Count; i++)
+                {
+                    var caster = farInteractors[i].farInteractionCaster as CurveInteractionCaster;
+                    if (farInteractors[i].enableFarCasting != originalEnable[i]) restored = false;
+                    if (caster != null && caster.raycastMask.value != originalMask[i]) restored = false;
+                }
+                Assert(restored, "SetFarCasting(false) debe restaurar enableFarCasting y raycastMask originales", ref total, ref passed);
+
+                // Se deja el estado del HUD como estaba antes de esta verificación
+                if (hudWasActive) hudPanel.SetFarCasting(true);
 
                 // Comprobar posición local por encima del volante
                 VRSteeringWheel wheel = car08.GetComponentInChildren<VRSteeringWheel>(true);

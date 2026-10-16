@@ -53,11 +53,11 @@ namespace PrimerVolante.Lessons
 
         [Header("Interacción VR (Raycast / Far Casting)")]
         [Tooltip("Near-Far Interactors de las manos VR a los que se les habilita el rayo a distancia " +
-                 "mientras se interactúa con el HUD de la lección.")]
+                 "mientras se interactúa con el HUD de la lección. El rayo queda restringido a la capa UI " +
+                 "(no interactúa con volante, espejos, etc.).")]
         [SerializeField] private NearFarInteractor[] m_FarCastInteractors;
 
         private Canvas m_Canvas;
-        private bool[] m_FarCastPreviousStates;
         private bool m_FarCastingActive = false;
 
         // Propiedades públicas para acceso e inspección en tests
@@ -135,8 +135,10 @@ namespace PrimerVolante.Lessons
         }
 
         /// <summary>
-        /// Habilita o restaura el cast a distancia de los NearFarInteractors del jugador
-        /// para permitir interactuar con el botón Continuar del HUD mediante puntero láser.
+        /// Habilita o libera el cast a distancia de los NearFarInteractors del jugador para poder usar el
+        /// botón Continuar del HUD mediante puntero láser. Mientras está activo, el rayo a distancia queda
+        /// restringido a la capa UI (ver <see cref="UIOnlyFarCasting"/>) y no interactúa con la cabina.
+        /// Es idempotente: el estado original lo guarda y restaura UIOnlyFarCasting.
         /// </summary>
         public void SetFarCasting(bool enabled)
         {
@@ -148,33 +150,21 @@ namespace PrimerVolante.Lessons
 
             if (enabled)
             {
-                if (!m_FarCastingActive)
+                if (m_FarCastingActive) return;
+                for (int i = 0; i < m_FarCastInteractors.Length; i++)
                 {
-                    m_FarCastPreviousStates = new bool[m_FarCastInteractors.Length];
-                    for (int i = 0; i < m_FarCastInteractors.Length; i++)
-                    {
-                        if (m_FarCastInteractors[i] != null)
-                        {
-                            m_FarCastPreviousStates[i] = m_FarCastInteractors[i].enableFarCasting;
-                            m_FarCastInteractors[i].enableFarCasting = true;
-                        }
-                    }
-                    m_FarCastingActive = true;
+                    UIOnlyFarCasting.Request(m_FarCastInteractors[i], this);
                 }
+                m_FarCastingActive = true;
             }
             else
             {
-                if (m_FarCastingActive && m_FarCastPreviousStates != null)
+                if (!m_FarCastingActive) return;
+                for (int i = 0; i < m_FarCastInteractors.Length; i++)
                 {
-                    for (int i = 0; i < m_FarCastInteractors.Length; i++)
-                    {
-                        if (m_FarCastInteractors[i] != null && i < m_FarCastPreviousStates.Length)
-                        {
-                            m_FarCastInteractors[i].enableFarCasting = m_FarCastPreviousStates[i];
-                        }
-                    }
-                    m_FarCastingActive = false;
+                    UIOnlyFarCasting.Release(m_FarCastInteractors[i], this);
                 }
+                m_FarCastingActive = false;
             }
         }
 
