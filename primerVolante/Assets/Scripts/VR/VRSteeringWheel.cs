@@ -12,6 +12,13 @@ namespace PrimerVolante.VR
     /// Opera sobre un GameObject Pivot posicionado en el centro exacto de la geometría del volante.
     /// Ejecuta el procesamiento en LateUpdate (ExecutionOrder = 100) inmediatamente después del posicionamiento del jugador,
     /// eliminando cualquier desfase de 1 frame entre la cámara y la posición del mando al avanzar el auto.
+    /// <para>
+    /// Soporta agarre con las dos manos a la vez (<see cref="InteractableSelectMode.Multiple"/>). Cada mano
+    /// mantiene su propio ángulo de referencia (se inicializa al agarrar y se borra al soltar), por lo que agarrar,
+    /// soltar o cambiar de mano nunca provoca un salto. El giro de cada frame es el promedio de los deltas angulares
+    /// de las manos, ponderado por la distancia de cada mano al centro en el plano del volante:
+    /// <c>Σ(delta_i · radio_i) / Σ(radio_i)</c>. Con una sola mano equivale exactamente al delta de esa mano.
+    /// </para>
     /// </summary>
     [DefaultExecutionOrder(100)]
     [RequireComponent(typeof(XRGrabInteractable))]
@@ -35,9 +42,11 @@ namespace PrimerVolante.VR
         private Rigidbody m_Rigidbody;
 
         private float m_CurrentAngle = 0f;
-        private float m_LastHandAngle = 0f;
-        private Quaternion m_StartControllerRotation;
-        private IXRInteractor m_ActiveInteractor;
+
+        // Ángulo de referencia (frame anterior) de cada mano que agarra el volante.
+        private readonly Dictionary<IXRSelectInteractor, float> m_LastHandAngles = new Dictionary<IXRSelectInteractor, float>();
+        // Buffer reutilizable para purgar referencias de manos que ya no agarran (sin allocations por frame).
+        private readonly List<IXRSelectInteractor> m_StaleHands = new List<IXRSelectInteractor>();
 
         private Transform m_InitialParent;
         private Quaternion m_InitialLocalRotation;
@@ -56,7 +65,17 @@ namespace PrimerVolante.VR
         /// <summary>
         /// Indica si el volante está siendo agarrado por un interactor VR.
         /// </summary>
-        public bool IsGrabbed => (m_GrabInteractable != null && m_GrabInteractable.isSelected) || m_ActiveInteractor != null;
+        public bool IsGrabbed => m_GrabInteractable != null && m_GrabInteractable.isSelected;
+
+        /// <summary>
+        /// Cantidad de manos (interactores) que agarran el volante en este momento.
+        /// </summary>
+        public int GrabbingHandCount => m_GrabInteractable != null ? m_GrabInteractable.interactorsSelecting.Count : 0;
+
+        /// <summary>
+        /// Indica si el volante está siendo agarrado con las dos manos a la vez.
+        /// </summary>
+        public bool IsHeldWithBothHands => GrabbingHandCount >= 2;
 
         private void Awake()
         {
@@ -85,9 +104,12 @@ namespace PrimerVolante.VR
             {
                 m_GrabInteractable.trackPosition = false;
                 m_GrabInteractable.trackRotation = false;
+                m_GrabInteractable.trackScale = false;
                 m_GrabInteractable.throwOnDetach = false;
                 m_GrabInteractable.useDynamicAttach = false;
                 m_GrabInteractable.movementType = XRBaseInteractable.MovementType.Instantaneous;
+                // Permite que las dos manos agarren a la vez sin que una le cancele la selección a la otra
+                m_GrabInteractable.selectMode = InteractableSelectMode.Multiple;
 
                 if (m_GrabInteractable.startingSingleGrabTransformers != null)
                 {
@@ -134,29 +156,18 @@ namespace PrimerVolante.VR
 
         private void OnSelectEntered(SelectEnterEventArgs args)
         {
-            m_ActiveInteractor = args.interactorObject;
-            if (m_ActiveInteractor != null && m_ActiveInteractor.transform != null)
+            // Solo se inicializa la referencia de ESTA mano; las demás siguen siendo válidas
+            IXRSelectInteractor hand = args.interactorObject;
+            if (hand != null && hand.transform != null && TryGetHandPolar(hand.transform, out float angle, out _))
             {
-                m_LastHandAngle = CalculateHandAngle(m_ActiveInteractor.transform);
-                m_StartControllerRotation = m_ActiveInteractor.transform.rotation;
+                m_LastHandAngles[hand] = angle;
             }
         }
 
         private void OnSelectExited(SelectExitEventArgs args)
         {
-            if (m_GrabInteractable.interactorsSelecting != null && m_GrabInteractable.interactorsSelecting.Count > 0)
-            {
-                m_ActiveInteractor = m_GrabInteractable.interactorsSelecting[0];
-                if (m_ActiveInteractor != null && m_ActiveInteractor.transform != null)
-                {
-                    m_LastHandAngle = CalculateHandAngle(m_ActiveInteractor.transform);
-                    m_StartControllerRotation = m_ActiveInteractor.transform.rotation;
-                }
-            }
-            else
-            {
-                m_ActiveInteractor = null;
-            }
+            // Al disparar selectExited, el interactor ya salió de interactorsSelecting
+            if (args.interactorObject != null) m_LastHandAngles.Remove(args.interactorObject);
         }
 
         private void Update()
@@ -178,13 +189,9 @@ namespace PrimerVolante.VR
             }
 
             // 2. Procesar el ángulo del volante en LateUpdate, DESPUÉS de que DriverSeatFollower (Order=-300) haya actualizado XROrigin
-            if (IsGrabbed && m_ActiveInteractor != null && m_ActiveInteractor.transform != null)
+            if (IsGrabbed)
             {
-                float currentHandAngle = CalculateHandAngle(m_ActiveInteractor.transform);
-                float stepDelta = -Mathf.DeltaAngle(m_LastHandAngle, currentHandAngle);
-                m_LastHandAngle = currentHandAngle;
-
-                m_CurrentAngle = Mathf.Clamp(m_CurrentAngle + stepDelta, -m_MaxSteeringAngle, m_MaxSteeringAngle);
+                m_CurrentAngle = Mathf.Clamp(m_CurrentAngle + ComputeHandsDelta(), -m_MaxSteeringAngle, m_MaxSteeringAngle);
             }
             else
             {
@@ -224,15 +231,79 @@ namespace PrimerVolante.VR
         }
 
         /// <summary>
-        /// Calcula el ángulo instantáneo de la mano en el plano 2D del volante.
+        /// Calcula el delta angular combinado de todas las manos que agarran el volante en este frame.
         /// </summary>
-        private float CalculateHandAngle(Transform interactorTransform)
+        private float ComputeHandsDelta()
         {
+            var hands = m_GrabInteractable.interactorsSelecting;
+            float weightedDeltaSum = 0f;
+            float weightSum = 0f;
+
+            for (int i = 0; i < hands.Count; i++)
+            {
+                IXRSelectInteractor hand = hands[i];
+                if (hand == null || hand.transform == null) continue;
+
+                // Mano a menos de 1 cm del centro: no aporta este frame y conserva su referencia
+                if (!TryGetHandPolar(hand.transform, out float currentAngle, out float radius)) continue;
+
+                if (m_LastHandAngles.TryGetValue(hand, out float lastAngle))
+                {
+                    float handDelta = -Mathf.DeltaAngle(lastAngle, currentAngle);
+                    weightedDeltaSum += handDelta * radius;
+                    weightSum += radius;
+                }
+                // Sin referencia previa (orden de eventos): se inicializa y aporta delta 0 este frame
+                m_LastHandAngles[hand] = currentAngle;
+            }
+
+            // Purgar referencias de manos que ya no agarran
+            if (m_LastHandAngles.Count > hands.Count)
+            {
+                m_StaleHands.Clear();
+                foreach (var kv in m_LastHandAngles)
+                {
+                    if (!IsSelecting(hands, kv.Key)) m_StaleHands.Add(kv.Key);
+                }
+                for (int i = 0; i < m_StaleHands.Count; i++) m_LastHandAngles.Remove(m_StaleHands[i]);
+                m_StaleHands.Clear();
+            }
+
+            return WeightedAverageDelta(weightedDeltaSum, weightSum);
+        }
+
+        private static bool IsSelecting(IReadOnlyList<IXRSelectInteractor> hands, IXRSelectInteractor hand)
+        {
+            for (int i = 0; i < hands.Count; i++)
+            {
+                if (hands[i] == hand) return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Promedio de deltas angulares ponderado por radio: <c>Σ(delta·radio) / Σ(radio)</c>.
+        /// Devuelve 0 si la suma de pesos es 0 o negativa (ninguna mano aporta).
+        /// </summary>
+        public static float WeightedAverageDelta(float weightedDeltaSum, float weightSum)
+        {
+            return weightSum > 0f ? weightedDeltaSum / weightSum : 0f;
+        }
+
+        /// <summary>
+        /// Calcula la posición polar (ángulo en grados y radio en metros) de la mano en el plano 2D del volante.
+        /// Devuelve false si la mano está a menos de 1 cm del centro (no aporta).
+        /// </summary>
+        private bool TryGetHandPolar(Transform hand, out float angleDeg, out float radius)
+        {
+            angleDeg = 0f;
+            radius = 0f;
+
             Transform parentTr = transform.parent != null ? transform.parent : m_InitialParent;
-            if (parentTr == null) return 0f;
+            if (parentTr == null) return false;
 
             // Proyección 2D de la mano en el plano del volante (Empujar con la palma / arco del volante)
-            Vector3 handLocalPos = parentTr.InverseTransformPoint(interactorTransform.position);
+            Vector3 handLocalPos = parentTr.InverseTransformPoint(hand.position);
             Vector3 wheelLocalCenter = parentTr.InverseTransformPoint(transform.position);
             Vector3 dir = handLocalPos - wheelLocalCenter;
 
@@ -243,12 +314,11 @@ namespace PrimerVolante.VR
             float y = Vector3.Dot(dir, parentUp);
 
             float distSq = x * x + y * y;
-            if (distSq < 0.0001f) // Mano a menos de 1cm del centro exacto
-            {
-                return m_LastHandAngle;
-            }
+            if (distSq < 0.0001f) return false; // Mano a menos de 1cm del centro exacto
 
-            return Mathf.Atan2(y, x) * Mathf.Rad2Deg;
+            angleDeg = Mathf.Atan2(y, x) * Mathf.Rad2Deg;
+            radius = Mathf.Sqrt(distSq);
+            return true;
         }
     }
 }
