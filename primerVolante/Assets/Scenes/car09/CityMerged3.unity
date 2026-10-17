@@ -17863,9 +17863,29 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 823367749044370628, guid: a35a469300fd5a945995803b490aa706, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.0000000027567149
+      objectReference: {fileID: 0}
+    - target: {fileID: 823367749044370628, guid: a35a469300fd5a945995803b490aa706, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.00000000555744
+      objectReference: {fileID: 0}
+    - target: {fileID: 823367749044370628, guid: a35a469300fd5a945995803b490aa706, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.00000033284914
+      objectReference: {fileID: 0}
     - target: {fileID: 3449169920416470478, guid: a35a469300fd5a945995803b490aa706, type: 3}
       propertyPath: m_Name
       value: Car09
+      objectReference: {fileID: 0}
+    - target: {fileID: 5276456651871557896, guid: a35a469300fd5a945995803b490aa706, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0.0000000115484
+      objectReference: {fileID: 0}
+    - target: {fileID: 5276456651871557896, guid: a35a469300fd5a945995803b490aa706, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.0000003290176
       objectReference: {fileID: 0}
     - target: {fileID: 6631202488475238318, guid: a35a469300fd5a945995803b490aa706, type: 3}
       propertyPath: m_LocalPosition.x
