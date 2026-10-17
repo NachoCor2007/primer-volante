@@ -92,7 +92,7 @@ namespace PrimerVolante.Testing.Editor
                 Assert(headlightsIndicator != null, "Indicator_Headlights debe existir en el cluster diegético", ref totalTests, ref passedTests);
 
                 Transform highBeamsIndicator = carInstance.transform.Find("Dashboard_Cluster_Canvas/Indicator_HighBeams");
-                Assert(highBeamsIndicator != null, "Indicator_HighBeams [ D ] debe existir en el cluster diegético", ref totalTests, ref passedTests);
+                Assert(highBeamsIndicator != null, "Indicator_HighBeams debe existir en el cluster diegético", ref totalTests, ref passedTests);
 
                 Transform positionIndicator = carInstance.transform.Find("Dashboard_Cluster_Canvas/Indicator_PositionLights");
                 Assert(positionIndicator != null, "Indicator_PositionLights debe existir en el cluster diegético", ref totalTests, ref passedTests);

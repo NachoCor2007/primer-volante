@@ -16,12 +16,58 @@ namespace PrimerVolante.Testing.Editor
         private const string SCENE_PATH = "Assets/MadTroll_Studio/Low Poly 1970s Family Sedan 3D Model Free Download Car02/Scene/DashboardTestingScene.unity";
         private const string PREFAB_PATH = "Assets/MadTroll_Studio/Low Poly 1970s Family Sedan 3D Model Free Download Car02/Prefabs/Car06.prefab";
         private const string FONT_PATH = "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset";
+        private const string ICON_POSITION_PATH = "Assets/Textures/UI/Dashboard/icon_lights_position.png";
+        private const string ICON_LOWBEAM_PATH = "Assets/Textures/UI/Dashboard/icon_lights_lowbeam.png";
+        private const string ICON_HIGHBEAM_PATH = "Assets/Textures/UI/Dashboard/icon_lights_highbeam.png";
+
+        private static Sprite LoadSprite(string path)
+        {
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+            TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
+            if (importer != null && (importer.textureType != TextureImporterType.Sprite || importer.spriteImportMode != SpriteImportMode.Single))
+            {
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.alphaIsTransparency = true;
+                importer.mipmapEnabled = false;
+                importer.SaveAndReimport();
+            }
+            return AssetDatabase.LoadAssetAtPath<Sprite>(path);
+        }
 
         [MenuItem("Tools/Primer Volante/Setup Dashboard in Car06 Prefab and Scene")]
         public static void SetupDashboardAll()
         {
             SetupDashboardInPrefab();
             SetupDashboardInScene();
+        }
+
+        [MenuItem("Tools/Primer Volante/Setup Dashboard in All Vehicle Prefabs (Car06, Car07, Car08)")]
+        public static void SetupDashboardInAllPrefabs()
+        {
+            string[] prefabs = {
+                "Assets/MadTroll_Studio/Low Poly 1970s Family Sedan 3D Model Free Download Car02/Prefabs/Car06.prefab",
+                "Assets/MadTroll_Studio/Low Poly 1970s Family Sedan 3D Model Free Download Car02/Prefabs/Car07.prefab",
+                "Assets/MadTroll_Studio/Low Poly 1970s Family Sedan 3D Model Free Download Car02/Prefabs/Car08.prefab"
+            };
+
+            foreach (var path in prefabs)
+            {
+                if (!System.IO.File.Exists(path)) continue;
+                GameObject prefabRoot = PrefabUtility.LoadPrefabContents(path);
+                if (prefabRoot == null) continue;
+                try
+                {
+                    ConfigureDashboardCluster(prefabRoot);
+                    VehicleLightingSetup.ConfigureVehicleLighting(prefabRoot);
+                    PrefabUtility.SaveAsPrefabAsset(prefabRoot, path);
+                    Debug.Log($"[DashboardClusterSetup] ✅ {System.IO.Path.GetFileName(path)} actualizado con el nuevo tablero diegético e íconos!");
+                }
+                finally
+                {
+                    PrefabUtility.UnloadPrefabContents(prefabRoot);
+                }
+            }
         }
 
         [MenuItem("Tools/Primer Volante/Setup Dashboard in Car06 Prefab")]
@@ -77,6 +123,64 @@ namespace PrimerVolante.Testing.Editor
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             Debug.Log($"[DashboardClusterSetup] ✅ ¡Escena {SCENE_PATH} guardada exitosamente con el cluster e iluminación configurados!");
+        }
+
+        [MenuItem("Tools/Primer Volante/Setup Dashboard in Active Scene")]
+        public static void SetupDashboardInActiveScene()
+        {
+            var scene = EditorSceneManager.GetActiveScene();
+            var vehicles = Object.FindObjectsByType<VehicleController>(FindObjectsSortMode.None);
+            if (vehicles == null || vehicles.Length == 0)
+            {
+                Debug.LogWarning($"[DashboardClusterSetup] No se encontró ningún VehicleController en la escena activa: {scene.name}");
+                return;
+            }
+
+            foreach (var v in vehicles)
+            {
+                ConfigureDashboardCluster(v.gameObject);
+                VehicleLightingSetup.ConfigureVehicleLighting(v.gameObject);
+            }
+
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            Debug.Log($"[DashboardClusterSetup] ✅ ¡Escena activa ({scene.name}) actualizada exitosamente con los nuevos íconos!");
+        }
+
+        [MenuItem("Tools/Primer Volante/Setup Dashboard in All Project Scenes")]
+        public static void SetupDashboardInAllScenes()
+        {
+            string originalActiveScene = EditorSceneManager.GetActiveScene().path;
+            string[] sceneGuids = AssetDatabase.FindAssets("t:Scene", new[] { "Assets" });
+
+            int updatedScenes = 0;
+            foreach (var guid in sceneGuids)
+            {
+                string scenePath = AssetDatabase.GUIDToAssetPath(guid);
+                if (string.IsNullOrEmpty(scenePath)) continue;
+
+                var scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
+                var vehicles = Object.FindObjectsByType<VehicleController>(FindObjectsSortMode.None);
+                if (vehicles != null && vehicles.Length > 0)
+                {
+                    foreach (var v in vehicles)
+                    {
+                        ConfigureDashboardCluster(v.gameObject);
+                        VehicleLightingSetup.ConfigureVehicleLighting(v.gameObject);
+                    }
+                    EditorSceneManager.MarkSceneDirty(scene);
+                    EditorSceneManager.SaveScene(scene);
+                    updatedScenes++;
+                    Debug.Log($"[DashboardClusterSetup] 🎬 Escena actualizada: {scenePath}");
+                }
+            }
+
+            if (!string.IsNullOrEmpty(originalActiveScene))
+            {
+                EditorSceneManager.OpenScene(originalActiveScene, OpenSceneMode.Single);
+            }
+
+            Debug.Log($"[DashboardClusterSetup] 🚀 ¡{updatedScenes} escenas actualizadas exitosamente con los nuevos íconos del tablero!");
         }
 
         public static GameObject ConfigureDashboardCluster(GameObject carRoot)
@@ -219,6 +323,10 @@ namespace PrimerVolante.Testing.Editor
             hbText.color = new Color(1f, 0.15f, 0.15f, 1f); // Activo por defecto
 
             // 7. Testigos de Luces Frontales: Posición, Bajas y Altas (Derecha inferior)
+            Sprite posSprite = LoadSprite(ICON_POSITION_PATH);
+            Sprite lowBeamSprite = LoadSprite(ICON_LOWBEAM_PATH);
+            Sprite highBeamSprite = LoadSprite(ICON_HIGHBEAM_PATH);
+
             // 7.A. Luces de Posición (verde)
             GameObject positionObj = new GameObject("Indicator_PositionLights");
             positionObj.transform.SetParent(canvasObj.transform, false);
@@ -226,14 +334,11 @@ namespace PrimerVolante.Testing.Editor
             posRect.anchorMin = new Vector2(0.5f, 0f);
             posRect.anchorMax = new Vector2(0.5f, 0f);
             posRect.anchoredPosition = new Vector2(128f, 30f);
-            posRect.sizeDelta = new Vector2(46f, 35f);
-            TextMeshProUGUI posText = positionObj.AddComponent<TextMeshProUGUI>();
-            if (fontAsset != null) posText.font = fontAsset;
-            posText.text = "=DC=";
-            posText.fontSize = 22f;
-            posText.fontStyle = FontStyles.Bold;
-            posText.alignment = TextAlignmentOptions.Center;
-            posText.color = new Color(0.2f, 0.85f, 0.3f, 0.2f); // Inactivo por defecto
+            posRect.sizeDelta = new Vector2(34f, 34f);
+            Image posImage = positionObj.AddComponent<Image>();
+            posImage.sprite = posSprite;
+            posImage.preserveAspect = true;
+            posImage.color = new Color(0.2f, 0.85f, 0.3f, 0.2f); // Inactivo por defecto
 
             // 7.B. Luces Bajas (#1AF2A0)
             GameObject headlightsObj = new GameObject("Indicator_Headlights");
@@ -242,30 +347,24 @@ namespace PrimerVolante.Testing.Editor
             hlRect.anchorMin = new Vector2(0.5f, 0f);
             hlRect.anchorMax = new Vector2(0.5f, 0f);
             hlRect.anchoredPosition = new Vector2(176f, 30f);
-            hlRect.sizeDelta = new Vector2(46f, 35f);
-            TextMeshProUGUI hlText = headlightsObj.AddComponent<TextMeshProUGUI>();
-            if (fontAsset != null) hlText.font = fontAsset;
-            hlText.text = "[ ≡ ]";
-            hlText.fontSize = 22f;
-            hlText.fontStyle = FontStyles.Bold;
-            hlText.alignment = TextAlignmentOptions.Center;
-            hlText.color = new Color(0.102f, 0.949f, 0.627f, 0.2f); // Inactivo por defecto
+            hlRect.sizeDelta = new Vector2(34f, 34f);
+            Image hlImage = headlightsObj.AddComponent<Image>();
+            hlImage.sprite = lowBeamSprite;
+            hlImage.preserveAspect = true;
+            hlImage.color = new Color(0.102f, 0.949f, 0.627f, 0.2f); // Inactivo por defecto
 
-            // 7.C. Luces Altas (#1A7BFF con símbolo [ D ])
+            // 7.C. Luces Altas (#1A7BFF con ícono real)
             GameObject highBeamsObj = new GameObject("Indicator_HighBeams");
             highBeamsObj.transform.SetParent(canvasObj.transform, false);
             RectTransform hbAltasRect = highBeamsObj.AddComponent<RectTransform>();
             hbAltasRect.anchorMin = new Vector2(0.5f, 0f);
             hbAltasRect.anchorMax = new Vector2(0.5f, 0f);
             hbAltasRect.anchoredPosition = new Vector2(224f, 30f);
-            hbAltasRect.sizeDelta = new Vector2(46f, 35f);
-            TextMeshProUGUI hbAltasText = highBeamsObj.AddComponent<TextMeshProUGUI>();
-            if (fontAsset != null) hbAltasText.font = fontAsset;
-            hbAltasText.text = "[ D ]";
-            hbAltasText.fontSize = 22f;
-            hbAltasText.fontStyle = FontStyles.Bold;
-            hbAltasText.alignment = TextAlignmentOptions.Center;
-            hbAltasText.color = new Color(0.102f, 0.482f, 1f, 0.2f); // Inactivo por defecto
+            hbAltasRect.sizeDelta = new Vector2(34f, 34f);
+            Image hbAltasImage = highBeamsObj.AddComponent<Image>();
+            hbAltasImage.sprite = highBeamSprite;
+            hbAltasImage.preserveAspect = true;
+            hbAltasImage.color = new Color(0.102f, 0.482f, 1f, 0.2f); // Inactivo por defecto
 
             // 8. Tira de Marchas P R N D (Centro inferior)
             GameObject gearStripObj = new GameObject("Gear_Strip");
@@ -320,11 +419,11 @@ namespace PrimerVolante.Testing.Editor
             so.FindProperty("m_TurnLeftIndicator").objectReferenceValue = tlText;
             so.FindProperty("m_TurnRightIndicator").objectReferenceValue = trText;
             so.FindProperty("m_HandbrakeIndicator").objectReferenceValue = hbText;
-            so.FindProperty("m_PositionLightsIndicator").objectReferenceValue = posText;
+            so.FindProperty("m_PositionLightsIndicator").objectReferenceValue = posImage;
             so.FindProperty("m_PositionActiveColor").colorValue = new Color(0.2f, 0.85f, 0.3f, 1f);
             so.FindProperty("m_PositionInactiveColor").colorValue = new Color(0.2f, 0.85f, 0.3f, 0.2f);
-            so.FindProperty("m_HeadlightsIndicator").objectReferenceValue = hlText;
-            so.FindProperty("m_HighBeamsIndicator").objectReferenceValue = hbAltasText;
+            so.FindProperty("m_HeadlightsIndicator").objectReferenceValue = hlImage;
+            so.FindProperty("m_HighBeamsIndicator").objectReferenceValue = hbAltasImage;
             so.FindProperty("m_LowBeamActiveColor").colorValue = new Color(0.102f, 0.949f, 0.627f, 1f);
             so.FindProperty("m_LowBeamInactiveColor").colorValue = new Color(0.102f, 0.949f, 0.627f, 0.2f);
             so.FindProperty("m_HighBeamActiveColor").colorValue = new Color(0.102f, 0.482f, 1f, 1f);
