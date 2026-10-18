@@ -334,7 +334,7 @@ namespace PrimerVolante.Testing.Editor
             posRect.anchorMin = new Vector2(0.5f, 0f);
             posRect.anchorMax = new Vector2(0.5f, 0f);
             posRect.anchoredPosition = new Vector2(128f, 30f);
-            posRect.sizeDelta = new Vector2(34f, 34f);
+            posRect.sizeDelta = new Vector2(40f, 40f);
             Image posImage = positionObj.AddComponent<Image>();
             posImage.sprite = posSprite;
             posImage.preserveAspect = true;
@@ -347,7 +347,7 @@ namespace PrimerVolante.Testing.Editor
             hlRect.anchorMin = new Vector2(0.5f, 0f);
             hlRect.anchorMax = new Vector2(0.5f, 0f);
             hlRect.anchoredPosition = new Vector2(176f, 30f);
-            hlRect.sizeDelta = new Vector2(34f, 34f);
+            hlRect.sizeDelta = new Vector2(40f, 40f);
             Image hlImage = headlightsObj.AddComponent<Image>();
             hlImage.sprite = lowBeamSprite;
             hlImage.preserveAspect = true;
@@ -360,7 +360,7 @@ namespace PrimerVolante.Testing.Editor
             hbAltasRect.anchorMin = new Vector2(0.5f, 0f);
             hbAltasRect.anchorMax = new Vector2(0.5f, 0f);
             hbAltasRect.anchoredPosition = new Vector2(224f, 30f);
-            hbAltasRect.sizeDelta = new Vector2(34f, 34f);
+            hbAltasRect.sizeDelta = new Vector2(40f, 40f);
             Image hbAltasImage = highBeamsObj.AddComponent<Image>();
             hbAltasImage.sprite = highBeamSprite;
             hbAltasImage.preserveAspect = true;
