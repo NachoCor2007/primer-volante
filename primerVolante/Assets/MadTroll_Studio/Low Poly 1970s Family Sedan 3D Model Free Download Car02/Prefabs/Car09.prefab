@@ -941,7 +941,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.VRSideMirror
   m_Side: 1
   m_GlassPivot: {fileID: 7169475074053225026}
-  m_MaxYaw: 25
+  m_MaxYaw: 35
   m_MaxPitch: 20
   m_DefaultSpeed: 16
   m_CurrentYaw: 0
@@ -6611,7 +6611,7 @@ Transform:
   m_GameObject: {fileID: 3177886087177036465}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -7.253675e-11, z: 0.00000029994877}
+  m_LocalPosition: {x: 0.0000000027567149, y: 0.00000000555744, z: 0.00000033284914}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -8170,7 +8170,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.VRSideMirror
   m_Side: 0
   m_GlassPivot: {fileID: 6660559918638484996}
-  m_MaxYaw: 25
+  m_MaxYaw: 35
   m_MaxPitch: 20
   m_DefaultSpeed: 16
   m_CurrentYaw: 0
@@ -11323,7 +11323,7 @@ Transform:
   m_GameObject: {fileID: 6166387878232169426}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.00000030010935, z: 3.6379787e-14}
+  m_LocalPosition: {x: -0.0000000115484, y: 0.0000003290176, z: 3.6379787e-14}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
