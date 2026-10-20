@@ -285,9 +285,9 @@ namespace PrimerVolante.Testing.Editor
             Material panelBtnMat = GetOrCreateMaterial($"{MIRRORS_DIR}/Mat_DoorPanel_Button.mat", litShader, new Color(0.28f, 0.28f, 0.30f));
 
             // 2. RenderTextures dedicadas para cada espejo (creadas en GPU)
-            RenderTexture rtRearview = GetOrCreateRenderTexture($"{MIRRORS_DIR}/RT_RearviewMirror.renderTexture", 512, 256);
-            RenderTexture rtSideLeft = GetOrCreateRenderTexture($"{MIRRORS_DIR}/RT_SideMirror_Left.renderTexture", 256, 256);
-            RenderTexture rtSideRight = GetOrCreateRenderTexture($"{MIRRORS_DIR}/RT_SideMirror_Right.renderTexture", 256, 256);
+            RenderTexture rtRearview = GetOrCreateRenderTexture($"{MIRRORS_DIR}/RT_RearviewMirror.renderTexture", 1024, 256);
+            RenderTexture rtSideLeft = GetOrCreateRenderTexture($"{MIRRORS_DIR}/RT_SideMirror_Left.renderTexture", 480, 256);
+            RenderTexture rtSideRight = GetOrCreateRenderTexture($"{MIRRORS_DIR}/RT_SideMirror_Right.renderTexture", 480, 256);
 
             // 3. Materiales reflectantes con inversión óptica horizontal (Tiling X = -1, Offset X = 1)
             Material matRearview = GetOrCreateMirrorMaterial($"{MIRRORS_DIR}/Mat_RearviewMirror.mat", unlitShader, rtRearview);

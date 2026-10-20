@@ -17875,9 +17875,21 @@ PrefabInstance:
       propertyPath: m_LocalPosition.z
       value: 0.00000033284914
       objectReference: {fileID: 0}
+    - target: {fileID: 1261249950381600184, guid: a35a469300fd5a945995803b490aa706, type: 3}
+      propertyPath: field of view
+      value: 16
+      objectReference: {fileID: 0}
     - target: {fileID: 3449169920416470478, guid: a35a469300fd5a945995803b490aa706, type: 3}
       propertyPath: m_Name
       value: Car09
+      objectReference: {fileID: 0}
+    - target: {fileID: 3689920640215457959, guid: a35a469300fd5a945995803b490aa706, type: 3}
+      propertyPath: m_FieldOfView
+      value: 16
+      objectReference: {fileID: 0}
+    - target: {fileID: 3689920640215457959, guid: a35a469300fd5a945995803b490aa706, type: 3}
+      propertyPath: m_ApplyOpticalInversionOnStart
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5276456651871557896, guid: a35a469300fd5a945995803b490aa706, type: 3}
       propertyPath: m_LocalPosition.x

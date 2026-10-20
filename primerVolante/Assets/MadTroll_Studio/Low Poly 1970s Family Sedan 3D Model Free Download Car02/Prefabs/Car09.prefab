@@ -1013,7 +1013,7 @@ Camera:
     height: 1
   near clip plane: 0.05
   far clip plane: 120
-  field of view: 65
+  field of view: 16
   orthographic: 0
   orthographic size: 5
   m_Depth: 0
@@ -1048,7 +1048,7 @@ MonoBehaviour:
   m_MirrorSurfaceRenderer: {fileID: 671027566006293326}
   m_MirrorMaterial: {fileID: 0}
   m_FarClipPlane: 120
-  m_FieldOfView: 65
+  m_FieldOfView: 16
   m_ApplyOpticalInversionOnStart: 1
   m_DriverHead: {fileID: 0}
   m_EnableAngleCulling: 0
