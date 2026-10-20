@@ -53,6 +53,7 @@ namespace PrimerVolante.VR
 
         [Tooltip("Near-Far Interactors (uno por mano) a los que se les habilita el cast a distancia " +
                  "mientras el menú está abierto, y se les restaura su estado previo al cerrarlo. " +
+                 "El rayo queda restringido a la capa UI (no interactúa con la cabina). " +
                  "Normalmente el juego lo mantiene apagado para no interferir con agarrar controles.")]
         [SerializeField] private NearFarInteractor[] m_FarCastInteractors;
 
@@ -64,7 +65,6 @@ namespace PrimerVolante.VR
         [SerializeField] private bool m_PauseAudio = true;
 
         private bool m_MenuButtonWasPressed = false;
-        private bool[] m_FarCastPreviousStates;
 
         private bool m_IsSimulationPaused;
         private bool m_PausedAudio;
@@ -90,7 +90,24 @@ namespace PrimerVolante.VR
 
             if (m_MenuRoot != null)
             {
+                MoveMenuToUILayer();
                 m_MenuRoot.SetActive(false);
+            }
+        }
+
+        /// <summary>
+        /// Pasa toda la jerarquía del menú a la capa "UI". Mientras el menú está abierto, UIOnlyFarCasting
+        /// restringe el raycastMask del rayo a esa capa, y el TrackedDeviceGraphicRaycaster descarta los
+        /// gráficos que estén fuera de la máscara; los menús ya construidos en escenas quedaron en Default.
+        /// </summary>
+        private void MoveMenuToUILayer()
+        {
+            int uiLayer = LayerMask.NameToLayer("UI");
+            if (uiLayer < 0) return;
+
+            foreach (Transform t in m_MenuRoot.GetComponentsInChildren<Transform>(true))
+            {
+                t.gameObject.layer = uiLayer;
             }
         }
 
@@ -229,30 +246,18 @@ namespace PrimerVolante.VR
 
         /// <summary>
         /// Habilita el cast a distancia de los Near-Far Interactors mientras el menú está abierto
-        /// (para poder usar el rayo con los sliders sin acercarse), y restaura el estado previo
-        /// de cada uno al cerrarlo.
+        /// (para poder usar el rayo con los sliders sin acercarse) y lo libera al cerrarlo. El rayo queda
+        /// restringido a la capa UI y el estado original lo restaura <see cref="UIOnlyFarCasting"/>
+        /// cuando ya no queda ningún solicitante (p. ej. el HUD de una lección).
         /// </summary>
         private void SetFarCastingForMenu(bool enableForMenu)
         {
             if (m_FarCastInteractors == null || m_FarCastInteractors.Length == 0) return;
 
-            if (enableForMenu)
+            for (int i = 0; i < m_FarCastInteractors.Length; i++)
             {
-                m_FarCastPreviousStates = new bool[m_FarCastInteractors.Length];
-                for (int i = 0; i < m_FarCastInteractors.Length; i++)
-                {
-                    if (m_FarCastInteractors[i] == null) continue;
-                    m_FarCastPreviousStates[i] = m_FarCastInteractors[i].enableFarCasting;
-                    m_FarCastInteractors[i].enableFarCasting = true;
-                }
-            }
-            else if (m_FarCastPreviousStates != null)
-            {
-                for (int i = 0; i < m_FarCastInteractors.Length; i++)
-                {
-                    if (m_FarCastInteractors[i] == null) continue;
-                    m_FarCastInteractors[i].enableFarCasting = m_FarCastPreviousStates[i];
-                }
+                if (enableForMenu) UIOnlyFarCasting.Request(m_FarCastInteractors[i], this);
+                else UIOnlyFarCasting.Release(m_FarCastInteractors[i], this);
             }
         }
 

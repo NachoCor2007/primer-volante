@@ -12,7 +12,8 @@ namespace PrimerVolante.VR
     /// 2. Mini D-Pad con 4 direcciones (Arriba, Abajo, Izquierda, Derecha).
     /// 3. Interacción en VR mediante XRSimpleInteractable (tactil/poke/ray) para mover suavemente el espejo seleccionado.
     /// 4. Controles de depuración por teclado: '[' y ']' para alternar espejo, flechas del teclado para orientar.
-    /// 5. Sonidos diegéticos de conmutador (clic) y servomotor eléctrico.
+    /// 5. Controles de depuración por Gamepad (PS4/genérico): Triángulo / R3 para alternar espejo (L -> R -> OFF -> L), Stick Derecho para orientar.
+    /// 6. Sonidos diegéticos de conmutador (clic) y servomotor eléctrico.
     /// </summary>
     [RequireComponent(typeof(Rigidbody))]
     public class VRSideMirrorControlPanel : MonoBehaviour
@@ -190,13 +191,17 @@ namespace PrimerVolante.VR
             // 2. Controles de depuración por teclado
             ProcessKeyboardInput(ref inputDir);
 
-            // 3. Aplicar ajuste analógico continuo al espejo seleccionado
+            // 3. Controles de depuración por Gamepad (PS4 / DualShock / Genérico)
+            ProcessGamepadInput(ref inputDir);
+
+            // 4. Aplicar ajuste analógico continuo al espejo seleccionado
             if (inputDir.sqrMagnitude > 0.001f && m_CurrentSelection != MirrorSelection.Off)
             {
                 VRSideMirror targetMirror = GetSelectedMirror();
                 if (targetMirror != null)
                 {
-                    targetMirror.Adjust(inputDir.normalized, m_AdjustmentSpeed);
+                    Vector2 moveDelta = inputDir.sqrMagnitude > 1f ? inputDir.normalized : inputDir;
+                    targetMirror.Adjust(moveDelta, m_AdjustmentSpeed);
                     PlayMotorSound();
                 }
             }
@@ -204,6 +209,29 @@ namespace PrimerVolante.VR
             {
                 StopMotorSound();
             }
+        }
+
+        private void ProcessGamepadInput(ref Vector2 inputDir)
+        {
+#if ENABLE_INPUT_SYSTEM
+            if (Gamepad.current == null) return;
+
+            // 1. Selección de espejo: Triángulo (buttonNorth) o R3 (rightStickButton)
+            if (Gamepad.current.buttonNorth.wasPressedThisFrame || Gamepad.current.rightStickButton.wasPressedThisFrame)
+            {
+                CycleMirrorSelectionGamepad();
+            }
+
+            // 2. Movimiento analógico: Stick Derecho
+            if (m_CurrentSelection != MirrorSelection.Off)
+            {
+                Vector2 stick = Gamepad.current.rightStick.ReadValue();
+                if (stick.sqrMagnitude > 0.04f)
+                {
+                    inputDir += stick;
+                }
+            }
+#endif
         }
 
         private void ProcessKeyboardInput(ref Vector2 inputDir)
@@ -264,6 +292,26 @@ namespace PrimerVolante.VR
             int next = (int)m_CurrentSelection + step;
             next = Mathf.Clamp(next, 0, 2);
             SetSelection((MirrorSelection)next);
+        }
+
+        /// <summary>
+        /// Alterna cíclicamente la selección para Gamepad: Left -> Right -> Off -> Left.
+        /// </summary>
+        public void CycleMirrorSelectionGamepad()
+        {
+            switch (m_CurrentSelection)
+            {
+                case MirrorSelection.Left:
+                    SetSelection(MirrorSelection.Right);
+                    break;
+                case MirrorSelection.Right:
+                    SetSelection(MirrorSelection.Off);
+                    break;
+                case MirrorSelection.Off:
+                default:
+                    SetSelection(MirrorSelection.Left);
+                    break;
+            }
         }
 
         public VRSideMirror GetSelectedMirror()
