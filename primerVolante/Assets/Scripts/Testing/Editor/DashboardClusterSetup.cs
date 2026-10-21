@@ -125,28 +125,6 @@ namespace PrimerVolante.Testing.Editor
             Debug.Log($"[DashboardClusterSetup] ✅ ¡Escena {SCENE_PATH} guardada exitosamente con el cluster e iluminación configurados!");
         }
 
-        [MenuItem("Tools/Primer Volante/Setup Dashboard in Active Scene")]
-        public static void SetupDashboardInActiveScene()
-        {
-            var scene = EditorSceneManager.GetActiveScene();
-            var vehicles = Object.FindObjectsByType<VehicleController>(FindObjectsSortMode.None);
-            if (vehicles == null || vehicles.Length == 0)
-            {
-                Debug.LogWarning($"[DashboardClusterSetup] No se encontró ningún VehicleController en la escena activa: {scene.name}");
-                return;
-            }
-
-            foreach (var v in vehicles)
-            {
-                ConfigureDashboardCluster(v.gameObject);
-                VehicleLightingSetup.ConfigureVehicleLighting(v.gameObject);
-            }
-
-            EditorSceneManager.MarkSceneDirty(scene);
-            EditorSceneManager.SaveScene(scene);
-            Debug.Log($"[DashboardClusterSetup] ✅ ¡Escena activa ({scene.name}) actualizada exitosamente con los nuevos íconos!");
-        }
-
         public static GameObject ConfigureDashboardCluster(GameObject carRoot)
         {
             VehicleController vehicleController = carRoot.GetComponent<VehicleController>();
