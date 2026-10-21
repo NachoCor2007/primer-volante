@@ -66,8 +66,9 @@ namespace PrimerVolante.VR
 
             if (m_GlassPivot == null)
             {
-                // Si no se asignó pivote interno, buscar un hijo llamado Glass_Pivot o usar este Transform
-                Transform found = transform.Find("Glass_Pivot");
+                // Si no se asignó pivote interno, buscar Camera_Pivot, luego Glass_Pivot o usar este Transform
+                Transform found = transform.Find("Camera_Pivot");
+                if (found == null) found = transform.Find("Glass_Pivot");
                 m_GlassPivot = found != null ? found : transform;
             }
 
@@ -143,7 +144,8 @@ namespace PrimerVolante.VR
         {
             if (m_GlassPivot == null)
             {
-                Transform found = transform.Find("Glass_Pivot");
+                Transform found = transform.Find("Camera_Pivot");
+                if (found == null) found = transform.Find("Glass_Pivot");
                 if (found != null) m_GlassPivot = found;
             }
         }

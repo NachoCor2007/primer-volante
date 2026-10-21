@@ -85,7 +85,7 @@ namespace PrimerVolante.VR
         [Tooltip("Color inactivo de las luces bajas.")]
         [SerializeField] private Color m_LowBeamInactiveColor = new Color(0.102f, 0.949f, 0.627f, 0.2f);
 
-        [Tooltip("Elemento visual de luces altas (azul #1A7BFF, símbolo [ D ]).")]
+        [Tooltip("Elemento visual de luces altas (azul #1A7BFF, ícono de faro con rayos horizontales).")]
         [SerializeField] private Graphic m_HighBeamsIndicator;
 
         [Tooltip("Color activo de las luces altas (#1A7BFF).")]
