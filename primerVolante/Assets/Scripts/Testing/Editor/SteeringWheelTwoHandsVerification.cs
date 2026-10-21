@@ -7,7 +7,7 @@ namespace PrimerVolante.Testing.Editor
 {
     /// <summary>
     /// Verificación en Editor del volante agarrable con las dos manos:
-    /// serialización de Car07/Car08, configuración en runtime (Awake) y matemática del
+    /// serialización de Car07/Car08/Car09, configuración en runtime (Awake) y matemática del
     /// promedio de deltas angulares ponderado por radio.
     /// </summary>
     public static class SteeringWheelTwoHandsVerification
@@ -26,7 +26,7 @@ namespace PrimerVolante.Testing.Editor
             int passed = 0;
 
             // 1. Prefabs serializados
-            foreach (string carName in new[] { "Car07", "Car08" })
+            foreach (string carName in new[] { "Car07", "Car08", "Car09" })
             {
                 GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{CAR_FOLDER}/{carName}.prefab");
                 Assert(prefab != null, $"{carName}.prefab debe existir", ref total, ref passed);
