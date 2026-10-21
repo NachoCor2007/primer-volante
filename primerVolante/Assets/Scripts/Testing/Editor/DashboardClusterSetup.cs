@@ -147,42 +147,6 @@ namespace PrimerVolante.Testing.Editor
             Debug.Log($"[DashboardClusterSetup] ✅ ¡Escena activa ({scene.name}) actualizada exitosamente con los nuevos íconos!");
         }
 
-        [MenuItem("Tools/Primer Volante/Setup Dashboard in All Project Scenes")]
-        public static void SetupDashboardInAllScenes()
-        {
-            string originalActiveScene = EditorSceneManager.GetActiveScene().path;
-            string[] sceneGuids = AssetDatabase.FindAssets("t:Scene", new[] { "Assets" });
-
-            int updatedScenes = 0;
-            foreach (var guid in sceneGuids)
-            {
-                string scenePath = AssetDatabase.GUIDToAssetPath(guid);
-                if (string.IsNullOrEmpty(scenePath)) continue;
-
-                var scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
-                var vehicles = Object.FindObjectsByType<VehicleController>(FindObjectsSortMode.None);
-                if (vehicles != null && vehicles.Length > 0)
-                {
-                    foreach (var v in vehicles)
-                    {
-                        ConfigureDashboardCluster(v.gameObject);
-                        VehicleLightingSetup.ConfigureVehicleLighting(v.gameObject);
-                    }
-                    EditorSceneManager.MarkSceneDirty(scene);
-                    EditorSceneManager.SaveScene(scene);
-                    updatedScenes++;
-                    Debug.Log($"[DashboardClusterSetup] 🎬 Escena actualizada: {scenePath}");
-                }
-            }
-
-            if (!string.IsNullOrEmpty(originalActiveScene))
-            {
-                EditorSceneManager.OpenScene(originalActiveScene, OpenSceneMode.Single);
-            }
-
-            Debug.Log($"[DashboardClusterSetup] 🚀 ¡{updatedScenes} escenas actualizadas exitosamente con los nuevos íconos del tablero!");
-        }
-
         public static GameObject ConfigureDashboardCluster(GameObject carRoot)
         {
             VehicleController vehicleController = carRoot.GetComponent<VehicleController>();
@@ -316,7 +280,7 @@ namespace PrimerVolante.Testing.Editor
             hbRect.sizeDelta = new Vector2(65f, 35f);
             TextMeshProUGUI hbText = handbrakeObj.AddComponent<TextMeshProUGUI>();
             if (fontAsset != null) hbText.font = fontAsset;
-            hbText.text = "(P)";
+            hbText.text = "(!)";
             hbText.fontSize = 26f;
             hbText.fontStyle = FontStyles.Bold;
             hbText.alignment = TextAlignmentOptions.Center;
