@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 75d17c935cd5bc94d8771eddd877d5e7, type: 3}
+  m_Name: Emitter_Stadium
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Audio.AmbientEmitterProfile
+  Mode: 0
+  ClipsAreOrganic: 1
+  LoopClip: {fileID: 0}
+  OneShots: []
+  MinVolume: 0.7
+  MaxVolume: 0.9
+  MinPitch: 0.95
+  MaxPitch: 1.05
+  MinInterval: 6
+  MaxInterval: 15
+  MinDistance: 10
+  MaxDistance: 120
+  ApproachRadius: 14
+  ApproachProbability: 0.6
+  ApproachCooldown: 45
+  BurstMin: 1
+  BurstMax: 3

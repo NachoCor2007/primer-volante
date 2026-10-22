@@ -195,7 +195,7 @@ namespace PrimerVolante.Testing.Editor
         /// samples se mezclan con potencia constante con la cola extra, de modo que el final
         /// (m[N-1]) continúa naturalmente en el inicio (m[N]).
         /// </summary>
-        private static float[] MakeSeamlessLoop(float[] extended, int n, int x)
+        internal static float[] MakeSeamlessLoop(float[] extended, int n, int x)
         {
             var o = new float[n];
             for (int i = 0; i < n; i++) o[i] = extended[i];

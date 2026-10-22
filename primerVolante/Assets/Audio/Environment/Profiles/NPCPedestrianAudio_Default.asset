@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3770e8eeda6d87540840abd909be54c4, type: 3}
+  m_Name: NPCPedestrianAudio_Default
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Audio.NPCPedestrianAudioProfile
+  Footsteps:
+  - {fileID: 8300000, guid: 368fea3e9eb5df84bb2f60216de0a3a8, type: 3}
+  - {fileID: 8300000, guid: 61440c2ad4d80c94280915237958f9be, type: 3}
+  - {fileID: 8300000, guid: 77a1c6f7c1edaa240bb2c9ec0d7ddf66, type: 3}
+  - {fileID: 8300000, guid: c82f1b925724b6940b54034172347044, type: 3}
+  StrideLength: 0.7
+  MinStepInterval: 0.25
+  FootstepMinVolume: 0.35
+  FootstepMaxVolume: 0.55
+  FootstepMinPitch: 0.9
+  FootstepMaxPitch: 1.1
+  Voices: []
+  VoiceMinInterval: 15
+  VoiceMaxInterval: 40
+  VoiceVolume: 0.6
+  Screams: []
+  ScreamRadius: 12
+  ScreamVolume: 0.9
+  ScreamCooldown: 6
+  MinDistance: 1.5
+  MaxDistance: 15

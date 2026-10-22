@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 39ac50d71c54e984a99b1f125ffdc523, type: 3}
+  m_Name: EnvironmentAlerts_Default
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Audio.EnvironmentAlertsProfile
+  CrosswalkTick: {fileID: 8300000, guid: 4e15d75b4de9efb4c98afc48a4795bff, type: 3}
+  CrosswalkBeep: {fileID: 8300000, guid: e87bcf93b85614044be607bc0307b20a, type: 3}
+  TickInterval: 1
+  BeepInterval: 0.25
+  CrosswalkVolume: 0.6
+  CrosswalkMinDistance: 3
+  CrosswalkMaxDistance: 25
+  CarAlarmLoop: {fileID: 8300000, guid: 762792f80cc5bc54c883310adb0f4202, type: 3}
+  AlarmSeconds: 8
+  AlarmVolume: 0.8
+  AlarmMinDistance: 5
+  AlarmMaxDistance: 60
+  AlarmDuckDb: 5
+  HornShort: {fileID: 8300000, guid: e92dfdc4153e64149b1307abc58ee579, type: 3}
+  HornLong: {fileID: 8300000, guid: 3aca7049148acf64494501489daf2791, type: 3}
+  HornVolume: 0.9
+  HornBehindDistance: 8
+  HornMinDistance: 5
+  HornMaxDistance: 60
+  HornDuckDb: 6
+  HornDuckHoldSeconds: 1.2
