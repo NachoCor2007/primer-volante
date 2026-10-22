@@ -112,11 +112,11 @@ AudioMixerController:
   - guid: fdfaca618aaac9c4899140431b1a0fa1
     name: AlertsVolume
   - guid: 32948f782470fef45bf34b51c0e5af9b
-    name: AlertsCutOff
+    name: AlertsCutoff
   - guid: eaede5470e608464786a060965bf12a9
     name: AmbienceVolume
   - guid: ff6181460256b79459e6a403cd33b79a
-    name: ExteriorCutOff
+    name: ExteriorCutoff
   - guid: d7b175cc4594fe94e89600dd038428a7
     name: NPCVolume
   m_AudioMixerGroupViews:
