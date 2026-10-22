@@ -345,16 +345,17 @@ namespace PrimerVolante.Audio
 
         /// <summary>
         /// Calcula los pesos normalizados de cada perfil para una posición: máximo de las zonas que comparten perfil,
-        /// normalizados para que la suma no pase de 1 respetando la prioridad. Si la suma da 0 usa el perfil de respaldo.
+        /// normalizados para que la suma no pase de 1 respetando la prioridad. El perfil de respaldo completa lo que falta hasta 1.
+        /// <paramref name="zones"/> permite evaluar con una lista propia (p. ej. desde el Editor, donde las zonas no están registradas); por defecto usa las zonas activas.
         /// </summary>
-        public void EvaluateWeights(Vector3 position, Dictionary<AmbienceZoneProfile, float> result)
+        public void EvaluateWeights(Vector3 position, Dictionary<AmbienceZoneProfile, float> result, IReadOnlyList<AmbienceZone> zones = null)
         {
             result.Clear();
             m_ScratchWeights.Clear();
             m_ScratchPriorities.Clear();
             m_ScratchProfiles.Clear();
 
-            IReadOnlyList<AmbienceZone> zones = AmbienceZone.Active;
+            if (zones == null) zones = AmbienceZone.Active;
             for (int i = 0; i < zones.Count; i++)
             {
                 AmbienceZone zone = zones[i];
