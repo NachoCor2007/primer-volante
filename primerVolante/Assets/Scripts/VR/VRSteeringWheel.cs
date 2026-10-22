@@ -231,6 +231,16 @@ namespace PrimerVolante.VR
         }
 
         /// <summary>
+        /// Permite fijar el ángulo del volante programáticamente (ej. en modo Piloto Automático).
+        /// </summary>
+        public void SetAngleProgrammatic(float angle)
+        {
+            m_CurrentAngle = Mathf.Clamp(angle, -m_MaxSteeringAngle, m_MaxSteeringAngle);
+            m_SteeringValue = m_MaxSteeringAngle > 0 ? Mathf.Clamp(m_CurrentAngle / m_MaxSteeringAngle, -1f, 1f) : 0f;
+            ApplyLocalTransform(m_CurrentAngle);
+        }
+
+        /// <summary>
         /// Calcula el delta angular combinado de todas las manos que agarran el volante en este frame.
         /// </summary>
         private float ComputeHandsDelta()
