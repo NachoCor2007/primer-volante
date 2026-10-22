@@ -45,21 +45,32 @@ namespace PrimerVolante.Audio
         /// </summary>
         public static void NormalizeWeights(float[] weights, int[] priorities)
         {
-            if (weights == null || weights.Length == 0) return;
+            if (weights == null) return;
+            NormalizeWeights(weights, priorities, weights.Length);
+        }
 
-            int count = weights.Length;
+        /// <summary>
+        /// Igual que <see cref="NormalizeWeights(float[], int[])"/> pero sobre los primeros <paramref name="count"/>
+        /// elementos y sin reservar memoria (se usa cada frame).
+        /// </summary>
+        public static void NormalizeWeights(float[] weights, int[] priorities, int count)
+        {
+            if (weights == null || count <= 0) return;
+            count = Mathf.Min(count, weights.Length);
+
             float remaining = 1f;
-            var done = new bool[count];
+            bool first = true;
+            int previous = 0;
 
-            for (int pass = 0; pass < count; pass++)
+            while (true)
             {
-                // Mayor prioridad todavía sin repartir.
-                int best = int.MinValue;
+                // Próxima prioridad (la mayor estrictamente menor que la anterior).
                 bool found = false;
+                int best = 0;
                 for (int i = 0; i < count; i++)
                 {
-                    if (done[i]) continue;
                     int p = PriorityAt(priorities, i);
+                    if (!first && p >= previous) continue;
                     if (!found || p > best)
                     {
                         best = p;
@@ -72,18 +83,18 @@ namespace PrimerVolante.Audio
                 float levelSum = 0f;
                 for (int i = 0; i < count; i++)
                 {
-                    if (!done[i] && PriorityAt(priorities, i) == best) levelSum += Mathf.Max(0f, weights[i]);
+                    if (PriorityAt(priorities, i) == best) levelSum += Mathf.Max(0f, weights[i]);
                 }
 
                 float scale = levelSum > remaining && levelSum > 0f ? remaining / levelSum : 1f;
                 for (int i = 0; i < count; i++)
                 {
-                    if (done[i] || PriorityAt(priorities, i) != best) continue;
-                    weights[i] = Mathf.Max(0f, weights[i]) * scale;
-                    done[i] = true;
+                    if (PriorityAt(priorities, i) == best) weights[i] = Mathf.Max(0f, weights[i]) * scale;
                 }
 
                 remaining = Mathf.Max(0f, remaining - levelSum * scale);
+                previous = best;
+                first = false;
             }
         }
 
