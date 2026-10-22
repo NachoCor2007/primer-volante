@@ -53,11 +53,11 @@ namespace PrimerVolante.Audio
         /// <summary>
         /// Crea (o reutiliza) el hijo con la <see cref="AudioSource"/> 3D de la alarma y la asigna al campo.
         /// </summary>
-        public void BuildSource(AudioMixerGroup alertsGroup)
+        public void BuildSource(AudioMixerGroup alertsGroup, Transform parent = null)
         {
             float min = m_Profile != null ? m_Profile.AlarmMinDistance : 5f;
             float max = m_Profile != null ? m_Profile.AlarmMaxDistance : 60f;
-            m_Source = EnvironmentAudioUtil.CreateSource3D(transform, "CarAlarmSource", alertsGroup, EnvironmentAudioUtil.PriorityAlert, min, max, true);
+            m_Source = EnvironmentAudioUtil.CreateSource3D(parent != null ? parent : transform, "CarAlarmSource", alertsGroup, EnvironmentAudioUtil.PriorityAlert, min, max, true);
         }
 
         private void Awake()

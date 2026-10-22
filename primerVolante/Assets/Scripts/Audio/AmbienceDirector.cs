@@ -381,23 +381,30 @@ namespace PrimerVolante.Audio
                 m_PriorityBuffer = new int[count * 2];
             }
 
-            float sum = 0f;
             for (int i = 0; i < count; i++)
             {
                 m_WeightBuffer[i] = m_ScratchWeights[m_ScratchProfiles[i]];
                 m_PriorityBuffer[i] = m_ScratchPriorities[m_ScratchProfiles[i]];
-                sum += m_WeightBuffer[i];
             }
 
             AmbienceMath.NormalizeWeights(m_WeightBuffer, m_PriorityBuffer, count);
 
-            if (sum <= 1e-4f && m_FallbackProfile != null)
+            float sum = 0f;
+            for (int i = 0; i < count; i++)
             {
-                result[m_FallbackProfile] = 1f;
-                return;
+                result[m_ScratchProfiles[i]] = m_WeightBuffer[i];
+                sum += m_WeightBuffer[i];
             }
 
-            for (int i = 0; i < count; i++) result[m_ScratchProfiles[i]] = m_WeightBuffer[i];
+            // Fuera de todas las zonas (perímetro) suena el perfil de respaldo. En las franjas de fade que no llegan a
+            // sumar 1 el respaldo completa lo que falta, así el paso de una zona al perímetro es gradual (con suma 0
+            // el respaldo vale 1).
+            float remainder = 1f - sum;
+            if (m_FallbackProfile != null && remainder > 1e-4f)
+            {
+                result.TryGetValue(m_FallbackProfile, out float existing);
+                result[m_FallbackProfile] = Mathf.Min(1f, existing + remainder);
+            }
         }
 
         /// <summary>Peso normalizado actual de un perfil (0 si no suena).</summary>

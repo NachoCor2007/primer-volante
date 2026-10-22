@@ -31,6 +31,10 @@ namespace PrimerVolante.Audio
         [Tooltip("Collider trigger de la línea de detención (el de StopLine_Trigger). Debe ser un BoxCollider.")]
         [SerializeField] private BoxCollider m_StopLineTrigger;
 
+        [Tooltip("Metros que la zona se extiende hacia atrás de la línea (hacia -Z local del trigger): un jugador que espera " +
+                 "correctamente detrás de la línea también cuenta como 'en la intersección'. 0 = solo la caja original.")]
+        [SerializeField] private float m_ApproachDepth = 8f;
+
         [Header("Audio")]
         [Tooltip("Perfil de las alertas (bocinas, volumen y distancias).")]
         [SerializeField] private EnvironmentAlertsProfile m_Profile;
@@ -179,9 +183,16 @@ namespace PrimerVolante.Audio
         private VehicleController FindPlayerInside()
         {
             Transform t = m_StopLineTrigger.transform;
-            Vector3 center = t.TransformPoint(m_StopLineTrigger.center);
             Vector3 scale = t.lossyScale;
-            Vector3 half = Vector3.Scale(m_StopLineTrigger.size * 0.5f, new Vector3(Mathf.Abs(scale.x), Mathf.Abs(scale.y), Mathf.Abs(scale.z)));
+            Vector3 absScale = new Vector3(Mathf.Abs(scale.x), Mathf.Abs(scale.y), Mathf.Abs(scale.z));
+
+            // La caja de la línea, alargada hacia atrás (-Z local) para cubrir la espera detrás de la línea.
+            float depthLocal = absScale.z > 1e-4f ? m_ApproachDepth / absScale.z : 0f;
+            Vector3 localCenter = m_StopLineTrigger.center - new Vector3(0f, 0f, depthLocal * 0.5f);
+            Vector3 localSize = m_StopLineTrigger.size + new Vector3(0f, 0f, depthLocal);
+
+            Vector3 center = t.TransformPoint(localCenter);
+            Vector3 half = Vector3.Scale(localSize * 0.5f, absScale);
 
             int count = Physics.OverlapBoxNonAlloc(center, half, m_Hits, t.rotation, ~0, QueryTriggerInteraction.Ignore);
             for (int i = 0; i < count; i++)

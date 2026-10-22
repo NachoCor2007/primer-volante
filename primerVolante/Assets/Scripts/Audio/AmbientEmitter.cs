@@ -43,6 +43,13 @@ namespace PrimerVolante.Audio
             set => m_Profile = value;
         }
 
+        /// <summary>Grupo de mixer de la fuente (Ambience).</summary>
+        public AudioMixerGroup MixerGroup
+        {
+            get => m_MixerGroup;
+            set => m_MixerGroup = value;
+        }
+
         /// <summary>true si el oyente está en rango y el emisor está trabajando.</summary>
         public bool IsActive => m_Active;
 
