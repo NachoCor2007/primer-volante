@@ -292,19 +292,11 @@ namespace PrimerVolante.Testing.Editor
             int dogCount = emitters.Count(e => e.Profile != null && e.Profile.name == EnvironmentAudioSetup.EMITTER_DOG);
             Assert(houseCount > 0 && dogCount == Mathf.CeilToInt(houseCount / 3f), $"Perros: 1 de cada 3 casas ({dogCount} de {houseCount})", ref total, ref passed);
 
-            // ---- Semáforo sonoro y bocina
-            TrafficLightController[] lights = roots.SelectMany(r => r.GetComponentsInChildren<TrafficLightController>(true)).ToArray();
+            // ---- Bocina de impaciencia
             GameObject intersection = roots.FirstOrDefault(g => g.name == EnvironmentAudioSetup.INTERSECTION_NAME);
             TrafficLightController playerSignal = intersection != null
                 ? intersection.GetComponentsInChildren<TrafficLightController>(true).FirstOrDefault(t => t.name == EnvironmentAudioSetup.PLAYER_SIGNAL_NAME)
                 : null;
-            var beeper = playerSignal != null ? playerSignal.GetComponent<CrosswalkBeeper>() : null;
-            Assert(beeper != null && beeper.TrafficLight == playerSignal && beeper.Source != null && beeper.Source.outputAudioMixerGroup == alerts
-                   && !beeper.Source.playOnAwake && Mathf.Approximately(beeper.Source.spatialBlend, 1f),
-                "CrosswalkBeeper en el semáforo de Controlled_Intersection_T (3D, grupo Alerts)", ref total, ref passed);
-            int withBeeper = lights.Count(l => l.GetComponent<CrosswalkBeeper>() != null);
-            Debug.Log($"  ℹ️ [INFO] TrafficLightController en la escena: {lights.Length} (con CrosswalkBeeper: {withBeeper}). Los {lights.Length - withBeeper} " +
-                      "restantes son señales decorativas de los props y no llevan beeper (sonarían en cada esquina de la ciudad).");
 
             var honk = intersection != null ? intersection.GetComponent<GreenLightHonk>() : null;
             Assert(honk != null && honk.TrafficLight == playerSignal && honk.StopLineTrigger != null && honk.Source != null
@@ -325,7 +317,6 @@ namespace PrimerVolante.Testing.Editor
             var vehicleMixer = AssetDatabase.LoadAssetAtPath<AudioMixer>("Assets/Audio/Vehicle/VehicleAudioMixer.mixer");
             var newSources = new List<AudioSource>();
             newSources.AddRange(env.GetComponentsInChildren<AudioSource>(true));
-            if (beeper != null) newSources.Add(beeper.Source);
             if (honk != null) newSources.Add(honk.Source);
             foreach (NPCVehicleAudio v in roots.SelectMany(r => r.GetComponentsInChildren<NPCVehicleAudio>(true)))
                 newSources.AddRange(new[] { v.EngineIdleSource, v.EngineMidSource, v.BrakeSource, v.AlertSource, v.SirenSource });

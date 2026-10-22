@@ -178,8 +178,8 @@ namespace PrimerVolante.Testing.Editor
 
         /// <summary>
         /// Crea o actualiza <c>Audio_Environment</c> en <c>CityMerged3</c>: director, alarma de autos, zonas (cajas
-        /// calculadas con los bounds de los renderers), emisores por prefab de origen, <see cref="CrosswalkBeeper"/> en el
-        /// semáforo de la intersección controlada y <see cref="GreenLightHonk"/>. Guarda la escena. Si hay cambios sin
+        /// calculadas con los bounds de los renderers), emisores por prefab de origen y
+        /// <see cref="GreenLightHonk"/> en la intersección controlada. Guarda la escena. Si hay cambios sin
         /// guardar en alguna escena abierta, se detiene.
         /// </summary>
         public static void SetupEnvironmentAudioScene()
@@ -241,8 +241,8 @@ namespace PrimerVolante.Testing.Editor
             // ---- Emisores
             Dictionary<string, int> emitterCounts = SyncEmitters(scene, emittersParent, ambience);
 
-            // ---- Semáforo sonoro y bocina de impaciencia en la intersección controlada
-            int beepers = SetupIntersection(scene, alertsProfile, alerts);
+            // ---- Bocina de impaciencia en la intersección controlada
+            SetupIntersection(scene, alertsProfile, alerts);
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
@@ -251,7 +251,7 @@ namespace PrimerVolante.Testing.Editor
                 $"{z.Name}: centro ({z.Center.x:F1}, {z.Center.z:F1}) tamaño ({z.Size.x:F1} × {z.Size.z:F1}) fade {z.Fade:F0} prio {z.Priority}"));
             string emitterSummary = string.Join(", ", emitterCounts.Select(kv => $"{kv.Key}={kv.Value}"));
             Debug.Log($"[EnvironmentAudioSetup] ✅ Escena configurada. Zonas → {zoneSummary}. Emisores → {emitterSummary} " +
-                      $"(total {emitterCounts.Values.Sum()}). CrosswalkBeeper: {beepers}.");
+                      $"(total {emitterCounts.Values.Sum()}).");
         }
 
         // ------------------------------------------------------------------ zonas
@@ -494,37 +494,20 @@ namespace PrimerVolante.Testing.Editor
 
         // ------------------------------------------------------------------ intersección
 
-        private static int SetupIntersection(Scene scene, EnvironmentAlertsProfile alertsProfile, AudioMixerGroup alerts)
+        private static void SetupIntersection(Scene scene, EnvironmentAlertsProfile alertsProfile, AudioMixerGroup alerts)
         {
             GameObject intersection = scene.GetRootGameObjects().FirstOrDefault(g => g.name == INTERSECTION_NAME);
             if (intersection == null)
             {
-                Debug.LogWarning($"[EnvironmentAudioSetup] ⚠️ No se encontró {INTERSECTION_NAME}: sin CrosswalkBeeper ni GreenLightHonk.");
-                return 0;
+                Debug.LogWarning($"[EnvironmentAudioSetup] ⚠️ No se encontró {INTERSECTION_NAME}: sin GreenLightHonk.");
+                return;
             }
 
-            // El semáforo que gobierna el cruce de peatones frente a la línea de detención.
+            // El semáforo del carril del jugador, frente a la línea de detención.
             TrafficLightController playerSignal = intersection.GetComponentsInChildren<TrafficLightController>(true)
                 .FirstOrDefault(t => t.name == PLAYER_SIGNAL_NAME);
             Transform stopLine = intersection.GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == STOP_LINE_NAME);
             var stopLineBox = stopLine != null ? stopLine.GetComponent<BoxCollider>() : null;
-
-            int beepers = 0;
-            if (playerSignal != null)
-            {
-                var beeper = GetOrAddUndo<CrosswalkBeeper>(playerSignal.gameObject);
-                beeper.TrafficLight = playerSignal;
-                beeper.Profile = alertsProfile;
-                beeper.BuildSource(alerts);
-                beeper.Source.transform.localPosition = new Vector3(0f, 2.5f / Mathf.Max(0.01f, playerSignal.transform.lossyScale.y), 0f);
-                EditorUtility.SetDirty(beeper);
-                EditorUtility.SetDirty(beeper.Source);
-                beepers++;
-            }
-            else
-            {
-                Debug.LogWarning($"[EnvironmentAudioSetup] ⚠️ No se encontró {PLAYER_SIGNAL_NAME}.");
-            }
 
             if (playerSignal != null && stopLineBox != null)
             {
@@ -540,8 +523,6 @@ namespace PrimerVolante.Testing.Editor
             {
                 Debug.LogWarning($"[EnvironmentAudioSetup] ⚠️ No se pudo configurar GreenLightHonk (falta {PLAYER_SIGNAL_NAME} o {STOP_LINE_NAME}).");
             }
-
-            return beepers;
         }
 
         // ------------------------------------------------------------------ helpers

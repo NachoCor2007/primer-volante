@@ -12,13 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 39ac50d71c54e984a99b1f125ffdc523, type: 3}
   m_Name: EnvironmentAlerts_Default
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Audio.EnvironmentAlertsProfile
-  CrosswalkTick: {fileID: 8300000, guid: 4e15d75b4de9efb4c98afc48a4795bff, type: 3}
-  CrosswalkBeep: {fileID: 8300000, guid: e87bcf93b85614044be607bc0307b20a, type: 3}
-  TickInterval: 1
-  BeepInterval: 0.25
-  CrosswalkVolume: 0.6
-  CrosswalkMinDistance: 3
-  CrosswalkMaxDistance: 25
   CarAlarmLoop: {fileID: 8300000, guid: 762792f80cc5bc54c883310adb0f4202, type: 3}
   AlarmSeconds: 8
   AlarmVolume: 0.8

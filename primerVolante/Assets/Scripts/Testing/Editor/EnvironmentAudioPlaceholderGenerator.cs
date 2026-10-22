@@ -40,7 +40,6 @@ namespace PrimerVolante.Testing.Editor
     /// | siren_wail_loop.wav          | barrido 650 ↔ 1350 Hz, período 4 s                     | sí   |
     /// | brake_squeal_soft.wav        | chillido agudo leve con vibrato; 0.8 s                 | no   |
     /// | tire_screech.wav             | chirrido fuerte con ruido; 1.2 s                       | no   |
-    /// | crosswalk_tick/beep.wav      | click seco y beep de ~2.5 kHz                          | no   |
     /// | car_alarm_loop.wav           | alternancia de dos tonos; 2 s                          | sí   |
     /// | footstep_01..04.wav          | golpes sordos cortos de ruido filtrado                 | no   |
     /// | windmill_creak_01..02.wav    | crujido de fricción grave modulado; 1–2 s              | no   |
@@ -67,8 +66,6 @@ namespace PrimerVolante.Testing.Editor
             ("siren_wail_loop.wav", EnvironmentClipKind.LoopShort),
             ("brake_squeal_soft.wav", EnvironmentClipKind.OneShot),
             ("tire_screech.wav", EnvironmentClipKind.OneShot),
-            ("crosswalk_tick.wav", EnvironmentClipKind.OneShot),
-            ("crosswalk_beep.wav", EnvironmentClipKind.OneShot),
             ("car_alarm_loop.wav", EnvironmentClipKind.LoopShort),
             ("footstep_01.wav", EnvironmentClipKind.OneShot),
             ("footstep_02.wav", EnvironmentClipKind.OneShot),
@@ -119,8 +116,6 @@ namespace PrimerVolante.Testing.Editor
             Gen("siren_wail_loop.wav", GenSiren(), 0.75f);
             Gen("brake_squeal_soft.wav", GenBrakeSqueal(), 0.6f);
             Gen("tire_screech.wav", GenTireScreech(), 0.85f);
-            Gen("crosswalk_tick.wav", GenCrosswalkTick(), 0.8f);
-            Gen("crosswalk_beep.wav", GenCrosswalkBeep(), 0.7f);
             Gen("car_alarm_loop.wav", GenCarAlarm(), 0.75f);
             Gen("footstep_01.wav", GenFootstep(401, 350f, 90f), 0.8f);
             Gen("footstep_02.wav", GenFootstep(402, 450f, 100f), 0.8f);
@@ -443,28 +438,7 @@ namespace PrimerVolante.Testing.Editor
             return b;
         }
 
-        // ---------------------------------------------------------------- semáforo y alarma
-
-        private static float[] GenCrosswalkTick()
-        {
-            var b = Buf(0.08f);
-            VehicleAudioPlaceholderGenerator.AddClick(b, 0f, 1800f, 0.004f, 0.9f, new System.Random(703));
-            return b;
-        }
-
-        private static float[] GenCrosswalkBeep()
-        {
-            const float seconds = 0.1f;
-            var b = Buf(seconds);
-            for (int i = 0; i < b.Length; i++)
-            {
-                float t = i / (float)SAMPLE_RATE;
-                float env = Mathf.Clamp01(t / 0.005f) * Mathf.Clamp01((seconds - t) / 0.01f);
-                b[i] = Mathf.Sin(TwoPi * 2500f * t) * env;
-            }
-
-            return b;
-        }
+        // ---------------------------------------------------------------- alarma
 
         private static float[] GenCarAlarm()
         {

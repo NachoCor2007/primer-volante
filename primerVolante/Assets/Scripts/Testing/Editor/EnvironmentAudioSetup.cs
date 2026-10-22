@@ -224,8 +224,6 @@ namespace PrimerVolante.Testing.Editor
             var alerts = GetOrCreate<EnvironmentAlertsProfile>(ALERTS_DEFAULT, p => { });
             Assign(alerts, p =>
             {
-                if (p.CrosswalkTick == null) p.CrosswalkTick = Ph("crosswalk_tick.wav");
-                if (p.CrosswalkBeep == null) p.CrosswalkBeep = Ph("crosswalk_beep.wav");
                 if (p.CarAlarmLoop == null) p.CarAlarmLoop = Ph("car_alarm_loop.wav");
                 if (p.HornShort == null) p.HornShort = Ph("horn_short.wav");
                 if (p.HornLong == null) p.HornLong = Ph("horn_long.wav");

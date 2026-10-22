@@ -4,33 +4,12 @@ using UnityEngine;
 namespace PrimerVolante.Audio
 {
     /// <summary>
-    /// Perfil de las alertas fijas del entorno (US20): semáforo sonoro, alarma de auto estacionado y bocina de
+    /// Perfil de las alertas fijas del entorno (US20): alarma de auto estacionado y bocina de
     /// impaciencia detrás del jugador. Todos los clips son placeholders procedurales.
     /// </summary>
     [CreateAssetMenu(fileName = "EnvironmentAlerts_New", menuName = "Primer Volante/Audio/Environment Alerts Profile", order = 14)]
     public class EnvironmentAlertsProfile : EnvironmentAudioProfileBase
     {
-        [Header("Semáforo sonoro")]
-        [Tooltip("Tick lento localizador (semáforo en verde o amarillo).")]
-        public AudioClip CrosswalkTick;
-
-        [Tooltip("Beep rápido (semáforo vehicular en rojo: los peatones cruzan).")]
-        public AudioClip CrosswalkBeep;
-
-        [Tooltip("Segundos entre ticks.")]
-        public float TickInterval = 1f;
-
-        [Tooltip("Segundos entre beeps.")]
-        public float BeepInterval = 0.25f;
-
-        [Range(0f, 1f)] public float CrosswalkVolume = 0.6f;
-
-        [Tooltip("Distancia mínima del rolloff del semáforo (metros).")]
-        public float CrosswalkMinDistance = 3f;
-
-        [Tooltip("Distancia máxima del rolloff del semáforo (metros).")]
-        public float CrosswalkMaxDistance = 25f;
-
         [Header("Alarma de auto estacionado")]
         [Tooltip("Loop de la alarma al chocar un auto decorativo.")]
         public AudioClip CarAlarmLoop;
@@ -75,8 +54,6 @@ namespace PrimerVolante.Audio
 
         protected override void CollectMissingPlaceholders(List<string> missing)
         {
-            if (CrosswalkTick == null) missing.Add(nameof(CrosswalkTick));
-            if (CrosswalkBeep == null) missing.Add(nameof(CrosswalkBeep));
             if (CarAlarmLoop == null) missing.Add(nameof(CarAlarmLoop));
             if (HornShort == null) missing.Add(nameof(HornShort));
             if (HornLong == null) missing.Add(nameof(HornLong));
@@ -88,11 +65,7 @@ namespace PrimerVolante.Audio
 
         private void OnValidate()
         {
-            TickInterval = Mathf.Max(0.05f, TickInterval);
-            BeepInterval = Mathf.Max(0.05f, BeepInterval);
             AlarmSeconds = Mathf.Max(0.5f, AlarmSeconds);
-            CrosswalkMinDistance = Mathf.Max(0.01f, CrosswalkMinDistance);
-            CrosswalkMaxDistance = Mathf.Max(CrosswalkMinDistance, CrosswalkMaxDistance);
             AlarmMinDistance = Mathf.Max(0.01f, AlarmMinDistance);
             AlarmMaxDistance = Mathf.Max(AlarmMinDistance, AlarmMaxDistance);
             HornMinDistance = Mathf.Max(0.01f, HornMinDistance);
