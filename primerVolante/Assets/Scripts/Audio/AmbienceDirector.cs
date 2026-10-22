@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using PrimerVolante.Lessons;
 using UnityEngine;
 using UnityEngine.Audio;
 
@@ -103,6 +104,8 @@ namespace PrimerVolante.Audio
         private int[] m_PriorityBuffer = new int[8];
         private AudioSource[] m_ScatterSources;
         private System.Random m_Random;
+        private LessonManager m_LessonManager;
+        private bool m_Started;
 
         private AmbienceIntensity m_Intensity;
         private float m_BedGain = 1f;       // ganancia lineal actual de la intensidad
@@ -193,11 +196,19 @@ namespace PrimerVolante.Audio
             {
                 Debug.LogWarning("[AmbienceDirector] ⚠️ Ya hay otro AmbienceDirector habilitado; este se ignora como Instance.", this);
             }
+
+            if (m_Started) SubscribeToLessons();
         }
 
         private void OnDisable()
         {
             if (Instance == this) Instance = null;
+
+            if (m_LessonManager != null)
+            {
+                m_LessonManager.StepChanged -= HandleLessonStepChanged;
+                m_LessonManager = null;
+            }
 
             // El ambiente no puede quedar con ducking pegado.
             ApplyDuck(0f);
@@ -210,6 +221,39 @@ namespace PrimerVolante.Audio
         private void Start()
         {
             ApplyCabinFilter();
+            m_Started = true;
+            SubscribeToLessons();
+        }
+
+        // Integración opcional con lecciones: CityMerged3 no tiene LessonManager, así que si no hay no pasa nada.
+        private void SubscribeToLessons()
+        {
+            if (m_LessonManager != null) return;
+
+            m_LessonManager = FindAnyObjectByType<LessonManager>();
+            if (m_LessonManager == null) return;
+
+            m_LessonManager.StepChanged += HandleLessonStepChanged;
+
+            // Si la lección ya arrancó antes de que este director se suscribiera, se aplica el paso actual.
+            ApplyLessonOverride(m_LessonManager.CurrentStep);
+        }
+
+        private void HandleLessonStepChanged(LessonStepSO step, int index, int total)
+        {
+            ApplyLessonOverride(step);
+        }
+
+        private void ApplyLessonOverride(LessonStepSO step)
+        {
+            if (step == null || step.ambienceIntensity == AmbienceIntensityOverride.Unchanged) return;
+
+            switch (step.ambienceIntensity)
+            {
+                case AmbienceIntensityOverride.Calm: SetIntensity(AmbienceIntensity.Calm); break;
+                case AmbienceIntensityOverride.Normal: SetIntensity(AmbienceIntensity.Normal); break;
+                case AmbienceIntensityOverride.Tense: SetIntensity(AmbienceIntensity.Tense); break;
+            }
         }
 
         private void OnValidate()

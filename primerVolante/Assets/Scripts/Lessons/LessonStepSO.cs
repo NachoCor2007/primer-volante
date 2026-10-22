@@ -32,6 +32,18 @@ namespace PrimerVolante.Lessons
     }
 
     /// <summary>
+    /// Intensidad del ambiente sonoro que un paso de lección puede imponer (US20).
+    /// Unchanged: el paso no toca la intensidad. Las demás corresponden a AmbienceIntensity.
+    /// </summary>
+    public enum AmbienceIntensityOverride
+    {
+        Unchanged = 0,
+        Calm = 1,
+        Normal = 2,
+        Tense = 3
+    }
+
+    /// <summary>
     /// Define un paso individual dentro de una lección de manejo.
     /// </summary>
     [CreateAssetMenu(fileName = "LessonStep", menuName = "Primer Volante/Lessons/Lesson Step", order = 2)]
@@ -52,5 +64,9 @@ namespace PrimerVolante.Lessons
 
         [Tooltip("Nombre o tag del interactuable a resaltar visualmente si el paso lo requiere.")]
         public string highlightTargetName;
+
+        [Tooltip("Intensidad del ambiente sonoro (Calm, Normal o Tense) que se aplica al empezar este paso. " +
+                 "Unchanged deja la intensidad como está. Escala el volumen del ambiente, la densidad de sonidos y la impaciencia de los NPC.")]
+        public AmbienceIntensityOverride ambienceIntensity = AmbienceIntensityOverride.Unchanged;
     }
 }
