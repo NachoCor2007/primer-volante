@@ -277,7 +277,8 @@ namespace PrimerVolante.Audio
 
         private void UpdateEngine(float speed, float distance)
         {
-            bool wanted = distance <= m_Profile.EngineMaxDistance * k_CullFactor;
+            // Un NPC sin ruta (p. ej. el auto estacionado de la zona de obstáculos) tiene el motor apagado.
+            bool wanted = m_Follower.HasPath && distance <= m_Profile.EngineMaxDistance * k_CullFactor;
             if (wanted && !m_EngineOn) StartEngine();
             else if (!wanted && m_EngineOn) StopEngine();
             if (!m_EngineOn) return;
