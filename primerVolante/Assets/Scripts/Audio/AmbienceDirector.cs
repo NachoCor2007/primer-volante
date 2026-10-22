@@ -92,7 +92,8 @@ namespace PrimerVolante.Audio
             public AudioSource Source;
             public float Weight;            // peso normalizado actual (0..1)
             public float Level;             // nivel suavizado (0..1) de la ganancia de potencia
-            public float NextScatterTime = -1f;
+            public bool ScatterScheduled;
+            public float ScatterCountdown;   // segundos "base" que faltan para el próximo disperso
         }
 
         private readonly Dictionary<AmbienceZoneProfile, BedState> m_States = new Dictionary<AmbienceZoneProfile, BedState>();
@@ -207,11 +208,24 @@ namespace PrimerVolante.Audio
             if (m_LessonManager != null)
             {
                 m_LessonManager.StepChanged -= HandleLessonStepChanged;
+                m_LessonManager.LessonStarted -= HandleLessonBoundary;
+                m_LessonManager.LessonCompleted -= HandleLessonBoundary;
                 m_LessonManager = null;
             }
 
             // El ambiente no puede quedar con ducking pegado.
+            m_DuckCurrentDb = 0f;
+            m_DuckTargetDb = 0f;
+            m_DuckHoldUntil = -1f;
             ApplyDuck(0f);
+            if (m_ScatterSources != null)
+            {
+                foreach (AudioSource scatter in m_ScatterSources)
+                {
+                    if (scatter != null) scatter.Stop();
+                }
+            }
+
             foreach (BedState state in m_StateList)
             {
                 if (state.Source != null) state.Source.Stop();
@@ -234,9 +248,18 @@ namespace PrimerVolante.Audio
             if (m_LessonManager == null) return;
 
             m_LessonManager.StepChanged += HandleLessonStepChanged;
+            m_LessonManager.LessonStarted += HandleLessonBoundary;
+            m_LessonManager.LessonCompleted += HandleLessonBoundary;
 
             // Si la lección ya arrancó antes de que este director se suscribiera, se aplica el paso actual.
             ApplyLessonOverride(m_LessonManager.CurrentStep);
+        }
+
+        // Al empezar o terminar una lección la intensidad vuelve a la inicial: un paso Tense no puede dejar el ambiente tenso
+        // para el resto de la sesión (StepChanged del paso 0 vuelve a aplicar su override si lo tiene).
+        private void HandleLessonBoundary(LessonDefinitionSO lesson)
+        {
+            SetIntensity(m_InitialIntensity);
         }
 
         private void HandleLessonStepChanged(LessonStepSO step, int index, int total)
@@ -446,14 +469,13 @@ namespace PrimerVolante.Audio
             // Los perfiles que aparecen se crean; el resto baja a 0.
             foreach (KeyValuePair<AmbienceZoneProfile, float> pair in m_FrameWeights) GetOrCreateState(pair.Key);
 
-            float now = Time.time;
             for (int i = 0; i < m_StateList.Count; i++)
             {
                 BedState state = m_StateList[i];
                 state.Weight = m_FrameWeights.TryGetValue(state.Profile, out float w) ? w : 0f;
 
                 UpdateBed(state, dt);
-                UpdateScatter(state, listenerPos, now);
+                UpdateScatter(state, listenerPos, dt);
             }
         }
 
@@ -523,34 +545,36 @@ namespace PrimerVolante.Audio
             }
         }
 
-        private void UpdateScatter(BedState state, Vector3 listenerPos, float now)
+        private void UpdateScatter(BedState state, Vector3 listenerPos, float dt)
         {
             AmbienceZoneProfile profile = state.Profile;
             if (state.Weight < k_MinScatterWeight || !profile.HasScatter)
             {
-                state.NextScatterTime = -1f;
+                state.ScatterScheduled = false;
                 return;
             }
 
-            float rate = Pick(m_ScatterRate, m_Intensity);
-
-            if (state.NextScatterTime < 0f)
+            if (!state.ScatterScheduled)
             {
-                state.NextScatterTime = now + ScheduleInterval(profile, state.Weight, rate);
+                state.ScatterScheduled = true;
+                state.ScatterCountdown = DrawBaseInterval(profile);
                 return;
             }
 
-            if (now < state.NextScatterTime) return;
+            // La cuenta regresiva avanza más rápido con el peso de la zona y con la tasa de la intensidad: equivale a dividir
+            // el intervalo por (peso × tasa) (ver AmbienceMath.ScaledInterval) pero se reevalúa cada frame, así que entrar por la
+            // franja de fade (peso bajo) o cambiar la intensidad no deja un disparo agendado a minutos de distancia.
+            float rate = Pick(m_ScatterRate, m_Intensity);
+            state.ScatterCountdown -= dt * state.Weight * rate;
+            if (state.ScatterCountdown > 0f) return;
 
             PlayScatter(profile, state.Weight, listenerPos);
-            state.NextScatterTime = now + ScheduleInterval(profile, state.Weight, rate);
+            state.ScatterCountdown = DrawBaseInterval(profile);
         }
 
-        private float ScheduleInterval(AmbienceZoneProfile profile, float weight, float rate)
+        private float DrawBaseInterval(AmbienceZoneProfile profile)
         {
-            float baseInterval = EnvironmentAudioUtil.Range(m_Random, profile.ScatterMinInterval, profile.ScatterMaxInterval);
-            float scaled = AmbienceMath.ScaledInterval(baseInterval, weight, rate);
-            return float.IsInfinity(scaled) ? 3600f : scaled;
+            return EnvironmentAudioUtil.Range(m_Random, profile.ScatterMinInterval, profile.ScatterMaxInterval);
         }
 
         private void PlayScatter(AmbienceZoneProfile profile, float weight, Vector3 listenerPos)

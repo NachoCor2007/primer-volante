@@ -559,7 +559,7 @@ namespace PrimerVolante.Testing.Editor
                 Application.logMessageReceived -= OnLog;
             }
 
-            Assert(menuFound && suiteTotal > 0 && suitePassed == suiteTotal - knownStaleFailures,
+            Assert(menuFound && suiteTotal > 0 && suiteTotal - suitePassed <= knownStaleFailures,
                 $"{name} sigue pasando ({suitePassed}/{suiteTotal}" + (knownStaleFailures > 0 ? $", {knownStaleFailures} fallo(s) de línea base ajenos" : string.Empty) + ")", ref total, ref passed);
         }
 

@@ -87,8 +87,10 @@ namespace PrimerVolante.Audio
             if (impact.Kind != ObstacleKind.Vehicle || impact.Severity != ObstacleImpactSeverity.Crash) return;
             if (impact.Obstacle == null) return;
 
-            // Un NPC (con ruta) no dispara alarma: solo los autos decorativos estacionados.
-            if (impact.Obstacle.GetComponent<NPCPathFollower>() != null) return;
+            // Un NPC que circula (tiene NPCPathFollower con ruta) no dispara alarma: solo los autos estacionados, ya sean
+            // decorativos (sin NPCPathFollower) o NPC detenidos sin ruta, como el auto estacionado de la zona de obstáculos.
+            var follower = impact.Obstacle.GetComponent<NPCPathFollower>();
+            if (follower != null && follower.HasPath) return;
 
             StartAlarm(impact.Obstacle);
         }

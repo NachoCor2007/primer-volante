@@ -115,9 +115,11 @@ namespace PrimerVolante.Audio
             m_WasInsideApproach = false;
             m_BurstRemaining = 0;
 
+            // Se reconfigura al activarse: si el perfil se asignó después de Awake la fuente no queda 2D ni sin grupo.
+            ConfigureSource();
+
             if (m_Profile.Mode == AmbientEmitterMode.Loop && m_Profile.LoopClip != null)
             {
-                ConfigureSource();
                 m_Source.clip = m_Profile.LoopClip;
                 m_Source.volume = 0f;
                 m_Source.Play();

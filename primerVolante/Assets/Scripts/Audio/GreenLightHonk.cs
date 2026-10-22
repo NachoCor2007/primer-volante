@@ -24,6 +24,9 @@ namespace PrimerVolante.Audio
         // Segundos entre consultas de la caja (no hace falta cada frame).
         private const float k_PollInterval = 0.2f;
 
+        // Segundos sin detectar al jugador antes de considerar que salió de la zona (un parpadeo de la consulta no resetea el episodio).
+        private const float k_LeaveGraceSeconds = 0.6f;
+
         [Header("Semáforo y línea de detención")]
         [Tooltip("Semáforo de la intersección.")]
         [SerializeField] private TrafficLightController m_TrafficLight;
@@ -66,6 +69,7 @@ namespace PrimerVolante.Audio
         private float m_NextHonkTime;
         private int m_HonkCount;
         private VehicleController m_Player;
+        private float m_LastSeenTime;
 
         /// <summary>Bocinas tocadas en el episodio actual.</summary>
         public int HonkCount => m_HonkCount;
@@ -164,16 +168,23 @@ namespace PrimerVolante.Audio
                 m_NextPollTime = Time.time + k_PollInterval;
                 VehicleController found = FindPlayerInside();
 
-                // Salió de la zona: el episodio se resetea.
-                if (found == null && m_Player != null) ResetEpisode();
-                m_Player = found;
+                if (found != null)
+                {
+                    m_Player = found;
+                    m_LastSeenTime = Time.time;
+                }
+                else if (m_Player != null && Time.time - m_LastSeenTime > k_LeaveGraceSeconds)
+                {
+                    // Salió de la zona: el episodio se resetea.
+                    ResetEpisode();
+                }
             }
 
             if (m_Player == null) return;
 
             float delay = AmbienceDirector.CurrentGreenHonkDelay;
             float greenElapsed = Time.time - m_GreenSince;
-            if (!NPCAudioMath.ShouldImpatientHonk(greenElapsed, m_Player.CurrentSpeedKmh, delay, m_MaxStopSpeedKmh)) return;
+            if (!NPCAudioMath.ShouldImpatientHonk(greenElapsed, Mathf.Abs(m_Player.CurrentSpeedKmh), delay, m_MaxStopSpeedKmh)) return;
             if (m_HonkCount >= m_MaxHonks || Time.time < m_NextHonkTime) return;
 
             Honk(m_Player);
