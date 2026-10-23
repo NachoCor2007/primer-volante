@@ -102,7 +102,7 @@ GameObject:
   - component: {fileID: 4172694805030424764}
   - component: {fileID: 529955251451585980}
   - component: {fileID: 4004809704277386827}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Mirror_Glass
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1388,7 +1388,7 @@ GameObject:
   - component: {fileID: 6832475252108416401}
   - component: {fileID: 6504079440340396093}
   - component: {fileID: 2938830472841111403}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Mirror_Housing
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6443,7 +6443,7 @@ GameObject:
   - component: {fileID: 7243536436159993269}
   - component: {fileID: 5968194850877015417}
   - component: {fileID: 4698388866055517609}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Casing_Mesh
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6549,7 +6549,7 @@ Transform:
   m_GameObject: {fileID: 3177886087177036465}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.0000000027567149, y: 0.00000000555744, z: 0.00000033284914}
+  m_LocalPosition: {x: 0, y: -7.253675e-11, z: 0.00000029994877}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -7036,7 +7036,7 @@ GameObject:
   - component: {fileID: 747107478112755432}
   - component: {fileID: 559095600994717012}
   - component: {fileID: 6697503132846444405}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Mirror_Glass
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -7845,7 +7845,7 @@ GameObject:
   - component: {fileID: 1836976450527377126}
   - component: {fileID: 1762126984644245412}
   - component: {fileID: 7155729898963443431}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Mirror_Housing
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -11003,7 +11003,7 @@ GameObject:
   - component: {fileID: 506022084523516617}
   - component: {fileID: 125424229689590407}
   - component: {fileID: 671027566006293326}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Mirror_Glass
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -11199,7 +11199,7 @@ Transform:
   m_GameObject: {fileID: 6166387878232169426}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.0000000115484, y: 0.0000003290176, z: 3.6379787e-14}
+  m_LocalPosition: {x: 0, y: 0.00000030010935, z: 3.6379787e-14}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
