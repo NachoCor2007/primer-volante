@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c61ebf863e9ebc84bb72556cfa3a1cb9, type: 3}
+  m_Name: NPCVehicleAudio_Default
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Audio.NPCVehicleAudioProfile
+  EngineIdleLoop: {fileID: 8300000, guid: c2770a73b9781af4191e59d646109cab, type: 3}
+  EngineMidLoop: {fileID: 8300000, guid: 119eaf1e7dfef1642ad89aabe45e8ac9, type: 3}
+  ReferenceSpeed: 14
+  MinPitch: 0.9
+  MaxPitch: 1.5
+  EngineVolume: 0.55
+  SoftBrake: {fileID: 8300000, guid: f5f15cbc8d6fb914ebb06a934df6b191, type: 3}
+  TireScreech: {fileID: 8300000, guid: 3555d5ca4e54bbd4cb7917217b614d3a, type: 3}
+  HornShort: {fileID: 8300000, guid: e92dfdc4153e64149b1307abc58ee579, type: 3}
+  HornLong: {fileID: 8300000, guid: 3aca7049148acf64494501489daf2791, type: 3}
+  SirenLoop: {fileID: 8300000, guid: ba979eb5e4076354f96044251562899f, type: 3}
+  SoftBrakeVolume: 0.5
+  TireScreechVolume: 0.9
+  HornVolume: 0.9
+  SirenVolume: 0.8
+  SoftBrakeMinSpeed: 3
+  SoftBrakeCooldown: 2
+  ScreechMinSpeed: 2
+  DuckDb: 6
+  DuckHoldSeconds: 1.2
+  EngineMinDistance: 3
+  EngineMaxDistance: 50
+  AlertMinDistance: 5
+  AlertMaxDistance: 80
+  SirenMaxDistance: 120

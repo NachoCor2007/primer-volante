@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5a6633bd53fcbc7418efd61aaad3c97d, type: 3}
+  m_Name: Zone_Plaza
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Audio.AmbienceZoneProfile
+  BedLoop: {fileID: 8300000, guid: d14d9e683da12b94691fbde7d0a5a38d, type: 3}
+  BedVolume: 0.35
+  ScatterClips:
+  - {fileID: 8300000, guid: 2f4c5c914790d374ab3a992bc664f9bd, type: 3}
+  - {fileID: 8300000, guid: 274fbaeafe0ad404bb9158ce3c3646e5, type: 3}
+  - {fileID: 8300000, guid: 3eb0f240bcfd08047821e4b2ab389131, type: 3}
+  - {fileID: 8300000, guid: 3838f7b47fba16c41917c8a91e5bc10b, type: 3}
+  - {fileID: 8300000, guid: 830e51578a9ad2f43aba760702f62e5d, type: 3}
+  - {fileID: 8300000, guid: d7c20cf48a023e74297a7799ef783cf7, type: 3}
+  ScatterIsOrganic: 1
+  ScatterMinInterval: 6
+  ScatterMaxInterval: 16
+  ScatterMinDistance: 8
+  ScatterMaxDistance: 25
+  ScatterMinVolume: 0.4
+  ScatterMaxVolume: 0.8
+  ScatterMinPitch: 0.95
+  ScatterMaxPitch: 1.05
+  ScatterMinRolloffDistance: 4
+  ScatterMaxRolloffDistance: 60
