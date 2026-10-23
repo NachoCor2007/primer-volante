@@ -133,8 +133,26 @@ namespace PrimerVolante.Testing.Editor
             // 14. Asegurar que la cámara principal de VR y cámaras del jugador vean todo el entorno real excepto GPSRoute
             ConfigureMainCameraVR(scene, routeLayer, npcLayer, vehicleLayer, roadsLayer, buildingLayer);
 
-            // 11. Configurar Simulador Desktop de Cabina y Piloto Automático
-            SetupDesktopTester(scene, carObj, splineContainer);
+            // 15. Limpieza de simulador desktop y cámaras no-VR en la escena
+            PurgeDesktopTesterAndPOVCamera(scene, carObj);
+
+            // 16. Asegurar que Car09 en la escena esté en capa Default (0), con VehicleController habilitado y físicas no cinemáticas
+            SetLayerRecursively(carObj, 0, excludeChildrenWithName: new[] { "GPS_Route_Line" });
+
+            VehicleController carVehicleCtrl = carObj.GetComponent<VehicleController>();
+            if (carVehicleCtrl != null)
+            {
+                carVehicleCtrl.enabled = true;
+                EditorUtility.SetDirty(carVehicleCtrl);
+            }
+
+            Rigidbody carRb = carObj.GetComponent<Rigidbody>();
+            if (carRb != null)
+            {
+                carRb.isKinematic = false;
+                carRb.useGravity = true;
+                EditorUtility.SetDirty(carRb);
+            }
 
             // 11. Guardar escena
             EditorSceneManager.MarkSceneDirty(scene);
@@ -192,7 +210,7 @@ namespace PrimerVolante.Testing.Editor
             {
                 foreach (GameObject root in scene.GetRootGameObjects())
                 {
-                    if (root != carObj && (root.name == "GPS_Display_Canvas" || root.name == "GPS_TopDownCamera" || root.name == "GPS_Route_Line"))
+                    if (root != carObj && (root.name == "GPS_Display_Canvas" || root.name == "GPS_TopDownCamera" || root.name == "GPS_Route_Line" || root.name == "[Desktop_Cockpit_Tester]"))
                     {
                         root.SetActive(false);
                         Object.DestroyImmediate(root);
@@ -201,6 +219,16 @@ namespace PrimerVolante.Testing.Editor
             }
 
             if (carObj == null) return;
+
+            // Destruir cualquier Desktop_POV_Camera en el auto
+            foreach (Camera cam in carObj.GetComponentsInChildren<Camera>(true))
+            {
+                if (cam != null && cam.name == "Desktop_POV_Camera")
+                {
+                    cam.gameObject.SetActive(false);
+                    Object.DestroyImmediate(cam.gameObject);
+                }
+            }
 
             // 2. Si carObj es una instancia de prefab, eliminar overrides de tipo AddedGameObject para el GPS
             if (PrefabUtility.IsPartOfPrefabInstance(carObj))
@@ -311,10 +339,31 @@ namespace PrimerVolante.Testing.Editor
             // Limpiar duplicados previos antes de ensamblar
             PurgeDuplicateGPSObjects(default, carRoot);
 
-            // 1. Asignar capa Vehicle al auto para culling en la cámara cenital
-            if (vehicleLayer != -1)
+            // 1. Asignar capa Default (0) al auto e interactables de cabina, excepto GPS_Route_Line (GPSRoute)
+            SetLayerRecursively(carRoot, 0, excludeChildrenWithName: new[] { "GPS_Route_Line" });
+
+            // Eliminar cualquier Desktop_POV_Camera residual en el auto
+            foreach (Camera cam in carRoot.GetComponentsInChildren<Camera>(true))
             {
-                SetLayerRecursively(carRoot, vehicleLayer, excludeChildrenWithName: new[] { "GPS_Route_Line" });
+                if (cam != null && cam.name == "Desktop_POV_Camera")
+                {
+                    Object.DestroyImmediate(cam.gameObject);
+                }
+            }
+
+            // Asegurar que VehicleController esté habilitado y Rigidbody no sea cinemático
+            var vehicleCtrl = carRoot.GetComponent<VehicleController>();
+            if (vehicleCtrl != null)
+            {
+                vehicleCtrl.enabled = true;
+                EditorUtility.SetDirty(vehicleCtrl);
+            }
+            var vehicleRb = carRoot.GetComponent<Rigidbody>();
+            if (vehicleRb != null)
+            {
+                vehicleRb.isKinematic = false;
+                vehicleRb.useGravity = true;
+                EditorUtility.SetDirty(vehicleRb);
             }
 
             // 2. Ubicar o crear GPS_Display_Canvas
@@ -1354,41 +1403,43 @@ namespace PrimerVolante.Testing.Editor
             }
         }
 
-                private static void SetupDesktopTester(Scene scene, GameObject carObj, SplineContainer splineContainer)
+                public static void PurgeDesktopTesterAndPOVCamera(Scene scene, GameObject carObj)
         {
-            GameObject testerObj = null;
-            foreach (var root in scene.GetRootGameObjects())
+            if (scene.IsValid() && scene.isLoaded)
             {
-                if (root.name == "[Desktop_Cockpit_Tester]")
+                GameObject[] roots = scene.GetRootGameObjects();
+                for (int i = roots.Length - 1; i >= 0; i--)
                 {
-                    testerObj = root;
-                    break;
+                    GameObject root = roots[i];
+                    if (root == null) continue;
+                    if (root.name == "[Desktop_Cockpit_Tester]" || root.GetComponent<PrimerVolante.Testing.CockpitDesktopTester>() != null)
+                    {
+                        root.SetActive(false);
+                        Object.DestroyImmediate(root);
+                    }
+                }
+
+                foreach (Camera cam in Object.FindObjectsByType<Camera>())
+                {
+                    if (cam != null && cam.name == "Desktop_POV_Camera")
+                    {
+                        cam.gameObject.SetActive(false);
+                        Object.DestroyImmediate(cam.gameObject);
+                    }
                 }
             }
 
-            if (testerObj == null)
-            {
-                testerObj = new GameObject("[Desktop_Cockpit_Tester]");
-            }
-
-            var tester = testerObj.GetComponent<PrimerVolante.Testing.CockpitDesktopTester>();
-            if (tester == null)
-            {
-                tester = testerObj.AddComponent<PrimerVolante.Testing.CockpitDesktopTester>();
-            }
-
-            tester.SplineContainer = splineContainer;
             if (carObj != null)
             {
-                tester.CarTransform = carObj.transform;
-                tester.VehicleController = carObj.GetComponent<VehicleController>();
+                foreach (Camera cam in carObj.GetComponentsInChildren<Camera>(true))
+                {
+                    if (cam != null && cam.name == "Desktop_POV_Camera")
+                    {
+                        cam.gameObject.SetActive(false);
+                        Object.DestroyImmediate(cam.gameObject);
+                    }
+                }
             }
-            tester.ResolveReferences();
-            tester.SetupDesktopCamera();
-
-            EditorUtility.SetDirty(tester);
-            EditorUtility.SetDirty(testerObj);
-            Debug.Log("[GPSNavigationSceneSetup] 🖥️ Simulador Desktop de Cabina configurado y cableado a GPS_Circuit_Route.");
         }
 
         private static GameObject FindCar09InScene(Scene scene)

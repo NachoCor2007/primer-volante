@@ -288,6 +288,62 @@ namespace PrimerVolante.Testing.Editor
                             $"GPS_Route_Line DEBE estar asignado a la capa '{GPSNavigationSceneSetup.ROUTE_LAYER_NAME}'", ref total, ref passed);
                     }
                 }
+
+                // Verificación de capa y componentes de VR en Car09.prefab
+                int defaultLayerIdx = LayerMask.NameToLayer("Default");
+                Assert(prefabRoot.layer == defaultLayerIdx,
+                    "Car09.prefab raíz DEBE estar en la capa 'Default' (layer 0)", ref total, ref passed);
+
+                VehicleController prefabVc = prefabRoot.GetComponent<VehicleController>();
+                Assert(prefabVc != null && prefabVc.enabled,
+                    "Car09.prefab DEBE tener VehicleController habilitado", ref total, ref passed);
+
+                Rigidbody prefabRb = prefabRoot.GetComponent<Rigidbody>();
+                Assert(prefabRb != null && !prefabRb.isKinematic && prefabRb.useGravity,
+                    "Car09.prefab DEBE tener Rigidbody con isKinematic == false y useGravity == true", ref total, ref passed);
+
+                // Ausencia de Desktop_POV_Camera en el prefab
+                int prefabDesktopCams = 0;
+                foreach (Camera c in prefabRoot.GetComponentsInChildren<Camera>(true))
+                {
+                    if (c != null && c.name == "Desktop_POV_Camera") prefabDesktopCams++;
+                }
+                Assert(prefabDesktopCams == 0,
+                    "Car09.prefab NO debe contener cámaras Desktop_POV_Camera", ref total, ref passed);
+
+                // Controles de cabina e interactables en capa Default (0)
+                Transform wheelTransform = prefabRoot.transform.Find("SteeringWheel_Pivot");
+                Assert(wheelTransform != null && wheelTransform.gameObject.layer == defaultLayerIdx,
+                    "SteeringWheel_Pivot en Car09.prefab DEBE estar en la capa 'Default' (layer 0)", ref total, ref passed);
+                if (wheelTransform != null)
+                {
+                    var col = wheelTransform.GetComponent<Collider>();
+                    Assert(col != null && col.enabled, "SteeringWheel_Pivot en prefab DEBE tener un Collider activo", ref total, ref passed);
+                    var wheelComp = wheelTransform.GetComponent<VRSteeringWheel>();
+                    Assert(wheelComp != null, "SteeringWheel_Pivot en prefab DEBE tener componente VRSteeringWheel", ref total, ref passed);
+                }
+
+                string[] prefabInteractableNames = new string[] {
+                    "mdl_car02_brake", "mdl_car02_lights_knob", "GearShifter", "StartButton", "TurnSignal", "HazardButton"
+                };
+                foreach (string ctrlName in prefabInteractableNames)
+                {
+                    Transform ctrlT = prefabRoot.transform.Find(ctrlName);
+                    if (ctrlT == null)
+                    {
+                        foreach (Transform child in prefabRoot.GetComponentsInChildren<Transform>(true))
+                        {
+                            if (child.name == ctrlName) { ctrlT = child; break; }
+                        }
+                    }
+                    Assert(ctrlT != null && ctrlT.gameObject.layer == defaultLayerIdx,
+                        $"Control de cabina '{ctrlName}' en Car09.prefab DEBE estar en capa 'Default' (layer 0)", ref total, ref passed);
+                    if (ctrlT != null)
+                    {
+                        var col = ctrlT.GetComponent<Collider>();
+                        Assert(col != null && col.enabled, $"Control de cabina '{ctrlName}' en prefab DEBE tener un Collider activo", ref total, ref passed);
+                    }
+                }
             }
             finally
             {
@@ -432,20 +488,71 @@ namespace PrimerVolante.Testing.Editor
                 Assert(rendererCount == 1,
                     $"Car09 en la escena DEBE tener exactamente 1 GPSRouteRenderer (encontrados: {rendererCount})", ref total, ref passed);
 
-                // Verificación del Simulador Desktop de Cabina y Piloto Automático
+                // Verificación de Eliminación de Piloto Automático / Desktop Tester
                 var tester = UnityEngine.Object.FindAnyObjectByType<PrimerVolante.Testing.CockpitDesktopTester>();
-                Assert(tester != null, "La escena debe contener el componente CockpitDesktopTester para pruebas en PC", ref total, ref passed);
-                if (tester != null)
+                Assert(tester == null, "NO debe existir componente CockpitDesktopTester en la escena (piloto automático eliminado)", ref total, ref passed);
+
+                GameObject testerGo = GameObject.Find("[Desktop_Cockpit_Tester]");
+                Assert(testerGo == null, "NO debe existir GameObject [Desktop_Cockpit_Tester] en la escena", ref total, ref passed);
+
+                // Verificación de Ausencia de Cámaras Desktop_POV_Camera
+                int desktopCamCount = 0;
+                foreach (Camera c in UnityEngine.Object.FindObjectsByType<Camera>())
                 {
-                    Assert(tester.IsAutoPilot, "CockpitDesktopTester debe iniciar por defecto en modo Piloto Automático", ref total, ref passed);
-                    Assert(tester.SplineContainer != null, "CockpitDesktopTester DEBE tener un SplineContainer asignado", ref total, ref passed);
-                    if (tester.SplineContainer != null)
+                    if (c != null && c.name == "Desktop_POV_Camera") desktopCamCount++;
+                }
+                Assert(desktopCamCount == 0, "NO deben existir cámaras Desktop_POV_Camera huérfanas en la escena", ref total, ref passed);
+
+                // Verificación de XR Origin y DriverSeatFollower
+                var follower = UnityEngine.Object.FindAnyObjectByType<DriverSeatFollower>();
+                Assert(follower != null && follower.enabled, "DriverSeatFollower debe existir y estar activo en la escena", ref total, ref passed);
+                if (follower != null)
+                {
+                    Transform driverSeat = car09.transform.Find("DriverSeat");
+                    Assert(follower.DriverSeat == driverSeat, "DriverSeatFollower debe apuntar al DriverSeat de Car09", ref total, ref passed);
+                }
+
+                // Verificación de Car09 físicas y control manual en la escena
+                var vc = car09.GetComponent<VehicleController>();
+                Assert(vc != null && vc.enabled, "VehicleController en Car09 debe estar presente y habilitado (control manual)", ref total, ref passed);
+
+                var rb = car09.GetComponent<Rigidbody>();
+                Assert(rb != null && !rb.isKinematic && rb.useGravity, "Rigidbody en Car09 debe tener isKinematic == false y useGravity == true", ref total, ref passed);
+
+                // Verificación de que Car09 y sus controles de cabina están en capa Default (0)
+                int defaultLayerIdx = LayerMask.NameToLayer("Default");
+                Assert(car09.layer == defaultLayerIdx, "Car09 en la escena DEBE estar en la capa 'Default' (layer 0)", ref total, ref passed);
+
+                Transform wheelPivot = car09.transform.Find("SteeringWheel_Pivot");
+                Assert(wheelPivot != null && wheelPivot.gameObject.layer == defaultLayerIdx,
+                    "SteeringWheel_Pivot en la escena DEBE estar en la capa 'Default' (layer 0)", ref total, ref passed);
+                if (wheelPivot != null)
+                {
+                    var col = wheelPivot.GetComponent<Collider>();
+                    Assert(col != null && col.enabled, "SteeringWheel_Pivot DEBE tener un Collider activo", ref total, ref passed);
+                    var grab = wheelPivot.GetComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable>();
+                    Assert(grab != null && grab.enabled, "SteeringWheel_Pivot DEBE tener XRGrabInteractable activo", ref total, ref passed);
+                }
+
+                string[] interactiveNames = new string[] {
+                    "mdl_car02_brake", "mdl_car02_lights_knob", "GearShifter", "StartButton", "TurnSignal", "HazardButton"
+                };
+                foreach (string ctrlName in interactiveNames)
+                {
+                    Transform ctrlTransform = car09.transform.Find(ctrlName);
+                    if (ctrlTransform == null)
                     {
-                        string containerName = tester.SplineContainer.gameObject.name;
-                        Assert(containerName == GPSNavigationSceneSetup.ROUTE_OBJECT_NAME,
-                            $"CockpitDesktopTester debe estar vinculado a '{GPSNavigationSceneSetup.ROUTE_OBJECT_NAME}' (actual: '{containerName}')", ref total, ref passed);
-                        Assert(!containerName.Contains("Pedestrian") && !containerName.Contains("Crosswalk"),
-                            "CockpitDesktopTester NO debe estar vinculado a una ruta peatonal", ref total, ref passed);
+                        foreach (Transform child in car09.GetComponentsInChildren<Transform>(true))
+                        {
+                            if (child.name == ctrlName) { ctrlTransform = child; break; }
+                        }
+                    }
+                    Assert(ctrlTransform != null && ctrlTransform.gameObject.layer == defaultLayerIdx,
+                        $"Control de cabina '{ctrlName}' DEBE estar en la capa 'Default' (layer 0)", ref total, ref passed);
+                    if (ctrlTransform != null)
+                    {
+                        var col = ctrlTransform.GetComponent<Collider>();
+                        Assert(col != null && col.enabled, $"Control de cabina '{ctrlName}' DEBE tener un Collider activo", ref total, ref passed);
                     }
                 }
             }
@@ -536,7 +643,9 @@ namespace PrimerVolante.Testing.Editor
                     if ((n.StartsWith("Vehicle_") || n.StartsWith("Vehicle")) &&
                         t.GetComponent<PrimerVolante.Environment.NPCPathFollower>() == null &&
                         !n.Contains("Car09") &&
-                        t.GetComponent<PrimerVolante.VR.VehicleController>() == null)
+                        !n.StartsWith("VehicleAudio") &&
+                        !n.StartsWith("VehicleHaptics") &&
+                        t.GetComponentInParent<PrimerVolante.VR.VehicleController>() == null)
                     {
                         Transform parent = t.parent;
                         bool parentIsVehicle = false;
