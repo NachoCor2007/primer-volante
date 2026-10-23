@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5a6633bd53fcbc7418efd61aaad3c97d, type: 3}
   m_Name: Zone_Town
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Audio.AmbienceZoneProfile
-  BedLoop: {fileID: 8300000, guid: 69ddc1239a4a0544cb0cedc2d9ab3e48, type: 3}
-  BedVolume: 0.5
+  BedLoop: {fileID: 8300000, guid: a46c92285cbfccd44942bcea6e0a3c74, type: 3}
+  BedVolume: 0.3
   ScatterClips: []
   ScatterIsOrganic: 1
   ScatterMinInterval: 8
