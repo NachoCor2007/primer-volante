@@ -15,7 +15,13 @@ MonoBehaviour:
   Mode: 1
   ClipsAreOrganic: 1
   LoopClip: {fileID: 0}
-  OneShots: []
+  OneShots:
+  - {fileID: 8300000, guid: 27291b1c961192944a8470c8da008780, type: 3}
+  - {fileID: 8300000, guid: 7c78f6d2ad900cc438f9a8a9cf9cba43, type: 3}
+  - {fileID: 8300000, guid: 949ec05fd8994144d814323fddf2b805, type: 3}
+  - {fileID: 8300000, guid: ea0fcb06e78c74f479b1702f054b1815, type: 3}
+  - {fileID: 8300000, guid: 12e1c69eb28e76e43b33e567b7b2defe, type: 3}
+  - {fileID: 8300000, guid: b57da54bf7925d344ad4c42e39b822c8, type: 3}
   MinVolume: 0.4
   MaxVolume: 0.8
   MinPitch: 0.95
