@@ -174,7 +174,8 @@ namespace PrimerVolante.Testing.Editor
 
             GetOrCreate<AmbientEmitterProfile>(EMITTER_DOG, p =>
             {
-                p.Mode = AmbientEmitterMode.OnApproach; p.ClipsAreOrganic = true;
+                p.Mode = AmbientEmitterMode.RandomOneShots; p.ClipsAreOrganic = true;
+                p.MinInterval = 6f; p.MaxInterval = 15f;
                 p.MinVolume = 0.7f; p.MaxVolume = 1f;
                 p.MinDistance = 3f; p.MaxDistance = 40f;
                 p.ApproachRadius = 14f; p.ApproachProbability = 0.5f; p.ApproachCooldown = 40f;

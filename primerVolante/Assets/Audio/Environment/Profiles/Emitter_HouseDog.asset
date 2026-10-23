@@ -12,17 +12,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 75d17c935cd5bc94d8771eddd877d5e7, type: 3}
   m_Name: Emitter_HouseDog
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Audio.AmbientEmitterProfile
-  Mode: 2
+  Mode: 1
   ClipsAreOrganic: 1
   LoopClip: {fileID: 0}
-  OneShots: []
+  OneShots:
+  - {fileID: 8300000, guid: 1e0a9a6e17c6a3c4da27d41988737db3, type: 3}
+  - {fileID: 8300000, guid: bf21f202e1cfbb745a2d74eb8d22992d, type: 3}
+  - {fileID: 8300000, guid: cb7a471eba8d43d42b2b38b4d7ac26fd, type: 3}
   MinVolume: 0.7
   MaxVolume: 1
   MinPitch: 0.95
   MaxPitch: 1.05
-  MinInterval: 6
-  MaxInterval: 15
-  MinDistance: 3
+  MinInterval: 10
+  MaxInterval: 18
+  MinDistance: 15.99
   MaxDistance: 40
   ApproachRadius: 14
   ApproachProbability: 0.5
