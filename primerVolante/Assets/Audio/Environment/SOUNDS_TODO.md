@@ -22,15 +22,8 @@ También podés ver qué falta de cada perfil con clic derecho sobre el asset > 
 
 | Perfil / campo | Qué es | Duración sugerida | Loop | Canales | Búsqueda en inglés (Freesound / Pixabay / Sonniss) |
 |---|---|---|---|---|---|
-| `Zone_Plaza` / `ScatterClips` | Murmullo de plaza lejano, pájaros, palomas, chicos jugando a lo lejos (varios clips cortos) | 2–6 s cada uno | no | mono | `plaza ambience distant crowd`, `park birds chirping`, `pigeons cooing`, `children playing distant`, `kids laughing park far` |
-| `Emitter_PlazaLife` / `OneShots` | Pájaros y palomas cercanos, risas de chicos, conversación corta | 1–4 s cada uno | no | mono | `sparrow chirp`, `pigeon wings flap`, `child laugh short`, `park bench talking low` |
-| `Emitter_FoodAndDrink` / `LoopClip` | Murmullo de bar o restaurante: charla, vajilla, música apagada de fondo | 20–40 s | sí (sin corte) | mono | `restaurant ambience murmur`, `cafe ambience dishes`, `bar crowd muffled music`, `pizzeria ambience` |
-| `Emitter_Stadium` / `LoopClip` | Multitud de estadio en loop (cantos, aliento) | 30–60 s | sí (sin corte) | mono | `stadium crowd loop`, `football crowd chant distant`, `soccer stadium ambience`; para aclamaciones puntuales: `stadium crowd cheer goal` |
-| `Emitter_GasStation` / `OneShots` | Surtidor de nafta: manguera, clic de la pistola, bomba | 1–3 s cada uno | no | mono | `gas pump nozzle click`, `fuel pump`, `gas station ambience`, `petrol pump handle` |
-| `Emitter_HouseDog` / `OneShots` | Ladridos de perro (varios, de distintos tamaños; el código dispara ráfagas de 1–3) | 0.5–2 s cada uno | no | mono | `dog bark single`, `dog barking distant`, `small dog bark`, `large dog bark` |
 | `Zone_Town` / `ScatterClips` | Pájaros del pueblo, gallo, campo a lo lejos | 2–6 s cada uno | no | mono | `rooster crow`, `countryside birds`, `village ambience birds`, `crow caw distant`, `farm ambience` |
 | `NPCPedestrianAudio_Default` / `Voices` | Voces ocasionales de peatón: tos, charla corta, murmullo | 1–3 s cada uno | no | mono | `cough male`, `short chat murmur`, `person humming`, `hello greeting male` |
-| `NPCPedestrianAudio_Default` / `Screams` | Grito o "¡eh!" ante una frenada de emergencia cercana | 0.5–1.5 s cada uno | no | mono | `scream surprised male`, `hey shout`, `yell watch out`, `startled gasp` |
 
 ## Sugeridos sin campo asignado todavía
 
@@ -46,5 +39,15 @@ incluir mezclados dentro de los loops de arriba o agregarse con una tarea futura
 
 ## Estado actual
 
-Al crear los perfiles quedan **9 grupos de clips orgánicos pendientes** (las 9 filas de la primera tabla).
+**Completados** (clips en `Organic/`, créditos en `Assets/Audio/CREDITS.md`):
+`Zone_Plaza` (`ScatterClips` y además el lecho `BedLoop`, que reemplazó al placeholder de aire), `Emitter_PlazaLife`,
+`Emitter_FoodAndDrink`, `Emitter_GasStation`, `Emitter_HouseDog`, `Emitter_Stadium` y `NPCPedestrianAudio_Default` / `Screams`.
+
+`Zone_Town` / `BedLoop` usa `Organic/town_wind_soft_loop.wav`, un viento grave sintetizado que reemplazó al placeholder
+`bed_town_wind_loop` (sonaba a ruido blanco). Si se consigue un ambiente de campo real, se puede reemplazar.
+
+**Pendientes**: las 2 filas de la tabla de arriba (pájaros del pueblo, voces de peatón).
+
+**Pasos de peatón**: `NPCPedestrianAudio_Default` / `Footsteps` usa `Organic/footstep_organic_01..04` (cortados de
+`single_footstep_02.mp3`). Los placeholders `footstep_01..04` quedan sin uso.
 Cuando completes un campo, la verificación deja de listarlo.
