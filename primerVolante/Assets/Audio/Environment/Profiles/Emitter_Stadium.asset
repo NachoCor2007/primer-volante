@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Audio.AmbientEmitterProfile
   Mode: 0
   ClipsAreOrganic: 1
-  LoopClip: {fileID: 0}
+  LoopClip: {fileID: 8300000, guid: 28779d3956f618644b090507243cf090, type: 3}
   OneShots: []
   MinVolume: 0.7
   MaxVolume: 0.9
@@ -22,7 +22,7 @@ MonoBehaviour:
   MaxPitch: 1.05
   MinInterval: 6
   MaxInterval: 15
-  MinDistance: 10
+  MinDistance: 20
   MaxDistance: 120
   ApproachRadius: 14
   ApproachProbability: 0.6
