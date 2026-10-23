@@ -56,6 +56,12 @@ namespace PrimerVolante.VR
         [Tooltip("Activa la distribución de cuadros entre los espejos activos para no renderizar todas las cámaras simultáneamente.")]
         [SerializeField] private bool m_EnableTimeSlicing = true;
 
+        /// <summary>
+        /// Nombre de la capa donde viven las carcasas y vidrios de los espejos. Las cámaras de espejo
+        /// no la dibujan: la cámara queda dentro de la carcasa y, al girar el pivote, vería sus caras internas.
+        /// </summary>
+        public const string MirrorHousingLayerName = "MirrorHousing";
+
         // Registro estático de todas las cámaras de espejo activas para coordinación de Time-Slicing
         private static readonly List<VehicleMirrorCamera> s_AllMirrorCameras = new List<VehicleMirrorCamera>();
         private static int s_CurrentSliceIndex = 0;
@@ -174,6 +180,13 @@ namespace PrimerVolante.VR
             m_MirrorCamera.allowHDR = false;
             m_MirrorCamera.allowMSAA = false;
             m_MirrorCamera.clearFlags = CameraClearFlags.Skybox;
+
+            // Excluir carcasas y vidrios de espejos del render (si la capa existe en el proyecto)
+            int housingLayer = LayerMask.NameToLayer(MirrorHousingLayerName);
+            if (housingLayer >= 0)
+            {
+                m_MirrorCamera.cullingMask &= ~(1 << housingLayer);
+            }
 
             EnsureRenderTextureCreated();
 
