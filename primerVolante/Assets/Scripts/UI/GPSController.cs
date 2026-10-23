@@ -202,25 +202,21 @@ namespace PrimerVolante.UI
                 camData.requiresDepthOption = CameraOverrideOption.Off;
             }
 
-            // Configurar CullingMask: solo entorno (Default, etc.) y ruta GPS (GPSRoute).
-            // Excluir explícitamente capas de vehículos (Vehicle) y NPCs/peatones (NPC).
-            int defaultLayer = LayerMask.NameToLayer("Default");
-            int mask = (defaultLayer != -1) ? (1 << defaultLayer) : 0;
+            // Configurar CullingMask con Enfoque de Lista Blanca (Allowlist):
+            // ÚNICAMENTE renderizar las capas Roads, Building y GPSRoute.
+            // Cualquier otro objeto del juego (autos de jugador y NPCs, peatones,
+            // conos, vallas, farolas, árboles, etc.) queda automáticamente invisible
+            // en la pantalla del GPS sin requerir capas ni filtros individuales.
+            int mask = 0;
+
+            int roadsLayer = LayerMask.NameToLayer("Roads");
+            if (roadsLayer != -1) mask |= (1 << roadsLayer);
+
+            int buildingLayer = LayerMask.NameToLayer("Building");
+            if (buildingLayer != -1) mask |= (1 << buildingLayer);
 
             int routeLayer = LayerMask.NameToLayer("GPSRoute");
             if (routeLayer != -1) mask |= (1 << routeLayer);
-
-            int terrainLayer = LayerMask.NameToLayer("Terrain");
-            if (terrainLayer != -1) mask |= (1 << terrainLayer);
-
-            int npcLayer = LayerMask.NameToLayer("NPC");
-            if (npcLayer != -1) mask &= ~(1 << npcLayer);
-
-            int vehicleLayer = LayerMask.NameToLayer("Vehicle");
-            if (vehicleLayer != -1) mask &= ~(1 << vehicleLayer);
-
-            int uiLayer = LayerMask.NameToLayer("UI");
-            if (uiLayer != -1) mask &= ~(1 << uiLayer);
 
             m_TopDownCamera.cullingMask = mask;
 
@@ -230,13 +226,15 @@ namespace PrimerVolante.UI
 
         /// <summary>
         /// Asegura que la cámara principal de VR del jugador no renderice la capa GPSRoute,
-        /// pero mantenga visibles las capas Vehicle y NPC.
+        /// pero mantenga visibles todas las capas del mundo real (Roads, Building, Vehicle, NPC, etc.).
         /// </summary>
         public void ConfigureMainCameraCulling()
         {
             int routeLayer = LayerMask.NameToLayer("GPSRoute");
             int npcLayer = LayerMask.NameToLayer("NPC");
             int vehicleLayer = LayerMask.NameToLayer("Vehicle");
+            int roadsLayer = LayerMask.NameToLayer("Roads");
+            int buildingLayer = LayerMask.NameToLayer("Building");
 
             Camera mainCam = Camera.main;
             if (mainCam != null)
@@ -244,6 +242,8 @@ namespace PrimerVolante.UI
                 if (routeLayer != -1) mainCam.cullingMask &= ~(1 << routeLayer);
                 if (npcLayer != -1) mainCam.cullingMask |= (1 << npcLayer);
                 if (vehicleLayer != -1) mainCam.cullingMask |= (1 << vehicleLayer);
+                if (roadsLayer != -1) mainCam.cullingMask |= (1 << roadsLayer);
+                if (buildingLayer != -1) mainCam.cullingMask |= (1 << buildingLayer);
             }
         }
 

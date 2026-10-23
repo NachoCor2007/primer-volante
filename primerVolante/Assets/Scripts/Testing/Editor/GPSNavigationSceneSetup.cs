@@ -39,6 +39,8 @@ namespace PrimerVolante.Testing.Editor
         public const string ROUTE_LAYER_NAME = "GPSRoute";
         public const string VEHICLE_LAYER_NAME = "Vehicle";
         public const string NPC_LAYER_NAME = "NPC";
+        public const string ROADS_LAYER_NAME = "Roads";
+        public const string BUILDING_LAYER_NAME = "Building";
         public const string NPC_BLOCK_ROUTE_NAME = "Route_Vehicle_Block";
         public const string NPC_GROUP_NAME = "NPC_Demo";
         public const string NPC_CAR_PREFAB_PATH = "Assets/Prefabs/NPCs/Vehicles/NPC_Car_color01.prefab";
@@ -55,6 +57,8 @@ namespace PrimerVolante.Testing.Editor
             int routeLayer = EnsureLayer(ROUTE_LAYER_NAME);
             int vehicleLayer = EnsureLayer(VEHICLE_LAYER_NAME);
             int npcLayer = EnsureLayer(NPC_LAYER_NAME);
+            int roadsLayer = EnsureLayer(ROADS_LAYER_NAME);
+            int buildingLayer = EnsureLayer(BUILDING_LAYER_NAME);
 
             // 2. Asegurar recursos (RenderTexture, Material, Ícono de Flecha)
             EnsureDirectories();
@@ -114,17 +118,20 @@ namespace PrimerVolante.Testing.Editor
             }
 
             // 10. Asegurar que la cámara principal de VR no renderice la capa GPSRoute
-            // 10. Limpieza de vehículos decorativos / estáticos de la ciudad
-            PurgeStaticVehicles(scene);
+            // 10. Asignar capa Vehicle a vehículos decorativos / estáticos de la ciudad
+            AssignLayerToStaticVehicles(scene, vehicleLayer);
 
             // 11. Configurar ruta y auto NPC patrullando en loop cerca de la meta
             SetupNPCVehicleLoopNearDestination(scene, npcLayer);
 
-            // 12. Asignación recursiva de la capa NPC a todos los NPCs y peatones de la escena
+            // 12. Asignación de capa Roads y Building al entorno (Enfoque Lista Blanca)
+            ClassifyEnvironmentLayers(scene, roadsLayer, buildingLayer);
+
+            // 13. Asignación recursiva de la capa NPC a todos los NPCs y peatones de la escena
             ApplyNPCLayerToAllNPCs(scene, npcLayer);
 
-            // 13. Asegurar que la cámara principal de VR y cámaras del jugador vean NPC y Vehicle, pero no GPSRoute
-            ConfigureMainCameraVR(scene, routeLayer, npcLayer, vehicleLayer);
+            // 14. Asegurar que la cámara principal de VR y cámaras del jugador vean todo el entorno real excepto GPSRoute
+            ConfigureMainCameraVR(scene, routeLayer, npcLayer, vehicleLayer, roadsLayer, buildingLayer);
 
             // 11. Configurar Simulador Desktop de Cabina y Piloto Automático
             SetupDesktopTester(scene, carObj, splineContainer);
@@ -151,6 +158,8 @@ namespace PrimerVolante.Testing.Editor
             int routeLayer = EnsureLayer(ROUTE_LAYER_NAME);
             int vehicleLayer = EnsureLayer(VEHICLE_LAYER_NAME);
             int npcLayer = EnsureLayer(NPC_LAYER_NAME);
+            int roadsLayer = EnsureLayer(ROADS_LAYER_NAME);
+            int buildingLayer = EnsureLayer(BUILDING_LAYER_NAME);
 
             RenderTexture rt = GetOrCreateRenderTexture(RT_PATH, 512, 512);
             Material routeMat = GetOrCreateRouteMaterial(MAT_PATH);
@@ -162,7 +171,7 @@ namespace PrimerVolante.Testing.Editor
 
             try
             {
-                ConfigureGPSInVehicle(prefabRoot, rt, routeMat, arrowSprite, fontAsset, routeLayer, vehicleLayer, npcLayer);
+                ConfigureGPSInVehicle(prefabRoot, rt, routeMat, arrowSprite, fontAsset, routeLayer, vehicleLayer, npcLayer, roadsLayer, buildingLayer);
                 PrefabUtility.SaveAsPrefabAsset(prefabRoot, PREFAB_PATH);
                 Debug.Log($"[GPSNavigationSceneSetup] ✅ Prefab {Path.GetFileName(PREFAB_PATH)} actualizado con pantalla diegética de GPS!");
             }
@@ -295,7 +304,9 @@ namespace PrimerVolante.Testing.Editor
             TMP_FontAsset fontAsset,
             int routeLayer,
             int vehicleLayer,
-            int npcLayer = -1)
+            int npcLayer = -1,
+            int roadsLayer = -1,
+            int buildingLayer = -1)
         {
             // Limpiar duplicados previos antes de ensamblar
             PurgeDuplicateGPSObjects(default, carRoot);
@@ -538,17 +549,32 @@ namespace PrimerVolante.Testing.Editor
             topDownCam.allowHDR = false;
             topDownCam.allowMSAA = false;
 
-            // Culling mask: solo ver asfalto/calles (Default) y capa GPSRoute
-            // Excluir UI, Vehicle, NPC
-            int defaultLayer = LayerMask.NameToLayer("Default");
-            int mask = (defaultLayer != -1) ? (1 << defaultLayer) : 0;
-            int terrainLayer = LayerMask.NameToLayer("Terrain");
-            if (terrainLayer != -1) mask |= (1 << terrainLayer);
-            if (npcLayer != -1) mask &= ~(1 << npcLayer);
-            if (vehicleLayer != -1) mask &= ~(1 << vehicleLayer);
-            int uiLayer = LayerMask.NameToLayer("UI");
-            if (uiLayer != -1) mask &= ~(1 << uiLayer);
+            // Culling mask con Enfoque de Lista Blanca (Allowlist):
+            // ÚNICAMENTE renderizar Roads, Building y GPSRoute.
+            // La capa Default (0) y todas las demás quedan automáticamente excluidas.
+            int mask = 0;
+
+            if (roadsLayer != -1) mask |= (1 << roadsLayer);
+            else
+            {
+                int rLayer = LayerMask.NameToLayer(ROADS_LAYER_NAME);
+                if (rLayer != -1) mask |= (1 << rLayer);
+            }
+
+            if (buildingLayer != -1) mask |= (1 << buildingLayer);
+            else
+            {
+                int bLayer = LayerMask.NameToLayer(BUILDING_LAYER_NAME);
+                if (bLayer != -1) mask |= (1 << bLayer);
+            }
+
             if (routeLayer != -1) mask |= (1 << routeLayer);
+            else
+            {
+                int rtLayer = LayerMask.NameToLayer(ROUTE_LAYER_NAME);
+                if (rtLayer != -1) mask |= (1 << rtLayer);
+            }
+
             topDownCam.cullingMask = mask;
 
             // Eliminar AudioListener
@@ -684,35 +710,34 @@ namespace PrimerVolante.Testing.Editor
 
         // =========================================================================
         // =========================================================================
-        // Limpieza de Vehículos Decorativos / Estáticos
+        // Asignación de Capa Vehicle a Vehículos Decorativos / Estáticos
         // =========================================================================
 
-        public static void PurgeStaticVehicles(Scene scene)
+        public static void AssignLayerToStaticVehicles(Scene scene, int vehicleLayer)
         {
-            if (!scene.IsValid() || !scene.isLoaded) return;
+            if (!scene.IsValid() || !scene.isLoaded || vehicleLayer == -1) return;
 
-            List<GameObject> toDestroy = new List<GameObject>();
+            List<GameObject> staticVehicles = new List<GameObject>();
 
             foreach (GameObject root in scene.GetRootGameObjects())
             {
-                FindStaticVehiclesRecursive(root, toDestroy);
+                FindStaticVehiclesRecursive(root, staticVehicles);
             }
 
-            int count = toDestroy.Count;
-            for (int i = count - 1; i >= 0; i--)
+            int count = staticVehicles.Count;
+            foreach (GameObject vehicle in staticVehicles)
             {
-                GameObject go = toDestroy[i];
-                if (go != null)
+                if (vehicle != null)
                 {
-                    go.SetActive(false);
-                    Object.DestroyImmediate(go);
+                    SetLayerRecursively(vehicle, vehicleLayer);
+                    EditorUtility.SetDirty(vehicle);
                 }
             }
 
-            Debug.Log($"[GPSNavigationSceneSetup] 🚗 Eliminados {count} vehículos decorativos estáticos de la ciudad.");
+            Debug.Log($"[GPSNavigationSceneSetup] 🚗 Capa '{VEHICLE_LAYER_NAME}' (layer {vehicleLayer}) asignada a {count} vehículos decorativos estáticos.");
         }
 
-        private static void FindStaticVehiclesRecursive(GameObject obj, List<GameObject> toDestroy)
+        private static void FindStaticVehiclesRecursive(GameObject obj, List<GameObject> staticVehicles)
         {
             if (obj == null) return;
 
@@ -736,17 +761,128 @@ namespace PrimerVolante.Testing.Editor
             if (obj.name.StartsWith("Vehicle_") ||
                 (obj.name.StartsWith("Vehicle") && obj.GetComponent<NPCPathFollower>() == null))
             {
-                toDestroy.Add(obj);
-                return; // Destruir la raíz del vehículo decorativo completo
+                staticVehicles.Add(obj);
+                return; // Asignar capa recursivamente al vehículo decorativo completo
             }
 
             foreach (Transform child in obj.transform)
             {
-                FindStaticVehiclesRecursive(child.gameObject, toDestroy);
+                FindStaticVehiclesRecursive(child.gameObject, staticVehicles);
             }
         }
 
         // =========================================================================
+        // Clasificación de Entorno (Lista Blanca: Calles y Edificios)
+        // =========================================================================
+
+        public static void ClassifyEnvironmentLayers(Scene scene, int roadsLayer, int buildingLayer)
+        {
+            if (!scene.IsValid() || !scene.isLoaded) return;
+
+            List<GameObject> roadRoots = new List<GameObject>();
+            List<GameObject> buildingRoots = new List<GameObject>();
+
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                FindEnvironmentObjectsRecursive(root, roadRoots, buildingRoots);
+            }
+
+            int roadsCount = 0;
+            foreach (GameObject r in roadRoots)
+            {
+                if (r != null && roadsLayer != -1)
+                {
+                    SetLayerRecursively(r, roadsLayer);
+                    EditorUtility.SetDirty(r);
+                    roadsCount++;
+                }
+            }
+
+            int buildingsCount = 0;
+            foreach (GameObject b in buildingRoots)
+            {
+                if (b != null && buildingLayer != -1)
+                {
+                    SetLayerRecursively(b, buildingLayer);
+                    EditorUtility.SetDirty(b);
+                    buildingsCount++;
+                }
+            }
+
+            Debug.Log($"[GPSNavigationSceneSetup] 🏙️ Clasificación de Entorno completada: {roadsCount} objetos en '{ROADS_LAYER_NAME}' (layer {roadsLayer}) y {buildingsCount} en '{BUILDING_LAYER_NAME}' (layer {buildingLayer}).");
+        }
+
+        private static void FindEnvironmentObjectsRecursive(GameObject obj, List<GameObject> roads, List<GameObject> buildings)
+        {
+            if (obj == null) return;
+
+            // Preservar Car09 y el vehículo del jugador
+            if (obj.name.Contains("Car09") || obj.GetComponent<VehicleController>() != null)
+            {
+                return;
+            }
+
+            // Preservar cualquier vehículo (estático o NPC)
+            if (obj.name.StartsWith("Vehicle_") ||
+                (obj.name.StartsWith("Vehicle") && obj.GetComponent<NPCPathFollower>() == null))
+            {
+                return;
+            }
+
+            // Preservar cualquier NPC o parte de un NPC
+            if (obj.name.StartsWith("NPC_") ||
+                obj.name == NPC_GROUP_NAME ||
+                obj.GetComponent<NPCPathFollower>() != null ||
+                obj.GetComponent<NPCPedestrianController>() != null ||
+                obj.GetComponent<NPCVehicleController>() != null)
+            {
+                return;
+            }
+
+            // Preservar componentes de sistema, cámaras, luces, testers y rutas de Spline
+            if (obj.name == "GPS_Circuit_Route" ||
+                obj.name.StartsWith("Route_") ||
+                obj.name.StartsWith("[Desktop") ||
+                obj.name.StartsWith("Trigger_") ||
+                obj.name.StartsWith("Controlled_") ||
+                obj.name.StartsWith("StopLine_") ||
+                obj.name == "Barriers" ||
+                obj.GetComponent<Camera>() != null ||
+                obj.GetComponent<Light>() != null)
+            {
+                return;
+            }
+
+            string name = obj.name;
+
+            // Edificios: nombre comienza o contiene "Building"
+            if (name.IndexOf("Building", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                buildings.Add(obj);
+                return;
+            }
+
+            // Calles / Asfalto: nombre comienza o contiene Road, Lane, Tile, Intersection, Sidewalk, Concrete Tile o Ground
+            bool isRoad = name.IndexOf("Road", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                          name.IndexOf("Lane", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                          name.IndexOf("Tile", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                          name.IndexOf("Intersection", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                          name.IndexOf("Sidewalk", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                          name.IndexOf("Concrete Tile", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                          name.IndexOf("Ground", System.StringComparison.OrdinalIgnoreCase) >= 0;
+
+            if (isRoad)
+            {
+                roads.Add(obj);
+                return;
+            }
+
+            foreach (Transform child in obj.transform)
+            {
+                FindEnvironmentObjectsRecursive(child.gameObject, roads, buildings);
+            }
+        }
+
         // Circuito y Vehículo NPC en Loop Cerca de la Meta (US17/US18)
         // =========================================================================
 
@@ -972,10 +1108,10 @@ namespace PrimerVolante.Testing.Editor
         // Configuración de VR y Layer Culling
         // =========================================================================
 
-        private static void ConfigureMainCameraVR(Scene scene, int routeLayer, int npcLayer, int vehicleLayer)
+        private static void ConfigureMainCameraVR(Scene scene, int routeLayer, int npcLayer, int vehicleLayer, int roadsLayer, int buildingLayer)
         {
-            // Configurar culling mask en cámaras principales
-
+            // Configurar culling mask en cámaras principales:
+            // Mantener visible todo el entorno real (Roads, Building, Vehicle, NPC, Default) y excluir GPSRoute
             foreach (GameObject root in scene.GetRootGameObjects())
             {
                 foreach (Camera cam in root.GetComponentsInChildren<Camera>(true))
@@ -984,6 +1120,8 @@ namespace PrimerVolante.Testing.Editor
                     if (routeLayer != -1) cam.cullingMask &= ~(1 << routeLayer);
                     if (npcLayer != -1) cam.cullingMask |= (1 << npcLayer);
                     if (vehicleLayer != -1) cam.cullingMask |= (1 << vehicleLayer);
+                    if (roadsLayer != -1) cam.cullingMask |= (1 << roadsLayer);
+                    if (buildingLayer != -1) cam.cullingMask |= (1 << buildingLayer);
                     EditorUtility.SetDirty(cam);
                 }
             }

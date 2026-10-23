@@ -417,6 +417,18 @@ namespace PrimerVolante.Testing
                 m_DesktopCamera.cullingMask |= (1 << vehicleLayer);
             }
 
+            int roadsLayer = LayerMask.NameToLayer("Roads");
+            if (roadsLayer != -1)
+            {
+                m_DesktopCamera.cullingMask |= (1 << roadsLayer);
+            }
+
+            int buildingLayer = LayerMask.NameToLayer("Building");
+            if (buildingLayer != -1)
+            {
+                m_DesktopCamera.cullingMask |= (1 << buildingLayer);
+            }
+
             // AudioListener: asegurar uno activo en la cabeza del conductor
             var listeners = UnityEngine.Object.FindObjectsByType<AudioListener>();
             bool hasActiveListener = false;

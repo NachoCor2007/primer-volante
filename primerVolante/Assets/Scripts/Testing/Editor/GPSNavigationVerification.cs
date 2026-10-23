@@ -137,6 +137,14 @@ namespace PrimerVolante.Testing.Editor
             int routeLayer = LayerMask.NameToLayer(GPSNavigationSceneSetup.ROUTE_LAYER_NAME);
             Assert(routeLayer != -1,
                 $"La capa '{GPSNavigationSceneSetup.ROUTE_LAYER_NAME}' DEBE estar registrada en TagManager", ref total, ref passed);
+
+            int roadsLayer = LayerMask.NameToLayer(GPSNavigationSceneSetup.ROADS_LAYER_NAME);
+            Assert(roadsLayer != -1,
+                $"La capa '{GPSNavigationSceneSetup.ROADS_LAYER_NAME}' DEBE estar registrada en TagManager", ref total, ref passed);
+
+            int buildingLayer = LayerMask.NameToLayer(GPSNavigationSceneSetup.BUILDING_LAYER_NAME);
+            Assert(buildingLayer != -1,
+                $"La capa '{GPSNavigationSceneSetup.BUILDING_LAYER_NAME}' DEBE estar registrada en TagManager", ref total, ref passed);
         }
 
         // =========================================================================
@@ -209,26 +217,53 @@ namespace PrimerVolante.Testing.Editor
                         Assert(cam.GetComponent<AudioListener>() == null,
                             "GPS_TopDownCamera NO debe contener un AudioListener", ref total, ref passed);
 
-                        // CullingMask debe incluir la capa GPSRoute
+                        int roadsLayer = LayerMask.NameToLayer(GPSNavigationSceneSetup.ROADS_LAYER_NAME);
+                        if (roadsLayer != -1)
+                        {
+                            bool includesRoads = (cam.cullingMask & (1 << roadsLayer)) != 0;
+                            Assert(includesRoads, "GPS_TopDownCamera DEBE incluir la capa 'Roads' en su CullingMask (Lista Blanca)", ref total, ref passed);
+                        }
+
+                        int buildingLayer = LayerMask.NameToLayer(GPSNavigationSceneSetup.BUILDING_LAYER_NAME);
+                        if (buildingLayer != -1)
+                        {
+                            bool includesBuilding = (cam.cullingMask & (1 << buildingLayer)) != 0;
+                            Assert(includesBuilding, "GPS_TopDownCamera DEBE incluir la capa 'Building' en su CullingMask (Lista Blanca)", ref total, ref passed);
+                        }
+
                         int routeLayer = LayerMask.NameToLayer(GPSNavigationSceneSetup.ROUTE_LAYER_NAME);
                         if (routeLayer != -1)
                         {
                             bool includesRoute = (cam.cullingMask & (1 << routeLayer)) != 0;
-                            Assert(includesRoute, "GPS_TopDownCamera DEBE incluir la capa GPSRoute en su CullingMask", ref total, ref passed);
+                            Assert(includesRoute, "GPS_TopDownCamera DEBE incluir la capa 'GPSRoute' en su CullingMask (Lista Blanca)", ref total, ref passed);
+                        }
 
-                            int npcLayer = LayerMask.NameToLayer(GPSNavigationSceneSetup.NPC_LAYER_NAME);
-                            if (npcLayer != -1)
-                            {
-                                bool excludesNPC = (cam.cullingMask & (1 << npcLayer)) == 0;
-                                Assert(excludesNPC, "GPS_TopDownCamera DEBE excluir la capa 'NPC' en su CullingMask", ref total, ref passed);
-                            }
+                        int defaultLayer = LayerMask.NameToLayer("Default");
+                        if (defaultLayer != -1)
+                        {
+                            bool excludesDefault = (cam.cullingMask & (1 << defaultLayer)) == 0;
+                            Assert(excludesDefault, "GPS_TopDownCamera DEBE excluir la capa 'Default' en su CullingMask (Lista Blanca)", ref total, ref passed);
+                        }
 
-                            int vehicleLayer = LayerMask.NameToLayer(GPSNavigationSceneSetup.VEHICLE_LAYER_NAME);
-                            if (vehicleLayer != -1)
-                            {
-                                bool excludesVehicle = (cam.cullingMask & (1 << vehicleLayer)) == 0;
-                                Assert(excludesVehicle, "GPS_TopDownCamera DEBE excluir la capa 'Vehicle' en su CullingMask", ref total, ref passed);
-                            }
+                        int npcLayer = LayerMask.NameToLayer(GPSNavigationSceneSetup.NPC_LAYER_NAME);
+                        if (npcLayer != -1)
+                        {
+                            bool excludesNPC = (cam.cullingMask & (1 << npcLayer)) == 0;
+                            Assert(excludesNPC, "GPS_TopDownCamera DEBE excluir la capa 'NPC' en su CullingMask", ref total, ref passed);
+                        }
+
+                        int vehicleLayer = LayerMask.NameToLayer(GPSNavigationSceneSetup.VEHICLE_LAYER_NAME);
+                        if (vehicleLayer != -1)
+                        {
+                            bool excludesVehicle = (cam.cullingMask & (1 << vehicleLayer)) == 0;
+                            Assert(excludesVehicle, "GPS_TopDownCamera DEBE excluir la capa 'Vehicle' en su CullingMask", ref total, ref passed);
+                        }
+
+                        int uiLayer = LayerMask.NameToLayer("UI");
+                        if (uiLayer != -1)
+                        {
+                            bool excludesUI = (cam.cullingMask & (1 << uiLayer)) == 0;
+                            Assert(excludesUI, "GPS_TopDownCamera DEBE excluir la capa 'UI' en su CullingMask", ref total, ref passed);
                         }
                     }
 
@@ -431,11 +466,35 @@ namespace PrimerVolante.Testing.Editor
 
             if (topDownCamScene != null)
             {
+                int roadsLayer = LayerMask.NameToLayer(GPSNavigationSceneSetup.ROADS_LAYER_NAME);
+                if (roadsLayer != -1)
+                {
+                    bool includesRoads = (topDownCamScene.cullingMask & (1 << roadsLayer)) != 0;
+                    Assert(includesRoads,
+                        "GPS_TopDownCamera en la escena DEBE incluir la capa 'Roads' en su CullingMask (Lista Blanca)", ref total, ref passed);
+                }
+
+                int buildingLayer = LayerMask.NameToLayer(GPSNavigationSceneSetup.BUILDING_LAYER_NAME);
+                if (buildingLayer != -1)
+                {
+                    bool includesBuilding = (topDownCamScene.cullingMask & (1 << buildingLayer)) != 0;
+                    Assert(includesBuilding,
+                        "GPS_TopDownCamera en la escena DEBE incluir la capa 'Building' en su CullingMask (Lista Blanca)", ref total, ref passed);
+                }
+
                 if (routeLayer != -1)
                 {
                     bool includesRoute = (topDownCamScene.cullingMask & (1 << routeLayer)) != 0;
                     Assert(includesRoute,
-                        "GPS_TopDownCamera en la escena DEBE incluir la capa GPSRoute en su CullingMask", ref total, ref passed);
+                        "GPS_TopDownCamera en la escena DEBE incluir la capa 'GPSRoute' en su CullingMask (Lista Blanca)", ref total, ref passed);
+                }
+
+                int defaultLayer = LayerMask.NameToLayer("Default");
+                if (defaultLayer != -1)
+                {
+                    bool excludesDefault = (topDownCamScene.cullingMask & (1 << defaultLayer)) == 0;
+                    Assert(excludesDefault,
+                        "GPS_TopDownCamera en la escena DEBE excluir la capa 'Default' en su CullingMask (Lista Blanca)", ref total, ref passed);
                 }
 
                 if (npcLayer != -1)
@@ -451,43 +510,67 @@ namespace PrimerVolante.Testing.Editor
                     Assert(excludesVehicle,
                         "GPS_TopDownCamera en la escena DEBE excluir la capa 'Vehicle' en su CullingMask", ref total, ref passed);
                 }
+
+                int uiLayer = LayerMask.NameToLayer("UI");
+                if (uiLayer != -1)
+                {
+                    bool excludesUI = (topDownCamScene.cullingMask & (1 << uiLayer)) == 0;
+                    Assert(excludesUI,
+                        "GPS_TopDownCamera en la escena DEBE excluir la capa 'UI' en su CullingMask", ref total, ref passed);
+                }
             }
             else
             {
                 Assert(false, "No se encontró GPS_TopDownCamera bajo Car09 en la escena para validar cullingMask", ref total, ref passed);
             }
 
-            // 2. Validar que no existen autos estáticos/decorativos en la escena
-            int staticCarColorCount = 0;
-            int staticPoliceCarCount = 0;
-            int otherStaticVehicleCount = 0;
+            // 2. Validar que existen vehículos decorativos en la escena y todos tienen la capa 'Vehicle'
+            int decorativeVehicleCount = 0;
+            int decorativeVehiclesWithWrongLayer = 0;
 
             foreach (var root in scene.GetRootGameObjects())
             {
                 foreach (var t in root.GetComponentsInChildren<Transform>(true))
                 {
                     string n = t.name;
-                    if (n.StartsWith("Vehicle_Car_color"))
+                    if ((n.StartsWith("Vehicle_") || n.StartsWith("Vehicle")) &&
+                        t.GetComponent<PrimerVolante.Environment.NPCPathFollower>() == null &&
+                        !n.Contains("Car09") &&
+                        t.GetComponent<PrimerVolante.VR.VehicleController>() == null)
                     {
-                        staticCarColorCount++;
-                    }
-                    if (n.StartsWith("Vehicle_Police Car"))
-                    {
-                        staticPoliceCarCount++;
-                    }
-                    if (n.StartsWith("Vehicle_") && t.GetComponent<PrimerVolante.Environment.NPCPathFollower>() == null)
-                    {
-                        otherStaticVehicleCount++;
+                        Transform parent = t.parent;
+                        bool parentIsVehicle = false;
+                        while (parent != null)
+                        {
+                            if (parent.name.StartsWith("Vehicle_") || parent.name.StartsWith("Vehicle"))
+                            {
+                                parentIsVehicle = true;
+                                break;
+                            }
+                            parent = parent.parent;
+                        }
+
+                        if (!parentIsVehicle)
+                        {
+                            decorativeVehicleCount++;
+                            foreach (var child in t.GetComponentsInChildren<Transform>(true))
+                            {
+                                if (child.gameObject.layer != vehicleLayer)
+                                {
+                                    decorativeVehiclesWithWrongLayer++;
+                                }
+                            }
+                        }
                     }
                 }
             }
 
-            Assert(staticCarColorCount == 0,
-                $"No deben existir autos estáticos 'Vehicle_Car_color' en GPSNavigationDemo (encontrados: {staticCarColorCount})", ref total, ref passed);
-            Assert(staticPoliceCarCount == 0,
-                $"No deben existir patrulleros estáticos 'Vehicle_Police Car' en GPSNavigationDemo (encontrados: {staticPoliceCarCount})", ref total, ref passed);
-            Assert(otherStaticVehicleCount == 0,
-                $"No deben existir vehículos decorativos estáticos 'Vehicle_*' en GPSNavigationDemo (encontrados: {otherStaticVehicleCount})", ref total, ref passed);
+            Assert(decorativeVehicleCount > 0,
+                $"Deben existir vehículos decorativos estáticos en GPSNavigationDemo (encontrados: {decorativeVehicleCount})", ref total, ref passed);
+            Assert(decorativeVehiclesWithWrongLayer == 0,
+                $"Todos los vehículos decorativos y sus partes deben tener la capa 'Vehicle' (layer {vehicleLayer}) (partes con capa incorrecta: {decorativeVehiclesWithWrongLayer})", ref total, ref passed);
+            Assert(topDownCamScene != null && vehicleLayer != -1 && (topDownCamScene.cullingMask & (1 << vehicleLayer)) == 0,
+                "GPS_TopDownCamera cullingMask DEBE excluir la capa 'Vehicle' garantizando que ningún vehículo decorativo se dibuje en el GPS", ref total, ref passed);
 
             // 3. Validar existencia de al menos un vehículo NPC con NPCPathFollower en Loop y PlayOnStart
             int loopingNpcVehicles = 0;
@@ -598,7 +681,45 @@ namespace PrimerVolante.Testing.Editor
                     bool seesVehicle = (driverCam.cullingMask & (1 << vehicleLayer)) != 0;
                     Assert(seesVehicle, $"La cámara del conductor ({driverCam.name}) DEBE mantener activa la capa 'Vehicle'", ref total, ref passed);
                 }
+                int roadsLayerCheck = LayerMask.NameToLayer(GPSNavigationSceneSetup.ROADS_LAYER_NAME);
+                if (roadsLayerCheck != -1)
+                {
+                    bool seesRoads = (driverCam.cullingMask & (1 << roadsLayerCheck)) != 0;
+                    Assert(seesRoads, $"La cámara del conductor ({driverCam.name}) DEBE mantener activa la capa 'Roads'", ref total, ref passed);
+                }
+                int buildingLayerCheck = LayerMask.NameToLayer(GPSNavigationSceneSetup.BUILDING_LAYER_NAME);
+                if (buildingLayerCheck != -1)
+                {
+                    bool seesBuilding = (driverCam.cullingMask & (1 << buildingLayerCheck)) != 0;
+                    Assert(seesBuilding, $"La cámara del conductor ({driverCam.name}) DEBE mantener activa la capa 'Building'", ref total, ref passed);
+                }
             }
+
+            // 6. Validar que existen objetos clasificados en las capas 'Roads' y 'Building' (Lista Blanca de Entorno)
+            int roadsObjectsCount = 0;
+            int buildingObjectsCount = 0;
+            int roadsLayerIdx = LayerMask.NameToLayer(GPSNavigationSceneSetup.ROADS_LAYER_NAME);
+            int buildingLayerIdx = LayerMask.NameToLayer(GPSNavigationSceneSetup.BUILDING_LAYER_NAME);
+
+            foreach (var root in scene.GetRootGameObjects())
+            {
+                foreach (var t in root.GetComponentsInChildren<Transform>(true))
+                {
+                    if (roadsLayerIdx != -1 && t.gameObject.layer == roadsLayerIdx)
+                    {
+                        roadsObjectsCount++;
+                    }
+                    if (buildingLayerIdx != -1 && t.gameObject.layer == buildingLayerIdx)
+                    {
+                        buildingObjectsCount++;
+                    }
+                }
+            }
+
+            Assert(roadsObjectsCount > 0,
+                $"Deben existir objetos clasificados en la capa 'Roads' en GPSNavigationDemo (encontrados: {roadsObjectsCount})", ref total, ref passed);
+            Assert(buildingObjectsCount > 0,
+                $"Deben existir objetos clasificados en la capa 'Building' en GPSNavigationDemo (encontrados: {buildingObjectsCount})", ref total, ref passed);
 
         }
 

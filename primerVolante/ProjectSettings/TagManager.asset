@@ -17,9 +17,9 @@ TagManager:
   - GPSRoute
   - Vehicle
   - NPC
-  - 
-  - 
-  - 
+  - Roads
+  - Building
+  - Obstacle
   - 
   - 
   - 
