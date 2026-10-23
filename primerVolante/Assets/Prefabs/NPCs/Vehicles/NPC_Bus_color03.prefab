@@ -8,9 +8,33 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 100000, guid: e1697ef5073defa458e40968ffff2b30, type: 3}
+      propertyPath: m_Layer
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 100002, guid: e1697ef5073defa458e40968ffff2b30, type: 3}
+      propertyPath: m_Layer
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 100004, guid: e1697ef5073defa458e40968ffff2b30, type: 3}
+      propertyPath: m_Layer
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 100006, guid: e1697ef5073defa458e40968ffff2b30, type: 3}
+      propertyPath: m_Layer
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 100008, guid: e1697ef5073defa458e40968ffff2b30, type: 3}
+      propertyPath: m_Layer
+      value: 10
+      objectReference: {fileID: 0}
     - target: {fileID: 100010, guid: e1697ef5073defa458e40968ffff2b30, type: 3}
       propertyPath: m_Name
       value: NPC_Bus_color03
+      objectReference: {fileID: 0}
+    - target: {fileID: 100010, guid: e1697ef5073defa458e40968ffff2b30, type: 3}
+      propertyPath: m_Layer
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 400008, guid: e1697ef5073defa458e40968ffff2b30, type: 3}
       propertyPath: m_LocalScale.x

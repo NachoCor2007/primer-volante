@@ -8,9 +8,33 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 100000, guid: d267fbb9e36c6e4458c9a8756d725a79, type: 3}
+      propertyPath: m_Layer
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 100002, guid: d267fbb9e36c6e4458c9a8756d725a79, type: 3}
+      propertyPath: m_Layer
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 100004, guid: d267fbb9e36c6e4458c9a8756d725a79, type: 3}
+      propertyPath: m_Layer
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 100006, guid: d267fbb9e36c6e4458c9a8756d725a79, type: 3}
+      propertyPath: m_Layer
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 100008, guid: d267fbb9e36c6e4458c9a8756d725a79, type: 3}
+      propertyPath: m_Layer
+      value: 10
+      objectReference: {fileID: 0}
     - target: {fileID: 100010, guid: d267fbb9e36c6e4458c9a8756d725a79, type: 3}
       propertyPath: m_Name
       value: NPC_Car_color01
+      objectReference: {fileID: 0}
+    - target: {fileID: 100010, guid: d267fbb9e36c6e4458c9a8756d725a79, type: 3}
+      propertyPath: m_Layer
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 400010, guid: d267fbb9e36c6e4458c9a8756d725a79, type: 3}
       propertyPath: m_LocalScale.x

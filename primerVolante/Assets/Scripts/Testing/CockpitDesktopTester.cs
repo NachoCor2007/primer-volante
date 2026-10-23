@@ -404,6 +404,19 @@ namespace PrimerVolante.Testing
                 m_DesktopCamera.cullingMask &= ~(1 << routeLayer);
             }
 
+            // Asegurar que la cámara de cabina tenga habilitadas las capas NPC y Vehicle
+            int npcLayer = LayerMask.NameToLayer("NPC");
+            if (npcLayer != -1)
+            {
+                m_DesktopCamera.cullingMask |= (1 << npcLayer);
+            }
+
+            int vehicleLayer = LayerMask.NameToLayer("Vehicle");
+            if (vehicleLayer != -1)
+            {
+                m_DesktopCamera.cullingMask |= (1 << vehicleLayer);
+            }
+
             // AudioListener: asegurar uno activo en la cabeza del conductor
             var listeners = UnityEngine.Object.FindObjectsByType<AudioListener>();
             bool hasActiveListener = false;

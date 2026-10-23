@@ -66,22 +66,32 @@ namespace PrimerVolante.Environment
             m_Animator.applyRootMotion = false;
             m_Customizer = GetComponent<UrbanManCustomizer>();
             m_SafetyStop = GetComponent<NPCSafetyStop>();
+            EnsureNPCLayer();
         }
 
         private void OnEnable()
         {
-            if (m_Customizer != null) m_Customizer.Changed += DisablePartColliders;
+            if (m_Customizer != null)
+            {
+                m_Customizer.Changed += DisablePartColliders;
+                m_Customizer.Changed += EnsureNPCLayer;
+            }
         }
 
         private void OnDisable()
         {
-            if (m_Customizer != null) m_Customizer.Changed -= DisablePartColliders;
+            if (m_Customizer != null)
+            {
+                m_Customizer.Changed -= DisablePartColliders;
+                m_Customizer.Changed -= EnsureNPCLayer;
+            }
         }
 
         private void Start()
         {
             if (m_SafetyStop == null) m_SafetyStop = GetComponent<NPCSafetyStop>();
             DisablePartColliders();
+            EnsureNPCLayer();
         }
 
         /// <summary>
@@ -95,6 +105,17 @@ namespace PrimerVolante.Environment
             foreach (Collider part in GetComponentsInChildren<Collider>(true))
             {
                 if (part != m_BodyCollider) part.enabled = false;
+            }
+        }
+
+        private void EnsureNPCLayer()
+        {
+            int npcLayer = LayerMask.NameToLayer("NPC");
+            if (npcLayer == -1) return;
+
+            foreach (Transform t in GetComponentsInChildren<Transform>(true))
+            {
+                t.gameObject.layer = npcLayer;
             }
         }
 

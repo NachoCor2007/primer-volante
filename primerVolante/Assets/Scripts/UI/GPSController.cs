@@ -202,22 +202,48 @@ namespace PrimerVolante.UI
                 camData.requiresDepthOption = CameraOverrideOption.Off;
             }
 
+            // Configurar CullingMask: solo entorno (Default, etc.) y ruta GPS (GPSRoute).
+            // Excluir explícitamente capas de vehículos (Vehicle) y NPCs/peatones (NPC).
+            int defaultLayer = LayerMask.NameToLayer("Default");
+            int mask = (defaultLayer != -1) ? (1 << defaultLayer) : 0;
+
+            int routeLayer = LayerMask.NameToLayer("GPSRoute");
+            if (routeLayer != -1) mask |= (1 << routeLayer);
+
+            int terrainLayer = LayerMask.NameToLayer("Terrain");
+            if (terrainLayer != -1) mask |= (1 << terrainLayer);
+
+            int npcLayer = LayerMask.NameToLayer("NPC");
+            if (npcLayer != -1) mask &= ~(1 << npcLayer);
+
+            int vehicleLayer = LayerMask.NameToLayer("Vehicle");
+            if (vehicleLayer != -1) mask &= ~(1 << vehicleLayer);
+
+            int uiLayer = LayerMask.NameToLayer("UI");
+            if (uiLayer != -1) mask &= ~(1 << uiLayer);
+
+            m_TopDownCamera.cullingMask = mask;
+
             // Desactivar el componente para controlar el renderizado manual a ~30 FPS
             m_TopDownCamera.enabled = false;
         }
 
         /// <summary>
-        /// Asegura que la cámara principal de VR del jugador no renderice la capa GPSRoute.
+        /// Asegura que la cámara principal de VR del jugador no renderice la capa GPSRoute,
+        /// pero mantenga visibles las capas Vehicle y NPC.
         /// </summary>
         public void ConfigureMainCameraCulling()
         {
             int routeLayer = LayerMask.NameToLayer("GPSRoute");
-            if (routeLayer == -1) return;
+            int npcLayer = LayerMask.NameToLayer("NPC");
+            int vehicleLayer = LayerMask.NameToLayer("Vehicle");
 
             Camera mainCam = Camera.main;
             if (mainCam != null)
             {
-                mainCam.cullingMask &= ~(1 << routeLayer);
+                if (routeLayer != -1) mainCam.cullingMask &= ~(1 << routeLayer);
+                if (npcLayer != -1) mainCam.cullingMask |= (1 << npcLayer);
+                if (vehicleLayer != -1) mainCam.cullingMask |= (1 << vehicleLayer);
             }
         }
 

@@ -202,6 +202,7 @@ namespace PrimerVolante.Characters
             {
                 RebindToSkeleton(smr);
                 smr.transform.SetParent(transform, false);
+                smr.gameObject.layer = gameObject.layer;
                 m_TorsoInstances.Add(smr.gameObject);
             }
 
@@ -254,6 +255,7 @@ namespace PrimerVolante.Characters
             GameObject instance = Instantiate(option.Prefab, head, false);
             instance.name = option.Prefab.name;
             ApplyRestPose(instance.transform, head, option);
+            SetLayerRecursively(instance, gameObject.layer);
             m_EquippedAccessories[id] = instance;
             Changed?.Invoke();
             return true;
@@ -460,6 +462,16 @@ namespace PrimerVolante.Characters
                 {
                     smr.gameObject.SetActive(active);
                 }
+            }
+        }
+
+        private static void SetLayerRecursively(GameObject obj, int layer)
+        {
+            if (obj == null) return;
+            obj.layer = layer;
+            foreach (Transform child in obj.transform)
+            {
+                SetLayerRecursively(child.gameObject, layer);
             }
         }
 

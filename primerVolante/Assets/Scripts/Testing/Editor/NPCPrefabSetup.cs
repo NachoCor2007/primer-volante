@@ -260,6 +260,7 @@ namespace PrimerVolante.Testing.Editor
             EnsureFootIK(locomotion);
 
             EditorUtility.SetDirty(controller);
+
             Debug.Log($"[NPCPrefabSetup] 🎛️ Animator Controller listo: {CONTROLLER_PATH} " +
                       $"(Walking a peso 1 desde {NPCPedestrianController.WalkBlendEndSpeed:F2} m/s; Foot IK activo).");
             return controller;
@@ -378,6 +379,15 @@ namespace PrimerVolante.Testing.Editor
             so.ApplyModifiedPropertiesWithoutUndo();
 
             EditorUtility.SetDirty(controller);
+
+            int npcLayer = LayerMask.NameToLayer("NPC");
+            if (npcLayer != -1)
+            {
+                foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+                {
+                    t.gameObject.layer = npcLayer;
+                }
+            }
         }
 
         /// <summary>
@@ -505,6 +515,15 @@ namespace PrimerVolante.Testing.Editor
             RequireProperty(followerSo, "m_Deceleration").floatValue = 2f;
             RequireProperty(followerSo, "m_MaxLateralAcceleration").floatValue = 1.5f;
             followerSo.ApplyModifiedPropertiesWithoutUndo();
+
+            int npcLayer = LayerMask.NameToLayer("NPC");
+            if (npcLayer != -1)
+            {
+                foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+                {
+                    t.gameObject.layer = npcLayer;
+                }
+            }
         }
 
         /// <summary>

@@ -126,6 +126,14 @@ namespace PrimerVolante.Testing.Editor
         {
             Debug.Log("--- 2. Verificación de Layers y TagManager ---");
 
+            int npcLayer = LayerMask.NameToLayer(GPSNavigationSceneSetup.NPC_LAYER_NAME);
+            Assert(npcLayer != -1,
+                $"La capa '{GPSNavigationSceneSetup.NPC_LAYER_NAME}' DEBE estar registrada en TagManager", ref total, ref passed);
+
+            int vehicleLayer = LayerMask.NameToLayer(GPSNavigationSceneSetup.VEHICLE_LAYER_NAME);
+            Assert(vehicleLayer != -1,
+                $"La capa '{GPSNavigationSceneSetup.VEHICLE_LAYER_NAME}' DEBE estar registrada en TagManager", ref total, ref passed);
+
             int routeLayer = LayerMask.NameToLayer(GPSNavigationSceneSetup.ROUTE_LAYER_NAME);
             Assert(routeLayer != -1,
                 $"La capa '{GPSNavigationSceneSetup.ROUTE_LAYER_NAME}' DEBE estar registrada en TagManager", ref total, ref passed);
@@ -143,7 +151,7 @@ namespace PrimerVolante.Testing.Editor
             if (prefabRoot == null)
             {
                 Assert(false, "No se pudo cargar el prefab Car09 para inspección", ref total, ref passed);
-                return;
+    
             }
 
             try
@@ -207,6 +215,20 @@ namespace PrimerVolante.Testing.Editor
                         {
                             bool includesRoute = (cam.cullingMask & (1 << routeLayer)) != 0;
                             Assert(includesRoute, "GPS_TopDownCamera DEBE incluir la capa GPSRoute en su CullingMask", ref total, ref passed);
+
+                            int npcLayer = LayerMask.NameToLayer(GPSNavigationSceneSetup.NPC_LAYER_NAME);
+                            if (npcLayer != -1)
+                            {
+                                bool excludesNPC = (cam.cullingMask & (1 << npcLayer)) == 0;
+                                Assert(excludesNPC, "GPS_TopDownCamera DEBE excluir la capa 'NPC' en su CullingMask", ref total, ref passed);
+                            }
+
+                            int vehicleLayer = LayerMask.NameToLayer(GPSNavigationSceneSetup.VEHICLE_LAYER_NAME);
+                            if (vehicleLayer != -1)
+                            {
+                                bool excludesVehicle = (cam.cullingMask & (1 << vehicleLayer)) == 0;
+                                Assert(excludesVehicle, "GPS_TopDownCamera DEBE excluir la capa 'Vehicle' en su CullingMask", ref total, ref passed);
+                            }
                         }
                     }
 
@@ -301,7 +323,7 @@ namespace PrimerVolante.Testing.Editor
                 Camera mainCam = Camera.main;
                 if (mainCam == null)
                 {
-                    foreach (Camera c in UnityEngine.Object.FindObjectsByType<Camera>(FindObjectsSortMode.None))
+                    foreach (Camera c in UnityEngine.Object.FindObjectsByType<Camera>())
                     {
                         if (c.CompareTag("MainCamera"))
                         {
@@ -392,6 +414,192 @@ namespace PrimerVolante.Testing.Editor
                     }
                 }
             }
+
+            // -------------------------------------------------------------
+            // Verificaciones de Culling de Cámaras y Capas NPC / Vehículos
+            // -------------------------------------------------------------
+            int npcLayer = LayerMask.NameToLayer(GPSNavigationSceneSetup.NPC_LAYER_NAME);
+            int vehicleLayer = LayerMask.NameToLayer(GPSNavigationSceneSetup.VEHICLE_LAYER_NAME);
+
+            // 1. Validar que GPS_TopDownCamera en la escena excluye NPC y Vehicle, e incluye GPSRoute
+            Camera topDownCamScene = null;
+            if (car09 != null)
+            {
+                Transform camT = car09.transform.Find("GPS_TopDownCamera");
+                if (camT != null) topDownCamScene = camT.GetComponent<Camera>();
+            }
+
+            if (topDownCamScene != null)
+            {
+                if (routeLayer != -1)
+                {
+                    bool includesRoute = (topDownCamScene.cullingMask & (1 << routeLayer)) != 0;
+                    Assert(includesRoute,
+                        "GPS_TopDownCamera en la escena DEBE incluir la capa GPSRoute en su CullingMask", ref total, ref passed);
+                }
+
+                if (npcLayer != -1)
+                {
+                    bool excludesNPC = (topDownCamScene.cullingMask & (1 << npcLayer)) == 0;
+                    Assert(excludesNPC,
+                        "GPS_TopDownCamera en la escena DEBE excluir la capa 'NPC' en su CullingMask", ref total, ref passed);
+                }
+
+                if (vehicleLayer != -1)
+                {
+                    bool excludesVehicle = (topDownCamScene.cullingMask & (1 << vehicleLayer)) == 0;
+                    Assert(excludesVehicle,
+                        "GPS_TopDownCamera en la escena DEBE excluir la capa 'Vehicle' en su CullingMask", ref total, ref passed);
+                }
+            }
+            else
+            {
+                Assert(false, "No se encontró GPS_TopDownCamera bajo Car09 en la escena para validar cullingMask", ref total, ref passed);
+            }
+
+            // 2. Validar que no existen autos estáticos/decorativos en la escena
+            int staticCarColorCount = 0;
+            int staticPoliceCarCount = 0;
+            int otherStaticVehicleCount = 0;
+
+            foreach (var root in scene.GetRootGameObjects())
+            {
+                foreach (var t in root.GetComponentsInChildren<Transform>(true))
+                {
+                    string n = t.name;
+                    if (n.StartsWith("Vehicle_Car_color"))
+                    {
+                        staticCarColorCount++;
+                    }
+                    if (n.StartsWith("Vehicle_Police Car"))
+                    {
+                        staticPoliceCarCount++;
+                    }
+                    if (n.StartsWith("Vehicle_") && t.GetComponent<PrimerVolante.Environment.NPCPathFollower>() == null)
+                    {
+                        otherStaticVehicleCount++;
+                    }
+                }
+            }
+
+            Assert(staticCarColorCount == 0,
+                $"No deben existir autos estáticos 'Vehicle_Car_color' en GPSNavigationDemo (encontrados: {staticCarColorCount})", ref total, ref passed);
+            Assert(staticPoliceCarCount == 0,
+                $"No deben existir patrulleros estáticos 'Vehicle_Police Car' en GPSNavigationDemo (encontrados: {staticPoliceCarCount})", ref total, ref passed);
+            Assert(otherStaticVehicleCount == 0,
+                $"No deben existir vehículos decorativos estáticos 'Vehicle_*' en GPSNavigationDemo (encontrados: {otherStaticVehicleCount})", ref total, ref passed);
+
+            // 3. Validar existencia de al menos un vehículo NPC con NPCPathFollower en Loop y PlayOnStart
+            int loopingNpcVehicles = 0;
+            var followers = UnityEngine.Object.FindObjectsByType<PrimerVolante.Environment.NPCPathFollower>();
+            foreach (var follower in followers)
+            {
+                bool isCarOrTaxi = follower.name.Contains("Car") || follower.name.Contains("Taxi") ||
+                                   follower.GetComponent<PrimerVolante.Environment.NPCVehicleController>() != null;
+
+                if (!isCarOrTaxi) continue;
+
+                var so = new SerializedObject(follower);
+                var pathProp = so.FindProperty("m_Path");
+                var endProp = so.FindProperty("m_EndBehavior");
+                var playProp = so.FindProperty("m_PlayOnStart");
+
+                bool hasPath = pathProp != null && pathProp.objectReferenceValue != null;
+                bool isLoop = endProp != null && endProp.enumValueIndex == (int)PrimerVolante.Environment.NPCPathEndBehavior.Loop;
+                bool isPlayOnStart = playProp != null && playProp.boolValue;
+
+                if (hasPath && isLoop && isPlayOnStart)
+                {
+                    loopingNpcVehicles++;
+                }
+            }
+
+            Assert(loopingNpcVehicles >= 1,
+                $"Debe existir al menos un vehículo NPC con NPCPathFollower en modo Loop y PlayOnStart cerca del destino (encontrados: {loopingNpcVehicles})", ref total, ref passed);
+
+            // 4. Validar que todos los NPCs y peatones en la escena tienen la capa 'NPC'
+            if (npcLayer != -1)
+            {
+                int totalNPCObjects = 0;
+                int invalidNPCLayers = 0;
+
+                GameObject npcGroup = GameObject.Find(GPSNavigationSceneSetup.NPC_GROUP_NAME);
+                if (npcGroup != null)
+                {
+                    foreach (var t in npcGroup.GetComponentsInChildren<Transform>(true))
+                    {
+                        totalNPCObjects++;
+                        if (t.gameObject.layer != npcLayer)
+                        {
+                            invalidNPCLayers++;
+                        }
+                    }
+                }
+
+                foreach (var root in scene.GetRootGameObjects())
+                {
+                    if (root.name == GPSNavigationSceneSetup.NPC_GROUP_NAME) continue;
+
+                    foreach (var t in root.GetComponentsInChildren<Transform>(true))
+                    {
+                        if (t.name.StartsWith("NPC_"))
+                        {
+                            foreach (var child in t.GetComponentsInChildren<Transform>(true))
+                            {
+                                totalNPCObjects++;
+                                if (child.gameObject.layer != npcLayer)
+                                {
+                                    invalidNPCLayers++;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Assert(totalNPCObjects > 0 && invalidNPCLayers == 0,
+                    $"Todos los NPCs y peatones en la escena deben tener la capa 'NPC' (total componentes/partes: {totalNPCObjects}, con capa incorrecta: {invalidNPCLayers})", ref total, ref passed);
+
+                int pedestrianRenderersCount = 0;
+                int invalidPedestrianRendererLayers = 0;
+                foreach (var pedestrian in UnityEngine.Object.FindObjectsByType<PrimerVolante.Environment.NPCPedestrianController>())
+                {
+                    foreach (var r in pedestrian.GetComponentsInChildren<Renderer>(true))
+                    {
+                        pedestrianRenderersCount++;
+                        if (r.gameObject.layer != npcLayer)
+                        {
+                            invalidPedestrianRendererLayers++;
+                        }
+                    }
+                }
+                Assert(pedestrianRenderersCount > 0 && invalidPedestrianRendererLayers == 0,
+                    $"Todos los SkinnedMeshRenderer y MeshRenderer de peatones deben tener capa 'NPC' y no 'Default' (total renderers: {pedestrianRenderersCount}, con capa incorrecta: {invalidPedestrianRendererLayers})", ref total, ref passed);
+            }
+
+            // 5. Validar que la cámara del conductor mantiene activas las capas NPC y Vehicle
+            Camera driverCam = Camera.main;
+            if (driverCam == null)
+            {
+                foreach (Camera c in UnityEngine.Object.FindObjectsByType<Camera>())
+                {
+                    if (c.CompareTag("MainCamera")) { driverCam = c; break; }
+                }
+            }
+
+            if (driverCam != null)
+            {
+                if (npcLayer != -1)
+                {
+                    bool seesNPC = (driverCam.cullingMask & (1 << npcLayer)) != 0;
+                    Assert(seesNPC, $"La cámara del conductor ({driverCam.name}) DEBE mantener activa la capa 'NPC'", ref total, ref passed);
+                }
+                if (vehicleLayer != -1)
+                {
+                    bool seesVehicle = (driverCam.cullingMask & (1 << vehicleLayer)) != 0;
+                    Assert(seesVehicle, $"La cámara del conductor ({driverCam.name}) DEBE mantener activa la capa 'Vehicle'", ref total, ref passed);
+                }
+            }
+
         }
 
         // =========================================================================
