@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Audio.EnvironmentAlertsProfile
   CarAlarmLoop: {fileID: 8300000, guid: 762792f80cc5bc54c883310adb0f4202, type: 3}
   AlarmSeconds: 8
-  AlarmVolume: 0.8
+  AlarmVolume: 0.5
   AlarmMinDistance: 5
   AlarmMaxDistance: 60
   AlarmDuckDb: 5
