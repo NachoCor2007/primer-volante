@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: NPCPedestrianAudio_Default
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Audio.NPCPedestrianAudioProfile
   Footsteps:
-  - {fileID: 8300000, guid: 368fea3e9eb5df84bb2f60216de0a3a8, type: 3}
-  - {fileID: 8300000, guid: 61440c2ad4d80c94280915237958f9be, type: 3}
-  - {fileID: 8300000, guid: 77a1c6f7c1edaa240bb2c9ec0d7ddf66, type: 3}
-  - {fileID: 8300000, guid: c82f1b925724b6940b54034172347044, type: 3}
+  - {fileID: 8300000, guid: 7e1a5c6fd7688c44db8b5c0a4bec5af6, type: 3}
+  - {fileID: 8300000, guid: 7fa50aaea582174408f5a6429ed08ea9, type: 3}
+  - {fileID: 8300000, guid: b94436c72e3d9b946abc8659844ef9e8, type: 3}
+  - {fileID: 8300000, guid: 7a472e6607d3cde44aad97bb49e3cd58, type: 3}
   StrideLength: 0.7
   MinStepInterval: 0.25
   FootstepMinVolume: 0.35
@@ -27,7 +27,8 @@ MonoBehaviour:
   VoiceMinInterval: 15
   VoiceMaxInterval: 40
   VoiceVolume: 0.6
-  Screams: []
+  Screams:
+  - {fileID: 8300000, guid: 4d75a29f3be71da4ebcd1c45a501df93, type: 3}
   ScreamRadius: 12
   ScreamVolume: 0.9
   ScreamCooldown: 6
