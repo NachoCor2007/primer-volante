@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Audio.AmbientEmitterProfile
   Mode: 0
   ClipsAreOrganic: 1
-  LoopClip: {fileID: 0}
+  LoopClip: {fileID: 8300000, guid: bcc43ac370009c047bd3992796bb1d47, type: 3}
   OneShots: []
   MinVolume: 0.5
   MaxVolume: 0.7
