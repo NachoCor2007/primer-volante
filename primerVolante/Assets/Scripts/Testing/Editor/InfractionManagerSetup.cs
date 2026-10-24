@@ -40,7 +40,7 @@ namespace PrimerVolante.Testing.Editor
             }
         }
 
-        /// <summary>Las 4 infracciones actuales, en el orden del catálogo.</summary>
+        /// <summary>Las 5 infracciones actuales, en el orden del catálogo.</summary>
         public static readonly Spec[] Specs =
         {
             new Spec(InfractionIds.RedLight, "Semáforo en rojo",
@@ -55,6 +55,9 @@ namespace PrimerVolante.Testing.Editor
             new Spec(InfractionIds.Graze, "Roce",
                 "Rozaste {object} a {speed} km/h. Calculá mejor las distancias al maniobrar.",
                 InfractionSeverity.Minor, "object", "speed"),
+            new Spec(InfractionIds.WrongWay, "Contramano",
+                "Circulaste en contramano {where}. Circulá siempre por la derecha y respetá el sentido de circulación señalizado.",
+                InfractionSeverity.Major, "where"),
         };
 
         /// <summary>Ruta del asset de una definición: <c>Infraction_&lt;Id&gt;.asset</c>.</summary>
@@ -121,7 +124,7 @@ namespace PrimerVolante.Testing.Editor
                 updated++;
             }
 
-            // Garantiza que estén las 4 definiciones (en orden) sin quitar otras que alguien haya sumado después.
+            // Garantiza que estén todas las definiciones (en orden) sin quitar otras que alguien haya sumado después.
             var catalogSo = new SerializedObject(catalog);
             SerializedProperty list = catalogSo.FindProperty("m_Definitions");
             var current = new List<InfractionDefinitionSO>();

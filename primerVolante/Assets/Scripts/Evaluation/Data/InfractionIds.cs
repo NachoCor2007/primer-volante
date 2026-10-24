@@ -24,5 +24,11 @@ namespace PrimerVolante.Evaluation
         /// Parámetros: <c>object</c> (ej. "un vehículo") y <c>speed</c>.
         /// </summary>
         public const string Graze = "GRAZE";
+
+        /// <summary>
+        /// Circulación en contramano: por el carril contrario de una calle de doble mano o en contra del sentido de
+        /// una calle de mano única (grave). Parámetro: <c>where</c>.
+        /// </summary>
+        public const string WrongWay = "WRONG_WAY";
     }
 }
