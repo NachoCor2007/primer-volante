@@ -63,6 +63,15 @@ namespace PrimerVolante.Testing.Editor
 
                 serialized.ApplyModifiedPropertiesWithoutUndo();
 
+                int npcLayer = LayerMask.NameToLayer("NPC");
+                if (npcLayer != -1)
+                {
+                    foreach (Transform t in instance.GetComponentsInChildren<Transform>(true))
+                    {
+                        t.gameObject.layer = npcLayer;
+                    }
+                }
+
                 PrefabUtility.SaveAsPrefabAsset(instance, VARIANT_PREFAB_PATH);
                 Debug.Log($"[UrbanManCustomizerSetup] ✅ Prefab Variant creado en {VARIANT_PREFAB_PATH}");
             }
