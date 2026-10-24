@@ -30,6 +30,7 @@ namespace PrimerVolante.Testing.Editor
             VerifyPackage(ref total, ref passed);
             VerifyVehiclePrefabs(ref total, ref passed);
             VerifyPedestrianPrefabs(ref total, ref passed);
+            NPCSafetyStopLifecycleTests.RunTests(ref total, ref passed);
             VerifyMixamoClips(ref total, ref passed);
             VerifyFootSliding(ref total, ref passed);
             VerifyPathMath(ref total, ref passed);
@@ -87,6 +88,16 @@ namespace PrimerVolante.Testing.Editor
                 Assert(prefab.GetComponent<NPCPathFollower>() != null, $"{label}: debe tener NPCPathFollower", ref total, ref passed);
                 Assert(prefab.GetComponent<VehicleController>() == null, $"{label}: no debe tener VehicleController", ref total, ref passed);
 
+                var safety = prefab.GetComponent<NPCSafetyStop>();
+                Assert(safety != null, $"{label}: debe tener NPCSafetyStop", ref total, ref passed);
+                if (safety != null)
+                {
+                    Assert(!safety.enabled, $"{label}: NPCSafetyStop debe estar deshabilitado en el prefab", ref total, ref passed);
+                    Assert(Mathf.Approximately(safety.DetectionDistance, 5.0f), $"{label}: distancia base de detección = 5.0m", ref total, ref passed);
+                    Assert(safety.DynamicDistanceWithSpeed, $"{label}: DynamicDistanceWithSpeed activo", ref total, ref passed);
+                    Assert(safety.SensorOffset.z > 0.5f, $"{label}: SensorOffset.z calibrado hacia la trompa del vehículo (> 0.5m)", ref total, ref passed);
+                }
+
                 var controller = prefab.GetComponent<NPCVehicleController>();
                 int wheelsInHierarchy = prefab.GetComponentsInChildren<Transform>(true)
                     .Count(t => t != prefab.transform && t.name.StartsWith("Wheel_"));
@@ -138,6 +149,15 @@ namespace PrimerVolante.Testing.Editor
                 var pedestrian = prefab.GetComponent<NPCPedestrianController>();
                 Assert(pedestrian != null && pedestrian.WalkReferenceSpeed > 0f,
                        $"{label}: NPCPedestrianController con velocidad de referencia de Walking > 0", ref total, ref passed);
+
+                var safety = prefab.GetComponent<NPCSafetyStop>();
+                Assert(safety != null, $"{label}: debe tener NPCSafetyStop", ref total, ref passed);
+                if (safety != null)
+                {
+                    Assert(!safety.enabled, $"{label}: NPCSafetyStop debe estar deshabilitado en el prefab", ref total, ref passed);
+                    Assert(Mathf.Approximately(safety.DetectionDistance, 3.5f), $"{label}: distancia base de detección = 3.5m", ref total, ref passed);
+                    Assert(safety.DynamicDistanceWithSpeed, $"{label}: DynamicDistanceWithSpeed activo", ref total, ref passed);
+                }
 
                 var customizer = prefab.GetComponent<PrimerVolante.Characters.UrbanManCustomizer>();
                 if (customizer != null)

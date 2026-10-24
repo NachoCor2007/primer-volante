@@ -36,6 +36,7 @@ namespace PrimerVolante.Testing.Editor
             TestTriggerOnceAndDelay(ref totalTests, ref passedTests);
             TestNPCSafetyStopDetectionAndBraking(ref totalTests, ref passedTests);
             TestNPCSafetyStopDynamicDistanceAndFiltering(ref totalTests, ref passedTests);
+            NPCSafetyStopLifecycleTests.RunTests(ref totalTests, ref passedTests);
             TestTrafficLightIntegration(ref totalTests, ref passedTests);
             TestSceneSetupIntegrity(ref totalTests, ref passedTests);
 
@@ -61,6 +62,7 @@ namespace PrimerVolante.Testing.Editor
             TestTriggerOnceAndDelay(ref totalTests, ref passedTests);
             TestNPCSafetyStopDetectionAndBraking(ref totalTests, ref passedTests);
             TestNPCSafetyStopDynamicDistanceAndFiltering(ref totalTests, ref passedTests);
+            NPCSafetyStopLifecycleTests.RunTests(ref totalTests, ref passedTests);
             TestTrafficLightIntegration(ref totalTests, ref passedTests);
             TestSceneSetupIntegrity(ref totalTests, ref passedTests);
 

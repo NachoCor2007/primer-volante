@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4357150771075955215}
   - component: {fileID: 8872427947532026238}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: Footsteps
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -138,7 +138,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5813288813719486483}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: NPCAudio
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -172,7 +172,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6273319056208714527}
   - component: {fileID: 521590435357755748}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: Voice
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -436,6 +436,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5460708016456621143, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
       insertIndex: -1
       addedObject: {fileID: 999142610198905805}
+    - targetCorrespondingSourceObject: {fileID: 5460708016456621143, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6145125395394406546}
   m_SourcePrefab: {fileID: 100100000, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}
 --- !u!1 &6048943409747294560 stripped
 GameObject:
@@ -560,6 +563,36 @@ MonoBehaviour:
   m_FootstepSource: {fileID: 8872427947532026238}
   m_VoiceSource: {fileID: 521590435357755748}
   m_LogEvents: 0
+--- !u!114 &6145125395394406546
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6048943409747294560}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e78bbe4c9bd63d743b96c58009df53ec, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.NPCSafetyStop
+  m_DetectionDistance: 3.5
+  m_DynamicDistanceWithSpeed: 1
+  m_SpeedLookaheadFactor: 1
+  m_SensorOffset: {x: 0, y: 1, z: 0}
+  m_BoxHalfExtents: {x: 0.275, y: 0.45645443, z: 0.25}
+  m_ObstacleLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ObstacleTag: 
+  m_QueryTriggerInteraction: 1
+  m_ResumeDelay: 0.5
+  m_ResumeHysteresisDistance: 0.5
+  onEmergencyBrakeEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  onResumeMovementEvent:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!4 &7010878485554625757 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 8751013249975212522, guid: 42a03fd0abf68844fa339e21abd12919, type: 3}

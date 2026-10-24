@@ -64,6 +64,7 @@ namespace PrimerVolante.Environment
         public event Action OnResumeMovement;
 
         // Componentes y referencias
+        private Rigidbody m_Rigidbody;
         private NPCPathFollower m_PathFollower;
         private NPCVehicleController m_VehicleController;
 
@@ -167,14 +168,73 @@ namespace PrimerVolante.Environment
         /// <summary>Controlador de vehículo NPC (null si es peatón).</summary>
         public NPCVehicleController VehicleController => m_VehicleController;
 
+        /// <summary>Rigidbody asociado al NPC.</summary>
+        public Rigidbody Rigidbody => m_Rigidbody;
+
         #endregion
 
         #region Ciclo de Vida de Unity
 
-        private void Awake()
+        private void Reset()
         {
+            m_Rigidbody = GetComponent<Rigidbody>();
             m_PathFollower = GetComponent<NPCPathFollower>();
             m_VehicleController = GetComponent<NPCVehicleController>();
+            SyncLifecycle();
+        }
+
+        private void Awake()
+        {
+            m_Rigidbody = GetComponent<Rigidbody>();
+            m_PathFollower = GetComponent<NPCPathFollower>();
+            m_VehicleController = GetComponent<NPCVehicleController>();
+            SyncLifecycle();
+        }
+
+        private void Start()
+        {
+            SyncLifecycle();
+        }
+
+        private void OnEnable()
+        {
+            if (m_PathFollower == null) m_PathFollower = GetComponent<NPCPathFollower>();
+            if (m_PathFollower != null)
+            {
+                m_PathFollower.OnReachedEnd -= HandlePathReachedEnd;
+                m_PathFollower.OnReachedEnd += HandlePathReachedEnd;
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (m_PathFollower != null)
+            {
+                m_PathFollower.OnReachedEnd -= HandlePathReachedEnd;
+            }
+        }
+
+        private void HandlePathReachedEnd()
+        {
+            enabled = false;
+        }
+
+        /// <summary>
+        /// Sincroniza el estado enabled según el ciclo de vida del seguidor de ruta.
+        /// Si no hay ruta o el NPC está detenido/estático (y no está en frenado de emergencia), desactiva el componente.
+        /// </summary>
+        public void SyncLifecycle()
+        {
+            if (m_PathFollower == null) m_PathFollower = GetComponent<NPCPathFollower>();
+
+            if (m_PathFollower == null || !m_PathFollower.HasPath || (!m_PathFollower.IsPlaying && !m_IsEmergencyBraking))
+            {
+                enabled = false;
+            }
+            else
+            {
+                enabled = true;
+            }
         }
 
         private void OnValidate()
@@ -187,6 +247,14 @@ namespace PrimerVolante.Environment
 
         private void FixedUpdate()
         {
+            if (m_PathFollower == null) m_PathFollower = GetComponent<NPCPathFollower>();
+
+            if (m_PathFollower == null || !m_PathFollower.HasPath || (!m_PathFollower.IsPlaying && !m_IsEmergencyBraking))
+            {
+                enabled = false;
+                return;
+            }
+
             Tick(Time.fixedDeltaTime);
         }
 
@@ -422,8 +490,8 @@ namespace PrimerVolante.Environment
         {
             if (col == null) return false;
 
-            // Ignorar el propio NPC y todos sus hijos/padres
-            if (col.transform.root == transform.root || col.gameObject == gameObject)
+            // Ignorar el propio NPC y todos sus hijos
+            if (col.gameObject == gameObject || col.transform.IsChildOf(transform))
             {
                 return false;
             }
@@ -457,7 +525,7 @@ namespace PrimerVolante.Environment
             if (!string.IsNullOrEmpty(m_ObstacleTag))
             {
                 return HasMatchingTag(col.gameObject, m_ObstacleTag) ||
-                       (col.transform.root != null && HasMatchingTag(col.transform.root.gameObject, m_ObstacleTag));
+                       (col.attachedRigidbody != null && HasMatchingTag(col.attachedRigidbody.gameObject, m_ObstacleTag));
             }
 
             // Si ObstacleTag está vacío:
@@ -478,7 +546,7 @@ namespace PrimerVolante.Environment
                 // Verificar tag relevante como "Player"
                 bool hasRelevantTag =
                     HasMatchingTag(col.gameObject, "Player") ||
-                    (col.transform.root != null && HasMatchingTag(col.transform.root.gameObject, "Player"));
+                    (col.attachedRigidbody != null && HasMatchingTag(col.attachedRigidbody.gameObject, "Player"));
 
                 if (!hasTrafficComponent && !hasRelevantTag)
                 {
@@ -489,7 +557,8 @@ namespace PrimerVolante.Environment
             }
 
             // Con attachedRigidbody != null: validar que no sea del propio NPC
-            if (col.attachedRigidbody.transform.root == transform.root)
+            if (m_Rigidbody == null) m_Rigidbody = GetComponent<Rigidbody>();
+            if (col.attachedRigidbody == m_Rigidbody || col.attachedRigidbody.transform.IsChildOf(transform))
             {
                 return false;
             }
@@ -627,6 +696,11 @@ namespace PrimerVolante.Environment
         /// </summary>
         public void ForceEmergencyBrake(Collider col)
         {
+            if (col != null && !IsValidObstacleCollider(col))
+            {
+                return;
+            }
+
             if (m_PathFollower == null)
             {
                 m_PathFollower = GetComponent<NPCPathFollower>();
@@ -664,6 +738,7 @@ namespace PrimerVolante.Environment
 
         private void OnDrawGizmos()
         {
+            if (!enabled && !m_IsEmergencyBraking) return;
             DrawSafetyGizmos(false);
         }
 
