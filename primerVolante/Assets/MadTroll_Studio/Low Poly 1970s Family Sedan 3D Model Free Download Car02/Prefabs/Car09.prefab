@@ -5628,6 +5628,7 @@ MonoBehaviour:
   backwardLimit: -35
   snapThreshold: 6
   snapSpeed: 10
+  m_EnableDebugLogs: 0
   OnGearChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -6118,6 +6119,7 @@ MonoBehaviour:
   rotationAxis: {x: 1, y: 0, z: 0}
   releaseAngleRange: 36
   m_ReleaseThresholdDegrees: 1
+  m_EnableDebugLogs: 0
   OnEngagementChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -6700,6 +6702,7 @@ GameObject:
   - component: {fileID: 1769561840034510198}
   - component: {fileID: -1382152921473904357}
   - component: {fileID: 5618434498268691116}
+  - component: {fileID: 1039470848946908983}
   m_Layer: 0
   m_Name: Car09
   m_TagString: Untagged
@@ -6993,6 +6996,28 @@ MonoBehaviour:
   m_AudioProfile: {fileID: 11400000, guid: c9c35ab41dc3edc498f554c6325ef68d, type: 2}
   m_ImpactSource: {fileID: 8535301017188209510}
   m_MixerGroup: {fileID: 1856755694723622445, guid: c0333ff32db33d843a068990c1c2a0cd, type: 2}
+--- !u!114 &1039470848946908983
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3449169920416470478}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67701bda4cd98ca42b74447088e05381, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.WrongWayDetector
+  m_WrongWayDistanceM: 10
+  m_MinSpeedKmh: 3
+  m_CorrectMaxAngleDeg: 60
+  m_WrongMinAngleDeg: 120
+  m_RearmDistanceM: 10
+  m_ProbeLocalOffset: {x: 0, y: 0.5, z: -0.45}
+  m_ZoneMask:
+    serializedVersion: 2
+    m_Bits: 512
+  m_LogEvents: 0
 --- !u!1 &3450295784253597689
 GameObject:
   m_ObjectHideFlags: 0
@@ -12699,6 +12724,7 @@ MonoBehaviour:
   m_ArmTurnAngle: 80
   m_CancelReturnAngle: 15
   m_OppositeCancelAngle: 50
+  m_EnableDebugLogs: 0
   OnTurnSignalChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -14087,6 +14113,7 @@ MonoBehaviour:
   m_SnapSpeed: 15
   m_AudioSource: {fileID: 589667695480507514}
   m_ClickClip: {fileID: 8300000, guid: 7a2f0ef8f1a0e714798fde280d2b7b6c, type: 3}
+  m_EnableDebugLogs: 0
   OnModeChanged:
     m_PersistentCalls:
       m_Calls:
