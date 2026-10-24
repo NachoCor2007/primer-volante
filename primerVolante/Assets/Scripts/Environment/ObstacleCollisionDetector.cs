@@ -107,6 +107,16 @@ namespace PrimerVolante.Environment
         }
 
         /// <summary>
+        /// true si el contacto cuenta como falta del jugador: su velocidad es igual o mayor a
+        /// <paramref name="minFaultSpeedKmh"/>. Con el auto detenido el que chocó fue el obstáculo. No atribuye
+        /// culpa entre dos cuerpos en movimiento (eso queda para US31).
+        /// </summary>
+        public static bool IsPlayerFault(float playerSpeedKmh, float minFaultSpeedKmh)
+        {
+            return playerSpeedKmh >= minFaultSpeedKmh;
+        }
+
+        /// <summary>
         /// true si el auto empuja de frente contra la superficie de un contacto: el sentido de avance apunta contra
         /// la normal (que sale de la superficie hacia el auto) con un coseno menor a −<paramref name="minCosine"/>
         /// (0.9 ≈ dentro de 25° de la normal). Un contacto de costado, en diagonal o mientras el auto se separa no
@@ -151,6 +161,11 @@ namespace PrimerVolante.Environment
                  "parpadea (el contacto se pierde y se recupera) sin que eso cuente como un impacto nuevo.")]
         [SerializeField] private float m_ContactGraceSeconds = 0.3f;
 
+        [Header("Infracción")]
+        [Tooltip("Velocidad del jugador en km/h por debajo de la cual el contacto no cuenta como falta: con el auto detenido, " +
+                 "quien chocó fue el obstáculo (un NPC que lo embiste, un peatón que camina contra él). El evento se emite igual.")]
+        [SerializeField] private float m_MinFaultSpeedKmh = 1f;
+
         [Header("Depuración")]
         [Tooltip("Si se activa, escribe un log por cada impacto emitido.")]
         [SerializeField] private bool m_LogEvents = false;
@@ -164,8 +179,9 @@ namespace PrimerVolante.Environment
         public event Action<ObstacleImpact> OnImpact;
 
         /// <summary>
-        /// Se dispara por cada impacto de cualquier obstáculo: el gestor de faltas se suscribe una sola vez sin
-        /// buscar todos los obstáculos de la escena. Se limpia al entrar a Play Mode.
+        /// Se dispara por cada impacto de cualquier obstáculo, para reaccionar (audio, NPC, UI) sin buscar todos
+        /// los obstáculos de la escena. <b>No</b> lo uses para registrar faltas: el detector ya las informa por
+        /// <see cref="InfractionReporting"/> y se contarían dos veces. Se limpia al entrar a Play Mode.
         /// </summary>
         public static event Action<ObstacleImpact> AnyImpact;
 
@@ -177,6 +193,9 @@ namespace PrimerVolante.Environment
 
         /// <summary>Segundos mínimos entre dos eventos.</summary>
         public float RearmSeconds => m_RearmSeconds;
+
+        /// <summary>Velocidad mínima del jugador en km/h para que el contacto cuente como falta.</summary>
+        public float MinFaultSpeedKmh => m_MinFaultSpeedKmh;
 
         /// <summary>Cantidad de colliders del auto que lo están tocando ahora.</summary>
         public int ActiveContacts => m_ActiveContacts;
@@ -209,6 +228,7 @@ namespace PrimerVolante.Environment
             m_CrashSpeedKmh = Mathf.Max(0f, m_CrashSpeedKmh);
             m_RearmSeconds = Mathf.Max(0f, m_RearmSeconds);
             m_ContactGraceSeconds = Mathf.Max(0f, m_ContactGraceSeconds);
+            m_MinFaultSpeedKmh = Mathf.Max(0f, m_MinFaultSpeedKmh);
         }
 
         /// <summary>
@@ -259,9 +279,12 @@ namespace PrimerVolante.Environment
                           $"relativa {impact.RelativeSpeedKmh:F1} km/h, obstáculo {impact.ObstacleSpeedKmh:F1} km/h | {impact.Point}");
             }
 
-            InfractionReporting.Report(InfractionReport.Create(
-                ObstacleImpactMath.InfractionIdFor(impact.Kind, impact.Severity), this, impact.Point,
-                ("speed", impact.PlayerSpeedKmh.ToString("F0"))));
+            if (ObstacleImpactMath.IsPlayerFault(impact.PlayerSpeedKmh, m_MinFaultSpeedKmh))
+            {
+                InfractionReporting.Report(InfractionReport.Create(
+                    ObstacleImpactMath.InfractionIdFor(impact.Kind, impact.Severity), this, impact.Point,
+                    ("speed", impact.PlayerSpeedKmh.ToString("F0"))));
+            }
 
             OnImpact?.Invoke(impact);
             AnyImpact?.Invoke(impact);
