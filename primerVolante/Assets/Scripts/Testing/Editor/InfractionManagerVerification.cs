@@ -159,6 +159,11 @@ namespace PrimerVolante.Testing.Editor
             Assert(ObstacleImpactMath.InfractionIdFor(ObstacleKind.Pedestrian, ObstacleImpactSeverity.Crash) == InfractionIds.PedestrianHit,
                 "InfractionIdFor(Pedestrian, Crash) = PEDESTRIAN_HIT", ref total, ref passed);
 
+            Assert(!ObstacleImpactMath.IsPlayerFault(0f, 1f) && !ObstacleImpactMath.IsPlayerFault(0.9f, 1f),
+                "IsPlayerFault: con el jugador casi detenido (< umbral) el contacto no es falta", ref total, ref passed);
+            Assert(ObstacleImpactMath.IsPlayerFault(1f, 1f) && ObstacleImpactMath.IsPlayerFault(30f, 1f),
+                "IsPlayerFault: desde el umbral el contacto es falta", ref total, ref passed);
+
             Assert(ObstacleImpactMath.InfractionIdFor((ObstacleKind)99, ObstacleImpactSeverity.Crash) == null,
                 "InfractionIdFor con un tipo desconocido devuelve null (no se disfraza de atropello)", ref total, ref passed);
 
@@ -198,17 +203,17 @@ namespace PrimerVolante.Testing.Editor
 
                 // Falta leve con parámetros, por el camino real de los detectores (holder estático).
                 InfractionReporting.Report(InfractionReport.Create(InfractionIds.Speeding, sourceObject.transform,
-                    new Vector3(1f, 2f, 3f), ("limit", "40"), ("speed", "52")));
+                    new Vector3(1f, 2f, 3f), ("limit", "40")));
 
                 Assert(recorded.Count == 1 && first.Records.Count == 1, "Un Report válido crea un registro y dispara el evento una vez", ref total, ref passed);
                 InfractionRecord r1 = first.Records.Count > 0 ? first.Records[0] : null;
                 Assert(r1 != null && r1.Id == InfractionIds.Speeding && r1.Severity == InfractionSeverity.Minor && r1.Sequence == 1,
                     "El registro tiene id SPEEDING, gravedad leve y Sequence 1", ref total, ref passed);
                 Assert(r1 != null && r1.ShortTitle == "Exceso de velocidad" &&
-                       r1.Description.Contains("límite de 40 km/h") && r1.Description.Contains("ibas a 52 km/h") && !r1.Description.Contains("{"),
+                       r1.Description.Contains("límite de 40 km/h") && !r1.Description.Contains("{"),
                     "La descripción sale formateada con los parámetros", ref total, ref passed);
                 Assert(r1 != null && r1.SourceName == "TestSource_Detector" && r1.Position == new Vector3(1f, 2f, 3f) &&
-                       r1.Parameters["speed"] == "52" && r1.LessonId == null && r1.StepIndex == -1,
+                       r1.Parameters["limit"] == "40" && r1.LessonId == null && r1.StepIndex == -1,
                     "El registro guarda fuente (nombre), posición, parámetros y sin contexto de lección", ref total, ref passed);
                 Assert(first.MinorCount == 1 && first.MajorCount == 0 && first.TotalCount == 1,
                     "Contadores: 1 leve, 0 graves, 1 total", ref total, ref passed);
@@ -276,6 +281,18 @@ namespace PrimerVolante.Testing.Editor
                 Assert(InfractionReporting.Current == (IInfractionReporter)first,
                     "Deshabilitar el segundo manager no desregistra al primero", ref total, ref passed);
 
+                // El que estaba en espera toma el lugar cuando el activo se deshabilita.
+                InvokeLifecycle(second, "OnEnable");
+                InvokeLifecycle(first, "OnDisable");
+                Assert(InfractionReporting.Current == (IInfractionReporter)second && InfractionReporting.Log == (IInfractionLog)second,
+                    "Al deshabilitar el activo, el manager en espera pasa a ser Current y Log", ref total, ref passed);
+                InvokeLifecycle(first, "OnEnable");
+                Assert(InfractionReporting.Current == (IInfractionReporter)second,
+                    "Al rehabilitarse, el primero queda en espera y no le quita el lugar al activo", ref total, ref passed);
+                InvokeLifecycle(second, "OnDisable");
+                Assert(InfractionReporting.Current == (IInfractionReporter)first,
+                    "Al deshabilitar el activo vuelve el que esperaba", ref total, ref passed);
+
                 // Clear.
                 first.Clear();
                 Assert(first.Records.Count == 0 && first.MinorCount == 0 && first.MajorCount == 0 && first.TotalCount == 0 && cleared == 1,
@@ -299,7 +316,7 @@ namespace PrimerVolante.Testing.Editor
                 Application.logMessageReceived += OnFallbackLog;
                 try
                 {
-                    InfractionReporting.Report(InfractionReport.Create(InfractionIds.Speeding, null, Vector3.zero, ("limit", "40"), ("speed", "55")));
+                    InfractionReporting.Report(InfractionReport.Create(InfractionIds.Speeding, null, Vector3.zero, ("limit", "40")));
                 }
                 catch (Exception)
                 {
@@ -402,6 +419,10 @@ namespace PrimerVolante.Testing.Editor
                 InvokeLifecycle(manager, "OnDisable");
                 lessonManager.StartLesson(lesson);
                 Assert(cleared == 1, "Al deshabilitar el manager se desuscribe de LessonStarted", ref total, ref passed);
+
+                InvokeLifecycle(manager, "OnEnable");
+                lessonManager.StartLesson(lesson);
+                Assert(cleared == 2, "Al rehabilitarse vuelve a suscribirse al LessonManager asignado con BindLessonManager", ref total, ref passed);
             }
             finally
             {
