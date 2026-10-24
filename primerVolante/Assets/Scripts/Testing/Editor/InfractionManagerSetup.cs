@@ -46,7 +46,7 @@ namespace PrimerVolante.Testing.Editor
             new Spec(InfractionIds.RedLight, "Semáforo en rojo",
                 "Cruzaste la línea de detención con el semáforo en rojo. Frená antes de la línea y esperá la luz verde.",
                 InfractionSeverity.Major),
-            new Spec(InfractionIds.Speeding, "Exceso de velocidad",
+            new Spec(InfractionIds.SpeedLimit, "Exceso de velocidad",
                 "Superaste el límite de {limit} km/h en este tramo. Respetá la velocidad máxima señalizada.",
                 InfractionSeverity.Minor, "limit"),
             new Spec(InfractionIds.LessonBoundary, "Fuera del área",

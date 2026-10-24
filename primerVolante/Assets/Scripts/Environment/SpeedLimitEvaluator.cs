@@ -233,7 +233,7 @@ namespace PrimerVolante.Environment
                 if (!m_HasInfraction)
                 {
                     InfractionReporting.Report(InfractionReport.Create(
-                        InfractionIds.Speeding, this, vehicle.transform.position,
+                        InfractionIds.SpeedLimit, this, vehicle.transform.position,
                         ("limit", m_SpeedLimitKmh.ToString())));
                 }
 

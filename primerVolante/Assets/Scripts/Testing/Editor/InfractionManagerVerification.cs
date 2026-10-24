@@ -26,7 +26,7 @@ namespace PrimerVolante.Testing.Editor
         private static readonly Dictionary<string, InfractionSeverity> s_ExpectedSeverity = new Dictionary<string, InfractionSeverity>
         {
             { "RED_LIGHT", InfractionSeverity.Major },
-            { "SPEEDING", InfractionSeverity.Minor },
+            { "SPEED_LIMIT", InfractionSeverity.Minor },
             { "LESSON_BOUNDARY", InfractionSeverity.Major },
             { "CONE_GRAZE", InfractionSeverity.Minor },
             { "CONE_CRASH", InfractionSeverity.Major },
@@ -202,13 +202,13 @@ namespace PrimerVolante.Testing.Editor
                 created.Add(sourceObject);
 
                 // Falta leve con parámetros, por el camino real de los detectores (holder estático).
-                InfractionReporting.Report(InfractionReport.Create(InfractionIds.Speeding, sourceObject.transform,
+                InfractionReporting.Report(InfractionReport.Create(InfractionIds.SpeedLimit, sourceObject.transform,
                     new Vector3(1f, 2f, 3f), ("limit", "40")));
 
                 Assert(recorded.Count == 1 && first.Records.Count == 1, "Un Report válido crea un registro y dispara el evento una vez", ref total, ref passed);
                 InfractionRecord r1 = first.Records.Count > 0 ? first.Records[0] : null;
-                Assert(r1 != null && r1.Id == InfractionIds.Speeding && r1.Severity == InfractionSeverity.Minor && r1.Sequence == 1,
-                    "El registro tiene id SPEEDING, gravedad leve y Sequence 1", ref total, ref passed);
+                Assert(r1 != null && r1.Id == InfractionIds.SpeedLimit && r1.Severity == InfractionSeverity.Minor && r1.Sequence == 1,
+                    "El registro tiene id SPEED_LIMIT, gravedad leve y Sequence 1", ref total, ref passed);
                 Assert(r1 != null && r1.ShortTitle == "Exceso de velocidad" &&
                        r1.Description.Contains("límite de 40 km/h") && !r1.Description.Contains("{"),
                     "La descripción sale formateada con los parámetros", ref total, ref passed);
@@ -310,13 +310,13 @@ namespace PrimerVolante.Testing.Editor
                 int fallbackWarnings = 0;
                 void OnFallbackLog(string message, string stack, LogType type)
                 {
-                    if (type == LogType.Warning && message.StartsWith("[Infraction]") && message.Contains("SPEEDING")) fallbackWarnings++;
+                    if (type == LogType.Warning && message.StartsWith("[Infraction]") && message.Contains("SPEED_LIMIT")) fallbackWarnings++;
                 }
 
                 Application.logMessageReceived += OnFallbackLog;
                 try
                 {
-                    InfractionReporting.Report(InfractionReport.Create(InfractionIds.Speeding, null, Vector3.zero, ("limit", "40")));
+                    InfractionReporting.Report(InfractionReport.Create(InfractionIds.SpeedLimit, null, Vector3.zero, ("limit", "40")));
                 }
                 catch (Exception)
                 {
@@ -336,7 +336,7 @@ namespace PrimerVolante.Testing.Editor
                 bool reporterThrew = false;
                 try
                 {
-                    InfractionReporting.Report(InfractionReport.Create(InfractionIds.Speeding, null, Vector3.zero));
+                    InfractionReporting.Report(InfractionReport.Create(InfractionIds.SpeedLimit, null, Vector3.zero));
                 }
                 catch (Exception)
                 {

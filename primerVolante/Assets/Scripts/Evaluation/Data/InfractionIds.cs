@@ -10,8 +10,8 @@ namespace PrimerVolante.Evaluation
         /// <summary>Cruce de la línea de detención con el semáforo en rojo (grave).</summary>
         public const string RedLight = "RED_LIGHT";
 
-        /// <summary>Exceso de velocidad, una por tramo (leve).</summary>
-        public const string Speeding = "SPEEDING";
+        /// <summary>Exceso de velocidad, una por tramo (leve). Parámetro: <c>limit</c>.</summary>
+        public const string SpeedLimit = "SPEED_LIMIT";
 
         /// <summary>Alcanzar las vallas de la lección (grave).</summary>
         public const string LessonBoundary = "LESSON_BOUNDARY";

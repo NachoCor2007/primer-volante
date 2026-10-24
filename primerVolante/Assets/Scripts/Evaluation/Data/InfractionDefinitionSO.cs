@@ -10,7 +10,7 @@ namespace PrimerVolante.Evaluation
     [CreateAssetMenu(fileName = "Infraction_NEW", menuName = "Primer Volante/Evaluation/Infraction Definition", order = 0)]
     public class InfractionDefinitionSO : ScriptableObject
     {
-        [Tooltip("Id estable de la infracción: uno de InfractionIds (ej. SPEEDING).")]
+        [Tooltip("Id estable de la infracción: uno de InfractionIds (ej. SPEED_LIMIT).")]
         [SerializeField] private string m_Id;
 
         [Tooltip("Título corto que muestra el tablero. Pocas palabras y sin parámetros.")]
