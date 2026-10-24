@@ -32,6 +32,10 @@ namespace PrimerVolante.VR
         [Tooltip("Tolerancia en grados, medida desde la posición totalmente liberada, dentro de la cual se considera 'no accionado'.")]
         [SerializeField] private float m_ReleaseThresholdDegrees = 1f;
 
+        [Header("Depuración")]
+        [Tooltip("Escribe en consola un log por cada cambio de estado. Apagado por defecto para no tapar el log de infracciones.")]
+        [SerializeField] private bool m_EnableDebugLogs = false;
+
         [Header("Eventos")]
         [Tooltip("Evento disparado con el nuevo valor de Engagement (0..1) cada vez que cambia.")]
         public HandbrakeEngagementEvent OnEngagementChanged = new HandbrakeEngagementEvent();
@@ -194,7 +198,8 @@ namespace PrimerVolante.VR
             {
                 float target = (Engagement > 0.5f) ? 0f : 1f;
                 SetEngagementImmediate(target);
-                Debug.Log($"[VRHandbrake] {gameObject.name}: Freno de mano alternado por teclado a Engagement={target:F0}.");
+                if (m_EnableDebugLogs)
+                    Debug.Log($"[VRHandbrake] {gameObject.name}: Freno de mano alternado por teclado a Engagement={target:F0}.");
             }
 #endif
         }

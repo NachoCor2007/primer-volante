@@ -54,6 +54,10 @@ namespace PrimerVolante.VR
         [Tooltip("Clip de sonido de clic rotativo.")]
         [SerializeField] private AudioClip m_ClickClip;
 
+        [Header("Depuración")]
+        [Tooltip("Escribe en consola un log por cada cambio de estado. Apagado por defecto para no tapar el log de infracciones.")]
+        [SerializeField] private bool m_EnableDebugLogs = false;
+
         [Header("Eventos")]
         [Tooltip("Evento invocado al cambiar el modo de luces.")]
         public HeadlightModeEvent OnModeChanged = new HeadlightModeEvent();
@@ -256,7 +260,8 @@ namespace PrimerVolante.VR
                 PlayClickSound();
                 OnModeChanged?.Invoke(m_CurrentMode);
                 ModeChanged?.Invoke(m_CurrentMode);
-                Debug.Log($"[VRHeadlightKnob] Modo de luces cambiado a: {m_CurrentMode}");
+                if (m_EnableDebugLogs)
+                    Debug.Log($"[VRHeadlightKnob] Modo de luces cambiado a: {m_CurrentMode}");
             }
         }
 

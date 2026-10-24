@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using PrimerVolante.Evaluation;
 using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.Splines;
@@ -174,7 +175,8 @@ namespace PrimerVolante.Environment
     /// Línea de vallas de control policial definida por una spline: delimita el área de práctica de una lección
     /// (US30). Reparte instancias del prefab <see cref="LessonBarrier"/> a lo largo de la spline, las deja
     /// guardadas en la escena como hijos de un contenedor <c>Barriers</c> y reexpone el evento de contacto con
-    /// deduplicación por vehículo. Solo avisa: la falta o el reinicio no son responsabilidad de este componente.
+    /// deduplicación por vehículo. Informa cada pasada como falta por <see cref="InfractionReporting"/> y emite el
+    /// evento para quien quiera reaccionar (el reinicio de la prueba no es responsabilidad de este componente).
     /// Para apagar la línea alcanza con <c>SetActive(false)</c> sobre este GameObject.
     /// </summary>
     [RequireComponent(typeof(SplineContainer))]
@@ -187,6 +189,9 @@ namespace PrimerVolante.Environment
         // Alto y espesor del sólido si el prefab no tiene BoxCollider (solo se usan para los gizmos).
         private const float k_FallbackSolidHeight = 2.05f;
         private const float k_FallbackSolidThickness = 0.4f;
+
+        // Nombre de la valla en la descripción de la infracción CRASH (parámetro "object").
+        private const string k_BarrierLabel = "una valla";
 
         [Header("Vallas")]
         [Tooltip("Prefab de valla a repartir (LessonBarrier).")]
@@ -283,6 +288,11 @@ namespace PrimerVolante.Environment
             if (!LessonBoundaryMath.ShouldAlert(last, now, m_AlertCooldownSeconds)) return;
 
             m_LastAlertTime[key] = now;
+
+            InfractionReporting.Report(InfractionReport.Create(
+                InfractionIds.Crash, this, contact.Position,
+                ("object", k_BarrierLabel), ("speed", contact.SpeedKmh.ToString("F0"))));
+
             OnVehicleReachedBoundary?.Invoke(contact);
         }
 
