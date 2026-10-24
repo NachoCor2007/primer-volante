@@ -34,7 +34,7 @@ namespace PrimerVolante.Environment
     public class WrongWayDetector : MonoBehaviour
     {
         private const float k_ProbeRadius = 0.05f;
-        private const int k_BufferSize = 16;
+        private const int k_BufferSize = 32;
 
         [Header("Tolerancia")]
         [Tooltip("Metros recorridos en contramano antes de informar la falta. Un adelantamiento completo la supera.")]
@@ -70,6 +70,10 @@ namespace PrimerVolante.Environment
         private readonly HashSet<object> m_Suppressors = new HashSet<object>();
         private WrongWayClassification m_LastClassification = WrongWayClassification.Neutral;
         private bool m_WasWrongWay;
+        private bool m_WarnedFullBuffer;
+
+        // Dueños que son UnityEngine.Object y ya fueron destruidos. Sin captura: no genera basura por llamada.
+        private static readonly Predicate<object> s_IsDestroyedOwner = owner => owner is UnityEngine.Object unityObject && unityObject == null;
 
         /// <summary>Se dispara al empezar un episodio de contramano (primer paso en contra). No registra la falta.</summary>
         public event Action<WrongWayDetector> OnWrongWayStarted;
@@ -86,8 +90,19 @@ namespace PrimerVolante.Environment
         /// <summary>true si la falta ya se informó en el episodio en curso.</summary>
         public bool HasReportedCurrentEpisode => Episode.Reported;
 
-        /// <summary>true mientras algún dueño tenga suspendido el detector (ver <see cref="SetSuppressed"/>).</summary>
-        public bool IsSuppressed => m_Suppressors.Count > 0;
+        /// <summary>
+        /// true mientras algún dueño tenga suspendido el detector (ver <see cref="SetSuppressed"/>). Los dueños
+        /// que son objetos de Unity ya destruidos se descartan solos, así que un paso de lección destruido sin
+        /// liberar no deja el detector suspendido para siempre.
+        /// </summary>
+        public bool IsSuppressed
+        {
+            get
+            {
+                if (m_Suppressors.Count > 0) m_Suppressors.RemoveWhere(s_IsDestroyedOwner);
+                return m_Suppressors.Count > 0;
+            }
+        }
 
         /// <summary>Última clasificación calculada (para depurar).</summary>
         public WrongWayClassification LastClassification => m_LastClassification;
@@ -145,6 +160,17 @@ namespace PrimerVolante.Environment
 
         private void OnEnable()
         {
+            SyncEpisodeThresholds();
+        }
+
+        // Las ediciones del Inspector en Play Mode llegan por acá.
+        private void OnValidate()
+        {
+            if (m_Episode != null) SyncEpisodeThresholds();
+        }
+
+        private void SyncEpisodeThresholds()
+        {
             Episode.WrongWayDistanceM = m_WrongWayDistanceM;
             Episode.RearmDistanceM = m_RearmDistanceM;
         }
@@ -189,8 +215,9 @@ namespace PrimerVolante.Environment
         private void FixedUpdate()
         {
             // 1. Suspendido: se descarta el episodio y no se evalúa.
-            if (m_Suppressors.Count > 0)
+            if (IsSuppressed)
             {
+                m_LastClassification = WrongWayClassification.Neutral;
                 DiscardEpisode();
                 return;
             }
@@ -199,11 +226,22 @@ namespace PrimerVolante.Environment
             Vector3 velocity = m_Body.linearVelocity;
             velocity.y = 0f;
             float speedMs = velocity.magnitude;
-            if (speedMs * 3.6f < m_MinSpeedKmh) return;
+            if (speedMs * 3.6f < m_MinSpeedKmh)
+            {
+                m_LastClassification = WrongWayClassification.Neutral;
+                return;
+            }
 
             // 3. Dónde está el centro del auto.
             Vector3 probe = ProbeWorldPosition;
             int count = Physics.OverlapSphereNonAlloc(probe, k_ProbeRadius, m_Buffer, m_ZoneMask, QueryTriggerInteraction.Collide);
+
+            if (count >= k_BufferSize && !m_WarnedFullBuffer)
+            {
+                // Una exención o una zona podría quedar afuera del buffer: se avisa una sola vez.
+                m_WarnedFullBuffer = true;
+                Debug.LogWarning($"[WrongWayDetector] ⚠️ Hay {k_BufferSize} o más colliders de LaneZone en el punto de consulta; puede que se ignore alguno.", this);
+            }
 
             RoadLaneZone best = null;
             float bestSqr = float.MaxValue;
@@ -216,6 +254,7 @@ namespace PrimerVolante.Environment
                 {
                     // Exención: no se evalúa y se descarta el episodio. Limpia lo que falte del buffer.
                     for (int j = i + 1; j < count; j++) m_Buffer[j] = null;
+                    m_LastClassification = WrongWayClassification.Neutral;
                     DiscardEpisode();
                     return;
                 }
@@ -231,16 +270,17 @@ namespace PrimerVolante.Environment
                 }
             }
 
-            // Sin zona (intersección, plaza, fuera de la calle): no cambia el estado.
-            if (best == null) return;
+            // Sin zona (intersección, plaza, fuera de la calle): no cambia el estado del episodio.
+            if (best == null)
+            {
+                m_LastClassification = WrongWayClassification.Neutral;
+                return;
+            }
 
             // 4. Clasifica y 5. acumula.
             m_LastClassification = WrongWayMath.Classify(velocity, best.AllowedWorldDirection, m_CorrectMaxAngleDeg, m_WrongMinAngleDeg);
 
             WrongWayEpisode episode = Episode;
-            episode.WrongWayDistanceM = m_WrongWayDistanceM;
-            episode.RearmDistanceM = m_RearmDistanceM;
-
             bool shouldReport = episode.Step(m_LastClassification, speedMs * Time.fixedDeltaTime);
             UpdateWrongWayState();
 

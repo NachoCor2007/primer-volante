@@ -53,15 +53,23 @@ namespace PrimerVolante.Testing.Editor
         /// <summary>
         /// Elige el sentido de mano única de una pieza a partir de hacia dónde circula el tránsito (en el mundo):
         /// <c>OneWayPositiveZ</c> si <c>dot(pieceForward, travelDirection)</c> proyectado en XZ es positivo,
-        /// <c>OneWayNegativeZ</c> si es negativo. <paramref name="ambiguous"/> es true si |dot| &lt; 0,5 (en ese
-        /// caso igual devuelve el signo, pero el menú saltea la pieza).
+        /// <c>OneWayNegativeZ</c> si es negativo. <paramref name="ambiguous"/> es true si |dot| &lt; 0,5 o si alguna
+        /// de las dos direcciones no tiene componente horizontal (en ese caso el menú saltea la pieza).
         /// </summary>
         public static TrafficFlow FlowFromDirection(Vector3 pieceForward, Vector3 travelDirection, out bool ambiguous)
         {
             pieceForward.y = 0f;
             travelDirection.y = 0f;
-            pieceForward = pieceForward.sqrMagnitude > 1e-8f ? pieceForward.normalized : Vector3.forward;
-            travelDirection = travelDirection.sqrMagnitude > 1e-8f ? travelDirection.normalized : Vector3.forward;
+
+            // Una dirección vertical (vista cenital) no define un sentido en el plano: se avisa como ambigua.
+            if (pieceForward.sqrMagnitude < 1e-8f || travelDirection.sqrMagnitude < 1e-8f)
+            {
+                ambiguous = true;
+                return TrafficFlow.OneWayPositiveZ;
+            }
+
+            pieceForward.Normalize();
+            travelDirection.Normalize();
 
             float dot = Vector3.Dot(pieceForward, travelDirection);
             ambiguous = Mathf.Abs(dot) < AmbiguousDotThreshold;

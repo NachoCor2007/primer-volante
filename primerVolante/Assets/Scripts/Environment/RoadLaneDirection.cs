@@ -84,21 +84,23 @@ namespace PrimerVolante.Environment
 
         private void OnDrawGizmos()
         {
-            if (ShowAllGizmos) DrawArrows();
+            // Modo "toda la escena": sin buscar componentes por pieza en cada repintado de la Scene view.
+            if (ShowAllGizmos) DrawArrows(precise: false);
         }
 
         private void OnDrawGizmosSelected()
         {
-            DrawArrows();
+            DrawArrows(precise: true);
         }
 
-        private void DrawArrows()
+        // precise: centra cada flecha en su zona (la pieza seleccionada). Sin eso usa el centro nominal del carril.
+        private void DrawArrows(bool precise)
         {
             Gizmos.color = IsOneWay ? s_OneWayColor : s_TwoWayColor;
             Matrix4x4 previous = Gizmos.matrix;
             Gizmos.matrix = transform.localToWorldMatrix;
 
-            RoadLaneZone[] zones = GetComponentsInChildren<RoadLaneZone>(true);
+            RoadLaneZone[] zones = precise ? GetComponentsInChildren<RoadLaneZone>(true) : System.Array.Empty<RoadLaneZone>();
             foreach (LaneSide side in s_Sides)
             {
                 // Centro de cada carril según su zona (si no hay zonas, la mitad del carril en el origen de la pieza).

@@ -55,6 +55,21 @@ namespace PrimerVolante.Testing.Editor
         {
             Debug.Log("[WrongWaySetup] 🔧 Configurando la detección de contramano...");
 
+            // Antes de cambiar nada: las zonas se derivan de los muros de cordón que crea 'Setup Road Colliders'.
+            foreach (string path in LessonBoundarySetup.FindRoadPrefabPaths())
+            {
+                string prefabName = System.IO.Path.GetFileNameWithoutExtension(path);
+                if (!HasLaneZones(prefabName)) continue;
+
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                if (prefab == null || prefab.GetComponent<MeshFilter>() == null || prefab.transform.Find(LessonBoundarySetup.CURB_WALLS_NAME) == null)
+                {
+                    Debug.LogError($"[WrongWaySetup] ❌ {prefabName} no tiene malla o el hijo '{LessonBoundarySetup.CURB_WALLS_NAME}'. " +
+                                   "Corré 'Tools > Primer Volante > Setup Road Colliders' primero. No se cambió nada.");
+                    return;
+                }
+            }
+
             int layer = EnsureLaneZoneLayer();
             if (layer < 0) return;
             ConfigureCollisionMatrix(layer);
@@ -332,11 +347,5 @@ namespace PrimerVolante.Testing.Editor
         // ------------------------------------------------------------------ Helpers
 
         private static void EnsureFolder(string folder) => LessonBoundarySetup.EnsureFolder(folder);
-
-        internal static T GetOrAdd<T>(GameObject target) where T : Component
-        {
-            var component = target.GetComponent<T>();
-            return component != null ? component : target.AddComponent<T>();
-        }
     }
 }

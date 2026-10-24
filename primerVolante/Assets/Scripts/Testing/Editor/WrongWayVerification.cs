@@ -22,6 +22,9 @@ namespace PrimerVolante.Testing.Editor
     {
         private const float k_Tolerance = 0.05f;
 
+        // Resumen de instancias de calle por escena, para repetirlo al final (las suites existentes imprimen mucho).
+        private static readonly List<string> s_SceneSummaries = new List<string>();
+
         /// <summary>Escenas de ciudad: todas heredan las zonas por los prefabs de calle.</summary>
         private static readonly string[] s_CityScenes =
         {
@@ -52,6 +55,7 @@ namespace PrimerVolante.Testing.Editor
             Debug.Log("=========================================================");
 
             int total = 0, passed = 0;
+            s_SceneSummaries.Clear();
 
             VerifyClassify(ref total, ref passed);
             VerifyEpisode(ref total, ref passed);
@@ -67,8 +71,12 @@ namespace PrimerVolante.Testing.Editor
             Debug.Log("=========================================================");
 
             // Informativo: no suma al resultado. Se corre al final porque abre otras escenas.
+            string initialScenePath = SceneManager.GetActiveScene().path;
+            bool initiallyClean = Enumerable.Range(0, SceneManager.sceneCount).All(i => !SceneManager.GetSceneAt(i).isDirty);
             ReportExistingSuites();
+            if (initiallyClean) RestoreScene(initialScenePath);
 
+            foreach (string line in s_SceneSummaries) Debug.Log($"[WrongWayVerification] 🛣️ {line}");
             Debug.Log($"🏁 CONTRAMANO (WRONG_WAY): {passed}/{total} pruebas pasadas con éxito (sin contar las suites existentes).");
         }
 
@@ -435,7 +443,9 @@ namespace PrimerVolante.Testing.Editor
             }
 
             string summary = string.Join(", ", counts.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key} x{kv.Value}"));
-            Debug.Log($"[WrongWayVerification] ℹ️ {sceneName}: {instances} instancias con zonas ({summary}); raras: {(odd.Count == 0 ? "ninguna" : string.Join("; ", odd))}");
+            string sceneLine = $"{sceneName}: {instances} instancias con zonas ({summary}); raras: {(odd.Count == 0 ? "ninguna" : string.Join("; ", odd))}";
+            s_SceneSummaries.Add(sceneLine);
+            Debug.Log($"[WrongWayVerification] ℹ️ {sceneLine}");
 
             checks.Add((instances > 0 && withZones == instances, $"{sceneName}: cada instancia de pieza con zonas las tiene ({withZones}/{instances})"));
             checks.Add((unpacked == 0, $"{sceneName}: no hay piezas desempaquetadas ({unpacked})"));
@@ -491,6 +501,21 @@ namespace PrimerVolante.Testing.Editor
 
         // ---------------------------------------------------------------- Helpers
 
+        // Las suites existentes dejan abierta otra escena (con cambios por reserialización): se vuelve a la inicial y
+        // se descartan esos cambios. Solo se llama si todo estaba limpio al empezar.
+        private static void RestoreScene(string path)
+        {
+            if (string.IsNullOrEmpty(path) || SceneManager.GetActiveScene().path == path) return;
+
+            Scene restored = EditorSceneManager.OpenScene(path, OpenSceneMode.Additive);
+            SceneManager.SetActiveScene(restored);
+            for (int i = SceneManager.sceneCount - 1; i >= 0; i--)
+            {
+                Scene other = SceneManager.GetSceneAt(i);
+                if (other != restored) EditorSceneManager.CloseScene(other, true);
+            }
+        }
+
         private static bool Near(float a, float b) => Mathf.Abs(a - b) <= k_Tolerance;
 
         private static T[] AllInScene<T>(Scene scene) where T : Component
@@ -527,13 +552,13 @@ namespace PrimerVolante.Testing.Editor
             }
         }
 
-        // true si git no ve diferencias del archivo contra HEAD; null si no se pudo correr git.
+        // true si git no ve diferencias del archivo contra HEAD (índice y árbol de trabajo); null si no se pudo correr git.
         private static bool? IsGitClean(string assetPath)
         {
             try
             {
                 string projectRoot = System.IO.Path.GetDirectoryName(Application.dataPath);
-                var info = new ProcessStartInfo("git", $"diff --quiet -- \"{assetPath}\"")
+                var info = new ProcessStartInfo("git", $"diff --quiet HEAD -- \"{assetPath}\"")
                 {
                     WorkingDirectory = projectRoot,
                     UseShellExecute = false,

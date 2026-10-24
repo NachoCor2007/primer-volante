@@ -183,9 +183,6 @@ namespace PrimerVolante.Testing.Editor
 
         private static Texture2D EnsureTexture(string path, int width, int height, PixelPainter painter)
         {
-            var existing = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
-            if (existing != null) return existing;
-
             var texture = new Texture2D(width, height, TextureFormat.RGBA32, true);
             for (int y = 0; y < height; y++)
             {
@@ -193,8 +190,14 @@ namespace PrimerVolante.Testing.Editor
             }
 
             texture.Apply();
-            File.WriteAllBytes(path, texture.EncodeToPNG());
+            byte[] png = texture.EncodeToPNG();
             Object.DestroyImmediate(texture);
+
+            // Idempotente: si el PNG ya es idéntico no se toca; si cambió el diseño, se actualiza.
+            var existing = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            if (existing != null && File.Exists(path) && System.Linq.Enumerable.SequenceEqual(File.ReadAllBytes(path), png)) return existing;
+
+            File.WriteAllBytes(path, png);
             AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
 
             var importer = AssetImporter.GetAtPath(path) as TextureImporter;
