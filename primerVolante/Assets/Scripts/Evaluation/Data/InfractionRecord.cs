@@ -65,14 +65,16 @@ namespace PrimerVolante.Evaluation
             StepIndex = stepIndex;
         }
 
+        // Diccionario vacío compartido para los registros sin parámetros: es de solo lectura, no hace falta uno por registro.
+        private static readonly IReadOnlyDictionary<string, string> s_NoParameters = new Dictionary<string, string>();
+
+        // Copia defensiva: el constructor público de InfractionReport acepta diccionarios que el llamador puede seguir modificando.
         private static IReadOnlyDictionary<string, string> CopyOf(IReadOnlyDictionary<string, string> source)
         {
-            var copy = new Dictionary<string, string>();
-            if (source != null)
-            {
-                foreach (KeyValuePair<string, string> pair in source) copy[pair.Key] = pair.Value;
-            }
+            if (source == null || source.Count == 0) return s_NoParameters;
 
+            var copy = new Dictionary<string, string>(source.Count);
+            foreach (KeyValuePair<string, string> pair in source) copy[pair.Key] = pair.Value;
             return copy;
         }
     }
