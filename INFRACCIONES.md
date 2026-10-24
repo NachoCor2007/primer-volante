@@ -13,7 +13,7 @@ Antes de US22 cada sistema detectaba su falta por su cuenta y solo escribía en 
 Ahora hay un **repositorio central** (`InfractionManager`) y una **interfaz común** por la que cualquier sistema, actual o futuro, informa una falta **sin saber quién la guarda**. Cada infracción registrada se puede mostrar de dos formas:
 
 - **Título corto** ("Exceso de velocidad") en el tablero de la lección (US24).
-- **Descripción completa** ("Excediste el límite de 40 km/h: ibas a 52 km/h. ...") en el reporte de fin de lección (US26).
+- **Descripción completa** ("Superaste el límite de 40 km/h en este tramo. ...") en el reporte de fin de lección (US26).
 
 Registrar una falta **nunca interrumpe la simulación**: no toca `Time.timeScale`, no frena el auto, no recarga la escena y no lanza excepciones hacia el detector que reporta.
 
@@ -87,7 +87,7 @@ Las fuentes son los cuatro sistemas que ya detectaban faltas. Los textos están 
 | Id | Fuente | Gravedad | Título corto | Plantilla de la descripción | Parámetros |
 |---|---|---|---|---|---|
 | `RED_LIGHT` | `RedLightViolationDetector`: cruce de la línea con el semáforo en rojo | Grave | Semáforo en rojo | Cruzaste la línea de detención con el semáforo en rojo. Frená antes de la línea y esperá la luz verde. | (ninguno) |
-| `SPEEDING` | `SpeedLimitEvaluator`: exceso de velocidad, **una por tramo** | Leve | Exceso de velocidad | Excediste el límite de {limit} km/h: ibas a {speed} km/h. Respetá la velocidad máxima señalizada del tramo. | `limit`, `speed` |
+| `SPEEDING` | `SpeedLimitEvaluator`: exceso de velocidad, **una por tramo** | Leve | Exceso de velocidad | Superaste el límite de {limit} km/h en este tramo. Respetá la velocidad máxima señalizada. | `limit` |
 | `LESSON_BOUNDARY` | `LessonBoundary`: el auto alcanza las vallas de la lección | Grave | Fuera del área | Intentaste salir del área de práctica de la lección a {speed} km/h. Mantenete dentro del recorrido delimitado por las vallas. | `speed` |
 | `CONE_GRAZE` | `ObstacleCollisionDetector`: roce con un cono | Leve | Roce con cono | Rozaste un cono a {speed} km/h. Calculá mejor las distancias en la maniobra. | `speed` |
 | `CONE_CRASH` | `ObstacleCollisionDetector`: choque con un cono | Grave | Choque con cono | Chocaste un cono a {speed} km/h. Reducí la velocidad al maniobrar cerca de obstáculos. | `speed` |
@@ -98,18 +98,18 @@ Las fuentes son los cuatro sistemas que ya detectaban faltas. Los textos están 
 Detalles de cada fuente:
 
 - **Semáforo**: se informa en `TryRecordViolation`, después del cooldown de 3 s por vehículo. La posición es la del auto.
-- **Velocidad**: se informa **solo en la transición** de "sin infracción" a "con infracción" dentro de un tramo, con la velocidad del primer exceso. Seguir excediendo en el mismo tramo no suma. El tramo se rearma cuando el auto sale por completo, así que volver a entrar puede sumar una falta nueva.
+- **Velocidad**: se informa **solo en la transición** de "sin infracción" a "con infracción" dentro de un tramo. Solo lleva el límite (`limit`), no la velocidad: en ese instante apenas se cruzó la tolerancia y no representa el máximo alcanzado. Seguir excediendo en el mismo tramo no suma. El tramo se rearma cuando el auto sale por completo, así que volver a entrar puede sumar una falta nueva. Si el auto sale sin `OnTriggerExit` (teletransportado, apagado o destruido), el tramo se cierra solo: al volver a entrar, si hace más de 0.25 s que no llega un `OnTriggerStay`, se considera abandonado. También se cierra al deshabilitar el componente.
 - **Vallas**: se informa una vez por pasada (la deduplicación por vehículo de `LessonBoundary` sigue igual). La posición y la velocidad son las del contacto.
-- **Obstáculos**: se informa un id por episodio de contacto. `ObstacleImpactMath.InfractionIdFor(ObstacleKind, ObstacleImpactSeverity)` hace el mapeo (peatón es siempre `PEDESTRIAN_HIT`). La velocidad es la del jugador (`PlayerSpeedKmh`); la posición es el punto de contacto.
+- **Obstáculos**: se informa un id por episodio de contacto. `ObstacleImpactMath.InfractionIdFor(ObstacleKind, ObstacleImpactSeverity)` hace el mapeo (peatón es siempre `PEDESTRIAN_HIT`). La velocidad es la del jugador (`PlayerSpeedKmh`); la posición es el punto de contacto. **Con el auto del jugador casi detenido no hay falta**: si `PlayerSpeedKmh` es menor que `Min Fault Speed Kmh` (1 km/h por defecto, configurable por obstáculo), quien chocó fue el obstáculo (un NPC que embiste, un peatón que camina contra el auto) y solo se emite el evento (`ObstacleImpactMath.IsPlayerFault`).
 
-Las velocidades se formatean como enteros (`F0`). Los eventos C# y UnityEvents que ya existían (`OnViolationDetected`, `OnVehicleReachedBoundary`, `OnImpact`, `AnyImpact`) **se mantienen**: otros sistemas, como el audio, los usan. La falta se informa por `InfractionReporting` y el evento queda para reacciones.
+Las velocidades se formatean como enteros (`F0`). Los eventos C# y UnityEvents que ya existían (`OnViolationDetected`, `OnVehicleReachedBoundary`, `OnImpact`, `AnyImpact`) **se mantienen**: otros sistemas, como el audio, los usan. La falta se informa por `InfractionReporting` y el evento queda para reacciones. **No registres faltas suscribiéndote a esos eventos** (por ejemplo a `AnyImpact`): se contarían dos veces.
 
 ### Logs
 
 El `InfractionManager` loguea cada falta si `m_LogEvents` está activo (por defecto sí):
 
 ```
-[InfractionManager] 🚨 #1 [Leve] Exceso de velocidad: Excediste el límite de 40 km/h: ibas a 51 km/h. ... (EvaluationZone)
+[InfractionManager] 🚨 #1 [Leve] Exceso de velocidad: Superaste el límite de 40 km/h en este tramo. ... (EvaluationZone)
 ```
 
 `RedLightViolationDetector` y `SpeedLimitEvaluator` tienen ahora un `m_LogEvents` (apagado por defecto) para sus logs propios, porque el gestor ya escribe la falta. Sin gestor, el respaldo de consola escribe un `[Infraction]`.
@@ -238,7 +238,7 @@ Si ninguna escena cargada tiene un `InfractionManager` habilitado:
 - `InfractionReporting.Log` es `null`: no hay contadores ni registros.
 - Los detectores funcionan igual y no necesitan referencias en el Inspector.
 
-Si hay **dos** gestores habilitados, el segundo no reemplaza al primero: escribe un `LogWarning` y se ignora como reporter. Al deshabilitar un gestor, `Unregister` solo lo quita si era el registrado.
+Si hay **dos** gestores habilitados, el segundo no reemplaza al primero: escribe un `LogWarning` y queda **en espera**. Si el primero se deshabilita o se destruye, el que estaba en espera pasa a ser el activo y empieza a recibir las infracciones (con su registro vacío).
 
 Los estáticos se limpian al entrar a Play Mode (`[RuntimeInitializeOnLoadMethod(SubsystemRegistration)]`), así que funciona con "Enter Play Mode Options" sin recarga de dominio.
 
@@ -263,9 +263,9 @@ Notas sobre la verificación:
 
 - **Solo registra**: sin UI (US23, US24, US26, US27 a US29), sin puntaje ni calificación final, sin persistencia a disco. Los registros viven en memoria y se pierden al salir de Play Mode.
 - **No cuentan como infracción** (decisión del equipo, por ahora): arranque o apagado inválido del motor (`VehicleController.OnEngineStartRejected`), cambio de marcha inválido (`VRGearShifter.CanShiftTo`) y frenado de emergencia de un NPC (`NPCSafetyStop.OnEmergencyBrake`). El diseño permite sumarlos después sin tocar el gestor (ver [Agregar una infracción nueva](#agregar-una-infracción-nueva)).
-- **Sin atribución de culpa** (#23 US31): un choque con un NPC que venía frenando cuenta igual. `ObstacleImpact.ObstacleSpeedKmh` ya trae la velocidad del NPC para cuando se implemente.
+- **Sin atribución de culpa** (#23 US31): con el auto del jugador en movimiento, un choque con un NPC cuenta como falta aunque el NPC haya tenido la culpa. Solo se descartan los contactos con el jugador casi detenido (< 1 km/h). `ObstacleImpact.ObstacleSpeedKmh` ya trae la velocidad del NPC para cuando se implemente.
 - **Sin reinicio de la prueba** al tocar las vallas (US30): solo se registra la falta.
 - **Una sola escena lista**: `CityWithInfractions` es la copia de `CityMerged3` donde se probó. `CityMerged3` y las escenas de lecciones no tienen gestor y usan el respaldo de consola; para sumarlo en otra escena, agregá un GameObject con `InfractionManager` y el catálogo `Assets/Settings/Evaluation/InfractionCatalog.asset`. Las lecciones con infracciones (#19 TASK-204) todavía no existen.
 - **Ids desconocidos**: si un detector informa un id que no está en el catálogo, no se registra (solo un `LogWarning`).
-- **Un reporter a la vez**: `InfractionReporting` registra un único reporter. No hay un bus para varios receptores; los que necesiten reaccionar se suscriben a `InfractionRecorded`.
+- **Un reporter activo a la vez**: `InfractionReporting` entrega las faltas solo al primero registrado (los demás esperan). No hay un bus para varios receptores; los que necesiten reaccionar se suscriben a `InfractionRecorded`.
 - **Textos**: las descripciones están en español rioplatense neutro; no hay localización.
