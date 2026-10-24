@@ -1,4 +1,5 @@
 using UnityEngine;
+using PrimerVolante.Evaluation;
 using PrimerVolante.VR;
 
 namespace PrimerVolante.Environment
@@ -21,6 +22,10 @@ namespace PrimerVolante.Environment
 
         [Tooltip("Tiempo mínimo en segundos entre avisos consecutivos de infracción en consola.")]
         [SerializeField] private float m_AlertCooldown = 1.5f;
+
+        [Header("Depuración")]
+        [Tooltip("Escribe los logs [TRAFFIC-SPEED] de ingreso, alerta periódica y salida del tramo.")]
+        [SerializeField] private bool m_LogEvents = false;
 
         [Header("Vinculación Opcional")]
         [Tooltip("Referencia al cartel vial asociado (si se asigna, sincroniza el límite automáticamente).")]
@@ -156,7 +161,10 @@ namespace PrimerVolante.Environment
 
                 SyncWithSign();
 
-                Debug.Log($"[TRAFFIC-SPEED] ℹ Ingreso a tramo con límite de {m_SpeedLimitKmh} km/h");
+                if (m_LogEvents)
+                {
+                    Debug.Log($"[TRAFFIC-SPEED] ℹ Ingreso a tramo con límite de {m_SpeedLimitKmh} km/h");
+                }
             }
         }
 
@@ -173,9 +181,18 @@ namespace PrimerVolante.Environment
 
             if (IsExcessSpeed(currentSpeed))
             {
+                // Una sola infracción por tramo: se informa solo en la transición a "con infracción".
+                if (!m_HasInfraction)
+                {
+                    InfractionReporting.Report(InfractionReport.Create(
+                        InfractionIds.Speeding, this, vehicle.transform.position,
+                        ("limit", m_SpeedLimitKmh.ToString()),
+                        ("speed", currentSpeed.ToString("F0"))));
+                }
+
                 m_HasInfraction = true;
 
-                if (Time.time - m_LastAlertTime >= m_AlertCooldown)
+                if (m_LogEvents && Time.time - m_LastAlertTime >= m_AlertCooldown)
                 {
                     m_LastAlertTime = Time.time;
                     Debug.Log($"[TRAFFIC-SPEED] ⚠ INFRACCIÓN: Exceso de velocidad detectado ({currentSpeed:F1} km/h en zona de {m_SpeedLimitKmh} km/h)");
@@ -199,11 +216,11 @@ namespace PrimerVolante.Environment
                     m_MaxSpeedRecorded = finalSpeed;
                 }
 
-                if (m_HasInfraction)
+                if (m_LogEvents && m_HasInfraction)
                 {
                     Debug.Log($"[TRAFFIC-SPEED] ❌ Tramo finalizado con infracción. Velocidad máxima alcanzada: {m_MaxSpeedRecorded:F1} km/h (Permitido: {m_SpeedLimitKmh} km/h)");
                 }
-                else
+                else if (m_LogEvents)
                 {
                     Debug.Log($"[TRAFFIC-SPEED] ✅ Tramo completado sin infracciones. Velocidad máxima alcanzada: {m_MaxSpeedRecorded:F1} km/h (Permitido: {m_SpeedLimitKmh} km/h)");
                 }

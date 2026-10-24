@@ -1,4 +1,5 @@
 using System;
+using PrimerVolante.Evaluation;
 using PrimerVolante.VR;
 using UnityEngine;
 
@@ -32,8 +33,8 @@ namespace PrimerVolante.Environment
     }
 
     /// <summary>
-    /// Datos de un contacto entre el auto del jugador y un obstáculo. Solo informa: registrar la falta es
-    /// responsabilidad de quien se suscriba (gestor de infracciones, US22).
+    /// Datos de un contacto entre el auto del jugador y un obstáculo. Solo informa: la falta la reporta
+    /// <see cref="ObstacleCollisionDetector"/> a <see cref="InfractionReporting"/> (gestor de infracciones, US22).
     /// </summary>
     public struct ObstacleImpact
     {
@@ -87,6 +88,22 @@ namespace PrimerVolante.Environment
         }
 
         /// <summary>
+        /// Id de infracción (<see cref="InfractionIds"/>) que corresponde a un contacto: cono, vehículo o peatón
+        /// según el tipo, y roce o choque según la gravedad. Un peatón es <see cref="InfractionIds.PedestrianHit"/>
+        /// con cualquier gravedad.
+        /// </summary>
+        public static string InfractionIdFor(ObstacleKind kind, ObstacleImpactSeverity severity)
+        {
+            bool crash = severity == ObstacleImpactSeverity.Crash;
+            switch (kind)
+            {
+                case ObstacleKind.Cone: return crash ? InfractionIds.ConeCrash : InfractionIds.ConeGraze;
+                case ObstacleKind.Vehicle: return crash ? InfractionIds.VehicleCrash : InfractionIds.VehicleGraze;
+                default: return InfractionIds.PedestrianHit;
+            }
+        }
+
+        /// <summary>
         /// true si el auto empuja de frente contra la superficie de un contacto: el sentido de avance apunta contra
         /// la normal (que sale de la superficie hacia el auto) con un coseno menor a −<paramref name="minCosine"/>
         /// (0.9 ≈ dentro de 25° de la normal). Un contacto de costado, en diagonal o mientras el auto se separa no
@@ -104,8 +121,8 @@ namespace PrimerVolante.Environment
     /// Obstáculo que registra los roces y choques del auto del jugador (US33): conos, vehículos NPC y estacionados
     /// y peatones. Va en el mismo GameObject que el collider del obstáculo. Clasifica cada contacto como
     /// <see cref="ObstacleImpactSeverity.Graze"/> o <see cref="ObstacleImpactSeverity.Crash"/> y emite un evento
-    /// por episodio de contacto. Solo emite el evento: la falta y la reacción de los NPC no son responsabilidad
-    /// de este componente.
+    /// por episodio de contacto. Cada impacto se informa como falta por <see cref="InfractionReporting"/> y además
+    /// se emite el evento, que queda para reacciones (audio, NPC, futura UI).
     /// </summary>
     /// <remarks>
     /// No implementa <c>OnCollisionEnter</c>: los contactos se los informa <see cref="ObstacleContactSensor"/>, que
@@ -238,6 +255,10 @@ namespace PrimerVolante.Environment
                 Debug.Log($"[ObstacleCollisionDetector] 💥 {name}: {impact.Kind}/{impact.Severity} | jugador {impact.PlayerSpeedKmh:F1} km/h, " +
                           $"relativa {impact.RelativeSpeedKmh:F1} km/h, obstáculo {impact.ObstacleSpeedKmh:F1} km/h | {impact.Point}");
             }
+
+            InfractionReporting.Report(InfractionReport.Create(
+                ObstacleImpactMath.InfractionIdFor(impact.Kind, impact.Severity), this, impact.Point,
+                ("speed", impact.PlayerSpeedKmh.ToString("F0"))));
 
             OnImpact?.Invoke(impact);
             AnyImpact?.Invoke(impact);

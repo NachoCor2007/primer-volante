@@ -26,7 +26,8 @@ namespace PrimerVolante.Environment
     /// Valla de control de una línea de barreras de lección (US30). El prefab tiene un collider sólido que
     /// frena físicamente al auto y un hijo trigger (<c>AlertTrigger</c>) más ancho que lo rodea; este
     /// componente va en el hijo trigger y avisa cuando el auto del jugador lo alcanza.
-    /// Solo emite el evento: la falta o el reinicio de la prueba son responsabilidad de quien se suscriba.
+    /// Solo emite el evento: la falta la informa <see cref="LessonBoundary"/> a <c>InfractionReporting</c> y el
+    /// reinicio de la prueba es responsabilidad de quien se suscriba.
     /// </summary>
     [DisallowMultipleComponent]
     public class LessonBarrier : MonoBehaviour
