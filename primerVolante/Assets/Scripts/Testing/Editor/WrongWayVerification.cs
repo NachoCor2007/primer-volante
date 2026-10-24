@@ -33,6 +33,7 @@ namespace PrimerVolante.Testing.Editor
             "Assets/Scenes/car09/Lesson_01_BasicDriving2.unity",
             "Assets/Scenes/Lessons/Lesson_01_BasicDriving.unity",
             WrongWaySetup.SCENE_PATH,
+            GPSNavigationSceneSetup.WRONG_WAY_DEMO_SCENE_PATH,
         };
 
         // Rangos esperados de cada prefab (espacio local de la pieza), independientes del setup: son los de la tabla
@@ -402,7 +403,8 @@ namespace PrimerVolante.Testing.Editor
         private static void VerifySceneRoads(Scene scene, string sceneName, List<(bool ok, string name)> checks)
         {
             var counts = new Dictionary<string, int>();
-            int instances = 0, withZones = 0, unpacked = 0, overridesRemoved = 0;
+            int instances = 0, withZones = 0, unpacked = 0, overridesRemoved = 0, wrongLayer = 0;
+            int laneZoneLayer = LayerMask.NameToLayer(RoadLaneZone.LayerName);
             var odd = new List<string>();
 
             foreach (GameObject root in scene.GetRootGameObjects())
@@ -433,6 +435,13 @@ namespace PrimerVolante.Testing.Editor
                     if (ok) withZones++;
                     else odd.Add($"{go.name} sin zonas completas en {Path(t)}");
 
+                    // Otras herramientas cambian capas en forma recursiva (p. ej. Roads del GPS): las zonas deben seguir en LaneZone.
+                    if (zones.Any(z => z.gameObject.layer != laneZoneLayer))
+                    {
+                        wrongLayer++;
+                        odd.Add($"{go.name} con zonas fuera de la capa {RoadLaneZone.LayerName} en {Path(t)}");
+                    }
+
                     int removed = PrefabUtility.GetRemovedGameObjects(go).Count + PrefabUtility.GetRemovedComponents(go).Count;
                     if (removed > 0)
                     {
@@ -450,6 +459,7 @@ namespace PrimerVolante.Testing.Editor
             checks.Add((instances > 0 && withZones == instances, $"{sceneName}: cada instancia de pieza con zonas las tiene ({withZones}/{instances})"));
             checks.Add((unpacked == 0, $"{sceneName}: no hay piezas desempaquetadas ({unpacked})"));
             checks.Add((overridesRemoved == 0, $"{sceneName}: ninguna instancia tiene overrides que eliminen las zonas ({overridesRemoved})"));
+            checks.Add((wrongLayer == 0, $"{sceneName}: todas las zonas están en la capa {RoadLaneZone.LayerName} ({wrongLayer} instancias fuera)"));
         }
 
         // ---------------------------------------------------------------- Suites existentes
