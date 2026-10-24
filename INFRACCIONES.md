@@ -62,7 +62,7 @@ Todo el código runtime está en `Assets/Scripts/Evaluation/` (namespace `Primer
 | `InfractionReporting` | `InfractionReporting.cs` | Holder estático: `Current` (nunca null), `Log`, `Register`/`Unregister` y `Report(...)`, que atrapa cualquier excepción del reporter. Incluye el respaldo de consola. |
 | `InfractionManager` | `InfractionManager.cs` | `MonoBehaviour` que implementa las dos interfaces. Se registra en `OnEnable`. Sin `Update`: no hace nada costoso por frame. |
 
-El gestor de la escena es el GameObject raíz **`InfractionManager`** de `Assets/Scenes/car09/CityWithInfractions.unity`, con el catálogo asignado. Los assets están en `Assets/Settings/Evaluation/` (`InfractionCatalog.asset` y un `Infraction_<ID>.asset` por tipo).
+El gestor de la escena es el GameObject raíz **`InfractionManager`** de `Assets/Scenes/car09/CityWithInfractions.unity`, con el catálogo asignado. Los assets están en `Assets/Settings/Evaluation/` (`InfractionCatalog.asset`, `Infraction_RED_LIGHT.asset`, `Infraction_SPEED_LIMIT.asset`, `Infraction_CRASH.asset` e `Infraction_GRAZE.asset`).
 
 ### Qué guarda un `InfractionRecord`
 
@@ -87,20 +87,27 @@ Las fuentes son los cuatro sistemas que ya detectaban faltas. Los textos están 
 | Id | Fuente | Gravedad | Título corto | Plantilla de la descripción | Parámetros |
 |---|---|---|---|---|---|
 | `RED_LIGHT` | `RedLightViolationDetector`: cruce de la línea con el semáforo en rojo | Grave | Semáforo en rojo | Cruzaste la línea de detención con el semáforo en rojo. Frená antes de la línea y esperá la luz verde. | (ninguno) |
-| `SPEEDING` | `SpeedLimitEvaluator`: exceso de velocidad, **una por tramo** | Leve | Exceso de velocidad | Superaste el límite de {limit} km/h en este tramo. Respetá la velocidad máxima señalizada. | `limit` |
-| `LESSON_BOUNDARY` | `LessonBoundary`: el auto alcanza las vallas de la lección | Grave | Fuera del área | Intentaste salir del área de práctica de la lección a {speed} km/h. Mantenete dentro del recorrido delimitado por las vallas. | `speed` |
-| `CONE_GRAZE` | `ObstacleCollisionDetector`: roce con un cono | Leve | Roce con cono | Rozaste un cono a {speed} km/h. Calculá mejor las distancias en la maniobra. | `speed` |
-| `CONE_CRASH` | `ObstacleCollisionDetector`: choque con un cono | Grave | Choque con cono | Chocaste un cono a {speed} km/h. Reducí la velocidad al maniobrar cerca de obstáculos. | `speed` |
-| `VEHICLE_GRAZE` | `ObstacleCollisionDetector`: roce con un vehículo (NPC o estacionado) | Leve | Roce con vehículo | Rozaste un vehículo a {speed} km/h. Dejá más espacio lateral y usá los espejos. | `speed` |
-| `VEHICLE_CRASH` | `ObstacleCollisionDetector`: choque con un vehículo | Grave | Choque con vehículo | Chocaste un vehículo a {speed} km/h. Mantené la distancia y anticipá las frenadas. | `speed` |
-| `PEDESTRIAN_HIT` | `ObstacleCollisionDetector`: atropello (siempre choque) | Grave | Atropello de peatón | Atropellaste a un peatón a {speed} km/h. Cedé siempre el paso a los peatones y reducí la velocidad cerca de las sendas peatonales. | `speed` |
+| `SPEED_LIMIT` | `SpeedLimitEvaluator`: exceso de velocidad, **una por tramo** | Leve | Exceso de velocidad | Superaste el límite de {limit} km/h en este tramo. Respetá la velocidad máxima señalizada. | `limit` |
+| `CRASH` | `ObstacleCollisionDetector`: choque con un cono, un vehículo (NPC o estacionado) o un peatón (siempre choque); `LessonBoundary`: el auto alcanza las vallas de la lección | Grave | Choque | Chocaste con {object} a {speed} km/h. Reducí la velocidad y mantené distancia con los obstáculos. | `object`, `speed` |
+| `GRAZE` | `ObstacleCollisionDetector`: roce con un cono o un vehículo (NPC o estacionado) | Leve | Roce | Rozaste {object} a {speed} km/h. Calculá mejor las distancias al maniobrar. | `object`, `speed` |
+
+Los ids son pocos a propósito: qué se chocó no cambia la gravedad, así que viaja en el parámetro `object` y no en el id. `object` es el nombre con artículo indefinido y en minúscula, para que la plantilla se lea natural: `"un cono"`, `"un vehículo"`, `"un peatón"`, `"una valla"`. `speed` es la velocidad del jugador en km/h, formateada con `F0`.
+
+Ejemplo de un choque con parámetros (así reportan `ObstacleCollisionDetector` y `LessonBoundary`):
+
+```csharp
+InfractionReporting.Report(InfractionReport.Create(
+    InfractionIds.Crash, this, contactPoint,
+    ("object", ObstacleImpactMath.ObjectLabelFor(ObstacleKind.Cone)), ("speed", speedKmh.ToString("F0"))));
+// Descripción: "Chocaste con un cono a 35 km/h. Reducí la velocidad y mantené distancia con los obstáculos."
+```
 
 Detalles de cada fuente:
 
 - **Semáforo**: se informa en `TryRecordViolation`, después del cooldown de 3 s por vehículo. La posición es la del auto.
 - **Velocidad**: se informa **solo en la transición** de "sin infracción" a "con infracción" dentro de un tramo. Solo lleva el límite (`limit`), no la velocidad: en ese instante apenas se cruzó la tolerancia y no representa el máximo alcanzado. Seguir excediendo en el mismo tramo no suma. El tramo se rearma cuando el auto sale por completo, así que volver a entrar puede sumar una falta nueva. Si el auto sale sin `OnTriggerExit` (teletransportado, apagado o destruido), el tramo se cierra solo: al volver a entrar, si hace más de 0.25 s que no llega un `OnTriggerStay`, se considera abandonado. También se cierra al deshabilitar el componente.
-- **Vallas**: se informa una vez por pasada (la deduplicación por vehículo de `LessonBoundary` sigue igual). La posición y la velocidad son las del contacto.
-- **Obstáculos**: se informa un id por episodio de contacto. `ObstacleImpactMath.InfractionIdFor(ObstacleKind, ObstacleImpactSeverity)` hace el mapeo (peatón es siempre `PEDESTRIAN_HIT`). La velocidad es la del jugador (`PlayerSpeedKmh`); la posición es el punto de contacto. **Con el auto del jugador casi detenido no hay falta**: si `PlayerSpeedKmh` es menor que `Min Fault Speed Kmh` (1 km/h por defecto, configurable por obstáculo), quien chocó fue el obstáculo (un NPC que embiste, un peatón que camina contra el auto) y solo se emite el evento (`ObstacleImpactMath.IsPlayerFault`).
+- **Vallas**: se informa una vez por pasada (la deduplicación por vehículo de `LessonBoundary` sigue igual) y se reporta como `CRASH` con `object` = `"una valla"` (constante privada `k_BarrierLabel`). La posición y la velocidad son las del contacto. Ya no existe una infracción propia de las vallas.
+- **Obstáculos**: se informa un id por episodio de contacto. `ObstacleImpactMath.InfractionIdFor(ObstacleKind, ObstacleImpactSeverity)` devuelve `CRASH` o `GRAZE` según la gravedad (un peatón ya se clasifica siempre como choque en `Classify`), y `ObstacleImpactMath.ObjectLabelFor(ObstacleKind)` da el valor del parámetro `object` (`"un cono"`, `"un vehículo"`, `"un peatón"`; `"un obstáculo"` si el tipo no tiene mapeo). La velocidad es la del jugador (`PlayerSpeedKmh`); la posición es el punto de contacto. **Con el auto del jugador casi detenido no hay falta**: si `PlayerSpeedKmh` es menor que `Min Fault Speed Kmh` (1 km/h por defecto, configurable por obstáculo), quien chocó fue el obstáculo (un NPC que embiste, un peatón que camina contra el auto) y solo se emite el evento (`ObstacleImpactMath.IsPlayerFault`).
 
 Las velocidades se formatean como enteros (`F0`). Los eventos C# y UnityEvents que ya existían (`OnViolationDetected`, `OnVehicleReachedBoundary`, `OnImpact`, `AnyImpact`) **se mantienen**: otros sistemas, como el audio, los usan. La falta se informa por `InfractionReporting` y el evento queda para reacciones. **No registres faltas suscribiéndote a esos eventos** (por ejemplo a `AnyImpact`): se contarían dos veces.
 
@@ -248,7 +255,7 @@ Los estáticos se limpian al entrar a Play Mode (`[RuntimeInitializeOnLoadMethod
 
 | Qué | MenuItem | Qué hace |
 |---|---|---|
-| Setup | `Tools/Primer Volante/Setup Infraction Manager` | Crea o actualiza las 8 definiciones y el catálogo en `Assets/Settings/Evaluation/`; crea `CityWithInfractions.unity` como copia de `CityMerged3` si no existe; deja un GameObject `InfractionManager` con el catálogo asignado y guarda la escena. Es idempotente. |
+| Setup | `Tools/Primer Volante/Setup Infraction Manager` | Crea o actualiza las 4 definiciones (`RED_LIGHT`, `SPEED_LIMIT`, `CRASH`, `GRAZE`) y el catálogo en `Assets/Settings/Evaluation/`; crea `CityWithInfractions.unity` como copia de `CityMerged3` si no existe; deja un GameObject `InfractionManager` con el catálogo asignado y guarda la escena. Es idempotente. |
 | Verificación | `Tools/Primer Volante/Run Infraction Manager Verification` | Catálogo, funciones puras, gestor en memoria, contexto de lección, escenas, y al final corre las suites existentes (`Run Obstacle Collision Verification`, `Run Lesson Boundary Verification` y `Run Traffic Light Tests`) de forma informativa. |
 
 Notas sobre la verificación:
