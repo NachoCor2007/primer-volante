@@ -53,6 +53,7 @@ namespace PrimerVolante.Testing.Editor
             VerifyCatalog(ref total, ref passed);
             VerifyPureFunctions(ref total, ref passed);
             VerifyManagerInMemory(ref total, ref passed);
+            VerifyObstacleTexts(ref total, ref passed);
             VerifyLessonContext(ref total, ref passed);
             VerifyScenes(ref total, ref passed);
 
@@ -81,6 +82,10 @@ namespace PrimerVolante.Testing.Editor
                 .Select(f => (string)f.GetRawConstantValue())
                 .ToList();
             Assert(ids.Count == 4, $"InfractionIds tiene 4 constantes ({ids.Count})", ref total, ref passed);
+            Assert(catalog.Definitions.Count == ids.Count,
+                $"El catálogo tiene exactamente una definición por constante ({catalog.Definitions.Count} definiciones, {ids.Count} constantes)", ref total, ref passed);
+            Assert(catalog.Definitions.All(d => d != null && ids.Contains(d.Id)),
+                "El catálogo no tiene definiciones sobrantes (todas corresponden a una constante de InfractionIds)", ref total, ref passed);
 
             Assert(catalog.Definitions.All(d => d != null && !string.IsNullOrEmpty(d.Id)),
                 "El catálogo no tiene entradas vacías ni ids vacíos", ref total, ref passed);
@@ -150,6 +155,18 @@ namespace PrimerVolante.Testing.Editor
                 Assert(ObstacleImpactMath.InfractionIdFor(kind, ObstacleImpactSeverity.Crash) == InfractionIds.Crash,
                     $"InfractionIdFor({kind}, Crash) = CRASH", ref total, ref passed);
             }
+
+            Assert(ObstacleImpactMath.Classify(ObstacleKind.Pedestrian, 0f, 10f) == ObstacleImpactSeverity.Crash,
+                "Un peatón se clasifica siempre como Crash (incluso a 0 km/h)", ref total, ref passed);
+
+            Assert(ObstacleImpactMath.ObjectLabelFor(ObstacleKind.Cone) == "un cono",
+                "ObjectLabelFor(Cone) = 'un cono'", ref total, ref passed);
+            Assert(ObstacleImpactMath.ObjectLabelFor(ObstacleKind.Vehicle) == "un vehículo",
+                "ObjectLabelFor(Vehicle) = 'un vehículo'", ref total, ref passed);
+            Assert(ObstacleImpactMath.ObjectLabelFor(ObstacleKind.Pedestrian) == "un peatón",
+                "ObjectLabelFor(Pedestrian) = 'un peatón'", ref total, ref passed);
+            Assert(ObstacleImpactMath.ObjectLabelFor((ObstacleKind)99) == "un obstáculo",
+                "ObjectLabelFor con un tipo desconocido = 'un obstáculo'", ref total, ref passed);
 
             Assert(!ObstacleImpactMath.IsPlayerFault(0f, 1f) && !ObstacleImpactMath.IsPlayerFault(0.9f, 1f),
                 "IsPlayerFault: con el jugador casi detenido (< umbral) el contacto no es falta", ref total, ref passed);
@@ -362,6 +379,75 @@ namespace PrimerVolante.Testing.Editor
             {
                 Calls++;
                 throw new InvalidOperationException("reporter roto (esperado en la verificación)");
+            }
+        }
+
+        // ---------------------------------------------------------------- Textos de choque y roce
+
+        // Los textos de CRASH y GRAZE llevan el objeto ("un cono") y la velocidad; la valla de la lección reporta CRASH.
+        private static void VerifyObstacleTexts(ref int total, ref int passed)
+        {
+            var catalog = AssetDatabase.LoadAssetAtPath<InfractionCatalogSO>(InfractionManagerSetup.CATALOG_PATH);
+            if (catalog == null) return;
+
+            var created = new List<GameObject>();
+            try
+            {
+                InfractionManager manager = CreateManager(catalog, created, "TestInfractionManager_Texts");
+                InvokeLifecycle(manager, "Awake");
+                InvokeLifecycle(manager, "OnEnable");
+                manager.BindLessonManager(null);
+
+                InfractionReporting.Report(InfractionReport.Create(InfractionIds.Crash, null, Vector3.zero,
+                    ("object", "un cono"), ("speed", "35")));
+                InfractionReporting.Report(InfractionReport.Create(InfractionIds.Graze, null, Vector3.zero,
+                    ("object", "un vehículo"), ("speed", "12")));
+
+                InfractionRecord crash = manager.Records.Count > 0 ? manager.Records[0] : null;
+                InfractionRecord graze = manager.Records.Count > 1 ? manager.Records[1] : null;
+                Assert(crash != null && crash.Description.StartsWith("Chocaste con un cono a 35 km/h. ") &&
+                       crash.ShortTitle == "Choque" && crash.Severity == InfractionSeverity.Major,
+                    "CRASH con object='un cono' y speed='35' produce 'Chocaste con un cono a 35 km/h. ...'", ref total, ref passed);
+                Assert(graze != null && graze.Description.StartsWith("Rozaste un vehículo a 12 km/h. ") &&
+                       graze.ShortTitle == "Roce" && graze.Severity == InfractionSeverity.Minor,
+                    "GRAZE con object='un vehículo' y speed='12' produce 'Rozaste un vehículo a 12 km/h. ...'", ref total, ref passed);
+
+                // Valla de la lección: se invoca el manejador real de LessonBoundary y debe reportar CRASH.
+                manager.Clear();
+                var barrierObject = new GameObject("TestLessonBoundary_Texts", typeof(UnityEngine.Splines.SplineContainer));
+                created.Add(barrierObject);
+                var boundary = barrierObject.AddComponent<LessonBoundary>();
+                var carObject = new GameObject("TestCar_Texts");
+                created.Add(carObject);
+                var car = carObject.AddComponent<PrimerVolante.VR.VehicleController>();
+
+                MethodInfo handler = typeof(LessonBoundary).GetMethod("HandleBarrierReached", k_Instance);
+                Assert(handler != null, "LessonBoundary tiene HandleBarrierReached", ref total, ref passed);
+                if (handler != null)
+                {
+                    handler.Invoke(boundary, new object[]
+                    {
+                        new LessonBarrierContact { Vehicle = car, Position = new Vector3(4f, 0f, 5f), SpeedKmh = 18.4f }
+                    });
+
+                    InfractionRecord barrier = manager.Records.Count > 0 ? manager.Records[0] : null;
+                    Assert(barrier != null && barrier.Id == InfractionIds.Crash && barrier.Severity == InfractionSeverity.Major &&
+                           barrier.Description.StartsWith("Chocaste con una valla a 18 km/h. "),
+                        "El reporte de la valla produce CRASH: 'Chocaste con una valla a 18 km/h. ...'", ref total, ref passed);
+                }
+            }
+            finally
+            {
+                foreach (GameObject go in created)
+                {
+                    var leftover = go != null ? go.GetComponent<InfractionManager>() : null;
+                    if (leftover != null) InfractionReporting.Unregister(leftover);
+                }
+
+                foreach (GameObject go in created)
+                {
+                    if (go != null) UnityEngine.Object.DestroyImmediate(go);
+                }
             }
         }
 
