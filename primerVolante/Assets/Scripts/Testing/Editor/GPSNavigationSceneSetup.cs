@@ -462,9 +462,10 @@ namespace PrimerVolante.Testing.Editor
             RectTransform canvasRect = canvasObj.GetComponent<RectTransform>();
             if (canvasRect == null) canvasRect = canvasObj.AddComponent<RectTransform>();
 
-            canvasRect.localPosition = new Vector3(0.077f, 0.935f, 0.305f);
-            // Inclinación hacia la vista del conductor (Y: -12° hacia la izquierda, X: +12° mirando hacia arriba)
-            canvasRect.localRotation = Quaternion.Euler(12f, -12f, 0f);
+            // Pose ajustada a mano en GPSNavigationDemo para no atravesar el tablero del auto
+            canvasRect.localPosition = new Vector3(0.0401f, 0.9836f, 0.2631f);
+            // Inclinación hacia la vista del conductor
+            canvasRect.localRotation = Quaternion.Euler(10.734f, 14.893f, 2.089f);
             canvasRect.localScale = new Vector3(0.0004f, 0.0004f, 0.0004f);
             canvasRect.sizeDelta = new Vector2(480f, 360f);
 
