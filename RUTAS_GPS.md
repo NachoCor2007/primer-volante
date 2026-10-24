@@ -31,26 +31,26 @@ El sistema de GPS diegético consta de:
 
 **Es 100% automático y puramente geométrico.** No hay triggers en la calle, ni zonas invisibles, ni scripts hardcodeados para cada esquina.
 
-El método `GPSRouteRenderer.UpdateManeuverInstruction()` realiza el cálculo en tiempo real con matemática vectorial:
+El método `GPSRouteRenderer.UpdateManeuverInstruction()` realiza el cálculo en tiempo real con matemática vectorial basada en la tangente del carril (`roadDir`) y proyección ortogonal:
 
 ```
                   segDir (tramo futuro a K metros)
                          ↗
                         /
-                       /   turnAngle = Vector3.SignedAngle(currentDir, segDir, Vector3.up)
+                       /   turnAngle = Vector3.SignedAngle(roadDir, segDir, Vector3.up)
                       /
-[Auto] ─── currentDir ───>
+[Carril] ─── roadDir ───>
 ```
 
 ### Algoritmo paso a paso:
-1. **Vector actual:** Obtiene el vector normalizado desde la posición actual del auto hacia el próximo punto de la spline (`currentDir`).
-2. **Escaneo hacia adelante:** Analiza los segmentos de la spline que están entre **2 y 60 metros por delante** del auto.
+1. **Dirección de referencia (Tangente del carril):** Obtiene el vector normalizado del tramo actual de la calle (`roadDir = (p1 - p0).normalized`). Si el auto conduce desfasado lateralmente (ej. otro carril), la referencia se mantiene en el eje de la calle y no apunta transversalmente hacia la spline.
+2. **Escaneo hacia adelante:** Analiza los segmentos de la spline que están entre **4 y 60 metros por delante** del auto a lo largo del recorrido.
 3. **Ángulo de giro (`SignedAngle`):**
    ```csharp
-   float turnAngle = Vector3.SignedAngle(currentDir, segDir, Vector3.up);
+   float turnAngle = Vector3.SignedAngle(roadDir, segDir, Vector3.up);
    ```
-   - Si `turnAngle > +30°`: La curva es hacia la **derecha**.
-   - Si `turnAngle < -30°`: La curva es hacia la **izquierda**.
+   - Si `turnAngle > +28°`: La curva es hacia la **derecha**.
+   - Si `turnAngle < -28°`: La curva es hacia la **izquierda**.
 4. **Distancia al giro:**
    - Si la curva está a más de 20 metros: `"Gire a la derecha / izquierda en {X} m"`.
    - Si está a 20 metros o menos: `"Gire a la derecha / izquierda"`.

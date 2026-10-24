@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
+using Unity.Mathematics;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -55,6 +56,9 @@ namespace PrimerVolante.Testing.Editor
 
                 // 5. Verificación de Reglas del Proyecto (Cero APIs Obsoletas - AGENTS.md)
                 VerifyNoObsoleteAPIs(ref totalTests, ref passedTests);
+
+                // 6. Verificación de Renderizado Limpio y Maniobras en GPSRouteRenderer
+                VerifyRouteRenderingAndManeuver(ref totalTests, ref passedTests);
             }
             catch (Exception ex)
             {
@@ -876,6 +880,80 @@ namespace PrimerVolante.Testing.Editor
 
             Assert(obsoleteCount == 0,
                 $"CERO llamadas a FindFirstObjectByType en los scripts de GPS (encontradas: {obsoleteCount})", ref total, ref passed);
+        }
+
+        // =========================================================================
+        // 6. Verificación de Renderizado Limpio y Maniobras en GPSRouteRenderer
+        // =========================================================================
+
+        private static void VerifyRouteRenderingAndManeuver(ref int total, ref int passed)
+        {
+            Debug.Log("--- 6. Verificación de Cross-Track y Maniobras en GPSRouteRenderer ---");
+
+            GameObject testObj = new GameObject("[Test_GPS_Route_Verification]");
+            try
+            {
+                var splineContainer = testObj.AddComponent<SplineContainer>();
+                var lineRenderer = testObj.AddComponent<LineRenderer>();
+                var routeRenderer = testObj.AddComponent<GPSRouteRenderer>();
+
+                // 1. Configurar spline recta a lo largo del eje Z (X = 63.5, de Z = 0 a Z = 100)
+                Spline straightSpline = new Spline();
+                straightSpline.Closed = false;
+                straightSpline.Add(new BezierKnot(new float3(63.5f, 0f, 0f)));
+                straightSpline.Add(new BezierKnot(new float3(63.5f, 0f, 100f)));
+
+                splineContainer.Spline = straightSpline;
+                routeRenderer.RouteContainer = splineContainer;
+
+                // Auto conduciendo desfasado a la izquierda (X = 60.0 en lugar de 63.5) en Z = 20
+                Vector3 offsetCarPos = new Vector3(60.0f, 0f, 20.0f);
+                routeRenderer.UpdateRoute(offsetCarPos);
+
+                // A. No debe ordenar falso giro a la izquierda
+                Assert(routeRenderer.CurrentManeuver == "Continúe recto",
+                    $"Auto desfasado 3.5m a la izquierda en calle recta debe indicar 'Continúe recto' y no falso giro (actual: '{routeRenderer.CurrentManeuver}')", ref total, ref passed);
+
+                // B. El punto 0 del LineRenderer debe estar proyectado sobre el carril (X ≈ 63.5) y NO en la posición del auto (X = 60.0)
+                Vector3 p0Line = lineRenderer.GetPosition(0);
+                bool isCleanLaneProjection = Mathf.Abs(p0Line.x - 63.5f) < 0.1f;
+                Assert(isCleanLaneProjection,
+                    $"Punto 0 de LineRenderer debe proyectarse en el carril (X ≈ 63.5, actual: {p0Line.x:F2}), sin quiebre en 90° hacia el auto", ref total, ref passed);
+
+                // C. Distancia restante debe ser ~80m (100 - 20) calculada por proyección ortogonal
+                bool distanceAccurate = Mathf.Abs(routeRenderer.RemainingDistance - 80f) < 1.0f;
+                Assert(distanceAccurate,
+                    $"Distancia restante debe calcularse ortogonalmente (~80m, actual: {routeRenderer.RemainingDistance:F1}m)", ref total, ref passed);
+
+                // 2. Ruta con curva a la derecha a 40m por delante
+                Spline turnSpline = new Spline();
+                turnSpline.Closed = false;
+                turnSpline.Add(new BezierKnot(new float3(0f, 0f, 0f)));
+                turnSpline.Add(new BezierKnot(new float3(0f, 0f, 50f)));
+                turnSpline.Add(new BezierKnot(new float3(50f, 0f, 50f)));
+
+                splineContainer.Spline = turnSpline;
+                routeRenderer.InitializeRoute();
+
+                // Auto en Z = 10 (40m antes del giro a la derecha)
+                routeRenderer.UpdateRoute(new Vector3(0f, 0f, 10f));
+                Assert(routeRenderer.CurrentManeuver.StartsWith("Gire a la derecha"),
+                    $"Debe detectar giro a la derecha próximo (actual: '{routeRenderer.CurrentManeuver}')", ref total, ref passed);
+
+                // Auto en Z = 35 (15m antes del giro, rango < 20m)
+                routeRenderer.UpdateRoute(new Vector3(0f, 0f, 35f));
+                Assert(routeRenderer.CurrentManeuver == "Gire a la derecha",
+                    $"A menos de 20m debe indicar 'Gire a la derecha' inmediato (actual: '{routeRenderer.CurrentManeuver}')", ref total, ref passed);
+
+                // 3. Arribo al destino (< 4m del final en Z = 50, X = 50)
+                routeRenderer.UpdateRoute(new Vector3(49f, 0f, 50f));
+                Assert(routeRenderer.HasArrived && routeRenderer.CurrentManeuver == "¡Llegaste a tu destino!",
+                    "A menos de 4m del final debe activar HasArrived y mostrar '¡Llegaste a tu destino!'", ref total, ref passed);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(testObj);
+            }
         }
 
         private static void Assert(bool condition, string testName, ref int total, ref int passed)

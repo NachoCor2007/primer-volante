@@ -136,6 +136,11 @@ namespace PrimerVolante.UI
         /// </summary>
         public void InitializeRoute()
         {
+            if (m_LineRenderer == null)
+            {
+                m_LineRenderer = GetComponent<LineRenderer>();
+            }
+
             m_SampledPoints.Clear();
             m_CumulativeLengths.Clear();
             m_CurrentSegmentIndex = 0;
@@ -223,6 +228,35 @@ namespace PrimerVolante.UI
             }
 
             m_LastCarPosition = carPosition;
+
+            // Consumo dinámico de ruta (Waze style):
+            // Avanzamos el segmento actual proyectando la posición del auto
+            while (m_CurrentSegmentIndex < m_SampledPoints.Count - 2)
+            {
+                Vector3 segP0 = m_SampledPoints[m_CurrentSegmentIndex];
+                Vector3 segP1 = m_SampledPoints[m_CurrentSegmentIndex + 1];
+
+                Vector2 segVec = new Vector2(segP1.x - segP0.x, segP1.z - segP0.z);
+                Vector2 carVec = new Vector2(carPosition.x - segP0.x, carPosition.z - segP0.z);
+
+                float lenSq = segVec.sqrMagnitude;
+                if (lenSq < 1e-4f)
+                {
+                    m_CurrentSegmentIndex++;
+                    continue;
+                }
+
+                float projection = Vector2.Dot(carVec, segVec) / lenSq;
+                if (projection >= 1.0f)
+                {
+                    m_CurrentSegmentIndex++;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
             Vector3 destPoint = m_SampledPoints[m_SampledPoints.Count - 1];
             float distToEnd = Vector2.Distance(new Vector2(carPosition.x, carPosition.z), new Vector2(destPoint.x, destPoint.z));
 
@@ -243,50 +277,34 @@ namespace PrimerVolante.UI
                 return;
             }
 
-            // Consumo dinámico de ruta (Waze style):
-            // Avanzamos el segmento actual proyectando la posición del auto
-            while (m_CurrentSegmentIndex < m_SampledPoints.Count - 2)
+            // A. Proyección Ortogonal sobre el Carril (Cross-Track Projection)
+            Vector3 p0 = m_SampledPoints[m_CurrentSegmentIndex];
+            Vector3 p1 = m_SampledPoints[m_CurrentSegmentIndex + 1];
+            Vector2 seg = new Vector2(p1.x - p0.x, p1.z - p0.z);
+            Vector2 toCar = new Vector2(carPosition.x - p0.x, carPosition.z - p0.z);
+            float segLenSq = seg.sqrMagnitude;
+            float currentProjection = 0f;
+            if (segLenSq > 1e-4f)
             {
-                Vector3 p0 = m_SampledPoints[m_CurrentSegmentIndex];
-                Vector3 p1 = m_SampledPoints[m_CurrentSegmentIndex + 1];
-
-                Vector2 seg = new Vector2(p1.x - p0.x, p1.z - p0.z);
-                Vector2 toCar = new Vector2(carPosition.x - p0.x, carPosition.z - p0.z);
-
-                float segLenSq = seg.sqrMagnitude;
-                if (segLenSq < 1e-4f)
-                {
-                    m_CurrentSegmentIndex++;
-                    continue;
-                }
-
-                float projection = Vector2.Dot(toCar, seg) / segLenSq;
-                if (projection >= 1.0f)
-                {
-                    m_CurrentSegmentIndex++;
-                }
-                else
-                {
-                    break;
-                }
+                currentProjection = Mathf.Clamp01(Vector2.Dot(toCar, seg) / segLenSq);
             }
+            Vector3 projectedPoint = Vector3.Lerp(p0, p1, currentProjection);
 
-            // Calcular distancia restante:
-            // Distancia del auto al próximo punto de la spline + suma de tramos restantes
-            Vector3 nextPoint = m_SampledPoints[m_CurrentSegmentIndex + 1];
-            float distToNext = Vector2.Distance(new Vector2(carPosition.x, carPosition.z), new Vector2(nextPoint.x, nextPoint.z));
-            float remainingAfterNext = m_CumulativeLengths[m_SampledPoints.Count - 1] - m_CumulativeLengths[m_CurrentSegmentIndex + 1];
-            m_RemainingDistance = Mathf.Max(0f, distToNext + remainingAfterNext);
+            // Cálculo de Distancia Restante Estable:
+            float segLen = Vector2.Distance(new Vector2(p0.x, p0.z), new Vector2(p1.x, p1.z));
+            float remainingInSeg = (1.0f - currentProjection) * segLen;
+            float remainingAfterSeg = m_CumulativeLengths[m_SampledPoints.Count - 1] - m_CumulativeLengths[m_CurrentSegmentIndex + 1];
+            m_RemainingDistance = Mathf.Max(0f, remainingInSeg + remainingAfterSeg);
 
-            // Re-renderizado dinámico del LineRenderer (solo une la posición del auto con los puntos pendientes)
+            // B. Renderizado Limpio de la Ruta (Sin ganchos ni quiebres de 90° hacia el auto)
             if (m_LineRenderer != null)
             {
                 int remainingPointsCount = m_SampledPoints.Count - (m_CurrentSegmentIndex + 1);
                 m_LineRenderer.positionCount = 1 + remainingPointsCount;
 
-                // El primer punto es exactamente la posición actual del vehículo (a la altura de la ruta)
-                Vector3 carRoutePoint = new Vector3(carPosition.x, m_RouteHeight, carPosition.z);
-                m_LineRenderer.SetPosition(0, carRoutePoint);
+                // El primer punto de la línea se fija sobre la proyección del auto en el carril
+                Vector3 routeStartPoint = new Vector3(projectedPoint.x, m_RouteHeight, projectedPoint.z);
+                m_LineRenderer.SetPosition(0, routeStartPoint);
 
                 for (int i = 0; i < remainingPointsCount; i++)
                 {
@@ -295,11 +313,11 @@ namespace PrimerVolante.UI
                 m_LineRenderer.enabled = true;
             }
 
-            // Detección de próxima maniobra
-            UpdateManeuverInstruction(carPosition);
+            // C. Detección de Maniobras Basada en la Tangente de la Calle
+            UpdateManeuverInstruction(carPosition, p0, p1, currentProjection, segLen);
         }
 
-        private void UpdateManeuverInstruction(Vector3 carPosition)
+        private void UpdateManeuverInstruction(Vector3 carPosition, Vector3 p0, Vector3 p1, float currentProjection, float segLen)
         {
             if (m_RemainingDistance <= 15f)
             {
@@ -307,33 +325,38 @@ namespace PrimerVolante.UI
                 return;
             }
 
-            // Dirección actual del auto / tramo inmediato
-            Vector3 nextPoint = m_SampledPoints[m_CurrentSegmentIndex + 1];
-            Vector3 currentDir = (nextPoint - new Vector3(carPosition.x, m_RouteHeight, carPosition.z)).normalized;
-            currentDir.y = 0f;
+            // Dirección de referencia usando la tangente del carril/calle (NO el vector auto -> spline)
+            Vector3 roadDir = (p1 - p0).normalized;
+            roadDir.y = 0f;
+            if (roadDir.sqrMagnitude < 1e-4f && m_VehicleTransform != null)
+            {
+                roadDir = m_VehicleTransform.forward;
+                roadDir.y = 0f;
+            }
 
             bool foundTurn = false;
-            // Buscar hacia adelante dentro de un rango de 60 metros
-            for (int k = m_CurrentSegmentIndex + 2; k < Mathf.Min(m_SampledPoints.Count - 1, m_CurrentSegmentIndex + 60); k++)
+            float currentTraveledInSeg = currentProjection * segLen;
+
+            for (int k = m_CurrentSegmentIndex + 1; k < Mathf.Min(m_SampledPoints.Count - 1, m_CurrentSegmentIndex + 60); k++)
             {
+                float distToSegment = Mathf.Max(0f, m_CumulativeLengths[k] - (m_CumulativeLengths[m_CurrentSegmentIndex] + currentTraveledInSeg));
+                if (distToSegment < 4.0f) continue; // Ignorar el segmento inmediato que ya define roadDir
+
                 Vector3 segDir = (m_SampledPoints[k + 1] - m_SampledPoints[k]).normalized;
                 segDir.y = 0f;
 
-                float turnAngle = Vector3.SignedAngle(currentDir, segDir, Vector3.up);
-                if (Mathf.Abs(turnAngle) > 30f)
+                float turnAngle = Vector3.SignedAngle(roadDir, segDir, Vector3.up);
+                if (Mathf.Abs(turnAngle) > 28.0f)
                 {
-                    float distToTurn = Mathf.Max(0f, m_CumulativeLengths[k] - m_CumulativeLengths[m_CurrentSegmentIndex]);
                     string turnDirection = turnAngle > 0f ? "a la derecha" : "a la izquierda";
-
-                    if (distToTurn > 20f)
+                    if (distToSegment > 20f)
                     {
-                        m_CurrentManeuver = $"Gire {turnDirection} en {distToTurn:F0} m";
+                        m_CurrentManeuver = $"Gire {turnDirection} en {distToSegment:F0} m";
                     }
                     else
                     {
                         m_CurrentManeuver = $"Gire {turnDirection}";
                     }
-
                     foundTurn = true;
                     break;
                 }
