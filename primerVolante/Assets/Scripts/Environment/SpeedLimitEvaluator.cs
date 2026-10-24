@@ -37,6 +37,10 @@ namespace PrimerVolante.Environment
         private float m_MaxSpeedRecorded;
         private float m_LastAlertTime = -100f;
         private BoxCollider m_BoxCollider;
+        private float m_LastStayTime = float.NegativeInfinity;
+
+        // Segundos sin OnTriggerStay a partir de los cuales el tramo abierto se considera abandonado.
+        private const float k_StaleStaySeconds = 0.25f;
         private readonly System.Collections.Generic.HashSet<Collider> m_ActiveColliders = new System.Collections.Generic.HashSet<Collider>();
 
         /// <summary>
@@ -140,16 +144,57 @@ namespace PrimerVolante.Environment
             }
         }
 
+        private void OnDisable()
+        {
+            // Apagado, OnTriggerExit no llega: el tramo se cierra para que al volver empiece limpio.
+            m_ActiveColliders.Clear();
+            m_CurrentVehicle = null;
+            m_HasInfraction = false;
+        }
+
+        /// <summary>
+        /// Quita los colliders del auto que ya no están dentro de la zona: destruidos o apagados, o todos si hace
+        /// más de <see cref="k_StaleStaySeconds"/> que no llega un <c>OnTriggerStay</c> (mientras el auto está
+        /// adentro llega uno por paso de física; si dejó de llegar, el auto salió sin <c>OnTriggerExit</c>, por
+        /// ejemplo teletransportado). Si no queda ninguno, cierra el tramo.
+        /// </summary>
+        private void PruneStaleColliders()
+        {
+            if (m_ActiveColliders.Count == 0) return;
+
+            if (Time.fixedTime - m_LastStayTime > k_StaleStaySeconds)
+            {
+                m_ActiveColliders.Clear();
+            }
+            else
+            {
+                m_ActiveColliders.RemoveWhere(c => c == null || !c.enabled || !c.gameObject.activeInHierarchy);
+            }
+
+            if (m_ActiveColliders.Count == 0)
+            {
+                m_CurrentVehicle = null;
+                m_HasInfraction = false;
+            }
+        }
+
         private void OnTriggerEnter(Collider other)
         {
             var vehicle = other.GetComponentInParent<VehicleController>();
             if (vehicle == null) return;
+
+            // Colliders que salieron sin OnTriggerExit (auto teletransportado, apagado o destruido): sin esto el
+            // tramo quedaría abierto con la infracción ya marcada y no volvería a registrar.
+            PruneStaleColliders();
 
             // Si ya estamos evaluando otro vehículo distinto, ignorarlo
             if (m_CurrentVehicle != null && m_CurrentVehicle != vehicle) return;
 
             bool isFirstCollider = (m_ActiveColliders.Count == 0);
             m_ActiveColliders.Add(other);
+
+            // Cuenta como señal de presencia: otro collider del auto puede entrar antes del primer OnTriggerStay.
+            m_LastStayTime = Time.fixedTime;
 
             // Solo inicializar y notificar con el primer colisionador del auto que ingresa
             if (isFirstCollider)
@@ -173,6 +218,8 @@ namespace PrimerVolante.Environment
             var vehicle = other.GetComponentInParent<VehicleController>();
             if (vehicle == null || vehicle != m_CurrentVehicle) return;
 
+            m_LastStayTime = Time.fixedTime;
+
             float currentSpeed = vehicle.CurrentSpeedKmh;
             if (currentSpeed > m_MaxSpeedRecorded)
             {
@@ -181,13 +228,13 @@ namespace PrimerVolante.Environment
 
             if (IsExcessSpeed(currentSpeed))
             {
-                // Una sola infracción por tramo: se informa solo en la transición a "con infracción".
+                // Una sola infracción por tramo: se informa solo en la transición a "con infracción". No lleva la
+                // velocidad: en ese instante apenas pasó la tolerancia y no refleja el máximo que alcance después.
                 if (!m_HasInfraction)
                 {
                     InfractionReporting.Report(InfractionReport.Create(
                         InfractionIds.Speeding, this, vehicle.transform.position,
-                        ("limit", m_SpeedLimitKmh.ToString()),
-                        ("speed", currentSpeed.ToString("F0"))));
+                        ("limit", m_SpeedLimitKmh.ToString())));
                 }
 
                 m_HasInfraction = true;

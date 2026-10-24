@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Evaluation.InfractionDefinitionSO
   m_Id: SPEEDING
   m_ShortTitle: Exceso de velocidad
-  m_DescriptionTemplate: "Excediste el l\xEDmite de {limit} km/h: ibas a {speed} km/h. Respet\xE1 la velocidad m\xE1xima se\xF1alizada del tramo."
+  m_DescriptionTemplate: "Superaste el l\xEDmite de {limit} km/h en este tramo. Respet\xE1 la velocidad m\xE1xima se\xF1alizada."
   m_Severity: 0
