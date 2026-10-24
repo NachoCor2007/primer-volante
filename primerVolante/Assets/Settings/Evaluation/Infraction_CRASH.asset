@@ -10,9 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ef0c0859dfb5f9448817d6314bfa4d15, type: 3}
-  m_Name: Infraction_CONE_GRAZE
+  m_Name: Infraction_CRASH
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Evaluation.InfractionDefinitionSO
-  m_Id: CONE_GRAZE
-  m_ShortTitle: Roce con cono
-  m_DescriptionTemplate: "Rozaste un cono a {speed} km/h. Calcul\xE1 mejor las distancias en la maniobra."
-  m_Severity: 0
+  m_Id: CRASH
+  m_ShortTitle: Choque
+  m_DescriptionTemplate: "Chocaste con {object} a {speed} km/h. Reduc\xED la velocidad y manten\xE9 distancia con los obst\xE1culos."
+  m_Severity: 1

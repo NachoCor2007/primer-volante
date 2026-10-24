@@ -10,9 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ef0c0859dfb5f9448817d6314bfa4d15, type: 3}
-  m_Name: Infraction_LESSON_BOUNDARY
+  m_Name: Infraction_GRAZE
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Evaluation.InfractionDefinitionSO
-  m_Id: LESSON_BOUNDARY
-  m_ShortTitle: "Fuera del \xE1rea"
-  m_DescriptionTemplate: "Intentaste salir del \xE1rea de pr\xE1ctica de la lecci\xF3n a {speed} km/h. Mantenete dentro del recorrido delimitado por las vallas."
-  m_Severity: 1
+  m_Id: GRAZE
+  m_ShortTitle: Roce
+  m_DescriptionTemplate: "Rozaste {object} a {speed} km/h. Calcul\xE1 mejor las distancias al maniobrar."
+  m_Severity: 0

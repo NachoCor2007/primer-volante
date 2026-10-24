@@ -190,6 +190,9 @@ namespace PrimerVolante.Environment
         private const float k_FallbackSolidHeight = 2.05f;
         private const float k_FallbackSolidThickness = 0.4f;
 
+        // Nombre de la valla en la descripción de la infracción CRASH (parámetro "object").
+        private const string k_BarrierLabel = "una valla";
+
         [Header("Vallas")]
         [Tooltip("Prefab de valla a repartir (LessonBarrier).")]
         [SerializeField] private GameObject m_BarrierPrefab;
@@ -287,8 +290,8 @@ namespace PrimerVolante.Environment
             m_LastAlertTime[key] = now;
 
             InfractionReporting.Report(InfractionReport.Create(
-                InfractionIds.LessonBoundary, this, contact.Position,
-                ("speed", contact.SpeedKmh.ToString("F0"))));
+                InfractionIds.Crash, this, contact.Position,
+                ("object", k_BarrierLabel), ("speed", contact.SpeedKmh.ToString("F0"))));
 
             OnVehicleReachedBoundary?.Invoke(contact);
         }

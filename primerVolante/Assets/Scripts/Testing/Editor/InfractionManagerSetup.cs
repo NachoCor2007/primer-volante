@@ -40,7 +40,7 @@ namespace PrimerVolante.Testing.Editor
             }
         }
 
-        /// <summary>Las 8 infracciones actuales, en el orden del catálogo.</summary>
+        /// <summary>Las 4 infracciones actuales, en el orden del catálogo.</summary>
         public static readonly Spec[] Specs =
         {
             new Spec(InfractionIds.RedLight, "Semáforo en rojo",
@@ -49,24 +49,12 @@ namespace PrimerVolante.Testing.Editor
             new Spec(InfractionIds.SpeedLimit, "Exceso de velocidad",
                 "Superaste el límite de {limit} km/h en este tramo. Respetá la velocidad máxima señalizada.",
                 InfractionSeverity.Minor, "limit"),
-            new Spec(InfractionIds.LessonBoundary, "Fuera del área",
-                "Intentaste salir del área de práctica de la lección a {speed} km/h. Mantenete dentro del recorrido delimitado por las vallas.",
-                InfractionSeverity.Major, "speed"),
-            new Spec(InfractionIds.ConeGraze, "Roce con cono",
-                "Rozaste un cono a {speed} km/h. Calculá mejor las distancias en la maniobra.",
-                InfractionSeverity.Minor, "speed"),
-            new Spec(InfractionIds.ConeCrash, "Choque con cono",
-                "Chocaste un cono a {speed} km/h. Reducí la velocidad al maniobrar cerca de obstáculos.",
-                InfractionSeverity.Major, "speed"),
-            new Spec(InfractionIds.VehicleGraze, "Roce con vehículo",
-                "Rozaste un vehículo a {speed} km/h. Dejá más espacio lateral y usá los espejos.",
-                InfractionSeverity.Minor, "speed"),
-            new Spec(InfractionIds.VehicleCrash, "Choque con vehículo",
-                "Chocaste un vehículo a {speed} km/h. Mantené la distancia y anticipá las frenadas.",
-                InfractionSeverity.Major, "speed"),
-            new Spec(InfractionIds.PedestrianHit, "Atropello de peatón",
-                "Atropellaste a un peatón a {speed} km/h. Cedé siempre el paso a los peatones y reducí la velocidad cerca de las sendas peatonales.",
-                InfractionSeverity.Major, "speed"),
+            new Spec(InfractionIds.Crash, "Choque",
+                "Chocaste con {object} a {speed} km/h. Reducí la velocidad y mantené distancia con los obstáculos.",
+                InfractionSeverity.Major, "object", "speed"),
+            new Spec(InfractionIds.Graze, "Roce",
+                "Rozaste {object} a {speed} km/h. Calculá mejor las distancias al maniobrar.",
+                InfractionSeverity.Minor, "object", "speed"),
         };
 
         /// <summary>Ruta del asset de una definición: <c>Infraction_&lt;Id&gt;.asset</c>.</summary>
@@ -133,7 +121,7 @@ namespace PrimerVolante.Testing.Editor
                 updated++;
             }
 
-            // Garantiza que estén las 8 definiciones (en orden) sin quitar otras que alguien haya sumado después.
+            // Garantiza que estén las 4 definiciones (en orden) sin quitar otras que alguien haya sumado después.
             var catalogSo = new SerializedObject(catalog);
             SerializedProperty list = catalogSo.FindProperty("m_Definitions");
             var current = new List<InfractionDefinitionSO>();

@@ -27,12 +27,8 @@ namespace PrimerVolante.Testing.Editor
         {
             { "RED_LIGHT", InfractionSeverity.Major },
             { "SPEED_LIMIT", InfractionSeverity.Minor },
-            { "LESSON_BOUNDARY", InfractionSeverity.Major },
-            { "CONE_GRAZE", InfractionSeverity.Minor },
-            { "CONE_CRASH", InfractionSeverity.Major },
-            { "VEHICLE_GRAZE", InfractionSeverity.Minor },
-            { "VEHICLE_CRASH", InfractionSeverity.Major },
-            { "PEDESTRIAN_HIT", InfractionSeverity.Major },
+            { "CRASH", InfractionSeverity.Major },
+            { "GRAZE", InfractionSeverity.Minor },
         };
 
         // Valores de ejemplo con los que se formatean todas las plantillas.
@@ -40,6 +36,7 @@ namespace PrimerVolante.Testing.Editor
         {
             { "limit", "40" },
             { "speed", "52" },
+            { "object", "un cono" },
         };
 
         private const BindingFlags k_Instance = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
@@ -83,7 +80,7 @@ namespace PrimerVolante.Testing.Editor
                 .Where(f => f.IsLiteral && f.FieldType == typeof(string))
                 .Select(f => (string)f.GetRawConstantValue())
                 .ToList();
-            Assert(ids.Count == 8, $"InfractionIds tiene 8 constantes ({ids.Count})", ref total, ref passed);
+            Assert(ids.Count == 4, $"InfractionIds tiene 4 constantes ({ids.Count})", ref total, ref passed);
 
             Assert(catalog.Definitions.All(d => d != null && !string.IsNullOrEmpty(d.Id)),
                 "El catálogo no tiene entradas vacías ni ids vacíos", ref total, ref passed);
@@ -146,18 +143,13 @@ namespace PrimerVolante.Testing.Editor
             Assert(InfractionTextFormatter.Format("{ {a} } {}", parameters) == "{ 1 } {}",
                 "Format tolera llaves sueltas y vacías", ref total, ref passed);
 
-            Assert(ObstacleImpactMath.InfractionIdFor(ObstacleKind.Cone, ObstacleImpactSeverity.Graze) == InfractionIds.ConeGraze,
-                "InfractionIdFor(Cone, Graze) = CONE_GRAZE", ref total, ref passed);
-            Assert(ObstacleImpactMath.InfractionIdFor(ObstacleKind.Cone, ObstacleImpactSeverity.Crash) == InfractionIds.ConeCrash,
-                "InfractionIdFor(Cone, Crash) = CONE_CRASH", ref total, ref passed);
-            Assert(ObstacleImpactMath.InfractionIdFor(ObstacleKind.Vehicle, ObstacleImpactSeverity.Graze) == InfractionIds.VehicleGraze,
-                "InfractionIdFor(Vehicle, Graze) = VEHICLE_GRAZE", ref total, ref passed);
-            Assert(ObstacleImpactMath.InfractionIdFor(ObstacleKind.Vehicle, ObstacleImpactSeverity.Crash) == InfractionIds.VehicleCrash,
-                "InfractionIdFor(Vehicle, Crash) = VEHICLE_CRASH", ref total, ref passed);
-            Assert(ObstacleImpactMath.InfractionIdFor(ObstacleKind.Pedestrian, ObstacleImpactSeverity.Graze) == InfractionIds.PedestrianHit,
-                "InfractionIdFor(Pedestrian, Graze) = PEDESTRIAN_HIT", ref total, ref passed);
-            Assert(ObstacleImpactMath.InfractionIdFor(ObstacleKind.Pedestrian, ObstacleImpactSeverity.Crash) == InfractionIds.PedestrianHit,
-                "InfractionIdFor(Pedestrian, Crash) = PEDESTRIAN_HIT", ref total, ref passed);
+            foreach (ObstacleKind kind in new[] { ObstacleKind.Cone, ObstacleKind.Vehicle, ObstacleKind.Pedestrian })
+            {
+                Assert(ObstacleImpactMath.InfractionIdFor(kind, ObstacleImpactSeverity.Graze) == InfractionIds.Graze,
+                    $"InfractionIdFor({kind}, Graze) = GRAZE", ref total, ref passed);
+                Assert(ObstacleImpactMath.InfractionIdFor(kind, ObstacleImpactSeverity.Crash) == InfractionIds.Crash,
+                    $"InfractionIdFor({kind}, Crash) = CRASH", ref total, ref passed);
+            }
 
             Assert(!ObstacleImpactMath.IsPlayerFault(0f, 1f) && !ObstacleImpactMath.IsPlayerFault(0.9f, 1f),
                 "IsPlayerFault: con el jugador casi detenido (< umbral) el contacto no es falta", ref total, ref passed);
@@ -165,7 +157,7 @@ namespace PrimerVolante.Testing.Editor
                 "IsPlayerFault: desde el umbral el contacto es falta", ref total, ref passed);
 
             Assert(ObstacleImpactMath.InfractionIdFor((ObstacleKind)99, ObstacleImpactSeverity.Crash) == null,
-                "InfractionIdFor con un tipo desconocido devuelve null (no se disfraza de atropello)", ref total, ref passed);
+                "InfractionIdFor con un tipo desconocido devuelve null (no se disfraza de otro tipo)", ref total, ref passed);
 
             InfractionReport report = InfractionReport.Create("X", null, Vector3.zero, ("k", "v"), ("k2", "v2"));
             Assert(report.Parameters != null && report.Parameters.Count == 2 && report.Parameters["k2"] == "v2",
@@ -223,7 +215,7 @@ namespace PrimerVolante.Testing.Editor
                     "El registro sigue válido aunque se destruya el objeto fuente", ref total, ref passed);
 
                 // Falta grave.
-                InfractionReporting.Report(InfractionReport.Create(InfractionIds.ConeCrash, null, Vector3.zero, ("speed", "12")));
+                InfractionReporting.Report(InfractionReport.Create(InfractionIds.Crash, null, Vector3.zero, ("object", "un cono"), ("speed", "12")));
                 Assert(first.MinorCount == 1 && first.MajorCount == 1 && first.TotalCount == 2 &&
                        first.Records.Count == 2 && first.Records[1].Sequence == 2 && first.Records[1].SourceName == null,
                     "Una falta grave suma al contador grave y Sequence aumenta (fuente null permitida)", ref total, ref passed);
@@ -297,7 +289,7 @@ namespace PrimerVolante.Testing.Editor
                 first.Clear();
                 Assert(first.Records.Count == 0 && first.MinorCount == 0 && first.MajorCount == 0 && first.TotalCount == 0 && cleared == 1,
                     "Clear() vacía registros, pone contadores en 0 y dispara Cleared", ref total, ref passed);
-                InfractionReporting.Report(InfractionReport.Create(InfractionIds.ConeGraze, null, Vector3.zero, ("speed", "3")));
+                InfractionReporting.Report(InfractionReport.Create(InfractionIds.Graze, null, Vector3.zero, ("object", "un cono"), ("speed", "3")));
                 Assert(first.Records.Count == 1 && first.Records[0].Sequence == 1 && first.MinorCount == 1,
                     "Después de Clear la secuencia vuelve a 1", ref total, ref passed);
 
@@ -403,7 +395,7 @@ namespace PrimerVolante.Testing.Editor
                 int cleared = 0;
                 manager.Cleared += () => cleared++;
 
-                InfractionReporting.Report(InfractionReport.Create(InfractionIds.ConeGraze, null, Vector3.zero, ("speed", "2")));
+                InfractionReporting.Report(InfractionReport.Create(InfractionIds.Graze, null, Vector3.zero, ("object", "un cono"), ("speed", "2")));
                 Assert(manager.TotalCount == 1 && manager.Records[0].LessonId == null && manager.Records[0].StepIndex == -1,
                     "Con LessonManager pero sin lección iniciada, el registro no tiene contexto", ref total, ref passed);
 
@@ -411,7 +403,7 @@ namespace PrimerVolante.Testing.Editor
                 Assert(manager.TotalCount == 0 && manager.Records.Count == 0 && cleared == 1 && manager.LessonId == "TEST_LESSON",
                     "LessonStarted limpia el registro, dispara Cleared y guarda el lessonId", ref total, ref passed);
 
-                InfractionReporting.Report(InfractionReport.Create(InfractionIds.VehicleCrash, null, Vector3.zero, ("speed", "20")));
+                InfractionReporting.Report(InfractionReport.Create(InfractionIds.Crash, null, Vector3.zero, ("object", "un vehículo"), ("speed", "20")));
                 InfractionRecord record = manager.Records.Count > 0 ? manager.Records[0] : null;
                 Assert(record != null && record.LessonId == "TEST_LESSON" && record.StepIndex == 0,
                     "El registro guarda el lessonId y el paso actual de la lección", ref total, ref passed);

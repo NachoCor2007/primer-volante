@@ -88,21 +88,37 @@ namespace PrimerVolante.Environment
         }
 
         /// <summary>
-        /// Id de infracción (<see cref="InfractionIds"/>) que corresponde a un contacto: cono, vehículo o peatón
-        /// según el tipo, y roce o choque según la gravedad. Un peatón es <see cref="InfractionIds.PedestrianHit"/>
-        /// con cualquier gravedad.
+        /// Id de infracción (<see cref="InfractionIds"/>) que corresponde a un contacto: <see cref="InfractionIds.Crash"/>
+        /// o <see cref="InfractionIds.Graze"/> según la gravedad, sin importar el tipo. Un peatón ya se clasifica
+        /// siempre como choque en <see cref="Classify"/>. El tipo de obstáculo viaja en el parámetro <c>object</c>
+        /// (ver <see cref="ObjectLabelFor"/>).
         /// </summary>
         public static string InfractionIdFor(ObstacleKind kind, ObstacleImpactSeverity severity)
         {
-            bool crash = severity == ObstacleImpactSeverity.Crash;
             switch (kind)
             {
-                case ObstacleKind.Cone: return crash ? InfractionIds.ConeCrash : InfractionIds.ConeGraze;
-                case ObstacleKind.Vehicle: return crash ? InfractionIds.VehicleCrash : InfractionIds.VehicleGraze;
-                case ObstacleKind.Pedestrian: return InfractionIds.PedestrianHit;
+                case ObstacleKind.Cone:
+                case ObstacleKind.Vehicle:
+                case ObstacleKind.Pedestrian:
+                    return severity == ObstacleImpactSeverity.Crash ? InfractionIds.Crash : InfractionIds.Graze;
 
-                // Un tipo nuevo sin mapeo no se disfraza de atropello: el gestor avisa que el id no existe.
+                // Un tipo nuevo sin mapeo no se disfraza de otro: el gestor avisa que el id no existe.
                 default: return null;
+            }
+        }
+
+        /// <summary>
+        /// Nombre del obstáculo con artículo indefinido y en minúscula, listo para la plantilla de la descripción
+        /// (parámetro <c>object</c>): "un cono", "un vehículo", "un peatón". Un tipo sin mapeo es "un obstáculo".
+        /// </summary>
+        public static string ObjectLabelFor(ObstacleKind kind)
+        {
+            switch (kind)
+            {
+                case ObstacleKind.Cone: return "un cono";
+                case ObstacleKind.Vehicle: return "un vehículo";
+                case ObstacleKind.Pedestrian: return "un peatón";
+                default: return "un obstáculo";
             }
         }
 
@@ -283,7 +299,7 @@ namespace PrimerVolante.Environment
             {
                 InfractionReporting.Report(InfractionReport.Create(
                     ObstacleImpactMath.InfractionIdFor(impact.Kind, impact.Severity), this, impact.Point,
-                    ("speed", impact.PlayerSpeedKmh.ToString("F0"))));
+                    ("object", ObstacleImpactMath.ObjectLabelFor(impact.Kind)), ("speed", impact.PlayerSpeedKmh.ToString("F0"))));
             }
 
             OnImpact?.Invoke(impact);
