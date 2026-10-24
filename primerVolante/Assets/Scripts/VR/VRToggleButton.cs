@@ -57,7 +57,8 @@ namespace PrimerVolante.VR
                 interactable.firstHoverEntered.AddListener(OnXRIHoverEntered);
                 interactable.lastHoverExited.AddListener(OnXRIHoverExited);
                 if (enableVerboseLogs)
-                    Debug.Log($"[VRToggleButton:{gameObject.name}] 🔌 Registrados listeners de XRI (Select & Hover) en XRSimpleInteractable.");
+                    if (enableVerboseLogs)
+                        Debug.Log($"[VRToggleButton:{gameObject.name}] 🔌 Registrados listeners de XRI (Select & Hover) en XRSimpleInteractable.");
             }
             else if (enableVerboseLogs)
             {

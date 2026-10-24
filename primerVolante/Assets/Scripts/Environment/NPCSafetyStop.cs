@@ -46,6 +46,10 @@ namespace PrimerVolante.Environment
         [Tooltip("Margen de histéresis en metros sumado a la distancia de frenado mientras el NPC permanece detenido. Evita oscilaciones por contracción del sensor a velocidad cero.")]
         [SerializeField] private float m_ResumeHysteresisDistance = 0.5f;
 
+        [Header("Depuración")]
+        [Tooltip("Escribe en consola un log por cada frenado de emergencia y reanudación. Apagado por defecto para no tapar el log de infracciones.")]
+        [SerializeField] private bool m_LogEvents = false;
+
         [Header("Eventos")]
         [Tooltip("Evento Unity disparado al activarse el frenado de emergencia.")]
         [SerializeField] private UnityEvent onEmergencyBrakeEvent = new UnityEvent();
@@ -234,7 +238,8 @@ namespace PrimerVolante.Environment
 
                     string obstacleName = hit.collider != null ? hit.collider.name : (m_LastObstacleCollider != null ? m_LastObstacleCollider.name : "Obstáculo");
                     float dist = hit.distance > 0f ? hit.distance : 0f;
-                    Debug.LogWarning($"[NPCSafetyStop] 🛑 ¡Frenado de emergencia en '{name}'! '{obstacleName}' detectado a {dist:F2}m en trayectoria frontal.", this);
+                    if (m_LogEvents)
+                        Debug.LogWarning($"[NPCSafetyStop] 🛑 ¡Frenado de emergencia en '{name}'! '{obstacleName}' detectado a {dist:F2}m en trayectoria frontal.", this);
 
                     OnEmergencyBrake?.Invoke();
                     onEmergencyBrakeEvent?.Invoke();
@@ -264,7 +269,8 @@ namespace PrimerVolante.Environment
                         if (m_WasMovingBeforeEmergencyBrake)
                         {
                             m_PathFollower.Play();
-                            Debug.Log($"[NPCSafetyStop] ▶️ Vía despejada para '{name}'. Reanudando marcha tras {m_ResumeDelay:F1}s de seguridad.", this);
+                            if (m_LogEvents)
+                                Debug.Log($"[NPCSafetyStop] ▶️ Vía despejada para '{name}'. Reanudando marcha tras {m_ResumeDelay:F1}s de seguridad.", this);
                         }
 
                         m_WasMovingBeforeEmergencyBrake = false;
@@ -644,7 +650,8 @@ namespace PrimerVolante.Environment
                 m_PathFollower.EmergencyStop();
 
                 string obstacleName = col != null ? col.name : "Obstáculo";
-                Debug.LogWarning($"[NPCSafetyStop] 🛑 ¡Contacto físico en '{name}'! '{obstacleName}' detectado en colisión/trigger.", this);
+                if (m_LogEvents)
+                    Debug.LogWarning($"[NPCSafetyStop] 🛑 ¡Contacto físico en '{name}'! '{obstacleName}' detectado en colisión/trigger.", this);
 
                 OnEmergencyBrake?.Invoke();
                 onEmergencyBrakeEvent?.Invoke();

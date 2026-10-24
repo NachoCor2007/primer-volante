@@ -63,6 +63,10 @@ namespace PrimerVolante.VR
         [Tooltip("Velocidad de interpolación suave al soltar o engancharse en un cambio.")]
         public float snapSpeed = 12f;
 
+        [Header("Depuración")]
+        [Tooltip("Escribe en consola un log por cada cambio de estado. Apagado por defecto para no tapar el log de infracciones.")]
+        [SerializeField] private bool m_EnableDebugLogs = false;
+
         [Header("Eventos")]
         [Tooltip("Evento disparado cada vez que cambia el estado de la palanca.")]
         public GearStateEvent OnGearChanged = new GearStateEvent();
@@ -165,7 +169,8 @@ namespace PrimerVolante.VR
                 estadoAnterior = currentGear;
                 currentGear = newGear;
                 OnGearChanged?.Invoke(currentGear);
-                Debug.Log($"[VRGearShifter] {gameObject.name}: Cambio de marcha de {estadoAnterior} a {currentGear}");
+                if (m_EnableDebugLogs)
+                    Debug.Log($"[VRGearShifter] {gameObject.name}: Cambio de marcha de {estadoAnterior} a {currentGear}");
                 return true;
             }
             return false;
@@ -285,7 +290,8 @@ namespace PrimerVolante.VR
                 }
                 else
                 {
-                    Debug.Log($"[VRGearShifter] Ya se encuentra en la marcha más baja ({currentGear}).");
+                    if (m_EnableDebugLogs)
+                        Debug.Log($"[VRGearShifter] Ya se encuentra en la marcha más baja ({currentGear}).");
                 }
             }
             else if (shiftUp)
@@ -302,7 +308,8 @@ namespace PrimerVolante.VR
                 }
                 else
                 {
-                    Debug.Log($"[VRGearShifter] Ya se encuentra en la marcha más alta ({currentGear}).");
+                    if (m_EnableDebugLogs)
+                        Debug.Log($"[VRGearShifter] Ya se encuentra en la marcha más alta ({currentGear}).");
                 }
             }
         }
@@ -311,7 +318,8 @@ namespace PrimerVolante.VR
         {
             if (!IsEngineOn())
             {
-                Debug.LogWarning($"[VRGearShifter] ⚠️ No se puede cambiar a {targetGear}: El motor está apagado.");
+                if (m_EnableDebugLogs)
+                    Debug.LogWarning($"[VRGearShifter] ⚠️ No se puede cambiar a {targetGear}: El motor está apagado.");
                 return false;
             }
 
@@ -325,7 +333,8 @@ namespace PrimerVolante.VR
                 {
                     float brakePct = m_VehicleController != null ? m_VehicleController.BrakeValue * 100f : 0f;
                     float speed = m_VehicleController != null ? m_VehicleController.CurrentSpeedKmh : 0f;
-                    Debug.LogWarning($"[VRGearShifter] ⚠️ No se puede cambiar de {currentGear} a {targetGear}: Se requiere pisar el freno a fondo y que el vehículo esté detenido. (Freno: {brakePct:F0}%, Vel: {speed:F1} km/h)");
+                    if (m_EnableDebugLogs)
+                        Debug.LogWarning($"[VRGearShifter] ⚠️ No se puede cambiar de {currentGear} a {targetGear}: Se requiere pisar el freno a fondo y que el vehículo esté detenido. (Freno: {brakePct:F0}%, Vel: {speed:F1} km/h)");
                     return false;
                 }
             }
