@@ -17,3 +17,4 @@ MonoBehaviour:
   completionMode: 0
   allowedControls: 1
   highlightTargetName: 
+  ambienceIntensity: 0

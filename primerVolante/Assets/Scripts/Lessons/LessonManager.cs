@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using PrimerVolante.VR;
 
@@ -9,12 +10,16 @@ namespace PrimerVolante.Lessons
     /// Coordina el paso activo, notifica al panel HUD, ejecuta el bloqueo selectivo
     /// de mandos de cabina mediante CockpitControlLockManager y resalta interactuables
     /// a través de InteractableHighlighter.
+    /// Soporta navegación secuencial y carga de currículum data-driven.
     /// </summary>
     public class LessonManager : MonoBehaviour
     {
         [Header("Configuración de Lección")]
         [Tooltip("Definición ScriptableObject de la lección activa.")]
         [SerializeField] private LessonDefinitionSO m_ActiveLesson;
+
+        [Tooltip("Lista ordenada de todas las lecciones del currículum de conducción.")]
+        [SerializeField] private List<LessonDefinitionSO> m_Curriculum = new List<LessonDefinitionSO>();
 
         [Tooltip("Iniciar automáticamente la lección al inicio (Start).")]
         [SerializeField] private bool m_AutoStartOnStart = true;
@@ -37,6 +42,7 @@ namespace PrimerVolante.Lessons
         private bool m_IsLessonCompleted = false;
 
         public LessonDefinitionSO ActiveLesson => m_ActiveLesson;
+        public IReadOnlyList<LessonDefinitionSO> Curriculum => m_Curriculum;
         public int CurrentStepIndex => m_CurrentStepIndex;
         public LessonStepSO CurrentStep =>
             (m_ActiveLesson != null && m_CurrentStepIndex >= 0 && m_CurrentStepIndex < m_ActiveLesson.steps.Count)
@@ -44,6 +50,8 @@ namespace PrimerVolante.Lessons
                 : null;
         public bool IsLessonActive => m_IsLessonActive;
         public bool IsLessonCompleted => m_IsLessonCompleted;
+
+        public bool HasNextLesson => GetNextLesson() != null;
 
         public CockpitControlLockManager LockManager => m_LockManager;
         public InteractableHighlighter Highlighter => m_Highlighter;
@@ -85,6 +93,90 @@ namespace PrimerVolante.Lessons
             if (m_AutoStartOnStart && m_ActiveLesson != null)
             {
                 StartLesson(m_ActiveLesson);
+            }
+        }
+
+#if UNITY_EDITOR || DEBUG
+        private void Update()
+        {
+            if (UnityEngine.InputSystem.Keyboard.current == null) return;
+
+            // Enter o NumpadEnter: Avanzar paso actual (o iniciar siguiente lección al completar)
+            if (UnityEngine.InputSystem.Keyboard.current.enterKey.wasPressedThisFrame ||
+                UnityEngine.InputSystem.Keyboard.current.numpadEnterKey.wasPressedThisFrame)
+            {
+                if (m_IsLessonCompleted && HasNextLesson)
+                {
+                    StartNextLesson();
+                }
+                else
+                {
+                    CompleteCurrentStep();
+                }
+            }
+
+            // Tecla N: Avanzar a la siguiente lección
+            if (UnityEngine.InputSystem.Keyboard.current.nKey.wasPressedThisFrame)
+            {
+                StartNextLesson();
+            }
+
+            // Tecla R con Ctrl: Reiniciar lección activa
+            if (UnityEngine.InputSystem.Keyboard.current.rKey.wasPressedThisFrame &&
+                (UnityEngine.InputSystem.Keyboard.current.leftCtrlKey.isPressed || UnityEngine.InputSystem.Keyboard.current.rightCtrlKey.isPressed))
+            {
+                if (m_ActiveLesson != null)
+                {
+                    StartLesson(m_ActiveLesson);
+                }
+            }
+        }
+#endif
+
+        /// <summary>
+        /// Asigna la lista de lecciones del currículum.
+        /// </summary>
+        public void SetCurriculum(IEnumerable<LessonDefinitionSO> lessons)
+        {
+            m_Curriculum.Clear();
+            if (lessons != null)
+            {
+                m_Curriculum.AddRange(lessons);
+            }
+        }
+
+        /// <summary>
+        /// Devuelve la lección subsiguiente en el currículum, o null si la lección activa es la última o no está registrada.
+        /// </summary>
+        public LessonDefinitionSO GetNextLesson()
+        {
+            if (m_Curriculum == null || m_Curriculum.Count == 0 || m_ActiveLesson == null)
+            {
+                return null;
+            }
+
+            int currentIndex = m_Curriculum.FindIndex(l => l != null && (l == m_ActiveLesson || l.lessonId == m_ActiveLesson.lessonId));
+            if (currentIndex >= 0 && currentIndex + 1 < m_Curriculum.Count)
+            {
+                return m_Curriculum[currentIndex + 1];
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Inicia inmediatamente la siguiente lección si existe en el currículum.
+        /// </summary>
+        public void StartNextLesson()
+        {
+            LessonDefinitionSO next = GetNextLesson();
+            if (next != null)
+            {
+                StartLesson(next);
+            }
+            else
+            {
+                Debug.LogWarning("[LessonManager] No hay una siguiente lección configurada en el currículum.");
             }
         }
 

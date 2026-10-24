@@ -10,7 +10,8 @@ namespace PrimerVolante.Lessons
     /// Panel HUD en espacio de mundo situado sobre el volante en la cabina del vehículo.
     /// Muestra la información del paso actual, la instrucción para el conductor,
     /// y el botón interactivo de confirmación/avance mediante raycast de VR.
-    /// Al terminar la lección, presenta el panel de felicitaciones.
+    /// Al terminar la lección, presenta el panel de felicitaciones con opciones para
+    /// repetir la lección o continuar a la siguiente lección del currículum.
     /// </summary>
     public class LessonHUDPanel : MonoBehaviour
     {
@@ -51,6 +52,12 @@ namespace PrimerVolante.Lessons
         [Tooltip("Botón para reiniciar la lección.")]
         [SerializeField] private Button m_RestartButton;
 
+        [Tooltip("Botón para avanzar a la siguiente lección.")]
+        [SerializeField] private Button m_NextLessonButton;
+
+        [Tooltip("Texto dentro del botón Siguiente Lección.")]
+        [SerializeField] private TextMeshProUGUI m_NextLessonButtonText;
+
         [Header("Interacción VR (Raycast / Far Casting)")]
         [Tooltip("Near-Far Interactors de las manos VR a los que se les habilita el rayo a distancia " +
                  "mientras se interactúa con el HUD de la lección. El rayo queda restringido a la capa UI " +
@@ -69,6 +76,8 @@ namespace PrimerVolante.Lessons
         public GameObject StepContentPanel => m_StepContentPanel;
         public GameObject CompletionPanel => m_CompletionPanel;
         public Button RestartButton => m_RestartButton;
+        public Button NextLessonButton => m_NextLessonButton;
+        public TextMeshProUGUI NextLessonButtonText => m_NextLessonButtonText;
         public NearFarInteractor[] FarCastInteractors => m_FarCastInteractors;
         public Canvas Canvas => m_Canvas != null ? m_Canvas : (m_Canvas = GetComponent<Canvas>());
         public Camera WorldCamera => Canvas != null ? Canvas.worldCamera : null;
@@ -132,6 +141,12 @@ namespace PrimerVolante.Lessons
                 m_RestartButton.onClick.RemoveAllListeners();
                 m_RestartButton.onClick.AddListener(OnRestartClicked);
             }
+
+            if (m_NextLessonButton != null)
+            {
+                m_NextLessonButton.onClick.RemoveAllListeners();
+                m_NextLessonButton.onClick.AddListener(OnNextLessonClicked);
+            }
         }
 
         /// <summary>
@@ -184,6 +199,14 @@ namespace PrimerVolante.Lessons
             }
         }
 
+        private void OnNextLessonClicked()
+        {
+            if (m_LessonManager != null)
+            {
+                m_LessonManager.StartNextLesson();
+            }
+        }
+
         /// <summary>
         /// Presenta la información y controles del paso actual de la lección.
         /// </summary>
@@ -211,7 +234,14 @@ namespace PrimerVolante.Lessons
             {
                 if (stepIndex == totalSteps - 1)
                 {
-                    m_ContinueButtonText.text = "Finalizar Calibración";
+                    if (m_LessonManager != null && m_LessonManager.ActiveLesson != null && m_LessonManager.ActiveLesson.lessonId == "LESSON_01")
+                    {
+                        m_ContinueButtonText.text = "Finalizar Calibración";
+                    }
+                    else
+                    {
+                        m_ContinueButtonText.text = "Finalizar Lección";
+                    }
                 }
                 else
                 {
@@ -223,12 +253,41 @@ namespace PrimerVolante.Lessons
         }
 
         /// <summary>
-        /// Muestra la pantalla de finalización de la lección con felicitaciones.
+        /// Muestra la pantalla de finalización de la lección con felicitaciones
+        /// y ofrece la opción de repetir la lección o continuar a la siguiente si existe.
         /// </summary>
         public void DisplayCompletion(LessonDefinitionSO lesson)
         {
             if (m_StepContentPanel != null) m_StepContentPanel.SetActive(false);
             if (m_CompletionPanel != null) m_CompletionPanel.SetActive(true);
+
+            bool hasNextLesson = m_LessonManager != null && m_LessonManager.HasNextLesson;
+
+            if (m_NextLessonButton != null)
+            {
+                m_NextLessonButton.gameObject.SetActive(hasNextLesson);
+            }
+
+            // Acomodar botones según disponibilidad de siguiente lección
+            if (m_RestartButton != null)
+            {
+                RectTransform restartRt = m_RestartButton.GetComponent<RectTransform>();
+                if (restartRt != null)
+                {
+                    restartRt.anchoredPosition = hasNextLesson ? new Vector2(-135f, -195f) : new Vector2(0f, -195f);
+                    restartRt.sizeDelta = hasNextLesson ? new Vector2(240f, 46f) : new Vector2(260f, 46f);
+                }
+            }
+
+            if (m_NextLessonButton != null)
+            {
+                RectTransform nextRt = m_NextLessonButton.GetComponent<RectTransform>();
+                if (nextRt != null)
+                {
+                    nextRt.anchoredPosition = new Vector2(135f, -195f);
+                    nextRt.sizeDelta = new Vector2(240f, 46f);
+                }
+            }
 
             if (m_CompletionTitleText != null)
             {
@@ -237,7 +296,14 @@ namespace PrimerVolante.Lessons
 
             if (m_CompletionDescriptionText != null)
             {
-                m_CompletionDescriptionText.text = $"Has completado satisfactoriamente la {lesson.lessonTitle}.\nTu ambiente y vista de manejo han sido calibrados de manera óptima.";
+                if (hasNextLesson)
+                {
+                    m_CompletionDescriptionText.text = $"Has completado satisfactoriamente la {lesson.lessonTitle}.\n¿Deseas continuar a la siguiente lección o repetir la actual?";
+                }
+                else
+                {
+                    m_CompletionDescriptionText.text = $"Has completado satisfactoriamente la {lesson.lessonTitle}.\n¡Felicitaciones por completar el curso de manejo en Primer Volante!";
+                }
             }
 
             SetFarCasting(true);

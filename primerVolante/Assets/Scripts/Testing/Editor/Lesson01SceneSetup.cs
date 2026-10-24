@@ -212,13 +212,13 @@ namespace PrimerVolante.Testing.Editor
                 CockpitControlFlags.SteeringWheel,
                 "SteeringWheel_Pivot");
 
-            // Paso 3: Espejos (commit 80c0d1b)
+            // Paso 3: Espejos (resaltado multiobjetivo de 3 espejos)
             LessonStepSO step3 = CreateOrUpdateStep("Lesson01_Step03_MirrorsCheck",
                 "Visibilidad de Espejos y Entorno",
-                "Verifica la visibilidad de los tres espejos retrovisores (central y laterales). Debes observar el tráfico posterior sin desviar en exceso la cabeza. \nPresiona 'Finalizar Calibración' para concluir la lección.",
+                "Comprueba los 3 espejos retrovisores resaltados en amarillo (central y laterales). Debes observar el tráfico posterior sin desviar en exceso la cabeza.\nPresiona 'Finalizar Calibración' para concluir la lección.",
                 LessonStepCompletionMode.ManualContinue,
                 CockpitControlFlags.SteeringWheel,
-                "VRRearviewMirror");
+                "Mirrors");
 
             LessonDefinitionSO lesson = AssetDatabase.LoadAssetAtPath<LessonDefinitionSO>(LESSON_DATA_PATH);
             bool isNew = false;
@@ -386,7 +386,11 @@ namespace PrimerVolante.Testing.Editor
             compDesc.textWrappingMode = TextWrappingModes.Normal;
 
             Button restartBtn = CreateButton("Button_Restart", completionPanel.transform, fontAsset, "Repetir Lección",
-                new Vector2(0f, -195f), new Vector2(260f, 46f), new Color(0.25f, 0.45f, 0.70f, 1f));
+                new Vector2(-135f, -195f), new Vector2(240f, 46f), new Color(0.25f, 0.45f, 0.70f, 1f));
+
+            Button nextBtn = CreateButton("Button_NextLesson", completionPanel.transform, fontAsset, "Siguiente Lección",
+                new Vector2(135f, -195f), new Vector2(240f, 46f), new Color(0.15f, 0.65f, 0.35f, 1f));
+            TextMeshProUGUI nextBtnText = nextBtn.GetComponentInChildren<TextMeshProUGUI>();
 
             completionPanel.SetActive(false);
 
@@ -411,6 +415,8 @@ namespace PrimerVolante.Testing.Editor
             so.FindProperty("m_CompletionTitleText").objectReferenceValue = compTitle;
             so.FindProperty("m_CompletionDescriptionText").objectReferenceValue = compDesc;
             so.FindProperty("m_RestartButton").objectReferenceValue = restartBtn;
+            so.FindProperty("m_NextLessonButton").objectReferenceValue = nextBtn;
+            so.FindProperty("m_NextLessonButtonText").objectReferenceValue = nextBtnText;
 
             SerializedProperty farCastProp = so.FindProperty("m_FarCastInteractors");
             if (farCastProp != null)
@@ -454,6 +460,23 @@ namespace PrimerVolante.Testing.Editor
             so.FindProperty("m_Highlighter").objectReferenceValue = highlighter;
             so.FindProperty("m_HUDPanel").objectReferenceValue = hudPanel;
             so.FindProperty("m_VehicleRoot").objectReferenceValue = car08.transform;
+
+            SerializedProperty currProp = so.FindProperty("m_Curriculum");
+            if (currProp != null)
+            {
+                var curriculumLessons = new List<LessonDefinitionSO>();
+                for (int l = 1; l <= 4; l++)
+                {
+                    string lPath = $"Assets/Scripts/Lessons/LessonData_0{l}.asset";
+                    LessonDefinitionSO lDef = AssetDatabase.LoadAssetAtPath<LessonDefinitionSO>(lPath);
+                    if (lDef != null) curriculumLessons.Add(lDef);
+                }
+                currProp.arraySize = curriculumLessons.Count;
+                for (int i = 0; i < curriculumLessons.Count; i++)
+                {
+                    currProp.GetArrayElementAtIndex(i).objectReferenceValue = curriculumLessons[i];
+                }
+            }
             so.ApplyModifiedProperties();
 
             var activeLessonField = typeof(LessonManager).GetField("m_ActiveLesson", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);

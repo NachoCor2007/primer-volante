@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: Lesson01_Step03_MirrorsCheck
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: Visibilidad de Espejos y Entorno
-  instructionText: "Verifica la visibilidad de los tres espejos retrovisores (central y laterales). Debes observar el tr\xE1fico posterior sin desviar en exceso la cabeza. \nPresiona 'Finalizar Calibraci\xF3n' para concluir la lecci\xF3n."
+  instructionText: "Comprueba los 3 espejos retrovisores resaltados en amarillo (central y laterales). Debes observar el tr\xE1fico posterior sin desviar en exceso la cabeza.\nPresiona 'Finalizar Calibraci\xF3n' para concluir la lecci\xF3n."
   completionMode: 0
   allowedControls: 1
-  highlightTargetName: VRRearviewMirror
+  highlightTargetName: Mirrors
+  ambienceIntensity: 0

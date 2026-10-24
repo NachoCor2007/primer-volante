@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
+  m_Name: Lesson04_Step05_SecureStopAndPark
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
+  stepTitle: "Detenci\xF3n Segura y Estacionamiento"
+  instructionText: "Con el veh\xEDculo totalmente detenido, coloca la palanca de cambios en Parking (P), tira del freno de mano para asegurarlo y presiona el bot\xF3n Start/Stop para apagar el motor.\nPresiona 'Finalizar Calibraci\xF3n' para concluir el curso de manejo."
+  completionMode: 0
+  allowedControls: -1
+  highlightTargetName: VRHandbrake
+  ambienceIntensity: 0

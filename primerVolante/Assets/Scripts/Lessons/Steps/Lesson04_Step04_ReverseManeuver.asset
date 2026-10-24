@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
+  m_Name: Lesson04_Step04_ReverseManeuver
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
+  stepTitle: Maniobra en Reversa (R)
+  instructionText: "Observa los 3 espejos retrovisores para comprobar que la zona posterior est\xE9 despejada, selecciona la marcha Reversa (R) y retrocede con precauci\xF3n a baja velocidad.\nPresiona 'Continuar' tras completar la maniobra."
+  completionMode: 0
+  allowedControls: -1
+  highlightTargetName: VRGearShifter
+  ambienceIntensity: 0

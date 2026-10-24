@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ddb44700c534d9e49b589a387f99012f, type: 3}
+  m_Name: LessonData_03
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonDefinitionSO
+  lessonId: LESSON_03
+  lessonTitle: "Lecci\xF3n 3: Sistema de Iluminaci\xF3n y Se\xF1alizaci\xF3n"
+  steps:
+  - {fileID: 11400000, guid: 0e7de55d2e195f541accd74b8b35eab5, type: 2}
+  - {fileID: 11400000, guid: 1e959646748ce484ea584a4a8e46716e, type: 2}
+  - {fileID: 11400000, guid: 7ad4927bbcbf1ef499551e3d05d79e6b, type: 2}

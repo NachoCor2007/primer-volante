@@ -138,7 +138,7 @@ namespace PrimerVolante.Testing.Editor
                                 bool mentionsMirrors = step.instructionText.Contains("espejos retrovisores");
                                 bool mentionsFinalize = step.instructionText.Contains("Finalizar Calibración");
                                 Assert(mentionsMirrors && mentionsFinalize, "El Paso 3 debe instruir a verificar espejos retrovisores y presionar 'Finalizar Calibración'", ref total, ref passed);
-                                Assert(step.highlightTargetName == "VRRearviewMirror", "El Paso 3 debe tener highlightTargetName 'VRRearviewMirror'", ref total, ref passed);
+                                Assert(step.highlightTargetName == "Mirrors", "El Paso 3 debe tener highlightTargetName 'Mirrors'", ref total, ref passed);
                             }
                         }
                     }
@@ -239,6 +239,7 @@ namespace PrimerVolante.Testing.Editor
                 Assert(hudPanel.InstructionText != null, "hudPanel.InstructionText debe estar asignado", ref total, ref passed);
                 Assert(hudPanel.ContinueButton != null, "hudPanel.ContinueButton debe estar asignado", ref total, ref passed);
                 Assert(hudPanel.CompletionPanel != null, "hudPanel.CompletionPanel debe estar asignado", ref total, ref passed);
+            Assert(hudPanel.NextLessonButton != null, "hudPanel.NextLessonButton debe estar asignado", ref total, ref passed);
 
                 // REGLA CLAVE 1: NO debe haber panel de ajuste ni sliders embebidos en el HUD
                 bool hasSeatPanel = hudPanel.transform.Find("StepContentPanel/SeatAdjustmentPanel") != null;
@@ -434,13 +435,19 @@ namespace PrimerVolante.Testing.Editor
                 Assert(highlighter.CurrentTarget != null && highlighter.CurrentTarget.name == "SteeringWheel_Pivot",
                     $"En Paso 2 el objetivo resaltado debe ser SteeringWheel_Pivot (actual: {highlighter.CurrentTarget?.name})", ref total, ref passed);
 
-                // Paso 3: Retrovisor resaltado y volante apagado
+                // Paso 3: Tres espejos retrovisores resaltados simultáneamente y volante apagado
                 lessonManager.GoToStep(2);
                 Assert(highlighter.IsHighlighting, "En Paso 3 el resaltado debe estar activo", ref total, ref passed);
                 Assert(highlighter.CurrentTarget != null && highlighter.CurrentTarget.name != "SteeringWheel_Pivot",
                     "En Paso 3 el volante ya NO debe permanecer resaltado", ref total, ref passed);
-                Assert(highlighter.CurrentTarget != null && highlighter.CurrentTarget.name == "RearviewMirror_Casing",
-                    $"En Paso 3 el objetivo resaltado debe ser RearviewMirror_Casing (actual: {highlighter.CurrentTarget?.name})", ref total, ref passed);
+                Assert(highlighter.CurrentTargets != null && highlighter.CurrentTargets.Count == 3,
+                    $"En Paso 3 deben estar resaltados los 3 espejos retrovisores simultáneamente (actual: {highlighter.CurrentTargets?.Count ?? 0})", ref total, ref passed);
+                Assert(System.Linq.Enumerable.Any(highlighter.CurrentTargets, t => t != null && t.name == "RearviewMirror_Casing"),
+                    "En Paso 3 el retrovisor central (RearviewMirror_Casing) debe estar entre los objetivos resaltados", ref total, ref passed);
+                Assert(System.Linq.Enumerable.Any(highlighter.CurrentTargets, t => t != null && (t.name == "SideMirror_Left" || (t.GetComponent<VRSideMirror>() != null && t.GetComponent<VRSideMirror>().Side == VRSideMirror.MirrorSide.Left))),
+                    "En Paso 3 el espejo lateral izquierdo debe estar entre los objetivos resaltados", ref total, ref passed);
+                Assert(System.Linq.Enumerable.Any(highlighter.CurrentTargets, t => t != null && (t.name == "SideMirror_Right" || (t.GetComponent<VRSideMirror>() != null && t.GetComponent<VRSideMirror>().Side == VRSideMirror.MirrorSide.Right))),
+                    "En Paso 3 el espejo lateral derecho debe estar entre los objetivos resaltados", ref total, ref passed);
 
                 // Limpieza final
                 highlighter.ClearHighlight();
@@ -475,7 +482,7 @@ namespace PrimerVolante.Testing.Editor
                 {
                     // Excluir metadatos y este archivo de pruebas (que contiene el nombre de la API en strings y regex)
                     if (file.EndsWith(".meta")) continue;
-                    if (file.EndsWith("Lesson01Verification.cs")) continue;
+                    if (file.EndsWith("Verification.cs")) continue;
 
                     string content = File.ReadAllText(file);
                     MatchCollection matches = obsoleteRegex.Matches(content);
