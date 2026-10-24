@@ -217,6 +217,9 @@ namespace PrimerVolante.Testing.Editor
                         Assert(angleToBack < 25f, $"Cámara {mc.name} debe apuntar hacia atrás del vehículo (ángulo actual respecto a -Z: {angleToBack:F1}°)", ref totalTests, ref passedTests);
                     }
 
+                    // Las cámaras de espejo no dibujan la capa MirrorHousing pero sí Default
+                    AssertMirrorCullingMask(mc, ref totalTests, ref passedTests);
+
                     // Angle Culling relajado por defecto
                     Assert(!mc.EnableAngleCulling, $"Angle Culling en {mc.name} debe estar desactivado por defecto para evitar pantallas negras", ref totalTests, ref passedTests);
 
@@ -370,11 +373,29 @@ namespace PrimerVolante.Testing.Editor
                         Assert(panel.CurrentSelection == VRSideMirrorControlPanel.MirrorSelection.Left, "CycleSelection(-1) desde Off debe conmutar a Left", ref totalTests, ref passedTests);
                     }
                 }
+
+                // =========================================================================
+                // 6. Un re-setup no debe deshacer el fix de carcasas visibles en los espejos
+                // =========================================================================
+                int housingLayer = LayerMask.NameToLayer(VehicleMirrorCamera.MirrorHousingLayerName);
+                if (housingLayer >= 0)
+                {
+                    foreach (string path in new[] { "SideMirror_Left/Glass_Pivot/Mirror_Glass", "SideMirror_Right/Glass_Pivot/Mirror_Glass",
+                                                    "RearviewMirror_Mount/RearviewMirror_Casing/Casing_Mesh", "RearviewMirror_Mount/RearviewMirror_Casing/Mirror_Glass" })
+                    {
+                        Transform housingTr = carInstance.transform.Find(path);
+                        Assert(housingTr != null && housingTr.gameObject.layer == housingLayer,
+                            $"Tras el setup, {path} debe estar en la capa {VehicleMirrorCamera.MirrorHousingLayerName}",
+                            ref totalTests, ref passedTests);
+                    }
+                }
             }
             finally
             {
                 UnityEngine.Object.DestroyImmediate(carInstance);
             }
+
+            VerifyMirrorHousingLayer(ref totalTests, ref passedTests);
 
             Debug.Log("=========================================================");
             Debug.Log($"🏁 RESULTADO DE VERIFICACIÓN: {passedTests}/{totalTests} pruebas superadas.");
@@ -388,6 +409,80 @@ namespace PrimerVolante.Testing.Editor
             {
                 Debug.LogError($"❌ {totalTests - passedTests} pruebas fallaron. Revisa los mensajes anteriores.");
             }
+        }
+
+        private const string CAR09_PREFAB_PATH = "Assets/MadTroll_Studio/Low Poly 1970s Family Sedan 3D Model Free Download Car02/Prefabs/Car09.prefab";
+
+        // Carcasa y vidrio de cada espejo (rutas relativas a la raíz de Car09)
+        private static readonly string[] HousingObjectPaths =
+        {
+            "SideMirror_Left/Mirror_Housing",
+            "SideMirror_Left/Mirror_Glass",
+            "SideMirror_Right/Mirror_Housing",
+            "SideMirror_Right/Mirror_Glass",
+            "RearviewMirror_Mount/RearviewMirror_Casing/Casing_Mesh",
+            "RearviewMirror_Mount/RearviewMirror_Casing/Mirror_Glass"
+        };
+
+        /// <summary>
+        /// Carcasa visible en espejos: la capa MirrorHousing existe, Car09.prefab tiene carcasa y vidrio de cada
+        /// espejo en esa capa y la cullingMask de cada cámara de espejo la excluye (manteniendo Default).
+        /// </summary>
+        private static void VerifyMirrorHousingLayer(ref int totalTests, ref int passedTests)
+        {
+            int housingLayer = LayerMask.NameToLayer(VehicleMirrorCamera.MirrorHousingLayerName);
+            Assert(housingLayer >= 0, $"La capa {VehicleMirrorCamera.MirrorHousingLayerName} debe existir en TagManager", ref totalTests, ref passedTests);
+
+            GameObject car09 = AssetDatabase.LoadAssetAtPath<GameObject>(CAR09_PREFAB_PATH);
+            Assert(car09 != null, $"Car09.prefab debe existir en {CAR09_PREFAB_PATH}", ref totalTests, ref passedTests);
+            if (car09 == null) return;
+
+            foreach (string path in HousingObjectPaths)
+            {
+                Transform tr = car09.transform.Find(path);
+                Assert(tr != null, $"Car09.prefab debe contener {path}", ref totalTests, ref passedTests);
+                if (tr == null) continue;
+
+                Assert(housingLayer >= 0 && tr.gameObject.layer == housingLayer,
+                    $"En Car09.prefab, {path} debe estar en la capa {VehicleMirrorCamera.MirrorHousingLayerName} (actual: {LayerMask.LayerToName(tr.gameObject.layer)})",
+                    ref totalTests, ref passedTests);
+            }
+
+            GameObject instance = UnityEngine.Object.Instantiate(car09);
+            instance.name = "Car09_MirrorHousingVerification";
+            try
+            {
+                VehicleMirrorCamera[] cams = instance.GetComponentsInChildren<VehicleMirrorCamera>(true);
+                Assert(cams.Length == 3, $"Car09 debe tener exactamente 3 VehicleMirrorCamera (encontradas {cams.Length})", ref totalTests, ref passedTests);
+                foreach (VehicleMirrorCamera mc in cams)
+                {
+                    AssertMirrorCullingMask(mc, ref totalTests, ref passedTests);
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(instance);
+            }
+        }
+
+        /// <summary>
+        /// Tras ConfigureCamera(), la cullingMask de la cámara de espejo no incluye MirrorHousing y sí Default.
+        /// </summary>
+        private static void AssertMirrorCullingMask(VehicleMirrorCamera mc, ref int totalTests, ref int passedTests)
+        {
+            if (mc == null || mc.MirrorCamera == null) return;
+
+            int housingLayer = LayerMask.NameToLayer(VehicleMirrorCamera.MirrorHousingLayerName);
+            if (housingLayer < 0) return; // ya reportado por el assert de existencia de la capa
+
+            mc.ConfigureCamera();
+            int mask = mc.MirrorCamera.cullingMask;
+            Assert((mask & (1 << housingLayer)) == 0,
+                $"cullingMask de {mc.name} no debe incluir la capa {VehicleMirrorCamera.MirrorHousingLayerName}",
+                ref totalTests, ref passedTests);
+            Assert((mask & (1 << 0)) != 0,
+                $"cullingMask de {mc.name} debe seguir incluyendo Default",
+                ref totalTests, ref passedTests);
         }
 
         /// <summary>

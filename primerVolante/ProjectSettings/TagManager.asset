@@ -14,12 +14,13 @@ TagManager:
   - UI
   - 
   - 
-  - GPSRoute
+  - MirrorHousing
   - Vehicle
   - NPC
   - Roads
   - Building
   - Obstacle
+  - GPSRoute
   - 
   - 
   - 

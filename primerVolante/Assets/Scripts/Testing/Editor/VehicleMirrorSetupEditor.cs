@@ -98,6 +98,35 @@ namespace PrimerVolante.Testing.Editor
             return 1;
         }
 
+        /// <summary>
+        /// Asigna la capa MirrorHousing a la carcasa y al vidrio de los tres espejos (retrovisor y laterales)
+        /// para que las cámaras de espejo no los dibujen. Si la capa no existe en el proyecto no hace nada.
+        /// Devuelve cuántos objetos cambió de capa.
+        /// </summary>
+        public static int AssignMirrorHousingLayer(Transform carRoot)
+        {
+            int layer = LayerMask.NameToLayer(VehicleMirrorCamera.MirrorHousingLayerName);
+            if (layer < 0) return 0;
+
+            int changed = 0;
+            foreach (string mirrorName in new[] { "RearviewMirror_Mount", "SideMirror_Left", "SideMirror_Right" })
+            {
+                Transform mirror = FindDeep(carRoot, mirrorName);
+                if (mirror == null) continue;
+
+                foreach (Renderer rend in mirror.GetComponentsInChildren<Renderer>(true))
+                {
+                    string n = rend.gameObject.name;
+                    if (n != "Mirror_Housing" && n != "Mirror_Glass" && n != "Casing_Mesh") continue;
+                    if (rend.gameObject.layer == layer) continue;
+
+                    rend.gameObject.layer = layer;
+                    changed++;
+                }
+            }
+            return changed;
+        }
+
         private static Transform FindDeep(Transform root, string name)
         {
             foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
@@ -328,6 +357,11 @@ namespace PrimerVolante.Testing.Editor
                     rb.useGravity = false;
                 }
             }
+
+            // =========================================================================
+            // 8. Carcasas y vidrios en la capa MirrorHousing (las cámaras de espejo no la dibujan)
+            // =========================================================================
+            AssignMirrorHousingLayer(carRoot.transform);
 
             Debug.Log($"[VehicleMirrorSetupEditor] ✨ Espejos calibrados exitosamente en {carRoot.name}:");
             Debug.Log($"   • Retrovisor Central: {rearview.transform.parent.localPosition}");
