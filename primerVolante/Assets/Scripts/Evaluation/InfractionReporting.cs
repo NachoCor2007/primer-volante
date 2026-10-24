@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 
@@ -21,38 +22,47 @@ namespace PrimerVolante.Evaluation
     /// </remarks>
     public static class InfractionReporting
     {
-        private static IInfractionReporter s_Registered;
+        // El primero es el activo; los demás esperan en orden de registro y toman su lugar cuando se va.
+        private static readonly List<IInfractionReporter> s_Registered = new List<IInfractionReporter>();
         private static readonly ConsoleInfractionReporter s_Fallback = new ConsoleInfractionReporter();
 
         /// <summary>El reporter registrado o, si no hay ninguno, el respaldo de consola. Nunca es null.</summary>
-        public static IInfractionReporter Current => s_Registered ?? s_Fallback;
+        public static IInfractionReporter Current => Active ?? s_Fallback;
 
         /// <summary>El registro de lectura del gestor registrado, o null si no hay (o si el reporter no es un log).</summary>
-        public static IInfractionLog Log => s_Registered as IInfractionLog;
+        public static IInfractionLog Log => Active as IInfractionLog;
+
+        // El activo, descartando antes los componentes destruidos que no llegaron a desregistrarse.
+        private static IInfractionReporter Active
+        {
+            get
+            {
+                s_Registered.RemoveAll(r => r is Object unityObject && unityObject == null);
+                return s_Registered.Count > 0 ? s_Registered[0] : null;
+            }
+        }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {
-            s_Registered = null;
+            s_Registered.Clear();
         }
 
         /// <summary>
-        /// Registra el reporter (normalmente el <see cref="InfractionManager"/>). Devuelve false, sin reemplazar al
-        /// actual, si ya hay otro registrado.
+        /// Registra el reporter (normalmente el <see cref="InfractionManager"/>). Si ya hay otro activo no lo
+        /// reemplaza: queda en espera y pasa a ser el activo cuando el actual se quite. Devuelve true si quedó activo.
         /// </summary>
         public static bool Register(IInfractionReporter reporter)
         {
             if (reporter == null) return false;
-            if (s_Registered != null && !ReferenceEquals(s_Registered, reporter)) return false;
-
-            s_Registered = reporter;
-            return true;
+            if (!s_Registered.Contains(reporter)) s_Registered.Add(reporter);
+            return ReferenceEquals(Active, reporter);
         }
 
-        /// <summary>Quita el reporter solo si es el registrado actual.</summary>
+        /// <summary>Quita el reporter, esté activo o en espera. Si era el activo, toma su lugar el siguiente en espera.</summary>
         public static void Unregister(IInfractionReporter reporter)
         {
-            if (reporter != null && ReferenceEquals(s_Registered, reporter)) s_Registered = null;
+            if (reporter != null) s_Registered.Remove(reporter);
         }
 
         /// <summary>Atajo a <c>Current.Report(...)</c>. Atrapa y loguea cualquier excepción del reporter.</summary>

@@ -34,7 +34,6 @@ namespace PrimerVolante.Evaluation
         private int m_NextSequence = 1;
         private float m_StartTime;
         private string m_LessonId;
-        private bool m_Registered;
         private LessonManager m_SubscribedLesson;
 
         /// <inheritdoc />
@@ -69,41 +68,37 @@ namespace PrimerVolante.Evaluation
 
         private void OnEnable()
         {
-            if (InfractionReporting.Register(this))
+            // Si ya hay otro, este queda en espera y toma el lugar cuando el otro se deshabilite.
+            if (!InfractionReporting.Register(this))
             {
-                m_Registered = true;
-            }
-            else
-            {
-                m_Registered = false;
-                Debug.LogWarning("[InfractionManager] ⚠️ Ya hay otro InfractionManager habilitado; este no se registra como reporter.", this);
+                Debug.LogWarning("[InfractionManager] ⚠️ Ya hay otro InfractionManager habilitado; este queda en espera y no recibe infracciones.", this);
             }
 
-            BindLessonManager(m_LessonManager);
+            SubscribeToLesson(m_LessonManager);
         }
 
         private void OnDisable()
         {
-            if (m_Registered) InfractionReporting.Unregister(this);
-            m_Registered = false;
-
-            BindLessonManager(null);
+            InfractionReporting.Unregister(this);
+            SubscribeToLesson(null);
         }
 
         /// <summary>
-        /// Se suscribe a <c>LessonStarted</c> del <see cref="LessonManager"/> indicado (o solo se desuscribe si es
-        /// null). Al empezar una lección el registro se limpia y se guarda su <c>lessonId</c>.
+        /// Asigna el <see cref="LessonManager"/> (o ninguno, con null) y, si este componente está habilitado, se
+        /// suscribe a su <c>LessonStarted</c>: al empezar una lección el registro se limpia y se guarda su
+        /// <c>lessonId</c>. Queda guardado, así que se vuelve a suscribir al rehabilitarse.
         /// </summary>
         public void BindLessonManager(LessonManager lessonManager)
         {
-            if (m_SubscribedLesson != null) m_SubscribedLesson.LessonStarted -= HandleLessonStarted;
-            m_SubscribedLesson = null;
+            m_LessonManager = lessonManager;
+            SubscribeToLesson(isActiveAndEnabled ? lessonManager : null);
+        }
 
-            if (lessonManager != null && isActiveAndEnabled)
-            {
-                m_SubscribedLesson = lessonManager;
-                m_SubscribedLesson.LessonStarted += HandleLessonStarted;
-            }
+        private void SubscribeToLesson(LessonManager lessonManager)
+        {
+            if (m_SubscribedLesson != null) m_SubscribedLesson.LessonStarted -= HandleLessonStarted;
+            m_SubscribedLesson = lessonManager;
+            if (m_SubscribedLesson != null) m_SubscribedLesson.LessonStarted += HandleLessonStarted;
         }
 
         /// <summary>Asigna el catálogo en uso (para armar el gestor por código).</summary>
@@ -156,7 +151,7 @@ namespace PrimerVolante.Evaluation
                 Debug.Log($"[InfractionManager] 🚨 #{record.Sequence} [{severity}] {record.ShortTitle}: {record.Description} ({sourceName ?? "sin fuente"})", this);
             }
 
-            RaiseRecorded(record);
+            SafeInvoke(InfractionRecorded, handler => ((Action<InfractionRecord>)handler)(record));
         }
 
         /// <summary>Vacía los registros, pone los contadores en 0 y reinicia el tiempo transcurrido.</summary>
@@ -168,32 +163,19 @@ namespace PrimerVolante.Evaluation
             m_NextSequence = 1;
             m_StartTime = Time.time;
 
-            Action handlers = Cleared;
-            if (handlers == null) return;
-            foreach (Delegate handler in handlers.GetInvocationList())
-            {
-                try
-                {
-                    ((Action)handler)();
-                }
-                catch (Exception exception)
-                {
-                    Debug.LogException(exception, this);
-                }
-            }
+            SafeInvoke(Cleared, handler => ((Action)handler)());
         }
 
         // Cada suscriptor se invoca por separado: uno roto no impide que los demás reciban el evento.
-        private void RaiseRecorded(InfractionRecord record)
+        private void SafeInvoke(Delegate handlers, Action<Delegate> invoke)
         {
-            Action<InfractionRecord> handlers = InfractionRecorded;
             if (handlers == null) return;
 
             foreach (Delegate handler in handlers.GetInvocationList())
             {
                 try
                 {
-                    ((Action<InfractionRecord>)handler)(record);
+                    invoke(handler);
                 }
                 catch (Exception exception)
                 {
