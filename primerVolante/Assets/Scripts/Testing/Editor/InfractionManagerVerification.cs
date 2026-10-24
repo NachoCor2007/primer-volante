@@ -111,6 +111,16 @@ namespace PrimerVolante.Testing.Editor
                     $"{id}: la plantilla formateada no deja marcadores sin reemplazar", ref total, ref passed);
             }
 
+            // Los marcadores de cada plantilla del catálogo deben ser exactamente los parámetros declarados en el setup.
+            foreach (InfractionManagerSetup.Spec spec in InfractionManagerSetup.Specs)
+            {
+                if (!catalog.TryGet(spec.Id, out InfractionDefinitionSO definition)) continue;
+                var placeholders = new HashSet<string>(
+                    Regex.Matches(definition.DescriptionTemplate ?? string.Empty, @"\{([^{}]+)\}").Cast<Match>().Select(m => m.Groups[1].Value));
+                Assert(placeholders.SetEquals(spec.ParameterKeys),
+                    $"{spec.Id}: los marcadores de la plantilla ({string.Join(", ", placeholders)}) coinciden con los parámetros declarados", ref total, ref passed);
+            }
+
             Assert(!catalog.TryGet("NO_SUCH_ID", out _) && !catalog.TryGet(null, out _) && !catalog.TryGet("", out _),
                 "TryGet devuelve false para ids desconocidos, null y vacío", ref total, ref passed);
         }
@@ -148,6 +158,9 @@ namespace PrimerVolante.Testing.Editor
                 "InfractionIdFor(Pedestrian, Graze) = PEDESTRIAN_HIT", ref total, ref passed);
             Assert(ObstacleImpactMath.InfractionIdFor(ObstacleKind.Pedestrian, ObstacleImpactSeverity.Crash) == InfractionIds.PedestrianHit,
                 "InfractionIdFor(Pedestrian, Crash) = PEDESTRIAN_HIT", ref total, ref passed);
+
+            Assert(ObstacleImpactMath.InfractionIdFor((ObstacleKind)99, ObstacleImpactSeverity.Crash) == null,
+                "InfractionIdFor con un tipo desconocido devuelve null (no se disfraza de atropello)", ref total, ref passed);
 
             InfractionReport report = InfractionReport.Create("X", null, Vector3.zero, ("k", "v"), ("k2", "v2"));
             Assert(report.Parameters != null && report.Parameters.Count == 2 && report.Parameters["k2"] == "v2",
@@ -315,10 +328,16 @@ namespace PrimerVolante.Testing.Editor
 
                 InfractionReporting.Unregister(throwing);
                 Assert(!reporterThrew && throwing.Calls == 1, "InfractionReporting.Report atrapa las excepciones del reporter", ref total, ref passed);
-                InfractionReporting.Unregister(first);
             }
             finally
             {
+                // DestroyImmediate no llama a OnDisable fuera de Play Mode: se desregistra a mano aunque falle algo.
+                foreach (GameObject go in created)
+                {
+                    var leftover = go != null ? go.GetComponent<InfractionManager>() : null;
+                    if (leftover != null) InfractionReporting.Unregister(leftover);
+                }
+
                 foreach (GameObject go in created)
                 {
                     if (go != null) UnityEngine.Object.DestroyImmediate(go);
@@ -383,10 +402,15 @@ namespace PrimerVolante.Testing.Editor
                 InvokeLifecycle(manager, "OnDisable");
                 lessonManager.StartLesson(lesson);
                 Assert(cleared == 1, "Al deshabilitar el manager se desuscribe de LessonStarted", ref total, ref passed);
-                InfractionReporting.Unregister(manager);
             }
             finally
             {
+                foreach (GameObject go in created)
+                {
+                    var leftover = go != null ? go.GetComponent<InfractionManager>() : null;
+                    if (leftover != null) InfractionReporting.Unregister(leftover);
+                }
+
                 foreach (GameObject go in created)
                 {
                     if (go != null) UnityEngine.Object.DestroyImmediate(go);

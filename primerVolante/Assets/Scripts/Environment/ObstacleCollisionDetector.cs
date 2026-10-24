@@ -99,7 +99,10 @@ namespace PrimerVolante.Environment
             {
                 case ObstacleKind.Cone: return crash ? InfractionIds.ConeCrash : InfractionIds.ConeGraze;
                 case ObstacleKind.Vehicle: return crash ? InfractionIds.VehicleCrash : InfractionIds.VehicleGraze;
-                default: return InfractionIds.PedestrianHit;
+                case ObstacleKind.Pedestrian: return InfractionIds.PedestrianHit;
+
+                // Un tipo nuevo sin mapeo no se disfraza de atropello: el gestor avisa que el id no existe.
+                default: return null;
             }
         }
 

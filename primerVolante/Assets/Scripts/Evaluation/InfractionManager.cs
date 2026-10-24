@@ -114,8 +114,9 @@ namespace PrimerVolante.Evaluation
 
         private void HandleLessonStarted(LessonDefinitionSO lesson)
         {
-            Clear();
+            // Primero el id: quien escuche Cleared ya lee el id de la lección nueva.
             m_LessonId = lesson != null ? lesson.lessonId : null;
+            Clear();
         }
 
         /// <inheritdoc />
@@ -134,15 +135,10 @@ namespace PrimerVolante.Evaluation
             // Contexto de la lección: si no hay LessonManager (o no hay lección activa) queda null y -1.
             string lessonId = null;
             int stepIndex = -1;
-            if (m_SubscribedLesson != null)
+            if (m_SubscribedLesson != null && m_SubscribedLesson.IsLessonActive && m_SubscribedLesson.ActiveLesson != null)
             {
-                lessonId = m_LessonId;
-                if (m_SubscribedLesson.IsLessonActive && m_SubscribedLesson.ActiveLesson != null)
-                {
-                    lessonId = m_SubscribedLesson.ActiveLesson.lessonId;
-                }
-
-                if (lessonId != null) stepIndex = m_SubscribedLesson.CurrentStepIndex;
+                lessonId = m_SubscribedLesson.ActiveLesson.lessonId;
+                stepIndex = m_SubscribedLesson.CurrentStepIndex;
             }
 
             var record = new InfractionRecord(
