@@ -50,8 +50,13 @@ namespace PrimerVolante.Testing.Editor
             Mesh pole = AssetDatabase.LoadAssetAtPath<Mesh>(TrafficSignSetup.MESH_POLE_PATH);
             Mesh panel = EnsurePanelMesh();
 
-            Texture2D prohibitedTexture = EnsureTexture(PROHIBITED_TEXTURE_PATH, 512, 512, PaintProhibited);
-            Texture2D directionTexture = EnsureTexture(DIRECTION_TEXTURE_PATH, 256, 384, PaintDirection);
+            EnsureTexture(PROHIBITED_TEXTURE_PATH, 512, 512, PaintProhibited);
+            EnsureTexture(DIRECTION_TEXTURE_PATH, 256, 384, PaintDirection);
+
+            // Tras generar un PNG nuevo hay que terminar la importación para poder cargarlo como textura.
+            AssetDatabase.Refresh();
+            var prohibitedTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(PROHIBITED_TEXTURE_PATH);
+            var directionTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(DIRECTION_TEXTURE_PATH);
             Material prohibitedMaterial = EnsureMaterial(PROHIBITED_MATERIAL_PATH, prohibitedTexture);
             Material directionMaterial = EnsureMaterial(DIRECTION_MATERIAL_PATH, directionTexture);
             var baseMaterial = AssetDatabase.LoadAssetAtPath<Material>(TrafficSignSetup.BASE_MATERIAL_PATH);
