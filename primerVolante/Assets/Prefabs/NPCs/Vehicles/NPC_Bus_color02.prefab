@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6819706161138954580}
   - component: {fileID: 2767150975649232335}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: Siren
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -138,7 +138,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2973614402081887630}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: NPCAudio
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -175,7 +175,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5941965126509939177}
   - component: {fileID: 3227488093042876847}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: EngineIdle
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -304,7 +304,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7363304829715981272}
   - component: {fileID: 4685772973761815559}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: SoftBrake
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -433,7 +433,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7867015263874941901}
   - component: {fileID: 8728511218263391172}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: Alert
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -562,7 +562,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7029526158403482507}
   - component: {fileID: 6194783986246176680}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: EngineMid
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -689,9 +689,33 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 100000, guid: 3cfde9a41ff096140a1bfec6f262d0f0, type: 3}
+      propertyPath: m_Layer
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 100002, guid: 3cfde9a41ff096140a1bfec6f262d0f0, type: 3}
+      propertyPath: m_Layer
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 100004, guid: 3cfde9a41ff096140a1bfec6f262d0f0, type: 3}
+      propertyPath: m_Layer
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 100006, guid: 3cfde9a41ff096140a1bfec6f262d0f0, type: 3}
+      propertyPath: m_Layer
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 100008, guid: 3cfde9a41ff096140a1bfec6f262d0f0, type: 3}
+      propertyPath: m_Layer
+      value: 10
+      objectReference: {fileID: 0}
     - target: {fileID: 100010, guid: 3cfde9a41ff096140a1bfec6f262d0f0, type: 3}
       propertyPath: m_Name
       value: NPC_Bus_color02
+      objectReference: {fileID: 0}
+    - target: {fileID: 100010, guid: 3cfde9a41ff096140a1bfec6f262d0f0, type: 3}
+      propertyPath: m_Layer
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 400008, guid: 3cfde9a41ff096140a1bfec6f262d0f0, type: 3}
       propertyPath: m_LocalScale.x
@@ -770,6 +794,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 100010, guid: 3cfde9a41ff096140a1bfec6f262d0f0, type: 3}
       insertIndex: -1
       addedObject: {fileID: 564770027806473986}
+    - targetCorrespondingSourceObject: {fileID: 100010, guid: 3cfde9a41ff096140a1bfec6f262d0f0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8913309272428154800}
   m_SourcePrefab: {fileID: 100100000, guid: 3cfde9a41ff096140a1bfec6f262d0f0, type: 3}
 --- !u!4 &9072933235404591571 stripped
 Transform:
@@ -933,3 +960,33 @@ MonoBehaviour:
   m_HonkRepeatSeconds: 3
   m_MaxBlockedHonks: 4
   m_LogEvents: 0
+--- !u!114 &8913309272428154800
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9072933235405082097}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e78bbe4c9bd63d743b96c58009df53ec, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.NPCSafetyStop
+  m_DetectionDistance: 5
+  m_DynamicDistanceWithSpeed: 1
+  m_SpeedLookaheadFactor: 1
+  m_SensorOffset: {x: 0, y: 1.379876, z: 2.328485}
+  m_BoxHalfExtents: {x: 1.1, y: 0.76380485, z: 0.3}
+  m_ObstacleLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ObstacleTag: 
+  m_QueryTriggerInteraction: 1
+  m_ResumeDelay: 0.5
+  m_ResumeHysteresisDistance: 0.5
+  onEmergencyBrakeEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  onResumeMovementEvent:
+    m_PersistentCalls:
+      m_Calls: []

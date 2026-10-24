@@ -260,6 +260,7 @@ namespace PrimerVolante.Testing.Editor
             EnsureFootIK(locomotion);
 
             EditorUtility.SetDirty(controller);
+
             Debug.Log($"[NPCPrefabSetup] 🎛️ Animator Controller listo: {CONTROLLER_PATH} " +
                       $"(Walking a peso 1 desde {NPCPedestrianController.WalkBlendEndSpeed:F2} m/s; Foot IK activo).");
             return controller;
@@ -370,6 +371,9 @@ namespace PrimerVolante.Testing.Editor
             var controller = GetOrAdd<NPCVehicleController>(root);
             controller.AutoAssignWheels();
 
+            var safety = GetOrAdd<NPCSafetyStop>(root);
+            ConfigureVehicleSafetyStop(root, box, safety);
+
             var so = new SerializedObject(follower);
             RequireProperty(so, "m_CruiseSpeed").floatValue = 8f;
             RequireProperty(so, "m_Acceleration").floatValue = 2.5f;
@@ -378,6 +382,15 @@ namespace PrimerVolante.Testing.Editor
             so.ApplyModifiedPropertiesWithoutUndo();
 
             EditorUtility.SetDirty(controller);
+
+            int npcLayer = LayerMask.NameToLayer("NPC");
+            if (npcLayer != -1)
+            {
+                foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+                {
+                    t.gameObject.layer = npcLayer;
+                }
+            }
         }
 
         /// <summary>
@@ -413,6 +426,29 @@ namespace PrimerVolante.Testing.Editor
             box.center = result.center;
             box.size = result.size;
             box.isTrigger = false;
+        }
+
+        private static void ConfigureVehicleSafetyStop(GameObject root, BoxCollider box, NPCSafetyStop safety)
+        {
+            // Dimensiones proporcionales a la carrocería del vehículo (~5.0m base)
+            float halfWidth = Mathf.Clamp(box.size.x * VEHICLE_SCALE * 0.45f, 0.7f, 1.1f);
+            float halfHeight = Mathf.Clamp(box.size.y * VEHICLE_SCALE * 0.35f, 0.4f, 0.8f);
+            float yOffset = Mathf.Max(0.6f, box.center.y * VEHICLE_SCALE);
+            float zOffset = (box.center.z + box.size.z * 0.5f) * VEHICLE_SCALE * 0.8f;
+
+            safety.enabled = false;
+
+            var so = new SerializedObject(safety);
+            RequireProperty(so, "m_DetectionDistance").floatValue = 5.0f;
+            RequireProperty(so, "m_DynamicDistanceWithSpeed").boolValue = true;
+            RequireProperty(so, "m_SpeedLookaheadFactor").floatValue = 1.0f;
+            RequireProperty(so, "m_ResumeDelay").floatValue = 0.5f;
+            RequireProperty(so, "m_SensorOffset").vector3Value = new Vector3(0f, yOffset, zOffset);
+            RequireProperty(so, "m_BoxHalfExtents").vector3Value = new Vector3(halfWidth, halfHeight, 0.3f);
+            RequireProperty(so, "m_Enabled").boolValue = false;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            EditorUtility.SetDirty(safety);
         }
 
         // ------------------------------------------------------------------ Peatones
@@ -499,12 +535,24 @@ namespace PrimerVolante.Testing.Editor
             RequireProperty(pedestrianSo, "m_BodyCollider").objectReferenceValue = box;
             pedestrianSo.ApplyModifiedPropertiesWithoutUndo();
 
+            var safety = GetOrAdd<NPCSafetyStop>(root);
+            ConfigurePedestrianSafetyStop(root, box, safety);
+
             var followerSo = new SerializedObject(follower);
             RequireProperty(followerSo, "m_CruiseSpeed").floatValue = NPCPedestrianController.DefaultCruiseSpeed;
             RequireProperty(followerSo, "m_Acceleration").floatValue = 1f;
             RequireProperty(followerSo, "m_Deceleration").floatValue = 2f;
             RequireProperty(followerSo, "m_MaxLateralAcceleration").floatValue = 1.5f;
             followerSo.ApplyModifiedPropertiesWithoutUndo();
+
+            int npcLayer = LayerMask.NameToLayer("NPC");
+            if (npcLayer != -1)
+            {
+                foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+                {
+                    t.gameObject.layer = npcLayer;
+                }
+            }
         }
 
         /// <summary>
@@ -537,6 +585,27 @@ namespace PrimerVolante.Testing.Editor
             box.center = new Vector3(0f, minY + height * 0.5f, 0f);
             box.size = new Vector3(0.55f, height, 0.4f);
             box.isTrigger = false;
+        }
+
+        private static void ConfigurePedestrianSafetyStop(GameObject root, BoxCollider box, NPCSafetyStop safety)
+        {
+            // Dimensiones proporcionales al peatón (~3.5m base)
+            float halfWidth = Mathf.Clamp(box.size.x * 0.5f, 0.25f, 0.4f);
+            float halfHeight = Mathf.Clamp(box.size.y * 0.25f, 0.35f, 0.6f);
+
+            safety.enabled = false;
+
+            var so = new SerializedObject(safety);
+            RequireProperty(so, "m_DetectionDistance").floatValue = 3.5f;
+            RequireProperty(so, "m_DynamicDistanceWithSpeed").boolValue = true;
+            RequireProperty(so, "m_SpeedLookaheadFactor").floatValue = 1.0f;
+            RequireProperty(so, "m_ResumeDelay").floatValue = 0.5f;
+            RequireProperty(so, "m_SensorOffset").vector3Value = new Vector3(0f, 1.0f, 0f);
+            RequireProperty(so, "m_BoxHalfExtents").vector3Value = new Vector3(halfWidth, halfHeight, 0.25f);
+            RequireProperty(so, "m_Enabled").boolValue = false;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            EditorUtility.SetDirty(safety);
         }
 
         // ------------------------------------------------------------------ Utilidades

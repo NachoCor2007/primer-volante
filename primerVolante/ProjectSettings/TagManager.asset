@@ -15,12 +15,13 @@ TagManager:
   - 
   - 
   - MirrorHousing
+  - Vehicle
+  - NPC
+  - Roads
+  - Building
+  - Obstacle
+  - GPSRoute
   - LaneZone
-  - 
-  - 
-  - 
-  - 
-  - 
   - 
   - 
   - 

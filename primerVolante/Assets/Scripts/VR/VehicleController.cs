@@ -834,6 +834,14 @@ namespace PrimerVolante.VR
             return m_CurrentGear == GearState.Reverse ? -moveDir : moveDir;
         }
 
+        /// <summary>
+        /// Permite sobreescribir la velocidad interna desde simuladores de escritorio o autopilot.
+        /// </summary>
+        public void OverrideSpeed(float speedMs)
+        {
+            m_CurrentSpeedMs = Mathf.Max(0f, speedMs);
+        }
+
         private float ReadTriggerValue(InputActionProperty property, InputAction defaultAction, XRNode handNode)
         {
             float val = 0f;
