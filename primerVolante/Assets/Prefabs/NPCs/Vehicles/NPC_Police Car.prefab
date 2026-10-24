@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8190726040503197846}
   - component: {fileID: 4496803905906817920}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: Alert
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -139,7 +139,7 @@ GameObject:
   m_Component:
   - component: {fileID: 320361971991154865}
   - component: {fileID: 2836688185525581142}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: SoftBrake
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -268,7 +268,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2049852480206961246}
   - component: {fileID: 214412954105777885}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: EngineMid
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -397,7 +397,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5865096365749896719}
   - component: {fileID: 4075656569534329546}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: EngineIdle
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -525,7 +525,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2417304734961279504}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: NPCAudio
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -562,7 +562,7 @@ GameObject:
   m_Component:
   - component: {fileID: 477910447535307882}
   - component: {fileID: 6167759680012296090}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: Siren
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -794,6 +794,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 100010, guid: a7b60e70606f80245b2f8bc7ce2fadb6, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1314150656120779884}
+    - targetCorrespondingSourceObject: {fileID: 100010, guid: a7b60e70606f80245b2f8bc7ce2fadb6, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 618675574016121050}
   m_SourcePrefab: {fileID: 100100000, guid: a7b60e70606f80245b2f8bc7ce2fadb6, type: 3}
 --- !u!4 &527366124818055201 stripped
 Transform:
@@ -957,3 +960,33 @@ MonoBehaviour:
   m_HonkRepeatSeconds: 3
   m_MaxBlockedHonks: 4
   m_LogEvents: 0
+--- !u!114 &618675574016121050
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 527366124818226191}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e78bbe4c9bd63d743b96c58009df53ec, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.NPCSafetyStop
+  m_DetectionDistance: 5
+  m_DynamicDistanceWithSpeed: 1
+  m_SpeedLookaheadFactor: 1
+  m_SensorOffset: {x: 0, y: 0.9034063, z: 1.7690307}
+  m_BoxHalfExtents: {x: 0.91847813, y: 0.48634103, z: 0.3}
+  m_ObstacleLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ObstacleTag: 
+  m_QueryTriggerInteraction: 1
+  m_ResumeDelay: 0.5
+  m_ResumeHysteresisDistance: 0.5
+  onEmergencyBrakeEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  onResumeMovementEvent:
+    m_PersistentCalls:
+      m_Calls: []

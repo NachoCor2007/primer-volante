@@ -155,6 +155,7 @@ namespace PrimerVolante.Environment
 
         private Rigidbody m_Rigidbody;
         private Spline m_Spline;
+        private NPCSafetyStop m_SafetyStop;
         private NPCPathState m_State;
         private NPCPathEndBehavior m_EffectiveEndBehavior;
         private float m_PathLength;
@@ -206,6 +207,38 @@ namespace PrimerVolante.Environment
         /// <summary>Indica si hay una ruta válida asignada.</summary>
         public bool HasPath => m_Spline != null && m_PathLength > 0f;
 
+        /// <summary>Sensor de seguridad y frenado de emergencia asociado, si existe.</summary>
+        public NPCSafetyStop SafetyStop => m_SafetyStop;
+
+        /// <summary>Comportamiento al final de la ruta (Stop o Loop).</summary>
+        public NPCPathEndBehavior EndBehavior
+        {
+            get => m_EffectiveEndBehavior;
+            set
+            {
+                m_EndBehavior = value;
+                RefreshPath();
+            }
+        }
+
+        /// <summary>Si se activa, empieza a moverse al iniciar la escena.</summary>
+        public bool PlayOnStart
+        {
+            get => m_PlayOnStart;
+            set
+            {
+                m_PlayOnStart = value;
+                if (!m_PlayOnStart && !m_IsPlaying)
+                {
+                    if (m_SafetyStop == null) m_SafetyStop = GetComponent<NPCSafetyStop>();
+                    if (m_SafetyStop != null)
+                    {
+                        m_SafetyStop.enabled = false;
+                    }
+                }
+            }
+        }
+
         private void Reset()
         {
             var body = GetComponent<Rigidbody>();
@@ -217,15 +250,33 @@ namespace PrimerVolante.Environment
         private void Awake()
         {
             m_Rigidbody = GetComponent<Rigidbody>();
+            m_SafetyStop = GetComponent<NPCSafetyStop>();
             RefreshPath();
 
             // El estado de ejecución arranca en la distancia inicial configurada.
             if (HasPath) TeleportToDistance(m_InitialDistance);
+
+            // Si arranca sin ruta o detenido, deshabilitar NPCSafetyStop para optimizar físicas
+            if (m_SafetyStop != null && (!HasPath || !m_PlayOnStart))
+            {
+                m_SafetyStop.enabled = false;
+            }
         }
 
         private void Start()
         {
-            if (m_PlayOnStart) Play();
+            if (m_PlayOnStart)
+            {
+                Play();
+            }
+            else
+            {
+                if (m_SafetyStop == null) m_SafetyStop = GetComponent<NPCSafetyStop>();
+                if (m_SafetyStop != null)
+                {
+                    m_SafetyStop.enabled = false;
+                }
+            }
         }
 
         private void OnValidate()
@@ -260,6 +311,11 @@ namespace PrimerVolante.Environment
             m_SplineIndex = splineIndex;
             RefreshPath();
             TeleportToDistance(m_InitialDistance);
+            if (m_SafetyStop == null) m_SafetyStop = GetComponent<NPCSafetyStop>();
+            if (m_SafetyStop != null && !m_IsPlaying)
+            {
+                m_SafetyStop.enabled = false;
+            }
         }
 
         /// <summary>
@@ -270,6 +326,11 @@ namespace PrimerVolante.Environment
             if (!HasPath)
             {
                 Debug.LogWarning($"[NPCPathFollower] ⚠️ {name} no tiene ruta asignada: no se mueve.");
+                if (m_SafetyStop == null) m_SafetyStop = GetComponent<NPCSafetyStop>();
+                if (m_SafetyStop != null)
+                {
+                    m_SafetyStop.enabled = false;
+                }
                 return;
             }
 
@@ -278,6 +339,12 @@ namespace PrimerVolante.Environment
             m_IsEmergencyStopped = false;
             m_StopRequested = false;
             m_IsPlaying = true;
+
+            if (m_SafetyStop == null) m_SafetyStop = GetComponent<NPCSafetyStop>();
+            if (m_SafetyStop != null)
+            {
+                m_SafetyStop.enabled = true;
+            }
         }
 
         /// <summary>
@@ -387,6 +454,14 @@ namespace PrimerVolante.Environment
 
         private void FixedUpdate()
         {
+            Tick(Time.fixedDeltaTime);
+        }
+
+        /// <summary>
+        /// Avanza un paso del seguidor de ruta. Se ejecuta en FixedUpdate y puede invocarse manualmente en pruebas deterministas.
+        /// </summary>
+        public void Tick(float dt)
+        {
             if (!m_IsPlaying || !HasPath) return;
 
             if (m_IsEmergencyStopped)
@@ -396,7 +471,6 @@ namespace PrimerVolante.Environment
                 return;
             }
 
-            float dt = Time.fixedDeltaTime;
             float previousSpeed = m_State.Speed;
 
             float target = m_StopRequested ? 0f : ComputeTargetSpeed();
@@ -405,8 +479,24 @@ namespace PrimerVolante.Environment
 
             if (EvaluatePose(m_State.Distance, out Vector3 position, out Quaternion rotation))
             {
-                m_Rigidbody.MovePosition(position);
-                m_Rigidbody.MoveRotation(rotation);
+                if (m_Rigidbody != null)
+                {
+                    if (Application.isPlaying)
+                    {
+                        m_Rigidbody.MovePosition(position);
+                        m_Rigidbody.MoveRotation(rotation);
+                    }
+                    else
+                    {
+                        m_Rigidbody.position = position;
+                        m_Rigidbody.rotation = rotation;
+                        transform.SetPositionAndRotation(position, rotation);
+                    }
+                }
+                else
+                {
+                    transform.SetPositionAndRotation(position, rotation);
+                }
 
                 float yaw = rotation.eulerAngles.y;
                 m_CurrentYawRate = Mathf.DeltaAngle(m_LastYaw, yaw) * Mathf.Deg2Rad / dt;
@@ -417,11 +507,21 @@ namespace PrimerVolante.Environment
             {
                 m_ReportedEnd = true;
                 m_IsPlaying = false;
+                if (m_SafetyStop == null) m_SafetyStop = GetComponent<NPCSafetyStop>();
+                if (m_SafetyStop != null)
+                {
+                    m_SafetyStop.enabled = false;
+                }
                 OnReachedEnd?.Invoke();
             }
             else if (m_StopRequested && m_State.Speed <= 0f)
             {
                 m_IsPlaying = false;
+                if (m_SafetyStop == null) m_SafetyStop = GetComponent<NPCSafetyStop>();
+                if (m_SafetyStop != null && !m_IsEmergencyStopped)
+                {
+                    m_SafetyStop.enabled = false;
+                }
             }
         }
 

@@ -407,5 +407,100 @@ namespace PrimerVolante.Testing.Editor
 
             follower.SetPath(route, 0);
         }
+    
+        [MenuItem("Tools/Primer Volante/Restore Pedestrian 03 Test Copy")]
+        public static void RestorePedestrian03TestCopy()
+        {
+            const string demoScenePath = "Assets/Scenes/TestingScenes/GPSNavigationDemo.unity";
+            Scene scene = SceneManager.GetSceneByPath(demoScenePath);
+            if (!scene.IsValid() || !scene.isLoaded)
+            {
+                scene = EditorSceneManager.OpenScene(demoScenePath, OpenSceneMode.Single);
+            }
+
+            Transform npcDemo = null;
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                if (root.name == GROUP_NAME)
+                {
+                    npcDemo = root.transform;
+                    break;
+                }
+            }
+
+            if (npcDemo == null)
+            {
+                Debug.LogError($"[NPCDemoRoutesSetup] ❌ No se encontró el grupo {GROUP_NAME} en {demoScenePath}.");
+                return;
+            }
+
+            // 1. Ruta / trayectoria Spline de prueba
+            Transform existingRoute = npcDemo.Find("Route_Pedestrian_03_Test") ?? npcDemo.Find("Route_Pedestrian_Sidewalk (1)");
+            SplineContainer testRoute;
+            if (existingRoute != null)
+            {
+                testRoute = existingRoute.GetComponent<SplineContainer>();
+            }
+            else
+            {
+                var routeGo = new GameObject("Route_Pedestrian_03_Test");
+                routeGo.transform.SetParent(npcDemo, false);
+                testRoute = routeGo.AddComponent<SplineContainer>();
+
+                // Trayectoria a lo largo de la vereda oeste en sentido opuesto a NPC_Pedestrian_03 (z = 86 a 75)
+                Vector3[] testPath =
+                {
+                    new Vector3(52.2f, SIDEWALK_HEIGHT, 86f),
+                    new Vector3(52.2f, SIDEWALK_HEIGHT, 75f),
+                    new Vector3(50.8f, SIDEWALK_HEIGHT, 75f),
+                    new Vector3(50.8f, SIDEWALK_HEIGHT, 86f),
+                };
+
+                testRoute.Spline = BuildRoundedLoop(testPath, 0.7f, (x, z) => SIDEWALK_HEIGHT);
+            }
+
+            // 2. Instanciar copia de NPC_Pedestrian_03
+            Transform existingNpc = npcDemo.Find("NPC_Pedestrian_03 (1)") ?? npcDemo.Find("NPC_Pedestrian_03_Copy");
+            GameObject npcInstance;
+            if (existingNpc != null)
+            {
+                npcInstance = existingNpc.gameObject;
+            }
+            else
+            {
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(NPCPrefabSetup.PEDESTRIAN_OUTPUT_FOLDER + "/NPC_Pedestrian_03.prefab");
+                if (prefab == null)
+                {
+                    Debug.LogError("[NPCDemoRoutesSetup] ❌ Falta el prefab NPC_Pedestrian_03.prefab");
+                    return;
+                }
+
+                npcInstance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, scene);
+                npcInstance.name = "NPC_Pedestrian_03 (1)";
+                npcInstance.transform.SetParent(npcDemo, false);
+            }
+
+            // 3. Configurar NPCPathFollower con la trayectoria
+            var follower = npcInstance.GetComponent<NPCPathFollower>();
+            if (follower != null)
+            {
+                var so = new SerializedObject(follower);
+                NPCPrefabSetup.RequireProperty(so, "m_Path").objectReferenceValue = testRoute;
+                NPCPrefabSetup.RequireProperty(so, "m_SplineIndex").intValue = 0;
+                NPCPrefabSetup.RequireProperty(so, "m_EndBehavior").enumValueIndex = (int)NPCPathEndBehavior.Loop;
+                NPCPrefabSetup.RequireProperty(so, "m_InitialDistance").floatValue = 0f;
+                NPCPrefabSetup.RequireProperty(so, "m_PlayOnStart").boolValue = true;
+                so.ApplyModifiedPropertiesWithoutUndo();
+
+                follower.SetPath(testRoute, 0);
+            }
+
+            npcInstance.transform.position = new Vector3(52.2f, SIDEWALK_HEIGHT, 86f);
+            npcInstance.transform.rotation = Quaternion.LookRotation(new Vector3(0f, 0f, -1f));
+
+            EditorSceneManager.MarkSceneDirty(scene);
+            bool saved = EditorSceneManager.SaveScene(scene);
+            Debug.Log($"[NPCDemoRoutesSetup] ✅ Restaurado '{npcInstance.name}' con trayectoria '{testRoute.name}' en {scene.path}. Guardado: {saved}");
+        }
     }
 }
