@@ -7,10 +7,10 @@ namespace PrimerVolante.Lessons
 {
     /// <summary>
     /// Resalta visualmente mandos u objetos interactuables objetivo mediante un glow/brillo amarillo pulsante.
-    /// Soporta resaltado individual o multiobjetivo simultáneo (ej. los tres espejos retrovisores).
+    /// Soporta resaltado individual o multiobjetivo simultáneo (ej. los soportes y carcasas de espejos retrovisores).
     /// Utiliza MaterialPropertyBlock para no instanciar materiales ni ensuciar assets.
-    /// Para materiales Lit modula _EmissionColor, y para materiales Unlit (como el cristal de espejos)
-    /// modula _BaseColor/_Color para tintar el reflejo en amarillo cálido.
+    /// Modula _EmissionColor sobre materiales Lit (asegurando keyword _EMISSION).
+    /// Excluye explícitamente cualquier cristal reflectante (Mirror_Glass) y cámaras de retrovisores.
     /// </summary>
     public class InteractableHighlighter : MonoBehaviour
     {
@@ -89,7 +89,8 @@ namespace PrimerVolante.Lessons
         }
 
         /// <summary>
-        /// Activa el resaltado pulsante sobre un único GameObject objetivo y todos sus renderers hijos.
+        /// Activa el resaltado pulsante sobre un único GameObject objetivo y todos sus renderers hijos
+        /// (excluyendo cristales de espejos y cámaras).
         /// </summary>
         public void Highlight(GameObject target)
         {
@@ -109,6 +110,7 @@ namespace PrimerVolante.Lessons
 
         /// <summary>
         /// Activa el resaltado simultáneo sobre una colección de GameObjects objetivos y sus renderers hijos.
+        /// Excluye explícitamente cualquier Renderer asociado a Mirror_Glass o VehicleMirrorCamera.
         /// </summary>
         public void HighlightTargets(IEnumerable<GameObject> targets)
         {
@@ -134,6 +136,16 @@ namespace PrimerVolante.Lessons
                 {
                     Renderer r = tempRenderers[i];
                     if (r == null || m_TargetRenderers.Contains(r)) continue;
+
+                    // EXCLUSIÓN EXPLÍCITA: Cristales reflectantes y cámaras de espejos retrovisores
+                    if (r.gameObject.name.Equals("Mirror_Glass", StringComparison.OrdinalIgnoreCase) ||
+                        r.GetComponent<VehicleMirrorCamera>() != null ||
+                        r.GetComponentInParent<VehicleMirrorCamera>() != null ||
+                        r.GetComponent<Camera>() != null ||
+                        r.GetComponentInParent<Camera>() != null)
+                    {
+                        continue;
+                    }
 
                     m_TargetRenderers.Add(r);
 
@@ -247,39 +259,56 @@ namespace PrimerVolante.Lessons
         }
 
         /// <summary>
-        /// Resalta simultáneamente el retrovisor interior central y los dos espejos laterales.
+        /// Resalta simultáneamente el soporte/carcasa del retrovisor interior central (Casing_Mesh / RearviewMirror_Casing)
+        /// y de los dos espejos laterales (Mirror_Housing), excluyendo terminantemente cristales y cámaras.
         /// </summary>
         private void HighlightAllMirrors(Transform searchRoot)
         {
             var mirrorTargets = new List<GameObject>();
 
-            // 1. Espejo retrovisor central interior (RearviewMirror_Casing o VRRearviewMirror)
+            // 1. Retrovisor central interior: Casing_Mesh / RearviewMirror_Casing
             GameObject centralMirror = null;
             if (searchRoot != null)
             {
-                Transform casing = FindDeep(searchRoot, "RearviewMirror_Casing");
-                if (casing != null)
+                Transform casingMesh = FindDeep(searchRoot, "Casing_Mesh");
+                if (casingMesh != null)
                 {
-                    centralMirror = casing.gameObject;
+                    centralMirror = casingMesh.gameObject;
                 }
                 else
                 {
-                    VRRearviewMirror comp = searchRoot.GetComponentInChildren<VRRearviewMirror>(true);
-                    if (comp != null) centralMirror = comp.gameObject;
+                    Transform casing = FindDeep(searchRoot, "RearviewMirror_Casing");
+                    if (casing != null)
+                    {
+                        centralMirror = casing.gameObject;
+                    }
+                    else
+                    {
+                        VRRearviewMirror comp = searchRoot.GetComponentInChildren<VRRearviewMirror>(true);
+                        if (comp != null) centralMirror = comp.gameObject;
+                    }
                 }
             }
 
             if (centralMirror == null)
             {
-                GameObject casing = GameObject.Find("RearviewMirror_Casing");
-                if (casing != null)
+                GameObject casingMesh = GameObject.Find("Casing_Mesh");
+                if (casingMesh != null)
                 {
-                    centralMirror = casing;
+                    centralMirror = casingMesh;
                 }
                 else
                 {
-                    VRRearviewMirror comp = UnityEngine.Object.FindAnyObjectByType<VRRearviewMirror>();
-                    if (comp != null) centralMirror = comp.gameObject;
+                    GameObject casing = GameObject.Find("RearviewMirror_Casing");
+                    if (casing != null)
+                    {
+                        centralMirror = casing;
+                    }
+                    else
+                    {
+                        VRRearviewMirror comp = UnityEngine.Object.FindAnyObjectByType<VRRearviewMirror>();
+                        if (comp != null) centralMirror = comp.gameObject;
+                    }
                 }
             }
 
@@ -288,14 +317,15 @@ namespace PrimerVolante.Lessons
                 mirrorTargets.Add(centralMirror);
             }
 
-            // 2. Espejo lateral izquierdo (SideMirror_Left o VRSideMirror con Side == Left)
+            // 2. Espejo lateral izquierdo: Buscar específicamente Mirror_Housing bajo SideMirror_Left
             GameObject leftMirror = null;
             if (searchRoot != null)
             {
-                Transform t = FindDeep(searchRoot, "SideMirror_Left");
-                if (t != null)
+                Transform leftRoot = FindDeep(searchRoot, "SideMirror_Left");
+                if (leftRoot != null)
                 {
-                    leftMirror = t.gameObject;
+                    Transform housing = leftRoot.Find("Mirror_Housing") ?? FindDeep(leftRoot, "Mirror_Housing");
+                    leftMirror = housing != null ? housing.gameObject : leftRoot.gameObject;
                 }
                 else
                 {
@@ -304,7 +334,8 @@ namespace PrimerVolante.Lessons
                     {
                         if (sideMirrors[i].Side == VRSideMirror.MirrorSide.Left)
                         {
-                            leftMirror = sideMirrors[i].gameObject;
+                            Transform housing = sideMirrors[i].transform.Find("Mirror_Housing") ?? FindDeep(sideMirrors[i].transform, "Mirror_Housing");
+                            leftMirror = housing != null ? housing.gameObject : sideMirrors[i].gameObject;
                             break;
                         }
                     }
@@ -316,7 +347,8 @@ namespace PrimerVolante.Lessons
                 GameObject go = GameObject.Find("SideMirror_Left");
                 if (go != null)
                 {
-                    leftMirror = go;
+                    Transform housing = go.transform.Find("Mirror_Housing") ?? FindDeep(go.transform, "Mirror_Housing");
+                    leftMirror = housing != null ? housing.gameObject : go;
                 }
                 else
                 {
@@ -325,7 +357,8 @@ namespace PrimerVolante.Lessons
                     {
                         if (sideMirrors[i].Side == VRSideMirror.MirrorSide.Left)
                         {
-                            leftMirror = sideMirrors[i].gameObject;
+                            Transform housing = sideMirrors[i].transform.Find("Mirror_Housing") ?? FindDeep(sideMirrors[i].transform, "Mirror_Housing");
+                            leftMirror = housing != null ? housing.gameObject : sideMirrors[i].gameObject;
                             break;
                         }
                     }
@@ -337,14 +370,15 @@ namespace PrimerVolante.Lessons
                 mirrorTargets.Add(leftMirror);
             }
 
-            // 3. Espejo lateral derecho (SideMirror_Right o VRSideMirror con Side == Right)
+            // 3. Espejo lateral derecho: Buscar específicamente Mirror_Housing bajo SideMirror_Right
             GameObject rightMirror = null;
             if (searchRoot != null)
             {
-                Transform t = FindDeep(searchRoot, "SideMirror_Right");
-                if (t != null)
+                Transform rightRoot = FindDeep(searchRoot, "SideMirror_Right");
+                if (rightRoot != null)
                 {
-                    rightMirror = t.gameObject;
+                    Transform housing = rightRoot.Find("Mirror_Housing") ?? FindDeep(rightRoot, "Mirror_Housing");
+                    rightMirror = housing != null ? housing.gameObject : rightRoot.gameObject;
                 }
                 else
                 {
@@ -353,7 +387,8 @@ namespace PrimerVolante.Lessons
                     {
                         if (sideMirrors[i].Side == VRSideMirror.MirrorSide.Right)
                         {
-                            rightMirror = sideMirrors[i].gameObject;
+                            Transform housing = sideMirrors[i].transform.Find("Mirror_Housing") ?? FindDeep(sideMirrors[i].transform, "Mirror_Housing");
+                            rightMirror = housing != null ? housing.gameObject : sideMirrors[i].gameObject;
                             break;
                         }
                     }
@@ -365,7 +400,8 @@ namespace PrimerVolante.Lessons
                 GameObject go = GameObject.Find("SideMirror_Right");
                 if (go != null)
                 {
-                    rightMirror = go;
+                    Transform housing = go.transform.Find("Mirror_Housing") ?? FindDeep(go.transform, "Mirror_Housing");
+                    rightMirror = housing != null ? housing.gameObject : go;
                 }
                 else
                 {
@@ -374,7 +410,8 @@ namespace PrimerVolante.Lessons
                     {
                         if (sideMirrors[i].Side == VRSideMirror.MirrorSide.Right)
                         {
-                            rightMirror = sideMirrors[i].gameObject;
+                            Transform housing = sideMirrors[i].transform.Find("Mirror_Housing") ?? FindDeep(sideMirrors[i].transform, "Mirror_Housing");
+                            rightMirror = housing != null ? housing.gameObject : sideMirrors[i].gameObject;
                             break;
                         }
                     }
@@ -443,7 +480,7 @@ namespace PrimerVolante.Lessons
 
                 if (targetName.IndexOf("mirror", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
-                    Transform casing = FindDeep(searchRoot, "RearviewMirror_Casing") ?? FindDeep(searchRoot, "RearviewMirror_Mount");
+                    Transform casing = FindDeep(searchRoot, "Casing_Mesh") ?? FindDeep(searchRoot, "RearviewMirror_Casing") ?? FindDeep(searchRoot, "RearviewMirror_Mount");
                     if (casing != null) return casing.gameObject;
                 }
 

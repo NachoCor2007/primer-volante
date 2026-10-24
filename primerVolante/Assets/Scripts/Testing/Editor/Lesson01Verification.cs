@@ -1,3 +1,4 @@
+using System.Linq;
 using System;
 using System.IO;
 using System.Text.RegularExpressions;
@@ -161,26 +162,26 @@ namespace PrimerVolante.Testing.Editor
             Assert(scene.IsValid() && scene.isLoaded, $"La escena {Lesson01SceneSetup.TARGET_SCENE_PATH} debe cargarse correctamente", ref total, ref passed);
 
             // Vehículo
-            GameObject car08 = GameObject.Find("Car08");
-            Assert(car08 != null, "GameObject 'Car08' debe existir en la escena", ref total, ref passed);
-            if (car08 == null) return;
+            GameObject car09 = GameObject.Find("Car09");
+            Assert(car09 != null, "GameObject 'Car09' debe existir en la escena", ref total, ref passed);
+            if (car09 == null) return;
 
             // CockpitControlLockManager
-            CockpitControlLockManager lockManager = car08.GetComponent<CockpitControlLockManager>();
-            Assert(lockManager != null, "CockpitControlLockManager debe estar adjunto a Car08", ref total, ref passed);
+            CockpitControlLockManager lockManager = car09.GetComponent<CockpitControlLockManager>();
+            Assert(lockManager != null, "CockpitControlLockManager debe estar adjunto a Car09", ref total, ref passed);
 
             if (lockManager != null)
             {
-                lockManager.AutoDiscoverControls(car08.transform);
+                lockManager.AutoDiscoverControls(car09.transform);
 
                 // Comprobar que los mandos físicos existan
-                Assert(lockManager.SteeringWheel != null, "VRSteeringWheel debe encontrarse en Car08", ref total, ref passed);
-                Assert(lockManager.GearShifter != null, "VRGearShifter debe encontrarse en Car08", ref total, ref passed);
-                Assert(lockManager.Handbrake != null, "VRHandbrake debe encontrarse en Car08", ref total, ref passed);
-                Assert(lockManager.StartButtonControl != null, "StartButton debe encontrarse en Car08", ref total, ref passed);
-                Assert(lockManager.HazardButton != null, "HazardButton (VRToggleButton) debe encontrarse en Car08", ref total, ref passed);
-                Assert(lockManager.TurnSignal != null, "VRTurnSignal debe encontrarse en Car08", ref total, ref passed);
-                Assert(lockManager.HeadlightKnob != null, "VRHeadlightKnob debe encontrarse en Car08", ref total, ref passed);
+                Assert(lockManager.SteeringWheel != null, "VRSteeringWheel debe encontrarse en Car09", ref total, ref passed);
+                Assert(lockManager.GearShifter != null, "VRGearShifter debe encontrarse en Car09", ref total, ref passed);
+                Assert(lockManager.Handbrake != null, "VRHandbrake debe encontrarse en Car09", ref total, ref passed);
+                Assert(lockManager.StartButtonControl != null, "StartButton debe encontrarse en Car09", ref total, ref passed);
+                Assert(lockManager.HazardButton != null, "HazardButton (VRToggleButton) debe encontrarse en Car09", ref total, ref passed);
+                Assert(lockManager.TurnSignal != null, "VRTurnSignal debe encontrarse en Car09", ref total, ref passed);
+                Assert(lockManager.HeadlightKnob != null, "VRHeadlightKnob debe encontrarse en Car09", ref total, ref passed);
 
                 // Probar bloqueo selectivo de la Lección 1
                 lockManager.ApplyAllowedControls(CockpitControlFlags.SteeringWheel);
@@ -217,8 +218,8 @@ namespace PrimerVolante.Testing.Editor
             }
 
             // LessonHUDPanel
-            LessonHUDPanel hudPanel = car08.GetComponentInChildren<LessonHUDPanel>(true);
-            Assert(hudPanel != null, "LessonHUDPanel debe existir como hijo en la cabina de Car08", ref total, ref passed);
+            LessonHUDPanel hudPanel = car09.GetComponentInChildren<LessonHUDPanel>(true);
+            Assert(hudPanel != null, "LessonHUDPanel debe existir como hijo en la cabina de Car09", ref total, ref passed);
 
             if (hudPanel != null)
             {
@@ -294,7 +295,7 @@ namespace PrimerVolante.Testing.Editor
                 Assert(allEnabled, "SetFarCasting(true) debe habilitar enableFarCasting en los interactores de VR", ref total, ref passed);
                 Assert(allUiOnly, "SetFarCasting(true) debe restringir el raycastMask del far caster exactamente a la capa UI", ref total, ref passed);
 
-                VRSteeringWheel wheelForMask = car08.GetComponentInChildren<VRSteeringWheel>(true);
+                VRSteeringWheel wheelForMask = car09.GetComponentInChildren<VRSteeringWheel>(true);
                 if (wheelForMask != null)
                 {
                     int wheelLayerBit = 1 << wheelForMask.gameObject.layer;
@@ -352,7 +353,7 @@ namespace PrimerVolante.Testing.Editor
                 if (hudWasActive) hudPanel.SetFarCasting(true);
 
                 // Comprobar posición local por encima del volante
-                VRSteeringWheel wheel = car08.GetComponentInChildren<VRSteeringWheel>(true);
+                VRSteeringWheel wheel = car09.GetComponentInChildren<VRSteeringWheel>(true);
                 if (wheel != null)
                 {
                     float hudLocalY = hudPanel.transform.localPosition.y;
@@ -395,19 +396,19 @@ namespace PrimerVolante.Testing.Editor
                 Assert(lessonManager.HUDPanel != null, "LessonManager.HUDPanel debe estar asignado", ref total, ref passed);
             }
 
-            // Ensamble de retrovisores en Car08 (Paso 3)
-            VRRearviewMirror mirrorComponent = car08.GetComponentInChildren<VRRearviewMirror>(true);
-            Assert(mirrorComponent != null, "VRRearviewMirror debe existir en los componentes hijos de Car08", ref total, ref passed);
+            // Ensamble de retrovisores en Car09 (Paso 3)
+            VRRearviewMirror mirrorComponent = car09.GetComponentInChildren<VRRearviewMirror>(true);
+            Assert(mirrorComponent != null, "VRRearviewMirror debe existir en los componentes hijos de Car09", ref total, ref passed);
 
             Transform rearviewMount = null;
             Transform rearviewCasing = null;
-            foreach (Transform t in car08.GetComponentsInChildren<Transform>(true))
+            foreach (Transform t in car09.GetComponentsInChildren<Transform>(true))
             {
                 if (t.name == "RearviewMirror_Mount") rearviewMount = t;
                 if (t.name == "RearviewMirror_Casing") rearviewCasing = t;
             }
-            Assert(rearviewMount != null, "RearviewMirror_Mount debe existir en Car08", ref total, ref passed);
-            Assert(rearviewCasing != null, "RearviewMirror_Casing debe existir en Car08", ref total, ref passed);
+            Assert(rearviewMount != null, "RearviewMirror_Mount debe existir en Car09", ref total, ref passed);
+            Assert(rearviewCasing != null, "RearviewMirror_Casing debe existir en Car09", ref total, ref passed);
 
             Transform casingMesh = rearviewCasing != null ? rearviewCasing.Find("Casing_Mesh") : null;
             Assert(casingMesh != null, "Casing_Mesh debe existir como hijo de RearviewMirror_Casing", ref total, ref passed);
@@ -418,8 +419,8 @@ namespace PrimerVolante.Testing.Editor
             }
 
             // Verificación del resaltado visual y su transición entre pasos
-            InteractableHighlighter highlighter = car08.GetComponent<InteractableHighlighter>();
-            Assert(highlighter != null, "InteractableHighlighter debe existir en Car08", ref total, ref passed);
+            InteractableHighlighter highlighter = car09.GetComponent<InteractableHighlighter>();
+            Assert(highlighter != null, "InteractableHighlighter debe existir en Car09", ref total, ref passed);
 
             if (lessonManager != null && highlighter != null && lessonManager.ActiveLesson != null)
             {
@@ -442,12 +443,18 @@ namespace PrimerVolante.Testing.Editor
                     "En Paso 3 el volante ya NO debe permanecer resaltado", ref total, ref passed);
                 Assert(highlighter.CurrentTargets != null && highlighter.CurrentTargets.Count == 3,
                     $"En Paso 3 deben estar resaltados los 3 espejos retrovisores simultáneamente (actual: {highlighter.CurrentTargets?.Count ?? 0})", ref total, ref passed);
-                Assert(System.Linq.Enumerable.Any(highlighter.CurrentTargets, t => t != null && t.name == "RearviewMirror_Casing"),
-                    "En Paso 3 el retrovisor central (RearviewMirror_Casing) debe estar entre los objetivos resaltados", ref total, ref passed);
-                Assert(System.Linq.Enumerable.Any(highlighter.CurrentTargets, t => t != null && (t.name == "SideMirror_Left" || (t.GetComponent<VRSideMirror>() != null && t.GetComponent<VRSideMirror>().Side == VRSideMirror.MirrorSide.Left))),
-                    "En Paso 3 el espejo lateral izquierdo debe estar entre los objetivos resaltados", ref total, ref passed);
-                Assert(System.Linq.Enumerable.Any(highlighter.CurrentTargets, t => t != null && (t.name == "SideMirror_Right" || (t.GetComponent<VRSideMirror>() != null && t.GetComponent<VRSideMirror>().Side == VRSideMirror.MirrorSide.Right))),
-                    "En Paso 3 el espejo lateral derecho debe estar entre los objetivos resaltados", ref total, ref passed);
+                Assert(System.Linq.Enumerable.Any(highlighter.CurrentTargets, t => t != null && (t.name == "Casing_Mesh" || t.name == "RearviewMirror_Casing")),
+                    "En Paso 3 la carcasa del retrovisor central (Casing_Mesh / RearviewMirror_Casing) debe estar entre los objetivos resaltados", ref total, ref passed);
+                Assert(System.Linq.Enumerable.Any(highlighter.CurrentTargets, t => t != null && (t.name == "Mirror_Housing" || t.name == "SideMirror_Left")),
+                    "En Paso 3 el soporte del espejo izquierdo (Mirror_Housing / SideMirror_Left) debe estar entre los objetivos resaltados", ref total, ref passed);
+                Assert(System.Linq.Enumerable.Any(highlighter.CurrentTargets, t => t != null && (t.name == "Mirror_Housing" || t.name == "SideMirror_Right")),
+                    "En Paso 3 el soporte del espejo derecho (Mirror_Housing / SideMirror_Right) debe estar entre los objetivos resaltados", ref total, ref passed);
+
+                // Exclusión estricta de cristal reflectante (Mirror_Glass) y cámaras
+                Assert(!highlighter.TargetRenderers.Any(r => r != null && r.gameObject.name == "Mirror_Glass"),
+                    "En Paso 3 los cristales (Mirror_Glass) NO deben ser resaltados", ref total, ref passed);
+                Assert(highlighter.TargetRenderers.Any(r => r != null && (r.gameObject.name == "Mirror_Housing" || r.gameObject.name == "Casing_Mesh")),
+                    "En Paso 3 los soportes/carcasas físicas (Mirror_Housing y Casing_Mesh) deben emitir brillo pulsante", ref total, ref passed);
 
                 // Limpieza final
                 highlighter.ClearHighlight();

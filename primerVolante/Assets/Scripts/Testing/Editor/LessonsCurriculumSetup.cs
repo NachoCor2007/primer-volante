@@ -35,7 +35,7 @@ namespace PrimerVolante.Testing.Editor
 
             EnsureDirectories();
 
-            // 1. Asegurar setup básico de escena (Car08, HUD, espejos)
+            // 1. Asegurar setup básico de escena (Car09, HUD, espejos)
             Lesson01SceneSetup.SetupLesson01();
 
             // 2. Configurar o actualizar activos de Lección 1 a 4

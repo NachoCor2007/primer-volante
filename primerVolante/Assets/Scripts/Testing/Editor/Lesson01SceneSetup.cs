@@ -17,7 +17,7 @@ namespace PrimerVolante.Testing.Editor
     /// Herramienta de Editor automatizada e idempotente para configurar la arquitectura de lecciones
     /// y la Lección 1 ("Calibración del ambiente de manejo") para el proyecto "Primer Volante" (TASK-204 / Issue #19).
     /// Clona de forma segura CityMerged_ScriptedEvents.unity a Assets/Scenes/Lessons/Lesson_01_BasicDriving.unity,
-    /// genera el asset LessonData_01.asset y ensambla el panel HUD sobre el volante de Car08.
+    /// genera el asset LessonData_01.asset y ensambla el panel HUD sobre el volante de Car09.
     /// </summary>
     public static class Lesson01SceneSetup
     {
@@ -28,6 +28,7 @@ namespace PrimerVolante.Testing.Editor
         public const string STEPS_DATA_DIR = "Assets/Scripts/Lessons/Steps";
         public const string LESSON_DATA_PATH = "Assets/Scripts/Lessons/LessonData_01.asset";
         public const string FONT_PATH = "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset";
+        public const string PREFAB_CAR09_PATH = "Assets/MadTroll_Studio/Low Poly 1970s Family Sedan 3D Model Free Download Car02/Prefabs/Car09.prefab";
 
         [MenuItem("Tools/Primer Volante/Lessons/Setup Lesson 1 Scene")]
         public static void SetupLesson01()
@@ -53,45 +54,45 @@ namespace PrimerVolante.Testing.Editor
                 return;
             }
 
-            // 5. Configurar Car08 y sus componentes de cabina
-            GameObject car08 = FindPlayerVehicle(scene);
-            if (car08 == null)
+            // 5. Configurar Car09 y sus componentes de cabina (reemplazando Car08 si existiera)
+            GameObject car09 = EnsurePlayerVehicleCar09(scene);
+            if (car09 == null)
             {
-                Debug.LogError("[Lesson01SceneSetup] ❌ No se encontró el vehículo Car08 en la escena.");
+                Debug.LogError("[Lesson01SceneSetup] ❌ No se pudo configurar el vehículo Car09 en la escena.");
                 return;
             }
 
-            // Asegurar que Car08 tenga el ensamble de retrovisores
-            VRRearviewMirror mirror = car08.GetComponentInChildren<VRRearviewMirror>(true);
+            // Asegurar que Car09 tenga el ensamble de retrovisores si hiciera falta
+            VRRearviewMirror mirror = car09.GetComponentInChildren<VRRearviewMirror>(true);
             if (mirror == null)
             {
-                Debug.Log("[Lesson01SceneSetup] 🪞 Ensamblando retrovisores en Car08 con VehicleMirrorSetupEditor...");
-                VehicleMirrorSetupEditor.ConfigureMirrorsOnCar(car08);
+                Debug.Log("[Lesson01SceneSetup] 🪞 Ensamblando retrovisores en Car09 con VehicleMirrorSetupEditor...");
+                VehicleMirrorSetupEditor.ConfigureMirrorsOnCar(car09);
             }
 
-            CockpitControlLockManager lockManager = car08.GetComponent<CockpitControlLockManager>();
+            CockpitControlLockManager lockManager = car09.GetComponent<CockpitControlLockManager>();
             if (lockManager == null)
             {
-                lockManager = car08.AddComponent<CockpitControlLockManager>();
+                lockManager = car09.AddComponent<CockpitControlLockManager>();
             }
-            lockManager.AutoDiscoverControls(car08.transform);
+            lockManager.AutoDiscoverControls(car09.transform);
             EditorUtility.SetDirty(lockManager);
 
-            InteractableHighlighter highlighter = car08.GetComponent<InteractableHighlighter>();
+            InteractableHighlighter highlighter = car09.GetComponent<InteractableHighlighter>();
             if (highlighter == null)
             {
-                highlighter = car08.AddComponent<InteractableHighlighter>();
+                highlighter = car09.AddComponent<InteractableHighlighter>();
             }
             EditorUtility.SetDirty(highlighter);
 
             // 6. Asegurar InGameMenu y EventSystem con XRUIInputModule en la escena
             InGameMenuSetup.EnsureInGameMenuInActiveScene();
 
-            // 7. Configurar o crear el LessonHUDPanel sobre el volante
-            LessonHUDPanel hudPanel = SetupLessonHUD(car08);
+            // 7. Configurar o crear el LessonHUDPanel sobre el volante de Car09
+            LessonHUDPanel hudPanel = SetupLessonHUD(car09);
 
             // 8. Configurar el LessonManager en la escena
-            SetupLessonManager(scene, car08, lessonData, lockManager, highlighter, hudPanel);
+            SetupLessonManager(scene, car09, lessonData, lockManager, highlighter, hudPanel);
 
             // 9. Guardar escena y assets
             EditorSceneManager.MarkSceneDirty(scene);
@@ -251,27 +252,99 @@ namespace PrimerVolante.Testing.Editor
             return lesson;
         }
 
+        public static GameObject EnsurePlayerVehicleCar09(Scene scene)
+        {
+            Vector3 spawnPos = new Vector3(63.5f, 0.02f, 95f);
+            Quaternion spawnRot = Quaternion.identity;
+            bool posCaptured = false;
+
+            // 1. Si existe Car08 en la escena, capturar su transformación y destruirlo
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                if (root.name == "Car08")
+                {
+                    spawnPos = root.transform.position;
+                    spawnRot = root.transform.rotation;
+                    posCaptured = true;
+                    Debug.Log($"[Lesson01SceneSetup] 🔄 Reemplazando 'Car08' por 'Car09' en posición {spawnPos}...");
+                    UnityEngine.Object.DestroyImmediate(root);
+                    break;
+                }
+            }
+
+            // 2. Buscar si ya existe Car09 en la escena
+            GameObject car09 = null;
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                if (root.name == "Car09")
+                {
+                    car09 = root;
+                    break;
+                }
+                if (root.name.Contains("Car09") && root.GetComponentInChildren<VehicleController>(true) != null)
+                {
+                    car09 = root;
+                    car09.name = "Car09";
+                    break;
+                }
+            }
+
+            // 3. Instanciar desde el prefab Car09.prefab si no existe
+            if (car09 == null)
+            {
+                GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PREFAB_CAR09_PATH);
+                if (prefab == null)
+                {
+                    Debug.LogError($"[Lesson01SceneSetup] ❌ No se encontró el prefab de Car09 en {PREFAB_CAR09_PATH}");
+                    return null;
+                }
+
+                car09 = (GameObject)PrefabUtility.InstantiatePrefab(prefab, scene);
+                car09.name = "Car09";
+                car09.transform.position = spawnPos;
+                car09.transform.rotation = spawnRot;
+                Debug.Log($"[Lesson01SceneSetup] 🚗 Car09 instanciado exitosamente en {spawnPos}.");
+            }
+            else if (posCaptured)
+            {
+                car09.transform.position = spawnPos;
+                car09.transform.rotation = spawnRot;
+            }
+
+            return car09;
+        }
+
         private static GameObject FindPlayerVehicle(Scene scene)
         {
             GameObject[] rootObjects = scene.GetRootGameObjects();
             foreach (GameObject root in rootObjects)
             {
-                if (root.name == "Car08") return root;
+                if (root.name == "Car09") return root;
+            }
+            foreach (GameObject root in rootObjects)
+            {
                 VehicleController ctrl = root.GetComponentInChildren<VehicleController>(true);
-                if (ctrl != null) return ctrl.gameObject;
+                if (ctrl != null) return root;
             }
             return null;
         }
 
-        private static LessonHUDPanel SetupLessonHUD(GameObject car08)
+        private static LessonHUDPanel SetupLessonHUD(GameObject car09)
         {
             TMP_FontAsset fontAsset = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FONT_PATH);
 
             // Buscar volante para posicionar el HUD relativo a él
-            VRSteeringWheel wheel = car08.GetComponentInChildren<VRSteeringWheel>(true);
-            Transform wheelPivot = wheel != null ? wheel.transform : car08.transform.Find("mdl_car04_body/SteeringWheel_Pivot");
+            VRSteeringWheel wheel = car09.GetComponentInChildren<VRSteeringWheel>(true);
+            Transform wheelPivot = wheel != null ? wheel.transform : car09.transform.Find("mdl_car02_body/SteeringWheel_Pivot");
+            if (wheelPivot == null)
+            {
+                foreach (Transform t in car09.GetComponentsInChildren<Transform>(true))
+                {
+                    if (t.name == "SteeringWheel_Pivot") { wheelPivot = t; break; }
+                }
+            }
 
-            Transform parentBody = (wheelPivot != null && wheelPivot.parent != null) ? wheelPivot.parent : car08.transform;
+            Transform parentBody = (wheelPivot != null && wheelPivot.parent != null) ? wheelPivot.parent : car09.transform;
 
             // Verificar si ya existe el HUD
             Transform existingHUD = parentBody.Find("LessonHUD_Canvas");
@@ -434,7 +507,7 @@ namespace PrimerVolante.Testing.Editor
             return hudPanel;
         }
 
-        private static void SetupLessonManager(Scene scene, GameObject car08, LessonDefinitionSO lessonData,
+        private static void SetupLessonManager(Scene scene, GameObject car09, LessonDefinitionSO lessonData,
             CockpitControlLockManager lockManager, InteractableHighlighter highlighter, LessonHUDPanel hudPanel)
         {
             // Buscar o crear GameObject raíz del LessonManager
@@ -459,7 +532,7 @@ namespace PrimerVolante.Testing.Editor
             so.FindProperty("m_LockManager").objectReferenceValue = lockManager;
             so.FindProperty("m_Highlighter").objectReferenceValue = highlighter;
             so.FindProperty("m_HUDPanel").objectReferenceValue = hudPanel;
-            so.FindProperty("m_VehicleRoot").objectReferenceValue = car08.transform;
+            so.FindProperty("m_VehicleRoot").objectReferenceValue = car09.transform;
 
             SerializedProperty currProp = so.FindProperty("m_Curriculum");
             if (currProp != null)

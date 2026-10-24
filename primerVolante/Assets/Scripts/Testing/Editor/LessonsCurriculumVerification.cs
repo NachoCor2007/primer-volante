@@ -221,38 +221,38 @@ namespace PrimerVolante.Testing.Editor
             Assert(currentScene.IsValid() && currentScene.isLoaded,
                 $"La escena {LessonsCurriculumSetup.SCENE_PATH} debe cargarse correctamente", ref total, ref passed);
 
-            GameObject car08 = GameObject.Find("Car08");
-            Assert(car08 != null, "Car08 debe existir en la escena", ref total, ref passed);
-            if (car08 == null) return;
+            GameObject car09 = GameObject.Find("Car09");
+            Assert(car09 != null, "Car09 debe existir en la escena", ref total, ref passed);
+            if (car09 == null) return;
 
-            InteractableHighlighter highlighter = car08.GetComponent<InteractableHighlighter>();
-            Assert(highlighter != null, "InteractableHighlighter debe existir en Car08", ref total, ref passed);
+            InteractableHighlighter highlighter = car09.GetComponent<InteractableHighlighter>();
+            Assert(highlighter != null, "InteractableHighlighter debe existir en Car09", ref total, ref passed);
             if (highlighter == null) return;
 
             // Probar HighlightByName("Mirrors")
-            highlighter.HighlightByName("Mirrors", car08.transform);
+            highlighter.HighlightByName("Mirrors", car09.transform);
             Assert(highlighter.IsHighlighting, "HighlightByName('Mirrors') debe activar el resaltado", ref total, ref passed);
             Assert(highlighter.CurrentTargets != null && highlighter.CurrentTargets.Count == 3,
                 $"HighlightByName('Mirrors') debe registrar exactamente 3 objetivos (actual: {highlighter.CurrentTargets?.Count ?? 0})",
                 ref total, ref passed);
 
-            bool hasRearview = highlighter.CurrentTargets.Any(t => t != null && t.name == "RearviewMirror_Casing");
-            bool hasLeftMirror = highlighter.CurrentTargets.Any(t => t != null && (t.name == "SideMirror_Left" ||
-                (t.GetComponent<VRSideMirror>() != null && t.GetComponent<VRSideMirror>().Side == VRSideMirror.MirrorSide.Left)));
-            bool hasRightMirror = highlighter.CurrentTargets.Any(t => t != null && (t.name == "SideMirror_Right" ||
-                (t.GetComponent<VRSideMirror>() != null && t.GetComponent<VRSideMirror>().Side == VRSideMirror.MirrorSide.Right)));
+            bool hasRearview = highlighter.CurrentTargets.Any(t => t != null && (t.name == "Casing_Mesh" || t.name == "RearviewMirror_Casing"));
+            bool hasLeftMirror = highlighter.CurrentTargets.Any(t => t != null && (t.name == "Mirror_Housing" || t.name == "SideMirror_Left"));
+            bool hasRightMirror = highlighter.CurrentTargets.Any(t => t != null && (t.name == "Mirror_Housing" || t.name == "SideMirror_Right"));
 
-            Assert(hasRearview, "El retrovisor central interior (RearviewMirror_Casing) debe estar resaltado", ref total, ref passed);
-            Assert(hasLeftMirror, "El espejo lateral izquierdo debe estar resaltado", ref total, ref passed);
-            Assert(hasRightMirror, "El espejo lateral derecho debe estar resaltado", ref total, ref passed);
+            Assert(hasRearview, "El soporte del retrovisor central interior (Casing_Mesh / RearviewMirror_Casing) debe estar resaltado", ref total, ref passed);
+            Assert(hasLeftMirror, "El soporte del espejo lateral izquierdo (Mirror_Housing) debe estar resaltado", ref total, ref passed);
+            Assert(hasRightMirror, "El soporte del espejo lateral derecho (Mirror_Housing) debe estar resaltado", ref total, ref passed);
 
-            // Verificar que existan renderers de carcasa y de cristal
+            // Verificar que existan renderers de carcasa y que los cristales estén excluidos
             Assert(highlighter.TargetRenderers != null && highlighter.TargetRenderers.Count >= 3,
-                $"Deben existir renderers en los objetivos de espejo (encontrados: {highlighter.TargetRenderers?.Count ?? 0})",
+                $"Deben existir renderers en los objetivos de carcasa de espejo (encontrados: {highlighter.TargetRenderers?.Count ?? 0})",
                 ref total, ref passed);
 
             bool hasGlassRenderer = highlighter.TargetRenderers.Any(r => r != null && r.gameObject.name == "Mirror_Glass");
-            Assert(hasGlassRenderer, "Los cristales de los espejos (Mirror_Glass) deben incluirse en los renderers a modular", ref total, ref passed);
+            Assert(!hasGlassRenderer, "Los cristales de los espejos (Mirror_Glass) NO deben incluirse en los renderers a resaltar", ref total, ref passed);
+            bool hasHousingRenderer = highlighter.TargetRenderers.Any(r => r != null && (r.gameObject.name == "Mirror_Housing" || r.gameObject.name == "Casing_Mesh"));
+            Assert(hasHousingRenderer, "Las carcasas de soporte (Mirror_Housing / Casing_Mesh) deben incluirse en los renderers a resaltar", ref total, ref passed);
 
             // Probar ClearHighlight
             highlighter.ClearHighlight();

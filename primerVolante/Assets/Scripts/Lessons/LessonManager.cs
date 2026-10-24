@@ -96,43 +96,6 @@ namespace PrimerVolante.Lessons
             }
         }
 
-#if UNITY_EDITOR || DEBUG
-        private void Update()
-        {
-            if (UnityEngine.InputSystem.Keyboard.current == null) return;
-
-            // Enter o NumpadEnter: Avanzar paso actual (o iniciar siguiente lección al completar)
-            if (UnityEngine.InputSystem.Keyboard.current.enterKey.wasPressedThisFrame ||
-                UnityEngine.InputSystem.Keyboard.current.numpadEnterKey.wasPressedThisFrame)
-            {
-                if (m_IsLessonCompleted && HasNextLesson)
-                {
-                    StartNextLesson();
-                }
-                else
-                {
-                    CompleteCurrentStep();
-                }
-            }
-
-            // Tecla N: Avanzar a la siguiente lección
-            if (UnityEngine.InputSystem.Keyboard.current.nKey.wasPressedThisFrame)
-            {
-                StartNextLesson();
-            }
-
-            // Tecla R con Ctrl: Reiniciar lección activa
-            if (UnityEngine.InputSystem.Keyboard.current.rKey.wasPressedThisFrame &&
-                (UnityEngine.InputSystem.Keyboard.current.leftCtrlKey.isPressed || UnityEngine.InputSystem.Keyboard.current.rightCtrlKey.isPressed))
-            {
-                if (m_ActiveLesson != null)
-                {
-                    StartLesson(m_ActiveLesson);
-                }
-            }
-        }
-#endif
-
         /// <summary>
         /// Asigna la lista de lecciones del currículum.
         /// </summary>
