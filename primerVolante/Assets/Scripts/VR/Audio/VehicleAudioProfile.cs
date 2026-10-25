@@ -126,7 +126,7 @@ namespace PrimerVolante.VR
         [Range(0f, 1f)] public float StalkClickVolume = 0.7f;
         [Range(0f, 1f)] public float KnobClickVolume = 0.7f;
         [Range(0f, 1f)] public float GearClunkVolume = 0.8f;
-        [Range(0f, 1f)] public float InfractionChimeVolume = 0.8f;
+        [Range(0f, 1f)] public float InfractionChimeVolume = 1f;
         [Range(0f, 1f)] public float WindRoadMaxVolume = 0.5f;
 
         [Header("Motor - Capas y crossfade")]

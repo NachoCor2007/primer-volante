@@ -121,8 +121,8 @@ namespace PrimerVolante.Testing.Editor
                 $"{car}: m_InfractionWarningDuration debe ser 3 s", ref total, ref passed);
             Check(so.FindProperty("m_InfractionActiveColor").colorValue == new Color(1f, 0.15f, 0.15f, 1f),
                 $"{car}: color activo debe ser (1, 0.15, 0.15, 1)", ref total, ref passed);
-            Check(so.FindProperty("m_InfractionInactiveColor").colorValue == new Color(1f, 0.15f, 0.15f, 0.2f),
-                $"{car}: color inactivo debe ser (1, 0.15, 0.15, 0.2)", ref total, ref passed);
+            Check(so.FindProperty("m_InfractionInactiveColor").colorValue == new Color(0.15f, 0.15f, 0.15f, 0.25f),
+                $"{car}: color inactivo debe ser (0.15, 0.15, 0.15, 0.25)", ref total, ref passed);
         }
 
         private static void VerifyAudio(string car, Transform canvas, ref int total, ref int passed)

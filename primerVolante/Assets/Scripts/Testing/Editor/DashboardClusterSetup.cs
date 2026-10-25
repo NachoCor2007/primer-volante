@@ -31,7 +31,7 @@ namespace PrimerVolante.Testing.Editor
         public const float INFRACTION_INDICATOR_SIZE = 40f;
 
         private static readonly Color s_InfractionActiveColor = new Color(1f, 0.15f, 0.15f, 1f);
-        private static readonly Color s_InfractionInactiveColor = new Color(1f, 0.15f, 0.15f, 0.2f);
+        private static readonly Color s_InfractionInactiveColor = new Color(0.15f, 0.15f, 0.15f, 0.25f);
         private const float INFRACTION_WARNING_DURATION = 3f;
 
         private static readonly string[] s_VehiclePrefabsWithDashboard =

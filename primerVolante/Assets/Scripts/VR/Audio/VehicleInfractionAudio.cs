@@ -20,6 +20,10 @@ namespace PrimerVolante.VR
         [Header("Fuente")]
         [SerializeField] private AudioSource m_Source;
 
+        [Tooltip("0 = 2D (suena igual de fuerte desde cualquier posición, como el aviso de un auto real); 1 = 3D desde el tablero. En 3D se atenúa con la distancia y queda tapado por el motor y el ambiente.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float m_SpatialBlend = 0f;
+
         [Header("Mixer")]
         [SerializeField] private AudioMixerGroup m_MixerGroup;
 
@@ -37,6 +41,7 @@ namespace PrimerVolante.VR
             float min = m_Profile != null ? m_Profile.CabinMinDistance : 0.3f;
             float max = m_Profile != null ? m_Profile.CabinMaxDistance : 5f;
             VehicleAudioUtil.ConfigureSource(m_Source, false, min, max, m_MixerGroup);
+            if (m_Source != null) m_Source.spatialBlend = m_SpatialBlend;
         }
 
         private void OnEnable()

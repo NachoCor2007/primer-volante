@@ -106,8 +106,8 @@ namespace PrimerVolante.VR
         [Tooltip("Color de los testigos de infracción mientras están prendidos (rojo del freno de mano).")]
         [SerializeField] private Color m_InfractionActiveColor = new Color(1f, 0.15f, 0.15f, 1f);
 
-        [Tooltip("Color de los testigos de infracción apagados.")]
-        [SerializeField] private Color m_InfractionInactiveColor = new Color(1f, 0.15f, 0.15f, 0.2f);
+        [Tooltip("Color de los testigos de infracción apagados (gris tenue, como los guiños apagados).")]
+        [SerializeField] private Color m_InfractionInactiveColor = new Color(0.15f, 0.15f, 0.15f, 0.25f);
 
         [Tooltip("Segundos que quedan prendidos (fijos, sin parpadeo). Una infracción nueva reinicia el tiempo.")]
         [SerializeField] private float m_InfractionWarningDuration = 3f;

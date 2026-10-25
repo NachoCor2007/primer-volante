@@ -408,7 +408,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 0.15, b: 0.15, a: 0.2}
+  m_Color: {r: 0.15, g: 0.15, b: 0.15, a: 0.25}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -966,7 +966,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 0.15, b: 0.15, a: 0.2}
+  m_Color: {r: 0.15, g: 0.15, b: 0.15, a: 0.25}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -4055,7 +4055,7 @@ MonoBehaviour:
   m_InfractionLeftIndicator: {fileID: 5877247715369744633}
   m_InfractionRightIndicator: {fileID: 1098215448471535318}
   m_InfractionActiveColor: {r: 1, g: 0.15, b: 0.15, a: 1}
-  m_InfractionInactiveColor: {r: 1, g: 0.15, b: 0.15, a: 0.2}
+  m_InfractionInactiveColor: {r: 0.15, g: 0.15, b: 0.15, a: 0.25}
   m_InfractionWarningDuration: 3
 --- !u!82 &3032559088647217123
 AudioSource:

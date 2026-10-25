@@ -41,7 +41,7 @@ MonoBehaviour:
   StalkClickVolume: 0.7
   KnobClickVolume: 0.7
   GearClunkVolume: 0.8
-  InfractionChimeVolume: 0.8
+  InfractionChimeVolume: 1
   WindRoadMaxVolume: 0.5
   IdleLayerRpm: 800
   MidLayerRpm: 2500
