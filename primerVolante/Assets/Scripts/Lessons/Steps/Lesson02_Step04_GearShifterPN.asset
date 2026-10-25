@@ -15,7 +15,7 @@ MonoBehaviour:
   stepTitle: Selector de Marchas (P y N)
   instructionText: "Con el pedal de freno presionado, mueve la palanca de cambios desde Parking (P) hacia la posici\xF3n Neutro (N)."
   completionMode: 1
-  requiredAction: 11
+  requiredAction: 14
   actionNumericParameter: 0
   allowedControls: 2
   highlightTargetName: VRGearShifter

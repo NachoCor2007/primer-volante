@@ -15,7 +15,7 @@ MonoBehaviour:
   stepTitle: "Luces de Giro / Gui\xF1os"
   instructionText: "Acciona la palanca de luces de giro situada a la izquierda del volante: mu\xE9vela hacia abajo para indicar giro a la izquierda."
   completionMode: 1
-  requiredAction: 12
+  requiredAction: 15
   actionNumericParameter: 0
   allowedControls: 32
   highlightTargetName: VRTurnSignal

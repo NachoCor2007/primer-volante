@@ -15,7 +15,7 @@ MonoBehaviour:
   stepTitle: Encendido del Motor (Start)
   instructionText: "Manteniendo presionado el pedal de freno a fondo, presiona el bot\xF3n Start/Stop en el tablero para encender el motor del veh\xEDculo."
   completionMode: 1
-  requiredAction: 5
+  requiredAction: 8
   actionNumericParameter: 0
   allowedControls: 8
   highlightTargetName: StartButton

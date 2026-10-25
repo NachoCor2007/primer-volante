@@ -15,7 +15,7 @@ MonoBehaviour:
   stepTitle: Checklist de Salida
   instructionText: "Realiza el checklist previo a la marcha: pisa el freno a fondo y enciende el motor presionando el bot\xF3n Start."
   completionMode: 1
-  requiredAction: 5
+  requiredAction: 8
   actionNumericParameter: 0
   allowedControls: -1
   highlightTargetName: StartButton

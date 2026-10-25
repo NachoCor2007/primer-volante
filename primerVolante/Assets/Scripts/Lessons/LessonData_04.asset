@@ -15,8 +15,11 @@ MonoBehaviour:
   lessonId: LESSON_04
   lessonTitle: "Lecci\xF3n 4: Din\xE1mica de Marcha, Maniobras y Detenci\xF3n"
   steps:
-  - {fileID: 11400000, guid: a74fe4db5c024914a9d54aa8326bf5fe, type: 2}
-  - {fileID: 11400000, guid: 9fbcd28e215b2574d9a70a89733a505d, type: 2}
-  - {fileID: 11400000, guid: d3ae099b60727c94ab362ced7e561193, type: 2}
-  - {fileID: 11400000, guid: fc1b74849e0e3634a9f87187f04cff18, type: 2}
-  - {fileID: 11400000, guid: 59c5e4a8b80646f408e58b13fde4b435, type: 2}
+  - {fileID: 11400000, guid: ca727ff67abc2cd40965f2816953685f, type: 2}
+  - {fileID: 11400000, guid: 6d20ddc17f3c18b40bcea06eb420bd85, type: 2}
+  - {fileID: 11400000, guid: 7ff03a51bbb51e346a5ef64db70ea321, type: 2}
+  - {fileID: 11400000, guid: d17578016cdf5de499a45ab332ea20c8, type: 2}
+  - {fileID: 11400000, guid: 6559f655e9a35c54cb5411315e451ebc, type: 2}
+  - {fileID: 11400000, guid: 168abc5d4f632874f8220a0d9b4b30c3, type: 2}
+  - {fileID: 11400000, guid: acec37209615185418ee40c6258dc41b, type: 2}
+  - {fileID: 11400000, guid: 917134abe95836645b0959850b47462d, type: 2}

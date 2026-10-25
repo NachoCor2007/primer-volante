@@ -15,7 +15,7 @@ MonoBehaviour:
   stepTitle: "Detenci\xF3n Segura y Estacionamiento"
   instructionText: "Con el veh\xEDculo totalmente detenido, coloca la palanca de cambios en Parking (P), acciona el freno de mano hacia arriba para asegurarlo."
   completionMode: 1
-  requiredAction: 10
+  requiredAction: 13
   actionNumericParameter: 0
   allowedControls: -1
   highlightTargetName: VRHandbrake

@@ -15,7 +15,7 @@ MonoBehaviour:
   stepTitle: Frenado Progresivo
   instructionText: Presiona el pedal de freno de manera suave y progresiva hasta detener la marcha por completo, manteniendo la distancia de seguridad.
   completionMode: 1
-  requiredAction: 4
+  requiredAction: 7
   actionNumericParameter: 0.8
   allowedControls: -1
   highlightTargetName: 

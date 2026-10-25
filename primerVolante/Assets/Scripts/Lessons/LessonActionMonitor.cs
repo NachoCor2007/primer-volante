@@ -33,6 +33,9 @@ namespace PrimerVolante.Lessons
         [Tooltip("Panel eléctrico de espejos laterales.")]
         [SerializeField] private VRSideMirrorControlPanel m_SideMirrorPanel;
 
+        [Tooltip("Perilla selectora de luces.")]
+        [SerializeField] private VRHeadlightKnob m_HeadlightKnob;
+
         [Header("Configuración")]
         [Tooltip("Retraso en segundos tras cumplir la acción antes de avanzar al siguiente paso.")]
         [SerializeField] private float m_AdvanceDelay = 0.6f;
@@ -47,6 +50,12 @@ namespace PrimerVolante.Lessons
         private bool m_SteeringTurnedLeft = false;
         private bool m_SteeringTurnedRight = false;
         private bool m_MirrorWasAdjusted = false;
+        private bool m_CalibrationMenuWasOpened = false;
+        private bool m_RearviewWasGrabbed = false;
+        private float m_InitialRearviewYaw = 0f;
+        private float m_InitialRearviewPitch = 0f;
+        private bool m_LeftMirrorAdjusted = false;
+        private bool m_RightMirrorAdjusted = false;
         private VRSideMirrorControlPanel.MirrorSelection m_InitialMirrorSelection = VRSideMirrorControlPanel.MirrorSelection.Off;
 
         public LessonStepSO CurrentStep => m_CurrentStep;
@@ -55,6 +64,36 @@ namespace PrimerVolante.Lessons
         {
             get => m_VehicleController;
             set => m_VehicleController = value;
+        }
+        public LessonHUDPanel HUDPanel
+        {
+            get => m_HUDPanel;
+            set => m_HUDPanel = value;
+        }
+        public InGameMenuController MenuController
+        {
+            get => m_MenuController;
+            set => m_MenuController = value;
+        }
+        public VRRearviewMirror RearviewMirror
+        {
+            get => m_RearviewMirror;
+            set => m_RearviewMirror = value;
+        }
+        public VRSideMirrorControlPanel SideMirrorPanel
+        {
+            get => m_SideMirrorPanel;
+            set
+            {
+                if (m_SideMirrorPanel != null) m_SideMirrorPanel.MirrorAdjusted -= OnMirrorAdjusted;
+                m_SideMirrorPanel = value;
+                if (m_SideMirrorPanel != null && isActiveAndEnabled) m_SideMirrorPanel.MirrorAdjusted += OnMirrorAdjusted;
+            }
+        }
+        public VRHeadlightKnob HeadlightKnob
+        {
+            get => m_HeadlightKnob;
+            set => m_HeadlightKnob = value;
         }
 
         public event Action<LessonStepSO> ActionCompleted;
@@ -73,6 +112,11 @@ namespace PrimerVolante.Lessons
             }
 
             BindVehicleEvents(true);
+            if (m_SideMirrorPanel != null)
+            {
+                m_SideMirrorPanel.MirrorAdjusted -= OnMirrorAdjusted;
+                m_SideMirrorPanel.MirrorAdjusted += OnMirrorAdjusted;
+            }
         }
 
         private void OnDisable()
@@ -84,6 +128,10 @@ namespace PrimerVolante.Lessons
             }
 
             BindVehicleEvents(false);
+            if (m_SideMirrorPanel != null)
+            {
+                m_SideMirrorPanel.MirrorAdjusted -= OnMirrorAdjusted;
+            }
 
             if (m_AdvanceCoroutine != null)
             {
@@ -129,6 +177,12 @@ namespace PrimerVolante.Lessons
             if (m_SideMirrorPanel == null)
             {
                 m_SideMirrorPanel = UnityEngine.Object.FindAnyObjectByType<VRSideMirrorControlPanel>();
+            }
+
+            if (m_HeadlightKnob == null)
+            {
+                m_HeadlightKnob = (m_VehicleController != null ? m_VehicleController.GetComponentInChildren<VRHeadlightKnob>(true) : null) ??
+                                  UnityEngine.Object.FindAnyObjectByType<VRHeadlightKnob>();
             }
         }
 
@@ -186,6 +240,16 @@ namespace PrimerVolante.Lessons
             m_SteeringTurnedLeft = false;
             m_SteeringTurnedRight = false;
             m_MirrorWasAdjusted = false;
+            m_CalibrationMenuWasOpened = false;
+            m_RearviewWasGrabbed = false;
+            m_LeftMirrorAdjusted = false;
+            m_RightMirrorAdjusted = false;
+
+            if (m_RearviewMirror != null)
+            {
+                m_InitialRearviewYaw = m_RearviewMirror.CurrentYaw;
+                m_InitialRearviewPitch = m_RearviewMirror.CurrentPitch;
+            }
 
             if (m_SideMirrorPanel != null)
             {
@@ -252,9 +316,16 @@ namespace PrimerVolante.Lessons
                     return false;
 
                 case LessonActionType.OpenCalibrationMenu:
-                    if (m_MenuController != null && m_MenuController.IsOpen) return true;
-                    if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) return true;
-                    return false;
+                    if (m_MenuController != null && m_MenuController.IsOpen)
+                    {
+                        m_CalibrationMenuWasOpened = true;
+                    }
+                    else if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+                    {
+                        m_CalibrationMenuWasOpened = true;
+                    }
+                    // La acción se cumple únicamente al cerrar / salir del menú tras haberlo abierto
+                    return m_CalibrationMenuWasOpened && (m_MenuController == null || !m_MenuController.IsOpen);
 
                 case LessonActionType.RotateSteeringWheel:
                     if (m_VehicleController != null && m_VehicleController.SteeringWheel != null)
@@ -267,6 +338,76 @@ namespace PrimerVolante.Lessons
                         if (angle >= threshold || val >= 0.15f) m_SteeringTurnedRight = true;
 
                         return m_SteeringTurnedLeft && m_SteeringTurnedRight;
+                    }
+                    return false;
+
+                case LessonActionType.AdjustRearviewMirror:
+                    if (m_RearviewMirror != null)
+                    {
+                        if (m_RearviewMirror.IsGrabbed)
+                        {
+                            m_RearviewWasGrabbed = true;
+                        }
+                        else if (m_RearviewWasGrabbed)
+                        {
+                            // Agarró y luego soltó
+                            return true;
+                        }
+
+                        float deltaYaw = Mathf.Abs(m_RearviewMirror.CurrentYaw - m_InitialRearviewYaw);
+                        float deltaPitch = Mathf.Abs(m_RearviewMirror.CurrentPitch - m_InitialRearviewPitch);
+                        float threshold = step.actionNumericParameter > 0 ? step.actionNumericParameter : 2.5f;
+                        if (deltaYaw >= threshold || deltaPitch >= threshold)
+                        {
+                            return true;
+                        }
+                    }
+                    if (Keyboard.current != null && (Keyboard.current.iKey.isPressed ||
+                                                     Keyboard.current.kKey.isPressed ||
+                                                     Keyboard.current.jKey.isPressed ||
+                                                     Keyboard.current.lKey.isPressed))
+                    {
+                        return true;
+                    }
+                    return false;
+
+                case LessonActionType.AdjustLeftMirror:
+                    if (m_LeftMirrorAdjusted) return true;
+                    if (m_SideMirrorPanel != null && m_SideMirrorPanel.CurrentSelection == VRSideMirrorControlPanel.MirrorSelection.Left)
+                    {
+                        if (Keyboard.current != null && (Keyboard.current.upArrowKey.isPressed ||
+                                                         Keyboard.current.downArrowKey.isPressed ||
+                                                         Keyboard.current.leftArrowKey.isPressed ||
+                                                         Keyboard.current.rightArrowKey.isPressed))
+                        {
+                            m_LeftMirrorAdjusted = true;
+                            return true;
+                        }
+                        if (Gamepad.current != null && Gamepad.current.rightStick.ReadValue().sqrMagnitude > 0.04f)
+                        {
+                            m_LeftMirrorAdjusted = true;
+                            return true;
+                        }
+                    }
+                    return false;
+
+                case LessonActionType.AdjustRightMirror:
+                    if (m_RightMirrorAdjusted) return true;
+                    if (m_SideMirrorPanel != null && m_SideMirrorPanel.CurrentSelection == VRSideMirrorControlPanel.MirrorSelection.Right)
+                    {
+                        if (Keyboard.current != null && (Keyboard.current.upArrowKey.isPressed ||
+                                                         Keyboard.current.downArrowKey.isPressed ||
+                                                         Keyboard.current.leftArrowKey.isPressed ||
+                                                         Keyboard.current.rightArrowKey.isPressed))
+                        {
+                            m_RightMirrorAdjusted = true;
+                            return true;
+                        }
+                        if (Gamepad.current != null && Gamepad.current.rightStick.ReadValue().sqrMagnitude > 0.04f)
+                        {
+                            m_RightMirrorAdjusted = true;
+                            return true;
+                        }
                     }
                     return false;
 
@@ -339,6 +480,29 @@ namespace PrimerVolante.Lessons
                 case LessonActionType.CycleHeadlights:
                     return m_VehicleController != null && m_VehicleController.CurrentHeadlights != HeadlightMode.Off;
 
+                case LessonActionType.SetHeadlightsPosition:
+                {
+                    VRHeadlightKnob knob = m_HeadlightKnob ?? (m_VehicleController != null ? m_VehicleController.GetComponentInChildren<VRHeadlightKnob>(true) : null);
+                    return m_VehicleController != null && m_VehicleController.CurrentHeadlights == HeadlightMode.Position && (knob == null || !knob.IsGrabbed);
+                }
+
+                case LessonActionType.SetHeadlightsLowBeam:
+                {
+                    VRHeadlightKnob knob = m_HeadlightKnob ?? (m_VehicleController != null ? m_VehicleController.GetComponentInChildren<VRHeadlightKnob>(true) : null);
+                    return m_VehicleController != null && m_VehicleController.CurrentHeadlights == HeadlightMode.LowBeam && (knob == null || !knob.IsGrabbed);
+                }
+
+                case LessonActionType.SetHeadlightsHighBeam:
+                {
+                    VRHeadlightKnob knob = m_HeadlightKnob ?? (m_VehicleController != null ? m_VehicleController.GetComponentInChildren<VRHeadlightKnob>(true) : null);
+                    return m_VehicleController != null && m_VehicleController.CurrentHeadlights == HeadlightMode.HighBeam && (knob == null || !knob.IsGrabbed);
+                }
+
+                case LessonActionType.SecureStopAndPark:
+                    return m_VehicleController != null &&
+                           (m_VehicleController.CurrentGear == GearState.Park || m_VehicleController.CurrentGear == GearState.P) &&
+                           m_VehicleController.HandbrakeEngagement >= 0.9f;
+
                 case LessonActionType.DriveForward:
                     if (m_VehicleController != null && (m_VehicleController.CurrentGear == GearState.Drive || m_VehicleController.CurrentGear == GearState.D))
                     {
@@ -384,9 +548,27 @@ namespace PrimerVolante.Lessons
             }
         }
 
+        private void OnMirrorAdjusted(VRSideMirrorControlPanel.MirrorSelection sel, Vector2 dir)
+        {
+            if (sel == VRSideMirrorControlPanel.MirrorSelection.Left)
+            {
+                m_LeftMirrorAdjusted = true;
+            }
+            else if (sel == VRSideMirrorControlPanel.MirrorSelection.Right)
+            {
+                m_RightMirrorAdjusted = true;
+            }
+            CheckActionProgress();
+        }
+
         private IEnumerator AdvanceStepRoutine()
         {
-            yield return new WaitForSeconds(m_AdvanceDelay);
+            // Para calibración de asiento se usa 1.2s para asegurar que el usuario perciba la reapertura del HUD
+            float delay = (m_CurrentStep != null && m_CurrentStep.requiredAction == LessonActionType.OpenCalibrationMenu)
+                ? 1.2f
+                : m_AdvanceDelay;
+
+            yield return new WaitForSeconds(delay);
             m_AdvanceCoroutine = null;
 
             if (m_LessonManager != null && m_LessonManager.IsLessonActive && !m_LessonManager.IsLessonCompleted)

@@ -73,6 +73,12 @@ namespace PrimerVolante.VR
         public VRSideMirror LeftMirror => m_LeftMirror;
         public VRSideMirror RightMirror => m_RightMirror;
 
+        /// <summary>Evento disparado cuando se ajusta un espejo lateral (discreto o continuo).</summary>
+        public event System.Action<MirrorSelection, Vector2> MirrorAdjusted;
+
+        /// <summary>Evento disparado cuando cambia la selección del selector.</summary>
+        public event System.Action<MirrorSelection> SelectionChanged;
+
         private void Awake()
         {
             m_Rigidbody = GetComponent<Rigidbody>();
@@ -203,6 +209,7 @@ namespace PrimerVolante.VR
                     Vector2 moveDelta = inputDir.sqrMagnitude > 1f ? inputDir.normalized : inputDir;
                     targetMirror.Adjust(moveDelta, m_AdjustmentSpeed);
                     PlayMotorSound();
+                    MirrorAdjusted?.Invoke(m_CurrentSelection, moveDelta);
                 }
             }
             else
@@ -269,6 +276,7 @@ namespace PrimerVolante.VR
             {
                 targetMirror.AdjustPulse(direction, degrees);
                 PlayMotorSoundOneShot();
+                MirrorAdjusted?.Invoke(m_CurrentSelection, direction);
             }
         }
 
@@ -282,6 +290,7 @@ namespace PrimerVolante.VR
             m_CurrentSelection = selection;
             PlayClickSound();
             UpdateVisuals();
+            SelectionChanged?.Invoke(m_CurrentSelection);
         }
 
         /// <summary>

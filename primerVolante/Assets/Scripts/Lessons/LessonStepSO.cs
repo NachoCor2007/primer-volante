@@ -21,7 +21,10 @@ namespace PrimerVolante.Lessons
         None = 0,               // Informativo o manual (presionar Continuar / lectura)
         OpenCalibrationMenu,    // Abrir menú de calibración (Escape o botón Menú)
         RotateSteeringWheel,    // Girar el volante hacia ambos lados (recorrido comprobado)
-        AdjustMirrors,          // Ajustar espejo interior o laterales
+        AdjustMirrors,          // Ajustar espejo interior o laterales (genérico)
+        AdjustRearviewMirror,   // Ajustar espejo retrovisor interior
+        AdjustLeftMirror,       // Ajustar espejo lateral izquierdo con panel selector
+        AdjustRightMirror,      // Ajustar espejo lateral derecho con panel selector
         PressBrakePedal,        // Pisar pedal de freno a fondo (BrakeValue >= 0.8)
         StartEngine,            // Arrancar el motor (IsEngineRunning == true)
         ReleaseHandbrake,       // Bajar freno de mano (Engagement <= 0.05f)
@@ -34,6 +37,10 @@ namespace PrimerVolante.Lessons
         ActivateTurnSignalRight,// Guiño derecho activo
         ActivateHazardLights,   // Balizas activadas
         CycleHeadlights,        // Encender luces reglamentarias (bajas o posición)
+        SetHeadlightsPosition,  // Modo Posición (primer punto de perilla)
+        SetHeadlightsLowBeam,   // Modo Bajas reglamentarias (segundo punto de perilla)
+        SetHeadlightsHighBeam,  // Modo Altas de ruta (tercer punto de perilla)
+        SecureStopAndPark,      // Palanca en Parking y freno de mano accionado
         DriveForward,           // Avanzar en D al menos X metros
         DriveReverse            // Retroceder en R al menos X metros
     }

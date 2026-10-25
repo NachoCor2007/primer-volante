@@ -29,6 +29,8 @@ namespace PrimerVolante.Testing.Editor
         public const string LESSON_DATA_PATH = "Assets/Scripts/Lessons/LessonData_01.asset";
         public const string FONT_PATH = "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset";
         public const string PREFAB_CAR09_PATH = "Assets/MadTroll_Studio/Low Poly 1970s Family Sedan 3D Model Free Download Car02/Prefabs/Car09.prefab";
+        public const string LESSON_AUDIO_DIR = "Assets/Audio/Lessons";
+        public const string STEP_CHIME_PATH = "Assets/Audio/Lessons/step_notification_chime.wav";
 
         [MenuItem("Tools/Primer Volante/Lessons/Setup Lesson 1 Scene")]
         public static void SetupLesson01()
@@ -61,6 +63,9 @@ namespace PrimerVolante.Testing.Editor
                 Debug.LogError("[Lesson01SceneSetup] ❌ No se pudo configurar el vehículo Car09 en la escena.");
                 return;
             }
+
+            // Revertir overrides indeseados en mandos de Car09 para que coincidan 100% con Car09.prefab
+            RevertCockpitControlOverrides(car09);
 
             // Asegurar que DriverSeatFollower en XR Origin esté vinculado al asiento de Car09
             Transform driverSeat = car09.transform.Find("DriverSeat");
@@ -124,6 +129,9 @@ namespace PrimerVolante.Testing.Editor
             // 8. Configurar el LessonManager en la escena
             SetupLessonManager(scene, car09, lessonData, lockManager, highlighter, hudPanel);
 
+            // Revertir overrides indeseados en mandos de Car09 antes de guardar
+            RevertCockpitControlOverrides(car09);
+
             // 9. Guardar escena y assets
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
@@ -154,6 +162,91 @@ namespace PrimerVolante.Testing.Editor
             {
                 AssetDatabase.CreateFolder("Assets/Scripts/Lessons", "Steps");
             }
+            if (!AssetDatabase.IsValidFolder("Assets/Audio"))
+            {
+                AssetDatabase.CreateFolder("Assets", "Audio");
+            }
+            if (!AssetDatabase.IsValidFolder(LESSON_AUDIO_DIR))
+            {
+                AssetDatabase.CreateFolder("Assets/Audio", "Lessons");
+            }
+        }
+
+        /// <summary>
+        /// Asegura que el asset físico de audio 'step_notification_chime.wav' exista en Assets/Audio/Lessons/,
+        /// generándolo con dos tonos armónicos ascendentes (G5 a C6) y configurando el AudioImporter en modo DecompressOnLoad.
+        /// </summary>
+        public static AudioClip EnsureStepNotificationChimeAsset(bool force = false)
+        {
+            EnsureDirectories();
+            string path = STEP_CHIME_PATH;
+
+            if (force || !File.Exists(path) || new FileInfo(path).Length == 0)
+            {
+                GenerateStepChimeWav(path);
+                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
+                var importer = AssetImporter.GetAtPath(path) as AudioImporter;
+                if (importer != null)
+                {
+                    importer.forceToMono = true;
+                    importer.ambisonic = false;
+                    AudioImporterSampleSettings settings = importer.defaultSampleSettings;
+                    settings.loadType = AudioClipLoadType.DecompressOnLoad;
+                    settings.preloadAudioData = true;
+                    settings.compressionFormat = AudioCompressionFormat.PCM;
+                    settings.sampleRateSetting = AudioSampleRateSetting.PreserveSampleRate;
+                    importer.defaultSampleSettings = settings;
+                    importer.SaveAndReimport();
+                }
+                Debug.Log($"[Lesson01SceneSetup] 🔔 Archivo de audio físico generado e importado en {path}");
+            }
+
+            return AssetDatabase.LoadAssetAtPath<AudioClip>(path);
+        }
+
+        /// <summary>
+        /// Genera un clip WAV 16-bit PCM de ~0.35s con dos tonos armónicos ascendentes (G5 784 Hz a C6 1046 Hz)
+        /// con envolvente exponencial suave, normalizado a 0.90 de pico para excelente presencia y claridad.
+        /// </summary>
+        public static void GenerateStepChimeWav(string path)
+        {
+            const int sampleRate = 44100;
+            const float duration = 0.35f;
+            int totalSamples = Mathf.RoundToInt(duration * sampleRate);
+            float[] samples = new float[totalSamples];
+
+            float freq1 = 783.99f; // G5
+            float freq2 = 1046.50f; // C6
+            float tone2Delay = 0.07f;
+
+            for (int i = 0; i < totalSamples; i++)
+            {
+                float t = (float)i / sampleRate;
+
+                // Tono 1 (G5) con ataque de 5ms y decaimiento exponencial
+                float attack1 = Mathf.Clamp01(t / 0.005f);
+                float env1 = attack1 * Mathf.Exp(-11f * t);
+                float wave1 = Mathf.Sin(2f * Mathf.PI * freq1 * t) * 0.7f +
+                              Mathf.Sin(2f * Mathf.PI * freq1 * 2f * t) * 0.25f;
+                float tone1 = wave1 * env1;
+
+                // Tono 2 (C6) iniciado a 70ms con ataque de 5ms y decaimiento suave
+                float tone2 = 0f;
+                if (t >= tone2Delay)
+                {
+                    float t2 = t - tone2Delay;
+                    float attack2 = Mathf.Clamp01(t2 / 0.005f);
+                    float env2 = attack2 * Mathf.Exp(-8.5f * t2);
+                    float wave2 = Mathf.Sin(2f * Mathf.PI * freq2 * t2) * 0.8f +
+                                  Mathf.Sin(2f * Mathf.PI * freq2 * 2f * t2) * 0.2f;
+                    tone2 = wave2 * env2;
+                }
+
+                samples[i] = tone1 * 0.65f + tone2 * 0.85f;
+            }
+
+            VehicleAudioPlaceholderGenerator.Normalize(samples, 0.90f);
+            VehicleAudioPlaceholderGenerator.WriteWav16(path, samples);
         }
 
         private static void EnsureClonedSceneExists()
@@ -226,59 +319,8 @@ namespace PrimerVolante.Testing.Editor
         public static LessonDefinitionSO CreateOrUpdateLessonData()
         {
             EnsureDirectories();
-
-            // Paso 1: Asiento y Postura (commit 80c0d1b)
-            LessonStepSO step1 = CreateOrUpdateStep("Lesson01_Step01_SeatCalibration",
-                "Ajuste de Asiento y Postura",
-                "Para ajustar tu postura, altura y distancia del asiento, presiona el botón Menu en tu control izquierdo para abrir el menú de calibración.\nUna vez ajustado a tu comodidad, o si la posición inicial ya es óptima, apunta con el rayo y presiona 'Continuar'.",
-                LessonStepCompletionMode.ManualContinue,
-                CockpitControlFlags.SteeringWheel,
-                "");
-
-            // Paso 2: Volante (commit 80c0d1b)
-            LessonStepSO step2 = CreateOrUpdateStep("Lesson01_Step02_SteeringWheelCheck",
-                "Comprobación del Volante",
-                "Toma el volante presionando el grip de cualquier controlador y gíralo suavemente hacia ambos lados para familiarizarte con su recorrido y verificar que tus brazos tengan la flexión adecuada.\nPresiona 'Continuar' cuando estés listo.",
-                LessonStepCompletionMode.ManualContinue,
-                CockpitControlFlags.SteeringWheel,
-                "SteeringWheel_Pivot");
-
-            // Paso 3: Espejos (resaltado multiobjetivo de 3 espejos)
-            LessonStepSO step3 = CreateOrUpdateStep("Lesson01_Step03_MirrorsCheck",
-                "Visibilidad de Espejos y Entorno",
-                "Comprueba los 3 espejos retrovisores resaltados en amarillo (central y laterales). Debes observar el tráfico posterior sin desviar en exceso la cabeza.\nPresiona 'Finalizar Calibración' para concluir la lección.",
-                LessonStepCompletionMode.ManualContinue,
-                CockpitControlFlags.SteeringWheel,
-                "Mirrors");
-
-            LessonDefinitionSO lesson = AssetDatabase.LoadAssetAtPath<LessonDefinitionSO>(LESSON_DATA_PATH);
-            bool isNew = false;
-
-            if (lesson == null)
-            {
-                lesson = ScriptableObject.CreateInstance<LessonDefinitionSO>();
-                isNew = true;
-            }
-
-            lesson.lessonId = "LESSON_01";
-            lesson.lessonTitle = "Lección 1: Calibración del Ambiente de Manejo";
-            lesson.steps.Clear();
-            lesson.steps.Add(step1);
-            lesson.steps.Add(step2);
-            lesson.steps.Add(step3);
-
-            if (isNew)
-            {
-                AssetDatabase.CreateAsset(lesson, LESSON_DATA_PATH);
-            }
-            else
-            {
-                EditorUtility.SetDirty(lesson);
-            }
-
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-            Debug.Log($"[Lesson01SceneSetup] 📄 Asset de lección generado en {LESSON_DATA_PATH} con {lesson.steps.Count} pasos.");
+            LessonDefinitionSO lesson = LessonsCurriculumSetup.SetupLesson01();
+            Debug.Log($"[Lesson01SceneSetup] 📄 Asset de lección generado en {LESSON_DATA_PATH} con {lesson.steps.Count} pasos Action-Driven.");
             return lesson;
         }
 
@@ -359,6 +401,81 @@ namespace PrimerVolante.Testing.Editor
             return null;
         }
 
+        /// <summary>
+        /// Revierte cualquier override indebido en los mandos de Car09 para que coincidan 100%
+        /// con los valores del prefab Car09.prefab (y los cambios de Nacho en main).
+        /// Mantiene únicamente la posición/rotación raíz de Car09 en la escena y los componentes exclusivos de lecciones.
+        /// </summary>
+        public static void RevertCockpitControlOverrides(GameObject car09)
+        {
+            if (car09 == null || !PrefabUtility.IsPartOfPrefabInstance(car09)) return;
+
+            // 1. Sincronizar en memoria y revertir Object Overrides en todos los transforms y componentes de Car09
+            // que provienen del prefab (excluyendo la raíz Car09 y adiciones exclusivas de lecciones).
+            foreach (Transform t in car09.GetComponentsInChildren<Transform>(true))
+            {
+                if (t == null || t == car09.transform) continue;
+                if (!PrefabUtility.IsPartOfPrefabInstance(t)) continue;
+
+                Transform prefabT = PrefabUtility.GetCorrespondingObjectFromSource(t);
+                if (prefabT != null)
+                {
+                    // Sincronizar bit a bit en memoria con el prefab para evitar que Unity
+                    // auto-regenere deltas de precisión de coma flotante al guardar la escena.
+                    t.localPosition = prefabT.localPosition;
+                    t.localRotation = prefabT.localRotation;
+                    t.localScale = prefabT.localScale;
+                    PrefabUtility.RevertObjectOverride(t, InteractionMode.AutomatedAction);
+                }
+
+                if (PrefabUtility.IsPartOfPrefabInstance(t.gameObject))
+                {
+                    PrefabUtility.RevertObjectOverride(t.gameObject, InteractionMode.AutomatedAction);
+                }
+
+                foreach (Component comp in t.GetComponents<Component>())
+                {
+                    if (comp != null &&
+                        !(comp is CockpitControlLockManager) &&
+                        !(comp is InteractableHighlighter) &&
+                        !(comp is LessonHUDPanel) &&
+                        PrefabUtility.IsPartOfPrefabInstance(comp))
+                    {
+                        PrefabUtility.RevertObjectOverride(comp, InteractionMode.AutomatedAction);
+                    }
+                }
+            }
+
+            // 2. Limpiar las PropertyModifications: conservar ÚNICAMENTE las modificaciones de la raíz Car09 en la escena
+            var mods = PrefabUtility.GetPropertyModifications(car09);
+            if (mods != null)
+            {
+                var rootAssetGo = PrefabUtility.GetCorrespondingObjectFromSource(car09);
+                var rootAssetTransform = PrefabUtility.GetCorrespondingObjectFromSource(car09.transform);
+
+                var keptMods = new List<PropertyModification>();
+                for (int i = 0; i < mods.Length; i++)
+                {
+                    var mod = mods[i];
+                    if (mod.target == null) continue;
+
+                    // Descartar explícitamente cualquier modificación en objetos llamados "Visual" o componentes hijos
+                    if (mod.target.name == "Visual") continue;
+
+                    bool isRootMod = (mod.target == (UnityEngine.Object)rootAssetGo || mod.target == (UnityEngine.Object)rootAssetTransform);
+                    if (isRootMod)
+                    {
+                        keptMods.Add(mod);
+                    }
+                }
+
+                PrefabUtility.SetPropertyModifications(car09, keptMods.ToArray());
+            }
+
+            EditorUtility.SetDirty(car09);
+            Debug.Log("[Lesson01SceneSetup] 🛠️ Overrides indebidos de mandos en Car09 revertidos al prefab original y transforms sincronizados.");
+        }
+
         private static LessonHUDPanel SetupLessonHUD(GameObject car09)
         {
             TMP_FontAsset fontAsset = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FONT_PATH);
@@ -374,20 +491,27 @@ namespace PrimerVolante.Testing.Editor
                 }
             }
 
+            if (wheelPivot != null && PrefabUtility.IsPartOfPrefabInstance(wheelPivot))
+            {
+                PrefabUtility.RevertObjectOverride(wheelPivot, InteractionMode.AutomatedAction);
+            }
+
             Transform parentBody = (wheelPivot != null && wheelPivot.parent != null) ? wheelPivot.parent : car09.transform;
 
-            // Verificar si ya existe el HUD
-            Transform existingHUD = parentBody.Find("LessonHUD_Canvas");
-            if (existingHUD != null)
+            // Verificar si ya existe el HUD y destruirlo limpiamente (incluso si quedó en otra rama de la jerarquía de Car09)
+            foreach (Transform t in car09.GetComponentsInChildren<Transform>(true))
             {
-                UnityEngine.Object.DestroyImmediate(existingHUD.gameObject);
+                if (t != null && t.name == "LessonHUD_Canvas")
+                {
+                    UnityEngine.Object.DestroyImmediate(t.gameObject);
+                }
             }
 
             // 1. Crear Canvas raíz
             GameObject canvasObj = new GameObject("LessonHUD_Canvas");
             canvasObj.transform.SetParent(parentBody, false);
 
-            Vector3 wheelLocalPos = wheelPivot != null ? wheelPivot.localPosition : new Vector3(-0.298f, 0.944f, 0.13f);
+            Vector3 wheelLocalPos = wheelPivot != null ? wheelPivot.localPosition : new Vector3(-0.2975659f, 0.9444506f, 0.1298789f);
             // Posicionado directamente arriba del aro del volante (aprox Y: +0.22m por encima del centro, +0.08m adelantado en Z)
             canvasObj.transform.localPosition = new Vector3(wheelLocalPos.x, wheelLocalPos.y + 0.22f, wheelLocalPos.z + 0.08f);
             // Ligera inclinación hacia la vista del conductor
@@ -453,27 +577,29 @@ namespace PrimerVolante.Testing.Editor
                 "Lección 1: Calibración del Ambiente de Manejo", 22f, FontStyles.Bold,
                 new Vector2(0f, -24f), new Vector2(560f, 30f), new Color(0.35f, 0.75f, 1f, 1f));
 
-            // Indicador de progreso del paso
+            // Indicador de progreso del paso (Lección 1: 5 pasos)
             TextMeshProUGUI progressText = CreateText("StepProgress", stepContent.transform, fontAsset,
-                "Paso 1 de 3: Ajuste de Asiento y Postura", 17f, FontStyles.Normal,
+                "Paso 1 de 5: Ajuste de Asiento y Postura", 17f, FontStyles.Normal,
                 new Vector2(0f, -54f), new Vector2(560f, 24f), new Color(0.85f, 0.85f, 0.90f, 1f));
 
             // Instrucción detallada
             TextMeshProUGUI instructionText = CreateText("InstructionText", stepContent.transform, fontAsset,
-                "Para ajustar tu postura, altura y distancia del asiento, presiona el botón Menu en tu control izquierdo (o tecla Escape) para abrir el menú de calibración.\n\nUna vez ajustado a tu comodidad, o si la posición inicial ya es óptima, apunta con el rayo y presiona 'Continuar'.",
+                "Para ajustar tu postura, altura y distancia del asiento, presiona el botón Menu en tu control izquierdo (o tecla Escape) para abrir el menú de calibración.\n\nAjusta tu posición y cierra el menú al finalizar para avanzar.",
                 15f, FontStyles.Normal, new Vector2(0f, -118f), new Vector2(560f, 85f), Color.white);
             instructionText.textWrappingMode = TextWrappingModes.Normal;
 
-            // Botón Continuar / Confirmar Posición
-            Button continueBtn = CreateButton("Button_Continue", stepContent.transform, fontAsset, "Continuar",
+            // Botón Continuar / Confirmar Posición (Action-Driven: inactivo mientras espera acción)
+            Button continueBtn = CreateButton("Button_Continue", stepContent.transform, fontAsset, "Esperando acción...",
                 new Vector2(0f, -198f), new Vector2(280f, 46f), new Color(0.12f, 0.55f, 0.40f, 1f));
+            continueBtn.interactable = false;
             TextMeshProUGUI continueBtnText = continueBtn.GetComponentInChildren<TextMeshProUGUI>();
 
-            // Insignia temporal de acción completada
-            TextMeshProUGUI successBadge = CreateText("SuccessBadge", stepContent.transform, fontAsset,
-                "<b>[ ¡Acción Completada! ]</b>", 17f, FontStyles.Bold,
-                new Vector2(0f, -165f), new Vector2(560f, 26f), new Color(0.0f, 0.902f, 0.463f, 1f));
-            successBadge.gameObject.SetActive(false);
+            // TAREA 2: Destruir cualquier residuo de SuccessBadge si existiera
+            Transform residualBadge = stepContent.transform.Find("SuccessBadge");
+            if (residualBadge != null)
+            {
+                UnityEngine.Object.DestroyImmediate(residualBadge.gameObject);
+            }
 
             // Borde brillante de feedback sensorial perimetral (marco hueco 9-sliced, oculto por defecto)
             GameObject glowObj = new GameObject("SuccessBorderGlow");
@@ -499,6 +625,10 @@ namespace PrimerVolante.Testing.Editor
             }
             hudAudio.playOnAwake = false;
             hudAudio.spatialBlend = 0f;
+            hudAudio.volume = 1f;
+
+            AudioClip chimeClip = EnsureStepNotificationChimeAsset();
+            hudPanel.SuccessChimeClip = chimeClip;
 
             // 4. Subpanel de Felicitaciones / Fin de Lección (oculto inicialmente)
             GameObject completionPanel = new GameObject("CompletionPanel");
@@ -552,8 +682,14 @@ namespace PrimerVolante.Testing.Editor
             so.FindProperty("m_NextLessonButton").objectReferenceValue = nextBtn;
             so.FindProperty("m_NextLessonButtonText").objectReferenceValue = nextBtnText;
             so.FindProperty("m_SuccessBorderGlow").objectReferenceValue = glowImage;
-            so.FindProperty("m_SuccessBadgeText").objectReferenceValue = successBadge;
             so.FindProperty("m_AudioSource").objectReferenceValue = hudAudio;
+            so.FindProperty("m_SuccessChimeClip").objectReferenceValue = chimeClip;
+
+            InGameMenuController menuCtrl = UnityEngine.Object.FindAnyObjectByType<InGameMenuController>();
+            if (menuCtrl != null)
+            {
+                so.FindProperty("m_InGameMenuController").objectReferenceValue = menuCtrl;
+            }
 
             SerializedProperty farCastProp = so.FindProperty("m_FarCastInteractors");
             if (farCastProp != null)

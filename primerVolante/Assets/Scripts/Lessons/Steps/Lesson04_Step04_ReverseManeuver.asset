@@ -15,7 +15,7 @@ MonoBehaviour:
   stepTitle: Maniobra en Reversa (R)
   instructionText: "Observa los 3 espejos retrovisores para comprobar que la zona posterior est\xE9 despejada, selecciona la marcha Reversa (R) y retrocede con precauci\xF3n."
   completionMode: 1
-  requiredAction: 17
+  requiredAction: 20
   actionNumericParameter: 2
   allowedControls: -1
   highlightTargetName: VRGearShifter

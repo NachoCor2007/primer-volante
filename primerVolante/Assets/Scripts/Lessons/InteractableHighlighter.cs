@@ -478,7 +478,38 @@ namespace PrimerVolante.Lessons
                     if (hk != null) return hk.gameObject;
                 }
 
-                if (targetName.IndexOf("mirror", StringComparison.OrdinalIgnoreCase) >= 0)
+                // Espejos retrovisores diferenciados estrictamente para evitar falsos positivos
+                // 3.1 Espejo lateral izquierdo: SideMirror_Left / Mirror_Housing
+                if (targetName.IndexOf("left", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    targetName.IndexOf("SideMirror_Left", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    Transform leftRoot = FindDeep(searchRoot, "SideMirror_Left");
+                    if (leftRoot != null)
+                    {
+                        Transform housing = leftRoot.Find("Mirror_Housing") ?? FindDeep(leftRoot, "Mirror_Housing");
+                        if (housing != null) return housing.gameObject;
+                        return leftRoot.gameObject;
+                    }
+                }
+
+                // 3.2 Espejo lateral derecho: SideMirror_Right / Mirror_Housing
+                if (targetName.IndexOf("right", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    targetName.IndexOf("SideMirror_Right", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    Transform rightRoot = FindDeep(searchRoot, "SideMirror_Right");
+                    if (rightRoot != null)
+                    {
+                        Transform housing = rightRoot.Find("Mirror_Housing") ?? FindDeep(rightRoot, "Mirror_Housing");
+                        if (housing != null) return housing.gameObject;
+                        return rightRoot.gameObject;
+                    }
+                }
+
+                // 3.3 Retrovisor central interior: Casing_Mesh / RearviewMirror_Casing / RearviewMirror_Mount
+                if (targetName.Equals("RearviewMirror", StringComparison.OrdinalIgnoreCase) ||
+                    targetName.Equals("RearviewMirror_Mount", StringComparison.OrdinalIgnoreCase) ||
+                    targetName.Equals("RearviewMirror_Casing", StringComparison.OrdinalIgnoreCase) ||
+                    targetName.IndexOf("rearview", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     Transform casing = FindDeep(searchRoot, "Casing_Mesh") ?? FindDeep(searchRoot, "RearviewMirror_Casing") ?? FindDeep(searchRoot, "RearviewMirror_Mount");
                     if (casing != null) return casing.gameObject;
@@ -552,6 +583,7 @@ namespace PrimerVolante.Lessons
                     if (r == null) continue;
 
                     r.GetPropertyBlock(PropertyBlock);
+                    PropertyBlock.Clear();
                     PropertyBlock.SetColor(EmissionColorPropertyId, Color.black);
                     PropertyBlock.SetColor(BaseColorPropertyId, Color.white);
                     PropertyBlock.SetColor(ColorPropertyId, Color.white);

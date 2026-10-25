@@ -15,7 +15,7 @@ MonoBehaviour:
   stepTitle: "Precondici\xF3n de Seguridad: Freno de Pie"
   instructionText: "Antes de arrancar o manipular los mandos, mant\xE9n presionado el pedal de freno con tu pie derecho como precondici\xF3n fundamental de seguridad."
   completionMode: 1
-  requiredAction: 4
+  requiredAction: 7
   actionNumericParameter: 0.8
   allowedControls: 12
   highlightTargetName: 

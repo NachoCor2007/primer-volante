@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Lesson01_Step02_SteeringWheelCheck
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: "Comprobaci\xF3n del Volante"
-  instructionText: "Toma el volante presionando el grip con ambas manos y g\xEDralo hacia ambos lados para familiarizarte con su recorrido y verificar la flexi\xF3n adecuada de tus brazos."
+  instructionText: "Toma el volante con ambas manos y g\xEDralo hacia ambos lados para familiarizarte con su recorrido y verificar la flexi\xF3n c\xF3moda de tus brazos."
   completionMode: 1
   requiredAction: 2
   actionNumericParameter: 20

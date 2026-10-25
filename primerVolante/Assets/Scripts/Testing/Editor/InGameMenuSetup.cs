@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using TMPro;
 using UnityEditor;
 using UnityEditor.Events;
@@ -14,8 +15,8 @@ namespace PrimerVolante.Testing.Editor
 {
     /// <summary>
     /// Herramienta de Editor para construir el menú in-game (Canvas World Space) con calibración
-    /// de la posición de la vista del conductor, en la escena CockpitIntegrationScene.
-    /// Idempotente: puede ejecutarse repetidamente sin duplicar objetos.
+    /// de la posición de la vista del conductor, en la escena CockpitIntegrationScene o escenas de lecciones.
+    /// Idempotente: puede ejecutarse repetidamente sin duplicar objetos ni corromper referencias.
     /// </summary>
     public static class InGameMenuSetup
     {
@@ -46,10 +47,26 @@ namespace PrimerVolante.Testing.Editor
         {
             EnsureEventSystem();
 
-            GameObject xrOriginObj = GameObject.Find("XR Origin (XR Rig)");
+            var scene = EditorSceneManager.GetActiveScene();
+
+            GameObject xrOriginObj = null;
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                if (root.name == "XR Origin (XR Rig)")
+                {
+                    xrOriginObj = root;
+                    break;
+                }
+            }
+            if (xrOriginObj == null)
+            {
+                var origin = Object.FindAnyObjectByType<Unity.XR.CoreUtils.XROrigin>(FindObjectsInactive.Include);
+                if (origin != null) xrOriginObj = origin.gameObject;
+            }
+
             DriverSeatFollower follower = xrOriginObj != null
                 ? xrOriginObj.GetComponent<DriverSeatFollower>()
-                : Object.FindAnyObjectByType<DriverSeatFollower>();
+                : Object.FindAnyObjectByType<DriverSeatFollower>(FindObjectsInactive.Include);
             Transform headTransform = FindHeadTransform(xrOriginObj);
 
             TMP_FontAsset fontAsset = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FONT_PATH);
@@ -73,11 +90,36 @@ namespace PrimerVolante.Testing.Editor
             // InGameMenuController: gestiona apertura/cierre y posicionamiento frente a la cabeza.
             // Vive en un GameObject SEPARADO del Canvas (que se activa/desactiva): si estuviera en
             // el propio m_MenuRoot, Awake() lo desactivaría a sí mismo y Update() dejaría de correr.
-            GameObject controllerObj = GameObject.Find("InGameMenuController");
-            if (controllerObj == null)
+            List<GameObject> matchingControllers = new List<GameObject>();
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                if (root.name == "InGameMenuController")
+                {
+                    matchingControllers.Add(root);
+                }
+                foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+                {
+                    if (child.gameObject != root && child.name == "InGameMenuController")
+                    {
+                        matchingControllers.Add(child.gameObject);
+                    }
+                }
+            }
+
+            GameObject controllerObj = null;
+            if (matchingControllers.Count > 0)
+            {
+                controllerObj = matchingControllers[0];
+                for (int i = 1; i < matchingControllers.Count; i++)
+                {
+                    Object.DestroyImmediate(matchingControllers[i]);
+                }
+            }
+            else
             {
                 controllerObj = new GameObject("InGameMenuController");
             }
+
             InGameMenuController menuController = controllerObj.GetComponent<InGameMenuController>();
             if (menuController == null) menuController = controllerObj.AddComponent<InGameMenuController>();
 
@@ -128,7 +170,7 @@ namespace PrimerVolante.Testing.Editor
 
         public static void EnsureEventSystem()
         {
-            EventSystem eventSystem = Object.FindAnyObjectByType<EventSystem>();
+            EventSystem eventSystem = Object.FindAnyObjectByType<EventSystem>(FindObjectsInactive.Include);
             GameObject eventSystemObj;
             if (eventSystem == null)
             {
@@ -179,17 +221,39 @@ namespace PrimerVolante.Testing.Editor
             out Button resetButton,
             out Button backButton)
         {
-            GameObject canvasRoot = GameObject.Find("InGameMenu_Canvas");
-            if (canvasRoot == null)
+            var scene = EditorSceneManager.GetActiveScene();
+            List<GameObject> matchingCanvases = new List<GameObject>();
+            foreach (GameObject root in scene.GetRootGameObjects())
             {
-                canvasRoot = new GameObject("InGameMenu_Canvas");
+                if (root.name == "InGameMenu_Canvas")
+                {
+                    matchingCanvases.Add(root);
+                }
+                foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+                {
+                    if (child.gameObject != root && child.name == "InGameMenu_Canvas")
+                    {
+                        matchingCanvases.Add(child.gameObject);
+                    }
+                }
             }
-            else
+
+            GameObject canvasRoot = null;
+            if (matchingCanvases.Count > 0)
             {
+                canvasRoot = matchingCanvases[0];
+                for (int i = 1; i < matchingCanvases.Count; i++)
+                {
+                    Object.DestroyImmediate(matchingCanvases[i]);
+                }
                 for (int i = canvasRoot.transform.childCount - 1; i >= 0; i--)
                 {
                     Object.DestroyImmediate(canvasRoot.transform.GetChild(i).gameObject);
                 }
+            }
+            else
+            {
+                canvasRoot = new GameObject("InGameMenu_Canvas");
             }
 
             RectTransform canvasRect = canvasRoot.GetComponent<RectTransform>();

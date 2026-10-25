@@ -6381,7 +6381,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3016032272487022762}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.7071068, y: 0, z: -0, w: 0.7071067}
+  m_LocalRotation: {x: -0.7071068, y: 0, z: 0, w: 0.7071067}
   m_LocalPosition: {x: 0.07439156, y: 0.5122292, z: -0.47892943}
   m_LocalScale: {x: 100, y: 100, z: 100}
   m_ConstrainProportionsScale: 0
@@ -7397,6 +7397,8 @@ MonoBehaviour:
   m_LightingController: {fileID: 6302708114332588765}
   m_EnableDebugLogs: 1
   m_LogInterval: 0.25
+  m_InitialSpawnPosition: {x: 0, y: 0, z: 0}
+  m_InitialSpawnRotation: {x: 0, y: 0, z: 0, w: 1}
   m_EngineRunning: 0
   m_CrankDuration: 1
   m_HazardsActive: 0
@@ -7522,6 +7524,28 @@ MonoBehaviour:
   m_AudioProfile: {fileID: 11400000, guid: c9c35ab41dc3edc498f554c6325ef68d, type: 2}
   m_ImpactSource: {fileID: 8535301017188209510}
   m_MixerGroup: {fileID: 1856755694723622445, guid: c0333ff32db33d843a068990c1c2a0cd, type: 2}
+--- !u!114 &1039470848946908983
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3449169920416470478}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67701bda4cd98ca42b74447088e05381, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.WrongWayDetector
+  m_WrongWayDistanceM: 10
+  m_MinSpeedKmh: 3
+  m_CorrectMaxAngleDeg: 60
+  m_WrongMinAngleDeg: 120
+  m_RearmDistanceM: 10
+  m_ProbeLocalOffset: {x: 0, y: 0.5, z: -0.45}
+  m_ZoneMask:
+    serializedVersion: 2
+    m_Bits: 32768
+  m_LogEvents: 0
 --- !u!120 &1106421022049997669
 LineRenderer:
   serializedVersion: 3
@@ -7679,28 +7703,6 @@ MonoBehaviour:
   m_DestinationText: {fileID: 1664760220147263786}
   m_ArrivalPanel: {fileID: 901532118689199340}
   m_ArrivalTitleText: {fileID: 2920812523650078638}
---- !u!114 &1039470848946908983
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3449169920416470478}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 67701bda4cd98ca42b74447088e05381, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.WrongWayDetector
-  m_WrongWayDistanceM: 10
-  m_MinSpeedKmh: 3
-  m_CorrectMaxAngleDeg: 60
-  m_WrongMinAngleDeg: 120
-  m_RearmDistanceM: 10
-  m_ProbeLocalOffset: {x: 0, y: 0.5, z: -0.45}
-  m_ZoneMask:
-    serializedVersion: 2
-    m_Bits: 32768
-  m_LogEvents: 0
 --- !u!1 &3450295784253597689
 GameObject:
   m_ObjectHideFlags: 0

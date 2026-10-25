@@ -19,6 +19,9 @@ namespace PrimerVolante.Lessons
         [Tooltip("Gestor de lecciones asociado. Si es nulo, se busca automáticamente.")]
         [SerializeField] private LessonManager m_LessonManager;
 
+        [Tooltip("Controlador del menú in-game / pausa / calibración.")]
+        [SerializeField] private InGameMenuController m_InGameMenuController;
+
         [Header("Textos Principales")]
         [Tooltip("Texto para el título de la lección.")]
         [SerializeField] private TextMeshProUGUI m_LessonTitleText;
@@ -68,9 +71,6 @@ namespace PrimerVolante.Lessons
         [Tooltip("Borde o marco brillante del HUD para feedback visual de acción completada.")]
         [SerializeField] private Image m_SuccessBorderGlow;
 
-        [Tooltip("Insignia / icono de confirmación de acción completada.")]
-        [SerializeField] private TextMeshProUGUI m_SuccessBadgeText;
-
         [Tooltip("Fuente de audio para el sonido de confirmación.")]
         [SerializeField] private AudioSource m_AudioSource;
 
@@ -80,7 +80,6 @@ namespace PrimerVolante.Lessons
         private Canvas m_Canvas;
         private bool m_FarCastingActive = false;
         private Coroutine m_GlowCoroutine;
-        private static AudioClip s_ProceduralChimeClip;
         private static Sprite s_HollowBorderSprite;
 
         // Propiedades públicas para acceso e inspección en tests
@@ -96,12 +95,16 @@ namespace PrimerVolante.Lessons
         public TextMeshProUGUI NextLessonButtonText => m_NextLessonButtonText;
         public NearFarInteractor[] FarCastInteractors => m_FarCastInteractors;
         public Image SuccessBorderGlow => m_SuccessBorderGlow;
-        public TextMeshProUGUI SuccessBadgeText => m_SuccessBadgeText;
         public AudioSource AudioSource => m_AudioSource;
         public AudioClip SuccessChimeClip
         {
             get => m_SuccessChimeClip;
             set => m_SuccessChimeClip = value;
+        }
+        public InGameMenuController InGameMenuController
+        {
+            get => m_InGameMenuController;
+            set => SetInGameMenuController(value);
         }
         public Canvas Canvas => m_Canvas != null ? m_Canvas : (m_Canvas = GetComponent<Canvas>());
         public Camera WorldCamera => Canvas != null ? Canvas.worldCamera : null;
@@ -120,6 +123,11 @@ namespace PrimerVolante.Lessons
                 m_LessonManager = UnityEngine.Object.FindAnyObjectByType<LessonManager>();
             }
 
+            if (m_InGameMenuController == null)
+            {
+                m_InGameMenuController = UnityEngine.Object.FindAnyObjectByType<InGameMenuController>();
+            }
+
             ConfigureHollowBorderGlow();
             DiscoverFarCastInteractors();
             SetupButtons();
@@ -128,11 +136,59 @@ namespace PrimerVolante.Lessons
         private void OnEnable()
         {
             SetFarCasting(true);
+            SubscribeToMenuController(true);
         }
 
         private void OnDisable()
         {
             SetFarCasting(false);
+            SubscribeToMenuController(false);
+        }
+
+        public void SetInGameMenuController(InGameMenuController menuController)
+        {
+            SubscribeToMenuController(false);
+            m_InGameMenuController = menuController;
+            SubscribeToMenuController(true);
+        }
+
+        private void SubscribeToMenuController(bool subscribe)
+        {
+            if (m_InGameMenuController == null) return;
+            if (subscribe)
+            {
+                m_InGameMenuController.MenuOpened -= HandleInGameMenuOpened;
+                m_InGameMenuController.MenuOpened += HandleInGameMenuOpened;
+                m_InGameMenuController.MenuClosed -= HandleInGameMenuClosed;
+                m_InGameMenuController.MenuClosed += HandleInGameMenuClosed;
+                if (m_InGameMenuController.IsOpen && Canvas != null)
+                {
+                    Canvas.enabled = false;
+                }
+            }
+            else
+            {
+                m_InGameMenuController.MenuOpened -= HandleInGameMenuOpened;
+                m_InGameMenuController.MenuClosed -= HandleInGameMenuClosed;
+            }
+        }
+
+        private void HandleInGameMenuOpened()
+        {
+            if (Canvas != null)
+            {
+                Canvas.enabled = false;
+            }
+            SetFarCasting(false);
+        }
+
+        private void HandleInGameMenuClosed()
+        {
+            if (Canvas != null)
+            {
+                Canvas.enabled = true;
+            }
+            SetFarCasting(true);
         }
 
         public void BindToLessonManager(LessonManager manager)
@@ -248,11 +304,6 @@ namespace PrimerVolante.Lessons
                 m_SuccessBorderGlow.gameObject.SetActive(false);
             }
 
-            if (m_SuccessBadgeText != null)
-            {
-                m_SuccessBadgeText.gameObject.SetActive(false);
-            }
-
             if (m_StepContentPanel != null) m_StepContentPanel.SetActive(true);
             if (m_CompletionPanel != null) m_CompletionPanel.SetActive(false);
 
@@ -309,7 +360,7 @@ namespace PrimerVolante.Lessons
 
         /// <summary>
         /// Dispara el feedback sensorial completo: borde verde esmeralda brillante (#00E676)
-        /// pulsando suavemente durante 0.8s, insignia [ ¡Acción Completada! ] y chime auditivo de confirmación.
+        /// pulsando suavemente durante 0.8s, chime auditivo de confirmación y cambio en el texto del botón a '¡Acción Completada!'.
         /// </summary>
         public void PlayActionSuccessFeedback(System.Action onCompleted = null)
         {
@@ -318,27 +369,21 @@ namespace PrimerVolante.Lessons
                 StopCoroutine(m_GlowCoroutine);
             }
 
+            // Reproducir notificación sonora de acción completada de inmediato
+            PlayChimeSound();
+
             if (gameObject.activeInHierarchy)
             {
                 m_GlowCoroutine = StartCoroutine(ActionSuccessFeedbackRoutine(onCompleted));
             }
             else
             {
-                PlayChimeSound();
                 onCompleted?.Invoke();
             }
         }
 
         private System.Collections.IEnumerator ActionSuccessFeedbackRoutine(System.Action onCompleted)
         {
-            PlayChimeSound();
-
-            if (m_SuccessBadgeText != null)
-            {
-                m_SuccessBadgeText.gameObject.SetActive(true);
-                m_SuccessBadgeText.text = "<b>[ ¡Acción Completada! ]</b>";
-            }
-
             if (m_ContinueButtonText != null)
             {
                 m_ContinueButtonText.text = "¡Acción Completada!";
@@ -377,11 +422,6 @@ namespace PrimerVolante.Lessons
             {
                 m_SuccessBorderGlow.color = new Color(emerald.r, emerald.g, emerald.b, 0f);
                 m_SuccessBorderGlow.gameObject.SetActive(false);
-            }
-
-            if (m_SuccessBadgeText != null)
-            {
-                m_SuccessBadgeText.gameObject.SetActive(false);
             }
 
             m_GlowCoroutine = null;
@@ -463,6 +503,11 @@ namespace PrimerVolante.Lessons
         /// Reproduce el sonido de confirmación agradable (chime). Si no hay clip asignado,
         /// genera un chime armónico procedimental de dos tonos.
         /// </summary>
+        /// <summary>
+        /// Reproduce el sonido de confirmación agradable (chime) para notificar al conductor que la acción
+        /// requerida fue completada con éxito y que debe volver a prestar atención al panel HUD sobre el volante.
+        /// Utiliza el asset físico 'step_notification_chime.wav' configurado a máximo volumen y en 2D estéreo directo.
+        /// </summary>
         public void PlayChimeSound()
         {
             if (m_AudioSource == null)
@@ -478,54 +523,39 @@ namespace PrimerVolante.Lessons
             {
                 m_AudioSource.playOnAwake = false;
                 m_AudioSource.spatialBlend = 0f;
+                m_AudioSource.volume = 1f;
 
                 if (m_SuccessChimeClip == null)
                 {
-                    m_SuccessChimeClip = CreateProceduralChimeClip();
+#if UNITY_EDITOR
+                    m_SuccessChimeClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Lessons/step_notification_chime.wav");
+#endif
+                    if (m_SuccessChimeClip == null)
+                    {
+                        m_SuccessChimeClip = Resources.Load<AudioClip>("Audio/Lessons/step_notification_chime");
+                    }
                 }
 
                 if (m_SuccessChimeClip != null)
                 {
-                    m_AudioSource.PlayOneShot(m_SuccessChimeClip, 0.85f);
+                    m_AudioSource.PlayOneShot(m_SuccessChimeClip, 1.0f);
                 }
             }
-        }
-
-        /// <summary>
-        /// Genera en memoria un clip de audio de confirmación suave y agradable (chime).
-        /// </summary>
-        public static AudioClip CreateProceduralChimeClip()
-        {
-            if (s_ProceduralChimeClip != null) return s_ProceduralChimeClip;
-
-            int sampleRate = 44100;
-            float duration = 0.45f;
-            int sampleCount = (int)(sampleRate * duration);
-            float[] samples = new float[sampleCount];
-
-            float freq1 = 659.25f; // E5
-            float freq2 = 987.77f; // B5
-
-            for (int i = 0; i < sampleCount; i++)
-            {
-                float t = (float)i / sampleRate;
-                float envelope = Mathf.Exp(-7.5f * t);
-                float wave = Mathf.Sin(2f * Mathf.PI * freq1 * t) * 0.6f +
-                             Mathf.Sin(2f * Mathf.PI * freq2 * t) * 0.4f;
-                samples[i] = wave * envelope * 0.7f;
-            }
-
-            s_ProceduralChimeClip = AudioClip.Create("StepCompleteChimeProcedural", sampleCount, 1, sampleRate, false);
-            s_ProceduralChimeClip.SetData(samples, 0);
-            return s_ProceduralChimeClip;
         }
 
         /// <summary>
         /// Muestra la pantalla de finalización de la lección con felicitaciones
         /// y ofrece la opción de repetir la lección o continuar a la siguiente si existe.
+        /// REGLA EXPLÍCITA: Permanece en completo silencio (NO reproduce ningún sonido ni fanfarria).
         /// </summary>
         public void DisplayCompletion(LessonDefinitionSO lesson)
         {
+            // Silencio garantizado al finalizar la lección entera (sin chimes ni fanfarrias)
+            if (m_AudioSource != null && m_AudioSource.isPlaying)
+            {
+                m_AudioSource.Stop();
+            }
+
             if (m_StepContentPanel != null) m_StepContentPanel.SetActive(false);
             if (m_CompletionPanel != null) m_CompletionPanel.SetActive(true);
 

@@ -15,7 +15,7 @@ MonoBehaviour:
   stepTitle: Perilla de Luces Reglamentarias
   instructionText: "Gira la perilla selectora de luces en el tablero para encender las luces bajas reglamentarias de circulaci\xF3n."
   completionMode: 1
-  requiredAction: 15
+  requiredAction: 18
   actionNumericParameter: 0
   allowedControls: 64
   highlightTargetName: VRHeadlightKnob

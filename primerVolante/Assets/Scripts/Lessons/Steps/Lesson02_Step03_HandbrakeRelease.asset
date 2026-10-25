@@ -15,7 +15,7 @@ MonoBehaviour:
   stepTitle: "Liberaci\xF3n del Freno de Mano"
   instructionText: "Toma la palanca del freno de mano con tu mano derecha y b\xE1jala por completo para liberar el freno de estacionamiento."
   completionMode: 1
-  requiredAction: 6
+  requiredAction: 9
   actionNumericParameter: 0.05
   allowedControls: 4
   highlightTargetName: VRHandbrake

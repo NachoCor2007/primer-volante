@@ -83,8 +83,7 @@ namespace PrimerVolante.VR
             m_Rigidbody = GetComponent<Rigidbody>();
 
             m_InitialParent = transform.parent;
-            m_InitialLocalPosition = transform.localPosition;
-            m_InitialLocalRotation = transform.localRotation;
+            EnsureInitialTransform();
 
             ConfigureGrabInteractable();
             EnsureSimplifiedGrabCollider();
@@ -226,6 +225,7 @@ namespace PrimerVolante.VR
 
         private void ApplyLocalTransform(float angle)
         {
+            EnsureInitialTransform();
             transform.localPosition = m_InitialLocalPosition;
             transform.localRotation = m_InitialLocalRotation * Quaternion.AngleAxis(-angle, Vector3.forward);
         }
@@ -235,6 +235,7 @@ namespace PrimerVolante.VR
         /// </summary>
         public void SetAngleProgrammatic(float angle)
         {
+            EnsureInitialTransform();
             m_CurrentAngle = Mathf.Clamp(angle, -m_MaxSteeringAngle, m_MaxSteeringAngle);
             m_SteeringValue = m_MaxSteeringAngle > 0 ? Mathf.Clamp(m_CurrentAngle / m_MaxSteeringAngle, -1f, 1f) : 0f;
             ApplyLocalTransform(m_CurrentAngle);
@@ -245,15 +246,37 @@ namespace PrimerVolante.VR
         /// </summary>
         public void ResetToCenter()
         {
-            if (m_InitialLocalRotation == default(Quaternion))
-            {
-                m_InitialLocalRotation = transform.localRotation;
-                m_InitialLocalPosition = transform.localPosition;
-            }
+            EnsureInitialTransform();
             m_CurrentAngle = 0f;
             m_SteeringValue = 0f;
             ApplyLocalTransform(0f);
             m_LastHandAngles.Clear();
+        }
+
+        private void EnsureInitialTransform()
+        {
+            if (m_InitialParent == null)
+            {
+                m_InitialParent = transform.parent;
+            }
+
+            bool rotationUnset = (m_InitialLocalRotation.x == 0f && m_InitialLocalRotation.y == 0f &&
+                                  m_InitialLocalRotation.z == 0f && m_InitialLocalRotation.w == 0f);
+
+            if (rotationUnset || m_InitialLocalPosition == Vector3.zero)
+            {
+                if (transform.localPosition != Vector3.zero)
+                {
+                    m_InitialLocalPosition = transform.localPosition;
+                    m_InitialLocalRotation = transform.localRotation;
+                }
+                else
+                {
+                    // Coordenadas de fábrica de Car09.prefab para SteeringWheel_Pivot
+                    m_InitialLocalPosition = new Vector3(-0.2975659f, 0.9444506f, 0.1298789f);
+                    m_InitialLocalRotation = new Quaternion(0.3098468f, 0f, 0f, 0.9507865f);
+                }
+            }
         }
 
         /// <summary>

@@ -15,7 +15,7 @@ MonoBehaviour:
   stepTitle: Balizas de Emergencia
   instructionText: "Presiona el bot\xF3n de balizas de emergencia (tri\xE1ngulo rojo en la consola) para advertir una detenci\xF3n riesgosa o emergencia en la v\xEDa."
   completionMode: 1
-  requiredAction: 14
+  requiredAction: 17
   actionNumericParameter: 0
   allowedControls: 16
   highlightTargetName: HazardButton

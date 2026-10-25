@@ -25,11 +25,13 @@ namespace PrimerVolante.Testing.Editor
     public static class Lesson01Verification
     {
         public static readonly System.Collections.Generic.List<string> LastFailures = new System.Collections.Generic.List<string>();
+        public static readonly System.Collections.Generic.List<string> LogLines = new System.Collections.Generic.List<string>();
 
         [MenuItem("Tools/Primer Volante/Lessons/Verify Lesson 1")]
         public static bool RunVerification()
         {
             LastFailures.Clear();
+            LogLines.Clear();
             Debug.Log("=================================================================");
             Debug.Log("🧪 [Lesson01Verification] Iniciando suite de pruebas de Lección 1...");
             Debug.Log("=================================================================");
@@ -64,6 +66,10 @@ namespace PrimerVolante.Testing.Editor
                 Debug.LogError($"🏁 [Lesson01Verification] PRUEBAS FALLIDAS: ({passedTests}/{totalTests} pasadas)");
             }
             Debug.Log("=================================================================");
+
+            try {
+                System.IO.File.WriteAllLines("verification_lesson01_results.txt", LogLines);
+            } catch {}
 
             return allPassed;
         }
@@ -105,10 +111,10 @@ namespace PrimerVolante.Testing.Editor
             {
                 Assert(lesson.lessonId == "LESSON_01", "lessonId debe ser 'LESSON_01'", ref total, ref passed);
                 Assert(!string.IsNullOrEmpty(lesson.lessonTitle), "lessonTitle no debe estar vacío", ref total, ref passed);
-                Assert(lesson.steps != null && lesson.steps.Count >= 3,
-                    $"La lección debe contener al menos 3 pasos (encontrados: {lesson.steps?.Count ?? 0})", ref total, ref passed);
+                Assert(lesson.steps != null && lesson.steps.Count == 5,
+                    $"La lección debe contener exactamente 5 pasos (encontrados: {lesson.steps?.Count ?? 0})", ref total, ref passed);
 
-                if (lesson.steps != null)
+                if (lesson.steps != null && lesson.steps.Count == 5)
                 {
                     for (int i = 0; i < lesson.steps.Count; i++)
                     {
@@ -118,29 +124,38 @@ namespace PrimerVolante.Testing.Editor
                         {
                             Assert(!string.IsNullOrEmpty(step.stepTitle), $"El paso {i + 1} debe tener stepTitle", ref total, ref passed);
                             Assert(!string.IsNullOrEmpty(step.instructionText), $"El paso {i + 1} debe tener instructionText", ref total, ref passed);
-                            CockpitControlFlags expectedFlags = (i == 2)
-                                ? (CockpitControlFlags.SteeringWheel | CockpitControlFlags.Mirrors)
-                                : CockpitControlFlags.SteeringWheel;
-                            Assert((step.allowedControls & expectedFlags) == expectedFlags,
-                                $"En la Lección 1, el paso {i + 1} debe permitir los controles esperados (tiene: {step.allowedControls})", ref total, ref passed);
+                            Assert(step.completionMode == LessonStepCompletionMode.ActionRequired, $"El paso {i + 1} debe ser ActionRequired", ref total, ref passed);
 
                             if (i == 0)
                             {
-                                bool mentionsMenu = step.instructionText.Contains("Menu");
-                                Assert(mentionsMenu, "El Paso 1 debe instruir al conductor a usar el botón Menu para calibrar postura", ref total, ref passed);
+                                Assert(step.requiredAction == LessonActionType.OpenCalibrationMenu, "Paso 1 debe requerir OpenCalibrationMenu", ref total, ref passed);
+                                bool mentionsMenu = step.instructionText.Contains("Menu") || step.instructionText.Contains("calibración");
+                                Assert(mentionsMenu, "El Paso 1 debe instruir al conductor sobre el menú de calibración", ref total, ref passed);
                             }
                             else if (i == 1)
                             {
-                                bool mentionsGrip = step.instructionText.Contains("grip");
-                                bool mentionsWheel = step.instructionText.Contains("volante");
-                                Assert(mentionsGrip && mentionsWheel, "El Paso 2 debe instruir a tomar el volante presionando el grip", ref total, ref passed);
+                                Assert(step.requiredAction == LessonActionType.RotateSteeringWheel, "Paso 2 debe requerir RotateSteeringWheel", ref total, ref passed);
+                                bool mentionsWheel = step.instructionText.ToLower().Contains("volante");
+                                Assert(mentionsWheel, "El Paso 2 debe instruir a tomar y girar el volante", ref total, ref passed);
                                 Assert(step.highlightTargetName == "SteeringWheel_Pivot", "El Paso 2 debe resaltar 'SteeringWheel_Pivot'", ref total, ref passed);
                             }
                             else if (i == 2)
                             {
-                                bool mentionsMirrors = step.instructionText.Contains("espejos retrovisores") || step.instructionText.Contains("espejos");
-                                Assert(mentionsMirrors, "El Paso 3 debe instruir a verificar o ajustar los espejos retrovisores", ref total, ref passed);
-                                Assert(step.highlightTargetName == "Mirrors", "El Paso 3 debe tener highlightTargetName 'Mirrors'", ref total, ref passed);
+                                Assert(step.requiredAction == LessonActionType.AdjustRearviewMirror, "Paso 3 debe requerir AdjustRearviewMirror", ref total, ref passed);
+                                Assert(step.allowedControls.HasFlag(CockpitControlFlags.Mirrors), "Paso 3 debe habilitar Mirrors", ref total, ref passed);
+                                Assert(step.highlightTargetName == "RearviewMirror_Mount", "El Paso 3 debe resaltar 'RearviewMirror_Mount'", ref total, ref passed);
+                            }
+                            else if (i == 3)
+                            {
+                                Assert(step.requiredAction == LessonActionType.AdjustLeftMirror, "Paso 4 debe requerir AdjustLeftMirror", ref total, ref passed);
+                                Assert(step.allowedControls.HasFlag(CockpitControlFlags.Mirrors), "Paso 4 debe habilitar Mirrors", ref total, ref passed);
+                                Assert(step.highlightTargetName.Contains("SideMirror_Left"), "El Paso 4 debe resaltar SideMirror_Left", ref total, ref passed);
+                            }
+                            else if (i == 4)
+                            {
+                                Assert(step.requiredAction == LessonActionType.AdjustRightMirror, "Paso 5 debe requerir AdjustRightMirror", ref total, ref passed);
+                                Assert(step.allowedControls.HasFlag(CockpitControlFlags.Mirrors), "Paso 5 debe habilitar Mirrors", ref total, ref passed);
+                                Assert(step.highlightTargetName.Contains("SideMirror_Right"), "El Paso 5 debe resaltar SideMirror_Right", ref total, ref passed);
                             }
                         }
                     }
@@ -192,14 +207,37 @@ namespace PrimerVolante.Testing.Editor
             {
                 lockManager.AutoDiscoverControls(car09.transform);
 
-                // Comprobar que los mandos físicos existan
+                // Comprobar que los mandos físicos existan y coincidan con Car09.prefab
                 Assert(lockManager.SteeringWheel != null, "VRSteeringWheel debe encontrarse en Car09", ref total, ref passed);
                 Assert(lockManager.GearShifter != null, "VRGearShifter debe encontrarse en Car09", ref total, ref passed);
+                if (lockManager.GearShifter != null)
+                {
+                    Transform shifterT = lockManager.GearShifter.transform;
+                    Assert(Mathf.Abs(shifterT.localPosition.x - 0.074f) < 0.02f && Mathf.Abs(shifterT.localPosition.y - 0.5348f) < 0.02f,
+                        $"GearShifter debe ubicarse en su zócalo de la consola central según el prefab (actual: {shifterT.localPosition})", ref total, ref passed);
+                    float shifterAngleDiff = Quaternion.Angle(shifterT.localRotation, new Quaternion(-0.7071068f, 0f, 0f, 0.7071068f));
+                    Assert(shifterAngleDiff < 2f,
+                        $"GearShifter debe mantener la rotación original del prefab (actual dif: {shifterAngleDiff:F1}°)", ref total, ref passed);
+                }
+
                 Assert(lockManager.Handbrake != null, "VRHandbrake debe encontrarse en Car09", ref total, ref passed);
                 Assert(lockManager.StartButtonControl != null, "StartButton debe encontrarse en Car09", ref total, ref passed);
                 Assert(lockManager.HazardButton != null, "HazardButton (VRToggleButton) debe encontrarse en Car09", ref total, ref passed);
                 Assert(lockManager.TurnSignal != null, "VRTurnSignal debe encontrarse en Car09", ref total, ref passed);
+                if (lockManager.TurnSignal != null)
+                {
+                    Transform signalT = lockManager.TurnSignal.transform;
+                    Assert(Mathf.Abs(signalT.localPosition.x - (-0.3137f)) < 0.02f && Mathf.Abs(signalT.localPosition.y - 0.8927f) < 0.02f,
+                        $"TurnSignal debe ubicarse en la columna de dirección según el prefab (actual: {signalT.localPosition})", ref total, ref passed);
+                }
+
                 Assert(lockManager.HeadlightKnob != null, "VRHeadlightKnob debe encontrarse en Car09", ref total, ref passed);
+                if (lockManager.HeadlightKnob != null)
+                {
+                    Transform knobT = lockManager.HeadlightKnob.transform;
+                    Assert(Mathf.Abs(knobT.localPosition.x - (-0.574f)) < 0.02f && Mathf.Abs(knobT.localPosition.y - 0.838f) < 0.02f,
+                        $"HeadlightKnob debe ubicarse en el tablero según el prefab (actual: {knobT.localPosition})", ref total, ref passed);
+                }
 
                 // Probar bloqueo selectivo de la Lección 1
                 lockManager.ApplyAllowedControls(CockpitControlFlags.SteeringWheel);
@@ -258,13 +296,17 @@ namespace PrimerVolante.Testing.Editor
                 Assert(hudPanel.InstructionText != null, "hudPanel.InstructionText debe estar asignado", ref total, ref passed);
                 Assert(hudPanel.ContinueButton != null, "hudPanel.ContinueButton debe estar asignado", ref total, ref passed);
                 Assert(hudPanel.CompletionPanel != null, "hudPanel.CompletionPanel debe estar asignado", ref total, ref passed);
-            Assert(hudPanel.NextLessonButton != null, "hudPanel.NextLessonButton debe estar asignado", ref total, ref passed);
+                Assert(hudPanel.NextLessonButton != null, "hudPanel.NextLessonButton debe estar asignado", ref total, ref passed);
+                Assert(hudPanel.SuccessChimeClip != null, "hudPanel.SuccessChimeClip debe estar asignado", ref total, ref passed);
 
                 // REGLA CLAVE 1: NO debe haber panel de ajuste ni sliders embebidos en el HUD
                 bool hasSeatPanel = hudPanel.transform.Find("StepContentPanel/SeatAdjustmentPanel") != null;
                 Assert(!hasSeatPanel, "LessonHUDPanel NO debe poseer subpanel de sliders de asiento embebidos", ref total, ref passed);
                 Slider[] embeddedSliders = hudPanel.GetComponentsInChildren<Slider>(true);
                 Assert(embeddedSliders.Length == 0, $"LessonHUDPanel NO debe contener sliders embebidos (encontrados: {embeddedSliders.Length})", ref total, ref passed);
+                Assert(hudPanel.transform.Find("StepContentPanel/SuccessBadge") == null,
+                    "SuccessBadge NO debe existir en el Canvas del HUD de Lección 1 (eliminado definitivamente)",
+                    ref total, ref passed);
 
                 // REGLA CLAVE 2: NearFarInteractors y WorldCamera asignados para Raycasting
                 Assert(hudPanel.FarCastInteractors != null && hudPanel.FarCastInteractors.Length > 0,
@@ -370,10 +412,19 @@ namespace PrimerVolante.Testing.Editor
                 // Se deja el estado del HUD como estaba antes de esta verificación
                 if (hudWasActive) hudPanel.SetFarCasting(true);
 
-                // Comprobar posición local por encima del volante
+                // Comprobar posición local por encima del volante y fidelidad al prefab Car09.prefab
                 VRSteeringWheel wheel = car09.GetComponentInChildren<VRSteeringWheel>(true);
                 if (wheel != null)
                 {
+                    Vector3 expectedWheelPos = new Vector3(-0.2975659f, 0.9444506f, 0.1298789f);
+                    Quaternion expectedWheelRot = new Quaternion(0.3098468f, 0f, 0f, 0.9507865f);
+                    Assert(Vector3.Distance(wheel.transform.localPosition, expectedWheelPos) < 0.002f,
+                        $"SteeringWheel_Pivot debe coincidir exactamente con Car09.prefab en posición local (actual: {wheel.transform.localPosition}, esperado: {expectedWheelPos})",
+                        ref total, ref passed);
+                    Assert(Quaternion.Angle(wheel.transform.localRotation, expectedWheelRot) < 0.2f,
+                        $"SteeringWheel_Pivot debe coincidir exactamente con Car09.prefab en rotación local (actual: {wheel.transform.localRotation.eulerAngles}, esperado: {expectedWheelRot.eulerAngles})",
+                        ref total, ref passed);
+
                     float hudLocalY = hudPanel.transform.localPosition.y;
                     float wheelLocalY = wheel.transform.localPosition.y;
                     Assert(hudLocalY > wheelLocalY,
@@ -387,12 +438,82 @@ namespace PrimerVolante.Testing.Editor
             Assert(menuController != null, "InGameMenuController debe existir en la escena de la lección", ref total, ref passed);
 
             GameObject menuCanvas = GameObject.Find("InGameMenu_Canvas");
+            if (menuCanvas == null)
+            {
+                foreach (var root in scene.GetRootGameObjects())
+                {
+                    if (root.name == "InGameMenu_Canvas") { menuCanvas = root; break; }
+                    foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+                    {
+                        if (child.name == "InGameMenu_Canvas") { menuCanvas = child.gameObject; break; }
+                    }
+                    if (menuCanvas != null) break;
+                }
+            }
             Assert(menuCanvas != null, "InGameMenu_Canvas debe existir en la escena de la lección", ref total, ref passed);
             if (menuCanvas != null)
             {
                 TrackedDeviceGraphicRaycaster tdgrMenu = menuCanvas.GetComponent<TrackedDeviceGraphicRaycaster>();
                 Assert(tdgrMenu != null, "InGameMenu_Canvas debe incluir TrackedDeviceGraphicRaycaster para interacción VR", ref total, ref passed);
             }
+
+            // Idempotencia: Verificar que exista exactamente UN InGameMenu_Canvas y un InGameMenuController
+            int menuCanvasCount = 0;
+            foreach (var root in scene.GetRootGameObjects())
+            {
+                if (root.name == "InGameMenu_Canvas") menuCanvasCount++;
+                foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+                {
+                    if (child.gameObject != root && child.name == "InGameMenu_Canvas") menuCanvasCount++;
+                }
+            }
+            Assert(menuCanvasCount == 1, $"Debe existir exactamente UN InGameMenu_Canvas en la escena (actual: {menuCanvasCount})", ref total, ref passed);
+
+            int menuControllerCount = 0;
+            foreach (var root in scene.GetRootGameObjects())
+            {
+                if (root.name == "InGameMenuController") menuControllerCount++;
+                foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+                {
+                    if (child.gameObject != root && child.name == "InGameMenuController") menuControllerCount++;
+                }
+            }
+            Assert(menuControllerCount == 1, $"Debe existir exactamente UN InGameMenuController en la escena (actual: {menuControllerCount})", ref total, ref passed);
+
+            // Comprobar que Car09.prefab esté limpio y libre de adiciones de escena
+            GameObject prefabAsset = AssetDatabase.LoadAssetAtPath<GameObject>(Lesson01SceneSetup.PREFAB_CAR09_PATH);
+            Assert(prefabAsset != null, "Car09.prefab debe existir", ref total, ref passed);
+            if (prefabAsset != null)
+            {
+                Assert(prefabAsset.GetComponent<CockpitControlLockManager>() == null,
+                    "Car09.prefab NO debe contener CockpitControlLockManager (exclusivo de escena)", ref total, ref passed);
+                Assert(prefabAsset.GetComponent<InteractableHighlighter>() == null,
+                    "Car09.prefab NO debe contener InteractableHighlighter (exclusivo de escena)", ref total, ref passed);
+                Assert(prefabAsset.transform.Find("LessonHUD_Canvas") == null,
+                    "Car09.prefab NO debe contener LessonHUD_Canvas (exclusivo de escena)", ref total, ref passed);
+            }
+
+            // Comprobar que Car09 en la escena no posea overrides indeseados de Transform en mandos o Visual
+            var carMods = PrefabUtility.GetPropertyModifications(car09);
+            int childTransformOverrides = 0;
+            if (carMods != null)
+            {
+                var rootAssetGo = PrefabUtility.GetCorrespondingObjectFromSource(car09);
+                var rootAssetTransform = PrefabUtility.GetCorrespondingObjectFromSource(car09.transform);
+                foreach (var mod in carMods)
+                {
+                    if (mod.target == null) continue;
+                    bool isRoot = (mod.target == (UnityEngine.Object)rootAssetGo || mod.target == (UnityEngine.Object)rootAssetTransform);
+                    if (!isRoot && (mod.target.name == "Visual" || mod.propertyPath.StartsWith("m_LocalPosition") || mod.propertyPath.StartsWith("m_LocalRotation")))
+                    {
+                        Debug.LogWarning($"[DEBUG OVERRIDE] Target: '{mod.target.name}' ({mod.target.GetType().Name}), Property: '{mod.propertyPath}', Value: '{mod.value}'");
+                        childTransformOverrides++;
+                    }
+                }
+            }
+            Assert(childTransformOverrides == 0,
+                $"Car09 en la escena NO debe tener overrides de Transform en mandos o Visual (encontrados: {childTransformOverrides})",
+                ref total, ref passed);
 
             // EventSystem con XRUIInputModule
             EventSystem eventSystem = UnityEngine.Object.FindAnyObjectByType<EventSystem>();
@@ -454,30 +575,50 @@ namespace PrimerVolante.Testing.Editor
                 Assert(highlighter.CurrentTarget != null && highlighter.CurrentTarget.name == "SteeringWheel_Pivot",
                     $"En Paso 2 el objetivo resaltado debe ser SteeringWheel_Pivot (actual: {highlighter.CurrentTarget?.name})", ref total, ref passed);
 
-                // Paso 3: Tres espejos retrovisores resaltados simultáneamente y volante apagado
+                // Paso 3: Retrovisor central resaltado y volante apagado
                 lessonManager.GoToStep(2);
                 Assert(highlighter.IsHighlighting, "En Paso 3 el resaltado debe estar activo", ref total, ref passed);
                 Assert(highlighter.CurrentTarget != null && highlighter.CurrentTarget.name != "SteeringWheel_Pivot",
                     "En Paso 3 el volante ya NO debe permanecer resaltado", ref total, ref passed);
-                Assert(highlighter.CurrentTargets != null && highlighter.CurrentTargets.Count == 3,
-                    $"En Paso 3 deben estar resaltados los 3 espejos retrovisores simultáneamente (actual: {highlighter.CurrentTargets?.Count ?? 0})", ref total, ref passed);
-                Assert(System.Linq.Enumerable.Any(highlighter.CurrentTargets, t => t != null && (t.name == "Casing_Mesh" || t.name == "RearviewMirror_Casing")),
-                    "En Paso 3 la carcasa del retrovisor central (Casing_Mesh / RearviewMirror_Casing) debe estar entre los objetivos resaltados", ref total, ref passed);
-                Assert(System.Linq.Enumerable.Any(highlighter.CurrentTargets, t => t != null && (t.name == "Mirror_Housing" || t.name == "SideMirror_Left")),
-                    "En Paso 3 el soporte del espejo izquierdo (Mirror_Housing / SideMirror_Left) debe estar entre los objetivos resaltados", ref total, ref passed);
-                Assert(System.Linq.Enumerable.Any(highlighter.CurrentTargets, t => t != null && (t.name == "Mirror_Housing" || t.name == "SideMirror_Right")),
-                    "En Paso 3 el soporte del espejo derecho (Mirror_Housing / SideMirror_Right) debe estar entre los objetivos resaltados", ref total, ref passed);
+                Assert(highlighter.TargetRenderers.Any(r => r != null && (r.gameObject.name == "Casing_Mesh" || r.gameObject.name == "RearviewMirror_Casing")),
+                    "En Paso 3 el soporte del retrovisor central (Casing_Mesh / RearviewMirror_Casing) debe emitir brillo", ref total, ref passed);
 
-                // Exclusión estricta de cristal reflectante (Mirror_Glass) y cámaras
+                // Paso 4: Espejo lateral izquierdo y panel de puerta resaltados
+                lessonManager.GoToStep(3);
+                Assert(highlighter.IsHighlighting, "En Paso 4 el resaltado debe estar activo", ref total, ref passed);
+                Assert(highlighter.TargetRenderers.Any(r => r != null && (r.gameObject.name == "Mirror_Housing" || r.gameObject.name == "SideMirror_Left")),
+                    "En Paso 4 el soporte del espejo izquierdo debe emitir brillo", ref total, ref passed);
+                Assert(!highlighter.TargetRenderers.Any(r => r != null && (r.gameObject.name == "Casing_Mesh" || r.gameObject.name == "RearviewMirror_Casing")),
+                    "En Paso 4 el retrovisor central interior NO debe figurar en los renderers resaltados", ref total, ref passed);
+
+                // Paso 5: Espejo lateral derecho y panel de puerta resaltados
+                lessonManager.GoToStep(4);
+                Assert(highlighter.IsHighlighting, "En Paso 5 el resaltado debe estar activo", ref total, ref passed);
+                Assert(highlighter.TargetRenderers.Any(r => r != null && (r.gameObject.name == "Mirror_Housing" || r.gameObject.name == "SideMirror_Right")),
+                    "En Paso 5 el soporte del espejo derecho debe emitir brillo", ref total, ref passed);
+                Assert(!highlighter.TargetRenderers.Any(r => r != null && (r.gameObject.name == "Casing_Mesh" || r.gameObject.name == "RearviewMirror_Casing")),
+                    "En Paso 5 el retrovisor central interior NO debe figurar en los renderers resaltados", ref total, ref passed);
+
+                // Exclusión estricta de cristal reflectante (Mirror_Glass)
                 Assert(!highlighter.TargetRenderers.Any(r => r != null && r.gameObject.name == "Mirror_Glass"),
-                    "En Paso 3 los cristales (Mirror_Glass) NO deben ser resaltados", ref total, ref passed);
-                Assert(highlighter.TargetRenderers.Any(r => r != null && (r.gameObject.name == "Mirror_Housing" || r.gameObject.name == "Casing_Mesh")),
-                    "En Paso 3 los soportes/carcasas físicas (Mirror_Housing y Casing_Mesh) deben emitir brillo pulsante", ref total, ref passed);
+                    "Los cristales reflectantes (Mirror_Glass) NUNCA deben ser resaltados", ref total, ref passed);
 
                 // Limpieza final
                 highlighter.ClearHighlight();
                 Assert(!highlighter.IsHighlighting && highlighter.CurrentTarget == null,
                     "ClearHighlight() debe apagar el resaltado y limpiar CurrentTarget", ref total, ref passed);
+
+                // Verificación de ocultamiento del Canvas HUD durante el menú in-game
+                if (menuController != null && hudPanel != null)
+                {
+                    hudPanel.InGameMenuController = menuController;
+                    menuController.OpenMenu();
+                    Assert(hudPanel.Canvas != null && !hudPanel.Canvas.enabled,
+                        "Al abrir el menú in-game, el Canvas del HUD debe ocultarse (Canvas.enabled == false)", ref total, ref passed);
+                    menuController.CloseMenu();
+                    Assert(hudPanel.Canvas != null && hudPanel.Canvas.enabled,
+                        "Al cerrar el menú in-game, el Canvas del HUD debe volver a ser visible (Canvas.enabled == true)", ref total, ref passed);
+                }
             }
         }
 
@@ -530,11 +671,13 @@ namespace PrimerVolante.Testing.Editor
             if (condition)
             {
                 passed++;
+                LogLines.Add($"✅ [PASS] {testName}");
                 Debug.Log($"  ✅ [PASS] {testName}");
             }
             else
             {
                 LastFailures.Add(testName);
+                LogLines.Add($"❌ [FAIL] {testName}");
                 Debug.LogError($"  ❌ [FAIL] {testName}");
             }
         }

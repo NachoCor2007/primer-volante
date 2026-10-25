@@ -90,7 +90,7 @@ namespace PrimerVolante.Testing.Editor
         {
             LessonStepSO step1 = CreateOrUpdateStep("Lesson01_Step01_SeatCalibration",
                 "Ajuste de Asiento y Postura",
-                "Para ajustar tu postura, altura y distancia del asiento, presiona el botón Menu en tu control izquierdo (o tecla Escape) para abrir el menú de calibración.",
+                "Para ajustar tu postura, altura y distancia del asiento, presiona el botón Menu en tu control izquierdo (o tecla Escape) para abrir el menú de calibración.\nAjusta tu posición y cierra el menú al finalizar para avanzar.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.OpenCalibrationMenu,
                 0f,
@@ -99,24 +99,42 @@ namespace PrimerVolante.Testing.Editor
 
             LessonStepSO step2 = CreateOrUpdateStep("Lesson01_Step02_SteeringWheelCheck",
                 "Comprobación del Volante",
-                "Toma el volante presionando el grip con ambas manos y gíralo hacia ambos lados para familiarizarte con su recorrido y verificar la flexión adecuada de tus brazos.",
+                "Toma el volante con ambas manos y gíralo hacia ambos lados para familiarizarte con su recorrido y verificar la flexión cómoda de tus brazos.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.RotateSteeringWheel,
                 20f,
                 CockpitControlFlags.SteeringWheel,
                 "SteeringWheel_Pivot");
 
-            LessonStepSO step3 = CreateOrUpdateStep("Lesson01_Step03_MirrorsCheck",
-                "Visibilidad de Espejos y Entorno",
-                "Comprueba los 3 espejos retrovisores resaltados en amarillo (central y laterales) y ajusta su orientación hasta observar con claridad el entorno posterior.",
+            LessonStepSO step3 = CreateOrUpdateStep("Lesson01_Step03_RearviewMirror",
+                "Ajuste de Espejo Retrovisor Central",
+                "Toma el espejo retrovisor interior desde su borde con tu mano (Grip) o usa las teclas I/K/J/L y oriéntalo hasta tener una vista limpia de la luneta trasera.",
                 LessonStepCompletionMode.ActionRequired,
-                LessonActionType.AdjustMirrors,
+                LessonActionType.AdjustRearviewMirror,
+                2.5f,
+                CockpitControlFlags.Mirrors,
+                "RearviewMirror_Mount");
+
+            LessonStepSO step4 = CreateOrUpdateStep("Lesson01_Step04_LeftMirror",
+                "Ajuste de Espejo Lateral Izquierdo",
+                "En el panel de la puerta, coloca el selector en 'L' y usa el mando de dirección o flechas para orientar el espejo exterior izquierdo hasta observar el flanco del coche.",
+                LessonStepCompletionMode.ActionRequired,
+                LessonActionType.AdjustLeftMirror,
                 0f,
-                CockpitControlFlags.SteeringWheel | CockpitControlFlags.Mirrors,
-                "Mirrors");
+                CockpitControlFlags.Mirrors,
+                "SideMirror_Left, VRSideMirrorControlPanel");
+
+            LessonStepSO step5 = CreateOrUpdateStep("Lesson01_Step05_RightMirror",
+                "Ajuste de Espejo Lateral Derecho",
+                "Coloca el selector en 'R' y ajusta el espejo exterior derecho hasta observar el costado del vehículo y el carril derecho.",
+                LessonStepCompletionMode.ActionRequired,
+                LessonActionType.AdjustRightMirror,
+                0f,
+                CockpitControlFlags.Mirrors,
+                "SideMirror_Right, VRSideMirrorControlPanel");
 
             return CreateOrUpdateLesson(LESSON_01_PATH, "LESSON_01", "Lección 1: Calibración del Ambiente de Manejo",
-                new[] { step1, step2, step3 });
+                new[] { step1, step2, step3, step4, step5 });
         }
 
         /// <summary>
@@ -169,8 +187,17 @@ namespace PrimerVolante.Testing.Editor
         /// </summary>
         public static LessonDefinitionSO SetupLesson03()
         {
-            LessonStepSO step1 = CreateOrUpdateStep("Lesson03_Step01_TurnSignals",
-                "Luces de Giro / Guiños",
+            LessonStepSO step1 = CreateOrUpdateStep("Lesson03_Step01_TurnSignalRight",
+                "Luz de Giro a la Derecha",
+                "Acciona la palanca de luces de giro situada a la izquierda del volante: muévela hacia arriba para indicar giro a la derecha.",
+                LessonStepCompletionMode.ActionRequired,
+                LessonActionType.ActivateTurnSignalRight,
+                0f,
+                CockpitControlFlags.TurnSignal,
+                "VRTurnSignal");
+
+            LessonStepSO step2 = CreateOrUpdateStep("Lesson03_Step02_TurnSignalLeft",
+                "Luz de Giro a la Izquierda",
                 "Acciona la palanca de luces de giro situada a la izquierda del volante: muévela hacia abajo para indicar giro a la izquierda.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.ActivateTurnSignalLeft,
@@ -178,26 +205,44 @@ namespace PrimerVolante.Testing.Editor
                 CockpitControlFlags.TurnSignal,
                 "VRTurnSignal");
 
-            LessonStepSO step2 = CreateOrUpdateStep("Lesson03_Step02_HazardLights",
+            LessonStepSO step3 = CreateOrUpdateStep("Lesson03_Step03_HazardLights",
                 "Balizas de Emergencia",
-                "Presiona el botón de balizas de emergencia (triángulo rojo en la consola) para advertir una detención riesgosa o emergencia en la vía.",
+                "Presiona el botón de balizas de emergencia (triángulo rojo en la consola) para advertir una detención riesgosa o advertencia vial.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.ActivateHazardLights,
                 0f,
                 CockpitControlFlags.HazardButton,
                 "HazardButton");
 
-            LessonStepSO step3 = CreateOrUpdateStep("Lesson03_Step03_HeadlightKnob",
-                "Perilla de Luces Reglamentarias",
-                "Gira la perilla selectora de luces en el tablero para encender las luces bajas reglamentarias de circulación.",
+            LessonStepSO step4 = CreateOrUpdateStep("Lesson03_Step04_HeadlightsPosition",
+                "Luces de Posición",
+                "Gira la perilla selectora de luces en el tablero al primer punto (Posición) y suéltala para comprobar las luces reglamentarias de estacionamiento.",
                 LessonStepCompletionMode.ActionRequired,
-                LessonActionType.CycleHeadlights,
+                LessonActionType.SetHeadlightsPosition,
+                0f,
+                CockpitControlFlags.HeadlightKnob,
+                "VRHeadlightKnob");
+
+            LessonStepSO step5 = CreateOrUpdateStep("Lesson03_Step05_HeadlightsLowBeam",
+                "Luces Bajas Reglamentarias",
+                "Gira la perilla selectora de luces al segundo punto (Bajas) y suéltala para encender las luces de circulación obligatoria.",
+                LessonStepCompletionMode.ActionRequired,
+                LessonActionType.SetHeadlightsLowBeam,
+                0f,
+                CockpitControlFlags.HeadlightKnob,
+                "VRHeadlightKnob");
+
+            LessonStepSO step6 = CreateOrUpdateStep("Lesson03_Step06_HeadlightsHighBeam",
+                "Luces Altas de Ruta",
+                "Gira la perilla selectora de luces al tercer punto (Altas) y suéltala para activar el haz largo de ruta.",
+                LessonStepCompletionMode.ActionRequired,
+                LessonActionType.SetHeadlightsHighBeam,
                 0f,
                 CockpitControlFlags.HeadlightKnob,
                 "VRHeadlightKnob");
 
             return CreateOrUpdateLesson(LESSON_03_PATH, "LESSON_03", "Lección 3: Sistema de Iluminación y Señalización",
-                new[] { step1, step2, step3 });
+                new[] { step1, step2, step3, step4, step5, step6 });
         }
 
         /// <summary>
@@ -205,53 +250,80 @@ namespace PrimerVolante.Testing.Editor
         /// </summary>
         public static LessonDefinitionSO SetupLesson04()
         {
-            LessonStepSO step1 = CreateOrUpdateStep("Lesson04_Step01_PreDriveChecklist",
-                "Checklist de Salida",
-                "Realiza el checklist previo a la marcha: pisa el freno a fondo y enciende el motor presionando el botón Start.",
+            LessonStepSO step1 = CreateOrUpdateStep("Lesson04_Step01_StartEngine",
+                "Encendido del Motor",
+                "Pisa el freno con tu pie derecho y presiona el botón Start/Stop para arrancar el motor.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.StartEngine,
                 0f,
                 CockpitControlFlags.All,
                 "StartButton");
 
-            LessonStepSO step2 = CreateOrUpdateStep("Lesson04_Step02_DriveAcceleration",
-                "Tracción en Drive (D) y Aceleración",
-                "Coloca la palanca de cambios en posición Drive (D), suelta progresivamente el pedal de freno y acelera suavemente hacia adelante en línea recta.",
+            LessonStepSO step2 = CreateOrUpdateStep("Lesson04_Step02_HeadlightsLowBeam",
+                "Luces Bajas Reglamentarias",
+                "Gira la perilla selectora para encender las luces bajas de circulación obligatoria.",
                 LessonStepCompletionMode.ActionRequired,
-                LessonActionType.DriveForward,
-                3f,
+                LessonActionType.SetHeadlightsLowBeam,
+                0f,
+                CockpitControlFlags.All,
+                "VRHeadlightKnob");
+
+            LessonStepSO step3 = CreateOrUpdateStep("Lesson04_Step03_ReleaseHandbrake",
+                "Liberación del Freno de Mano",
+                "Baja por completo la palanca del freno de mano para habilitar el rodaje.",
+                LessonStepCompletionMode.ActionRequired,
+                LessonActionType.ReleaseHandbrake,
+                0f,
+                CockpitControlFlags.All,
+                "VRHandbrake");
+
+            LessonStepSO step4 = CreateOrUpdateStep("Lesson04_Step04_ShiftToDrive",
+                "Marcha en Drive (D)",
+                "Manteniendo presionado el freno de pie, coloca la palanca selectora en posición Drive (D).",
+                LessonStepCompletionMode.ActionRequired,
+                LessonActionType.ShiftToDrive,
+                0f,
                 CockpitControlFlags.All,
                 "VRGearShifter");
 
-            LessonStepSO step3 = CreateOrUpdateStep("Lesson04_Step03_ProgressiveBraking",
+            LessonStepSO step5 = CreateOrUpdateStep("Lesson04_Step05_DriveForward",
+                "Avance y Aceleración",
+                "Suelta suavemente el freno y acelera hacia adelante en línea recta.",
+                LessonStepCompletionMode.ActionRequired,
+                LessonActionType.DriveForward,
+                4f,
+                CockpitControlFlags.All,
+                "VRGearShifter");
+
+            LessonStepSO step6 = CreateOrUpdateStep("Lesson04_Step06_ProgressiveBraking",
                 "Frenado Progresivo",
-                "Presiona el pedal de freno de manera suave y progresiva hasta detener la marcha por completo, manteniendo la distancia de seguridad.",
+                "Presiona el pedal de freno de manera controlada hasta detener el vehículo por completo.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.PressBrakePedal,
                 0.8f,
                 CockpitControlFlags.All,
                 "");
 
-            LessonStepSO step4 = CreateOrUpdateStep("Lesson04_Step04_ReverseManeuver",
-                "Maniobra en Reversa (R)",
-                "Observa los 3 espejos retrovisores para comprobar que la zona posterior esté despejada, selecciona la marcha Reversa (R) y retrocede con precaución.",
+            LessonStepSO step7 = CreateOrUpdateStep("Lesson04_Step07_ReverseManeuver",
+                "Maniobra de Reversa (R)",
+                "Comprueba los espejos, pasa la palanca a Reversa (R) y retrocede con precaución.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.DriveReverse,
-                2f,
+                3f,
                 CockpitControlFlags.All,
                 "VRGearShifter");
 
-            LessonStepSO step5 = CreateOrUpdateStep("Lesson04_Step05_SecureStopAndPark",
-                "Detención Segura y Estacionamiento",
-                "Con el vehículo totalmente detenido, coloca la palanca de cambios en Parking (P), acciona el freno de mano hacia arriba para asegurarlo.",
+            LessonStepSO step8 = CreateOrUpdateStep("Lesson04_Step08_SecureStopAndPark",
+                "Estacionamiento Seguro",
+                "Detén el vehículo, coloca la palanca en Parking (P) y sube el freno de mano firmemente.",
                 LessonStepCompletionMode.ActionRequired,
-                LessonActionType.ShiftToPark,
+                LessonActionType.SecureStopAndPark,
                 0f,
                 CockpitControlFlags.All,
-                "VRHandbrake");
+                "VRHandbrake, VRGearShifter");
 
             return CreateOrUpdateLesson(LESSON_04_PATH, "LESSON_04", "Lección 4: Dinámica de Marcha, Maniobras y Detención",
-                new[] { step1, step2, step3, step4, step5 });
+                new[] { step1, step2, step3, step4, step5, step6, step7, step8 });
         }
 
         private static LessonStepSO CreateOrUpdateStep(string fileName, string title, string instruction,
@@ -369,6 +441,17 @@ namespace PrimerVolante.Testing.Editor
             LessonHUDPanel hudPanel = UnityEngine.Object.FindAnyObjectByType<LessonHUDPanel>();
             if (hudPanel != null)
             {
+                if (hudPanel.SuccessChimeClip == null)
+                {
+                    AudioClip chimeClip = Lesson01SceneSetup.EnsureStepNotificationChimeAsset();
+                    if (chimeClip != null)
+                    {
+                        hudPanel.SuccessChimeClip = chimeClip;
+                        var soHud = new SerializedObject(hudPanel);
+                        soHud.FindProperty("m_SuccessChimeClip").objectReferenceValue = chimeClip;
+                        soHud.ApplyModifiedProperties();
+                    }
+                }
                 EditorUtility.SetDirty(hudPanel);
             }
 
@@ -404,6 +487,11 @@ namespace PrimerVolante.Testing.Editor
                     EditorUtility.SetDirty(seatFollower);
                     Debug.Log($"[LessonsCurriculumSetup] 💺 DriverSeatFollower vinculado a '{driverSeat.name}' en '{playerVehicle.name}'.");
                 }
+            }
+
+            if (playerVehicle != null)
+            {
+                Lesson01SceneSetup.RevertCockpitControlOverrides(playerVehicle.gameObject);
             }
 
             EditorSceneManager.MarkSceneDirty(currentScene);

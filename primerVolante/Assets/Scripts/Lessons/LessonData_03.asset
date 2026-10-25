@@ -15,6 +15,9 @@ MonoBehaviour:
   lessonId: LESSON_03
   lessonTitle: "Lecci\xF3n 3: Sistema de Iluminaci\xF3n y Se\xF1alizaci\xF3n"
   steps:
-  - {fileID: 11400000, guid: 0e7de55d2e195f541accd74b8b35eab5, type: 2}
-  - {fileID: 11400000, guid: 1e959646748ce484ea584a4a8e46716e, type: 2}
-  - {fileID: 11400000, guid: 7ad4927bbcbf1ef499551e3d05d79e6b, type: 2}
+  - {fileID: 11400000, guid: de830c73591c0094ead3a86199eea40d, type: 2}
+  - {fileID: 11400000, guid: 98ef5912f324e1b4d87a8b10da2e6400, type: 2}
+  - {fileID: 11400000, guid: 7abec09ce0865c84397fccb3ab6c8ef5, type: 2}
+  - {fileID: 11400000, guid: c03f5762e3f1ee4479dce7593ced4d91, type: 2}
+  - {fileID: 11400000, guid: aec92dbbbe154dc4b9124ad4a4c7bb19, type: 2}
+  - {fileID: 11400000, guid: 767f958d79e27ad44b768ec27a616bc5, type: 2}
