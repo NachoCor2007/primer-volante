@@ -27,6 +27,7 @@ MonoBehaviour:
   StalkClick: {fileID: 8300000, guid: 9bb732c5578763345ae8bedde9619cc6, type: 3}
   KnobClick: {fileID: 8300000, guid: 7a2f0ef8f1a0e714798fde280d2b7b6c, type: 3}
   GearClunk: {fileID: 8300000, guid: 51762df91cf5fbf49969290d82a0b7d7, type: 3}
+  InfractionChime: {fileID: 8300000, guid: 86a8ee2dbbab04d419f78bdfe944b7d2, type: 3}
   WindRoadLoop: {fileID: 8300000, guid: 27d929430e3607d4aa55ce2e2ec7c970, type: 3}
   EngineStartVolume: 0.9
   EngineStopVolume: 0.8
@@ -40,6 +41,7 @@ MonoBehaviour:
   StalkClickVolume: 0.7
   KnobClickVolume: 0.7
   GearClunkVolume: 0.8
+  InfractionChimeVolume: 0.8
   WindRoadMaxVolume: 0.5
   IdleLayerRpm: 800
   MidLayerRpm: 2500
@@ -141,6 +143,7 @@ MonoBehaviour:
   RatchetMinInterval: 0.025
   PullFullThreshold: 0.5
   StalkClickDebounce: 0.08
+  InfractionChimeCooldown: 0.5
   CabinMinDistance: 0.3
   CabinMaxDistance: 5
   EngineMinDistance: 1
