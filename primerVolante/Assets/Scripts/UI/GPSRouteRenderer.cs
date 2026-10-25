@@ -11,7 +11,6 @@ namespace PrimerVolante.UI
     /// sobre una capa exclusiva (GPSRoute) visible únicamente para la cámara cenital del GPS.
     /// Lee la ruta de un SplineContainer, va consumiendo el camino recorrido y detecta la llegada al destino (< 4m).
     /// </summary>
-    [RequireComponent(typeof(LineRenderer))]
     public class GPSRouteRenderer : MonoBehaviour
     {
         [Header("Configuración de Ruta")]
@@ -37,6 +36,7 @@ namespace PrimerVolante.UI
         [SerializeField] private string m_RouteLayerName = "GPSRoute";
 
         [Header("Componentes")]
+        [Tooltip("LineRenderer del trazado (normalmente en el hijo GPS_Route_Line). Si se deja vacío, se busca en los hijos.")]
         [SerializeField] private LineRenderer m_LineRenderer;
 
         // Estado interno
@@ -78,7 +78,7 @@ namespace PrimerVolante.UI
         {
             if (m_LineRenderer == null)
             {
-                m_LineRenderer = GetComponent<LineRenderer>();
+                m_LineRenderer = GetComponentInChildren<LineRenderer>(true);
             }
 
             ConfigureLineRendererLayer();
@@ -138,7 +138,7 @@ namespace PrimerVolante.UI
         {
             if (m_LineRenderer == null)
             {
-                m_LineRenderer = GetComponent<LineRenderer>();
+                m_LineRenderer = GetComponentInChildren<LineRenderer>(true);
             }
 
             m_SampledPoints.Clear();
