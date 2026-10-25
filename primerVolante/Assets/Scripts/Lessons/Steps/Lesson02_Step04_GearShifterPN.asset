@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Lesson02_Step04_GearShifterPN
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: Selector de Marchas (P y N)
-  instructionText: "Familiar\xEDzate con las posiciones de reposo de la transmisi\xF3n autom\xE1tica: Parking (P) para estacionar y Neutro (N) para punto muerto.\nPresiona 'Continuar' para concluir la lecci\xF3n."
-  completionMode: 0
+  instructionText: "Con el pedal de freno presionado, mueve la palanca de cambios desde Parking (P) hacia la posici\xF3n Neutro (N)."
+  completionMode: 1
+  requiredAction: 11
+  actionNumericParameter: 0
   allowedControls: 2
   highlightTargetName: VRGearShifter
   ambienceIntensity: 0

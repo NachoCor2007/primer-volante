@@ -37,6 +37,12 @@ namespace PrimerVolante.Lessons
         [Tooltip("Transform raíz del vehículo (para búsqueda contextual de interactuables).")]
         [SerializeField] private Transform m_VehicleRoot;
 
+        [Tooltip("Controlador del vehículo para reseteo a Base 0 y monitoreo.")]
+        [SerializeField] private VehicleController m_VehicleController;
+
+        [Tooltip("Monitor de acciones físicas para avance de lección guiado por el conductor.")]
+        [SerializeField] private LessonActionMonitor m_ActionMonitor;
+
         private int m_CurrentStepIndex = -1;
         private bool m_IsLessonActive = false;
         private bool m_IsLessonCompleted = false;
@@ -56,6 +62,8 @@ namespace PrimerVolante.Lessons
         public CockpitControlLockManager LockManager => m_LockManager;
         public InteractableHighlighter Highlighter => m_Highlighter;
         public LessonHUDPanel HUDPanel => m_HUDPanel;
+        public VehicleController Vehicle => m_VehicleController;
+        public LessonActionMonitor ActionMonitor => m_ActionMonitor;
 
         public event Action<LessonDefinitionSO> LessonStarted;
         public event Action<LessonStepSO, int, int> StepChanged;
@@ -85,6 +93,19 @@ namespace PrimerVolante.Lessons
             {
                 VehicleController vc = UnityEngine.Object.FindAnyObjectByType<VehicleController>();
                 if (vc != null) m_VehicleRoot = vc.transform;
+            }
+
+            if (m_VehicleController == null)
+            {
+                m_VehicleController = (m_VehicleRoot != null)
+                    ? m_VehicleRoot.GetComponent<VehicleController>()
+                    : UnityEngine.Object.FindAnyObjectByType<VehicleController>();
+            }
+
+            if (m_ActionMonitor == null)
+            {
+                m_ActionMonitor = GetComponentInChildren<LessonActionMonitor>() ??
+                                  UnityEngine.Object.FindAnyObjectByType<LessonActionMonitor>();
             }
         }
 
@@ -128,13 +149,18 @@ namespace PrimerVolante.Lessons
         }
 
         /// <summary>
-        /// Inicia inmediatamente la siguiente lección si existe en el currículum.
+        /// Inicia inmediatamente la siguiente lección si existe en el currículum,
+        /// asegurando que el vehículo vuelva al estado Base 0 antes de iniciar el Paso 1.
         /// </summary>
         public void StartNextLesson()
         {
             LessonDefinitionSO next = GetNextLesson();
             if (next != null)
             {
+                if (m_VehicleController != null)
+                {
+                    m_VehicleController.ResetToBaseState();
+                }
                 StartLesson(next);
             }
             else
@@ -144,7 +170,7 @@ namespace PrimerVolante.Lessons
         }
 
         /// <summary>
-        /// Inicia una nueva lección, reseteando el progreso al primer paso.
+        /// Inicia una nueva lección, reseteando el vehículo a Base 0 y el progreso al primer paso.
         /// </summary>
         public void StartLesson(LessonDefinitionSO lesson)
         {
@@ -152,6 +178,12 @@ namespace PrimerVolante.Lessons
             {
                 Debug.LogError("[LessonManager] Intento de iniciar una lección nula.");
                 return;
+            }
+
+            // Reseteo limpio del vehículo a Base 0 entre lecciones
+            if (m_VehicleController != null)
+            {
+                m_VehicleController.ResetToBaseState();
             }
 
             m_ActiveLesson = lesson;

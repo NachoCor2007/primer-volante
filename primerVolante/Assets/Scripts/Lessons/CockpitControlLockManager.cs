@@ -36,6 +36,13 @@ namespace PrimerVolante.Lessons
         [Tooltip("Perilla selectora de luces reglamentarias.")]
         [SerializeField] private VRHeadlightKnob m_HeadlightKnob;
 
+        [Header("Espejos Retrovisores")]
+        [Tooltip("Espejo retrovisor central interior.")]
+        [SerializeField] private VRRearviewMirror m_RearviewMirror;
+
+        [Tooltip("Panel de control eléctrico de espejos laterales en la puerta.")]
+        [SerializeField] private VRSideMirrorControlPanel m_SideMirrorPanel;
+
         private readonly Dictionary<XRBaseInteractable, InteractionLayerMask> m_OriginalLayers =
             new Dictionary<XRBaseInteractable, InteractionLayerMask>();
 
@@ -46,6 +53,8 @@ namespace PrimerVolante.Lessons
         public VRToggleButton HazardButton => m_HazardButton;
         public VRTurnSignal TurnSignal => m_TurnSignal;
         public VRHeadlightKnob HeadlightKnob => m_HeadlightKnob;
+        public VRRearviewMirror RearviewMirror => m_RearviewMirror;
+        public VRSideMirrorControlPanel SideMirrorPanel => m_SideMirrorPanel;
 
         private void Awake()
         {
@@ -67,6 +76,8 @@ namespace PrimerVolante.Lessons
             if (m_HazardButton == null) m_HazardButton = searchRoot.GetComponentInChildren<VRToggleButton>(true);
             if (m_TurnSignal == null) m_TurnSignal = searchRoot.GetComponentInChildren<VRTurnSignal>(true);
             if (m_HeadlightKnob == null) m_HeadlightKnob = searchRoot.GetComponentInChildren<VRHeadlightKnob>(true);
+            if (m_RearviewMirror == null) m_RearviewMirror = searchRoot.GetComponentInChildren<VRRearviewMirror>(true);
+            if (m_SideMirrorPanel == null) m_SideMirrorPanel = searchRoot.GetComponentInChildren<VRSideMirrorControlPanel>(true);
 
             // Búsqueda en la escena utilizando APIs no obsoletas si aún no se encontraron
             if (m_SteeringWheel == null) m_SteeringWheel = UnityEngine.Object.FindAnyObjectByType<VRSteeringWheel>();
@@ -76,6 +87,8 @@ namespace PrimerVolante.Lessons
             if (m_HazardButton == null) m_HazardButton = UnityEngine.Object.FindAnyObjectByType<VRToggleButton>();
             if (m_TurnSignal == null) m_TurnSignal = UnityEngine.Object.FindAnyObjectByType<VRTurnSignal>();
             if (m_HeadlightKnob == null) m_HeadlightKnob = UnityEngine.Object.FindAnyObjectByType<VRHeadlightKnob>();
+            if (m_RearviewMirror == null) m_RearviewMirror = UnityEngine.Object.FindAnyObjectByType<VRRearviewMirror>();
+            if (m_SideMirrorPanel == null) m_SideMirrorPanel = UnityEngine.Object.FindAnyObjectByType<VRSideMirrorControlPanel>();
         }
 
         /// <summary>
@@ -90,6 +103,20 @@ namespace PrimerVolante.Lessons
             CacheInteractable(GetInteractable(CockpitControlFlags.HazardButton));
             CacheInteractable(GetInteractable(CockpitControlFlags.TurnSignal));
             CacheInteractable(GetInteractable(CockpitControlFlags.HeadlightKnob));
+
+            if (m_RearviewMirror != null)
+            {
+                CacheInteractable(m_RearviewMirror.GetComponent<XRBaseInteractable>());
+            }
+
+            if (m_SideMirrorPanel != null)
+            {
+                XRBaseInteractable[] panelInteractables = m_SideMirrorPanel.GetComponentsInChildren<XRBaseInteractable>(true);
+                for (int i = 0; i < panelInteractables.Length; i++)
+                {
+                    CacheInteractable(panelInteractables[i]);
+                }
+            }
         }
 
         private void CacheInteractable(XRBaseInteractable interactable)
@@ -149,10 +176,20 @@ namespace PrimerVolante.Lessons
 
         /// <summary>
         /// Bloquea o desbloquea un interactuable individual.
+        /// El Menú de Pausa / Calibración está SIEMPRE habilitado (nunca se bloquea).
         /// </summary>
         public void SetInteractableLock(XRBaseInteractable interactable, bool locked)
         {
             if (interactable == null) return;
+
+            // Regla mandatoria: El menú de pausa/calibración nunca se bloquea
+            if (interactable.GetComponentInParent<InGameMenuController>() != null ||
+                interactable.GetComponentInParent<DriverViewCalibrationUI>() != null ||
+                interactable.gameObject.name.Contains("Menu") ||
+                interactable.gameObject.name.Contains("Calibration"))
+            {
+                return;
+            }
 
             if (locked)
             {
@@ -177,8 +214,35 @@ namespace PrimerVolante.Lessons
         /// </summary>
         public void SetControlLock(CockpitControlFlags flag, bool locked)
         {
+            if (flag == CockpitControlFlags.Mirrors)
+            {
+                SetMirrorsLock(locked);
+                return;
+            }
+
             XRBaseInteractable interactable = GetInteractable(flag);
             SetInteractableLock(interactable, locked);
+        }
+
+        /// <summary>
+        /// Bloquea o desbloquea todos los interactuables de espejos (retrovisor central y panel lateral).
+        /// </summary>
+        public void SetMirrorsLock(bool locked)
+        {
+            if (m_RearviewMirror != null)
+            {
+                XRBaseInteractable grab = m_RearviewMirror.GetComponent<XRBaseInteractable>();
+                SetInteractableLock(grab, locked);
+            }
+
+            if (m_SideMirrorPanel != null)
+            {
+                XRBaseInteractable[] panelInteractables = m_SideMirrorPanel.GetComponentsInChildren<XRBaseInteractable>(true);
+                for (int i = 0; i < panelInteractables.Length; i++)
+                {
+                    SetInteractableLock(panelInteractables[i], locked);
+                }
+            }
         }
 
         /// <summary>
@@ -196,6 +260,7 @@ namespace PrimerVolante.Lessons
             SetControlLock(CockpitControlFlags.HazardButton, !allowedControls.HasFlag(CockpitControlFlags.HazardButton));
             SetControlLock(CockpitControlFlags.TurnSignal, !allowedControls.HasFlag(CockpitControlFlags.TurnSignal));
             SetControlLock(CockpitControlFlags.HeadlightKnob, !allowedControls.HasFlag(CockpitControlFlags.HeadlightKnob));
+            SetMirrorsLock(!allowedControls.HasFlag(CockpitControlFlags.Mirrors));
         }
 
         /// <summary>

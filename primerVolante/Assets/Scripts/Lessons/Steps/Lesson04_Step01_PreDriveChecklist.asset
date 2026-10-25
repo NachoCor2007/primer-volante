@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Lesson04_Step01_PreDriveChecklist
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: Checklist de Salida
-  instructionText: 'Realiza el checklist previo a la marcha: enciende el motor, activa las luces reglamentarias bajas y libera el freno de mano manteniendo el pie en el freno.
-
-    Presiona ''Continuar'' para iniciar la marcha.'
-  completionMode: 0
+  instructionText: "Realiza el checklist previo a la marcha: pisa el freno a fondo y enciende el motor presionando el bot\xF3n Start."
+  completionMode: 1
+  requiredAction: 5
+  actionNumericParameter: 0
   allowedControls: -1
-  highlightTargetName: 
+  highlightTargetName: StartButton
   ambienceIntensity: 0

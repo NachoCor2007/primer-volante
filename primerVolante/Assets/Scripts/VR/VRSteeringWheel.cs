@@ -241,6 +241,22 @@ namespace PrimerVolante.VR
         }
 
         /// <summary>
+        /// Restablece el volante al centro exacto (0° y SteeringValue = 0) de forma inmediata.
+        /// </summary>
+        public void ResetToCenter()
+        {
+            if (m_InitialLocalRotation == default(Quaternion))
+            {
+                m_InitialLocalRotation = transform.localRotation;
+                m_InitialLocalPosition = transform.localPosition;
+            }
+            m_CurrentAngle = 0f;
+            m_SteeringValue = 0f;
+            ApplyLocalTransform(0f);
+            m_LastHandAngles.Clear();
+        }
+
+        /// <summary>
         /// Calcula el delta angular combinado de todas las manos que agarran el volante en este frame.
         /// </summary>
         private float ComputeHandsDelta()

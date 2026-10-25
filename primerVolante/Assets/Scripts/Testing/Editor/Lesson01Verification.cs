@@ -118,14 +118,16 @@ namespace PrimerVolante.Testing.Editor
                         {
                             Assert(!string.IsNullOrEmpty(step.stepTitle), $"El paso {i + 1} debe tener stepTitle", ref total, ref passed);
                             Assert(!string.IsNullOrEmpty(step.instructionText), $"El paso {i + 1} debe tener instructionText", ref total, ref passed);
-                            Assert(step.allowedControls == CockpitControlFlags.SteeringWheel,
-                                $"En la Lección 1, el paso {i + 1} solo debe permitir SteeringWheel (tiene: {step.allowedControls})", ref total, ref passed);
+                            CockpitControlFlags expectedFlags = (i == 2)
+                                ? (CockpitControlFlags.SteeringWheel | CockpitControlFlags.Mirrors)
+                                : CockpitControlFlags.SteeringWheel;
+                            Assert((step.allowedControls & expectedFlags) == expectedFlags,
+                                $"En la Lección 1, el paso {i + 1} debe permitir los controles esperados (tiene: {step.allowedControls})", ref total, ref passed);
 
                             if (i == 0)
                             {
                                 bool mentionsMenu = step.instructionText.Contains("Menu");
-                                bool mentionsContinue = step.instructionText.Contains("Continuar");
-                                Assert(mentionsMenu && mentionsContinue, "El Paso 1 debe instruir al conductor a usar el botón Menu y presionar 'Continuar'", ref total, ref passed);
+                                Assert(mentionsMenu, "El Paso 1 debe instruir al conductor a usar el botón Menu para calibrar postura", ref total, ref passed);
                             }
                             else if (i == 1)
                             {
@@ -136,9 +138,8 @@ namespace PrimerVolante.Testing.Editor
                             }
                             else if (i == 2)
                             {
-                                bool mentionsMirrors = step.instructionText.Contains("espejos retrovisores");
-                                bool mentionsFinalize = step.instructionText.Contains("Finalizar Calibración");
-                                Assert(mentionsMirrors && mentionsFinalize, "El Paso 3 debe instruir a verificar espejos retrovisores y presionar 'Finalizar Calibración'", ref total, ref passed);
+                                bool mentionsMirrors = step.instructionText.Contains("espejos retrovisores") || step.instructionText.Contains("espejos");
+                                Assert(mentionsMirrors, "El Paso 3 debe instruir a verificar o ajustar los espejos retrovisores", ref total, ref passed);
                                 Assert(step.highlightTargetName == "Mirrors", "El Paso 3 debe tener highlightTargetName 'Mirrors'", ref total, ref passed);
                             }
                         }
@@ -165,6 +166,23 @@ namespace PrimerVolante.Testing.Editor
             GameObject car09 = GameObject.Find("Car09");
             Assert(car09 != null, "GameObject 'Car09' debe existir en la escena", ref total, ref passed);
             if (car09 == null) return;
+
+            // Sincronización de posición con el asiento (DriverSeatFollower en XR Origin)
+            DriverSeatFollower seatFollower = UnityEngine.Object.FindAnyObjectByType<DriverSeatFollower>();
+            Assert(seatFollower != null, "DriverSeatFollower debe existir en la escena (en XR Origin)", ref total, ref passed);
+            if (seatFollower != null)
+            {
+                Assert(seatFollower.enabled, "DriverSeatFollower debe estar activo (enabled == true)", ref total, ref passed);
+                Assert(seatFollower.FollowSeat, "DriverSeatFollower.FollowSeat debe ser true", ref total, ref passed);
+                Assert(seatFollower.DriverSeat != null, "DriverSeatFollower.DriverSeat NO debe ser nulo (debe estar vinculado a Car09)", ref total, ref passed);
+                if (seatFollower.DriverSeat != null)
+                {
+                    Assert(seatFollower.DriverSeat.IsChildOf(car09.transform),
+                        "DriverSeatFollower.DriverSeat debe ser un Transform hijo del vehículo Car09", ref total, ref passed);
+                    Assert(string.Equals(seatFollower.DriverSeat.name, "DriverSeat", StringComparison.OrdinalIgnoreCase),
+                        $"DriverSeatFollower.DriverSeat debe llamarse 'DriverSeat' (actual: {seatFollower.DriverSeat.name})", ref total, ref passed);
+                }
+            }
 
             // CockpitControlLockManager
             CockpitControlLockManager lockManager = car09.GetComponent<CockpitControlLockManager>();

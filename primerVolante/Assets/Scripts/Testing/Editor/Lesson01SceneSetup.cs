@@ -62,6 +62,36 @@ namespace PrimerVolante.Testing.Editor
                 return;
             }
 
+            // Asegurar que DriverSeatFollower en XR Origin esté vinculado al asiento de Car09
+            Transform driverSeat = car09.transform.Find("DriverSeat");
+            if (driverSeat == null)
+            {
+                foreach (Transform t in car09.GetComponentsInChildren<Transform>(true))
+                {
+                    if (string.Equals(t.name, "DriverSeat", System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        driverSeat = t;
+                        break;
+                    }
+                }
+            }
+
+            DriverSeatFollower seatFollower = UnityEngine.Object.FindAnyObjectByType<DriverSeatFollower>();
+            if (seatFollower != null && driverSeat != null)
+            {
+                seatFollower.DriverSeat = driverSeat;
+                seatFollower.FollowSeat = true;
+                seatFollower.SnapToSeat();
+
+                var soFollower = new SerializedObject(seatFollower);
+                soFollower.FindProperty("m_DriverSeat").objectReferenceValue = driverSeat;
+                soFollower.FindProperty("m_FollowSeat").boolValue = true;
+                soFollower.ApplyModifiedProperties();
+
+                EditorUtility.SetDirty(seatFollower);
+                Debug.Log($"[Lesson01SceneSetup] 💺 DriverSeatFollower vinculado exitosamente a '{driverSeat.name}' en Car09.");
+            }
+
             // Asegurar que Car09 tenga el ensamble de retrovisores si hiciera falta
             VRRearviewMirror mirror = car09.GetComponentInChildren<VRRearviewMirror>(true);
             if (mirror == null)
@@ -439,6 +469,37 @@ namespace PrimerVolante.Testing.Editor
                 new Vector2(0f, -198f), new Vector2(280f, 46f), new Color(0.12f, 0.55f, 0.40f, 1f));
             TextMeshProUGUI continueBtnText = continueBtn.GetComponentInChildren<TextMeshProUGUI>();
 
+            // Insignia temporal de acción completada
+            TextMeshProUGUI successBadge = CreateText("SuccessBadge", stepContent.transform, fontAsset,
+                "<b>[ ¡Acción Completada! ]</b>", 17f, FontStyles.Bold,
+                new Vector2(0f, -165f), new Vector2(560f, 26f), new Color(0.0f, 0.902f, 0.463f, 1f));
+            successBadge.gameObject.SetActive(false);
+
+            // Borde brillante de feedback sensorial perimetral (marco hueco 9-sliced, oculto por defecto)
+            GameObject glowObj = new GameObject("SuccessBorderGlow");
+            glowObj.transform.SetParent(canvasObj.transform, false);
+            RectTransform glowRect = glowObj.AddComponent<RectTransform>();
+            glowRect.anchorMin = Vector2.zero;
+            glowRect.anchorMax = Vector2.one;
+            glowRect.offsetMin = Vector2.zero;
+            glowRect.offsetMax = Vector2.zero;
+            Image glowImage = glowObj.AddComponent<Image>();
+            glowImage.sprite = LessonHUDPanel.GetOrCreateHollowBorderSprite();
+            glowImage.type = Image.Type.Sliced;
+            glowImage.fillCenter = false;
+            glowImage.color = new Color(0f, 0.902f, 0.463f, 0f);
+            glowImage.raycastTarget = false;
+            glowObj.SetActive(false);
+
+            // AudioSource para feedback sonoro (chime)
+            AudioSource hudAudio = canvasObj.GetComponent<AudioSource>();
+            if (hudAudio == null)
+            {
+                hudAudio = canvasObj.AddComponent<AudioSource>();
+            }
+            hudAudio.playOnAwake = false;
+            hudAudio.spatialBlend = 0f;
+
             // 4. Subpanel de Felicitaciones / Fin de Lección (oculto inicialmente)
             GameObject completionPanel = new GameObject("CompletionPanel");
             completionPanel.transform.SetParent(canvasObj.transform, false);
@@ -490,6 +551,9 @@ namespace PrimerVolante.Testing.Editor
             so.FindProperty("m_RestartButton").objectReferenceValue = restartBtn;
             so.FindProperty("m_NextLessonButton").objectReferenceValue = nextBtn;
             so.FindProperty("m_NextLessonButtonText").objectReferenceValue = nextBtnText;
+            so.FindProperty("m_SuccessBorderGlow").objectReferenceValue = glowImage;
+            so.FindProperty("m_SuccessBadgeText").objectReferenceValue = successBadge;
+            so.FindProperty("m_AudioSource").objectReferenceValue = hudAudio;
 
             SerializedProperty farCastProp = so.FindProperty("m_FarCastInteractors");
             if (farCastProp != null)
@@ -524,6 +588,18 @@ namespace PrimerVolante.Testing.Editor
                 manager = managerObj.AddComponent<LessonManager>();
             }
 
+            LessonActionMonitor actionMonitor = managerObj.GetComponent<LessonActionMonitor>();
+            if (actionMonitor == null)
+            {
+                actionMonitor = managerObj.AddComponent<LessonActionMonitor>();
+            }
+
+            VehicleController vehicleController = car09 != null ? car09.GetComponent<VehicleController>() : null;
+            if (vehicleController == null)
+            {
+                vehicleController = UnityEngine.Object.FindAnyObjectByType<VehicleController>();
+            }
+
             LessonDefinitionSO actualLessonData = lessonData != null ? lessonData : AssetDatabase.LoadAssetAtPath<LessonDefinitionSO>(LESSON_DATA_PATH);
 
             var so = new SerializedObject(manager);
@@ -533,6 +609,8 @@ namespace PrimerVolante.Testing.Editor
             so.FindProperty("m_Highlighter").objectReferenceValue = highlighter;
             so.FindProperty("m_HUDPanel").objectReferenceValue = hudPanel;
             so.FindProperty("m_VehicleRoot").objectReferenceValue = car09.transform;
+            so.FindProperty("m_VehicleController").objectReferenceValue = vehicleController;
+            so.FindProperty("m_ActionMonitor").objectReferenceValue = actionMonitor;
 
             SerializedProperty currProp = so.FindProperty("m_Curriculum");
             if (currProp != null)

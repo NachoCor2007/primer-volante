@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Lesson03_Step03_HeadlightKnob
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: Perilla de Luces Reglamentarias
-  instructionText: "Gira la perilla selectora de luces por sus posiciones reglamentarias: Apagadas (Off), Luces de Posici\xF3n, Luces Bajas y gui\xF1o de Luces Altas.\nPresiona 'Continuar' para concluir la lecci\xF3n."
-  completionMode: 0
+  instructionText: "Gira la perilla selectora de luces en el tablero para encender las luces bajas reglamentarias de circulaci\xF3n."
+  completionMode: 1
+  requiredAction: 15
+  actionNumericParameter: 0
   allowedControls: 64
   highlightTargetName: VRHeadlightKnob
   ambienceIntensity: 0

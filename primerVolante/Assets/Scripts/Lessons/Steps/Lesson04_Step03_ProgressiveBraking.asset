@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Lesson04_Step03_ProgressiveBraking
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: Frenado Progresivo
-  instructionText: "Presiona el pedal de freno de manera suave y progresiva hasta detener la marcha por completo, manteniendo la distancia de seguridad.\nPresiona 'Continuar' cuando el veh\xEDculo est\xE9 totalmente inm\xF3vil."
-  completionMode: 0
+  instructionText: Presiona el pedal de freno de manera suave y progresiva hasta detener la marcha por completo, manteniendo la distancia de seguridad.
+  completionMode: 1
+  requiredAction: 4
+  actionNumericParameter: 0.8
   allowedControls: -1
   highlightTargetName: 
   ambienceIntensity: 0

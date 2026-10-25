@@ -262,6 +262,11 @@ namespace PrimerVolante.VR
         {
             m_CurrentMode = mode;
 
+            if (m_HeadlightKnob != null && m_HeadlightKnob.CurrentMode != mode)
+            {
+                m_HeadlightKnob.SetMode(mode, animated: false);
+            }
+
             ApplyFrontLighting(m_CurrentMode);
             ApplyRearTailLighting(m_CurrentMode, m_BrakeActive);
 

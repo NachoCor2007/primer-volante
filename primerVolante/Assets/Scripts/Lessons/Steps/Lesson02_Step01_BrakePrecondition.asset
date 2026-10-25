@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Lesson02_Step01_BrakePrecondition
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: "Precondici\xF3n de Seguridad: Freno de Pie"
-  instructionText: "Antes de arrancar o manipular los mandos, mant\xE9n presionado el pedal de freno con tu pie derecho como precondici\xF3n fundamental de seguridad.\nPresiona 'Continuar' manteniendo la posici\xF3n."
-  completionMode: 0
+  instructionText: "Antes de arrancar o manipular los mandos, mant\xE9n presionado el pedal de freno con tu pie derecho como precondici\xF3n fundamental de seguridad."
+  completionMode: 1
+  requiredAction: 4
+  actionNumericParameter: 0.8
   allowedControls: 12
   highlightTargetName: 
   ambienceIntensity: 0

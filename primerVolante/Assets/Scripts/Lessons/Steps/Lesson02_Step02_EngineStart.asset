@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Lesson02_Step02_EngineStart
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: Encendido del Motor (Start)
-  instructionText: "Manteniendo presionado el pedal de freno, presiona el bot\xF3n Start/Stop en el tablero para encender el motor del veh\xEDculo.\nPresiona 'Continuar' una vez encendido."
-  completionMode: 0
+  instructionText: "Manteniendo presionado el pedal de freno a fondo, presiona el bot\xF3n Start/Stop en el tablero para encender el motor del veh\xEDculo."
+  completionMode: 1
+  requiredAction: 5
+  actionNumericParameter: 0
   allowedControls: 8
   highlightTargetName: StartButton
   ambienceIntensity: 0

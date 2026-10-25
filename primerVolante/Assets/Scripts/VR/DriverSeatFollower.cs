@@ -34,13 +34,39 @@ namespace PrimerVolante.VR
         public Transform DriverSeat
         {
             get => m_DriverSeat;
-            set => m_DriverSeat = value;
+            set
+            {
+                m_DriverSeat = value;
+                if (m_DriverSeat != null && m_FollowSeat)
+                {
+                    SnapToSeat();
+                }
+            }
         }
 
         public bool FollowSeat
         {
             get => m_FollowSeat;
-            set => m_FollowSeat = value;
+            set
+            {
+                m_FollowSeat = value;
+                if (m_FollowSeat && m_DriverSeat != null)
+                {
+                    SnapToSeat();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Permite asignar limpiamente el transform del asiento y opcionalmente forzar snap inmediato.
+        /// </summary>
+        public void SetDriverSeat(Transform seat, bool snap = true)
+        {
+            m_DriverSeat = seat;
+            if (snap && m_DriverSeat != null && m_FollowSeat)
+            {
+                SnapToSeat();
+            }
         }
 
         /// <summary>
@@ -63,6 +89,57 @@ namespace PrimerVolante.VR
 
         public Vector3 CalibrationLimitsMax => m_CalibrationLimitsMax;
 
+        private void Awake()
+        {
+            if (m_DriverSeat == null)
+            {
+                AutoDiscoverDriverSeat();
+            }
+        }
+
+        /// <summary>
+        /// Localiza automáticamente el vehículo del jugador en la escena usando FindAnyObjectByType
+        /// y vincula el Transform 'DriverSeat'.
+        /// </summary>
+        public bool AutoDiscoverDriverSeat()
+        {
+            if (m_DriverSeat != null) return true;
+
+            var vehicle = UnityEngine.Object.FindAnyObjectByType<VehicleController>();
+            if (vehicle != null)
+            {
+                Transform seat = FindDriverSeatRecursive(vehicle.transform);
+                if (seat != null)
+                {
+                    m_DriverSeat = seat;
+                    if (m_FollowSeat)
+                    {
+                        SnapToSeat();
+                    }
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private Transform FindDriverSeatRecursive(Transform current)
+        {
+            if (current == null) return null;
+            if (string.Equals(current.name, "DriverSeat", StringComparison.OrdinalIgnoreCase))
+            {
+                return current;
+            }
+
+            for (int i = 0; i < current.childCount; i++)
+            {
+                Transform found = FindDriverSeatRecursive(current.GetChild(i));
+                if (found != null) return found;
+            }
+
+            return null;
+        }
+
         private void Update()
         {
             FollowSeatPosition();
@@ -75,6 +152,11 @@ namespace PrimerVolante.VR
 
         private void FollowSeatPosition()
         {
+            if (m_DriverSeat == null && m_FollowSeat)
+            {
+                AutoDiscoverDriverSeat();
+            }
+
             if (m_FollowSeat && m_DriverSeat != null)
             {
                 transform.position = m_DriverSeat.TransformPoint(m_CalibrationOffset);
@@ -128,7 +210,7 @@ namespace PrimerVolante.VR
         /// </summary>
         public void SnapToSeat()
         {
-            LateUpdate();
+            FollowSeatPosition();
         }
     }
 }

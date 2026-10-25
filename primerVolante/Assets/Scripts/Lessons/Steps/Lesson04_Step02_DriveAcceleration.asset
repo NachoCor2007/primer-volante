@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Lesson04_Step02_DriveAcceleration
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: "Tracci\xF3n en Drive (D) y Aceleraci\xF3n"
-  instructionText: "Coloca la palanca de cambios en posici\xF3n Drive (D), suelta progresivamente el pedal de freno y acelera suavemente en l\xEDnea recta hacia adelante.\nPresiona 'Continuar' al aproximarte al punto de frenado."
-  completionMode: 0
+  instructionText: "Coloca la palanca de cambios en posici\xF3n Drive (D), suelta progresivamente el pedal de freno y acelera suavemente hacia adelante en l\xEDnea recta."
+  completionMode: 1
+  requiredAction: 16
+  actionNumericParameter: 3
   allowedControls: -1
   highlightTargetName: VRGearShifter
   ambienceIntensity: 0

@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Lesson02_Step03_HandbrakeRelease
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: "Liberaci\xF3n del Freno de Mano"
-  instructionText: "Toma la palanca del freno de mano con tu mano derecha y b\xE1jala para liberar el freno de estacionamiento.\nPresiona 'Continuar' cuando est\xE9 completamente abajo."
-  completionMode: 0
+  instructionText: "Toma la palanca del freno de mano con tu mano derecha y b\xE1jala por completo para liberar el freno de estacionamiento."
+  completionMode: 1
+  requiredAction: 6
+  actionNumericParameter: 0.05
   allowedControls: 4
   highlightTargetName: VRHandbrake
   ambienceIntensity: 0

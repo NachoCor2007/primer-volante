@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Lesson03_Step01_TurnSignals
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: "Luces de Giro / Gui\xF1os"
-  instructionText: "Acciona la palanca de luces de giro situada a la izquierda del volante: mu\xE9vela hacia arriba para girar a la derecha y hacia abajo para girar a la izquierda.\nPresiona 'Continuar' tras probar ambos lados."
-  completionMode: 0
+  instructionText: "Acciona la palanca de luces de giro situada a la izquierda del volante: mu\xE9vela hacia abajo para indicar giro a la izquierda."
+  completionMode: 1
+  requiredAction: 12
+  actionNumericParameter: 0
   allowedControls: 32
   highlightTargetName: VRTurnSignal
   ambienceIntensity: 0

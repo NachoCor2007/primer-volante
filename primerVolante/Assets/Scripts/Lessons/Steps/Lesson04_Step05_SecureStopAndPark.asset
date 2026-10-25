@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Lesson04_Step05_SecureStopAndPark
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: "Detenci\xF3n Segura y Estacionamiento"
-  instructionText: "Con el veh\xEDculo totalmente detenido, coloca la palanca de cambios en Parking (P), tira del freno de mano para asegurarlo y presiona el bot\xF3n Start/Stop para apagar el motor.\nPresiona 'Finalizar Calibraci\xF3n' para concluir el curso de manejo."
-  completionMode: 0
+  instructionText: "Con el veh\xEDculo totalmente detenido, coloca la palanca de cambios en Parking (P), acciona el freno de mano hacia arriba para asegurarlo."
+  completionMode: 1
+  requiredAction: 10
+  actionNumericParameter: 0
   allowedControls: -1
   highlightTargetName: VRHandbrake
   ambienceIntensity: 0

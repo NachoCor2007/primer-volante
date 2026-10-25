@@ -64,8 +64,24 @@ namespace PrimerVolante.Lessons
                  "(no interactúa con volante, espejos, etc.).")]
         [SerializeField] private NearFarInteractor[] m_FarCastInteractors;
 
+        [Header("Feedback Sensorial de Acción")]
+        [Tooltip("Borde o marco brillante del HUD para feedback visual de acción completada.")]
+        [SerializeField] private Image m_SuccessBorderGlow;
+
+        [Tooltip("Insignia / icono de confirmación de acción completada.")]
+        [SerializeField] private TextMeshProUGUI m_SuccessBadgeText;
+
+        [Tooltip("Fuente de audio para el sonido de confirmación.")]
+        [SerializeField] private AudioSource m_AudioSource;
+
+        [Tooltip("Clip sonoro de confirmación / chime positivo.")]
+        [SerializeField] private AudioClip m_SuccessChimeClip;
+
         private Canvas m_Canvas;
         private bool m_FarCastingActive = false;
+        private Coroutine m_GlowCoroutine;
+        private static AudioClip s_ProceduralChimeClip;
+        private static Sprite s_HollowBorderSprite;
 
         // Propiedades públicas para acceso e inspección en tests
         public TextMeshProUGUI LessonTitleText => m_LessonTitleText;
@@ -79,6 +95,14 @@ namespace PrimerVolante.Lessons
         public Button NextLessonButton => m_NextLessonButton;
         public TextMeshProUGUI NextLessonButtonText => m_NextLessonButtonText;
         public NearFarInteractor[] FarCastInteractors => m_FarCastInteractors;
+        public Image SuccessBorderGlow => m_SuccessBorderGlow;
+        public TextMeshProUGUI SuccessBadgeText => m_SuccessBadgeText;
+        public AudioSource AudioSource => m_AudioSource;
+        public AudioClip SuccessChimeClip
+        {
+            get => m_SuccessChimeClip;
+            set => m_SuccessChimeClip = value;
+        }
         public Canvas Canvas => m_Canvas != null ? m_Canvas : (m_Canvas = GetComponent<Canvas>());
         public Camera WorldCamera => Canvas != null ? Canvas.worldCamera : null;
         public bool FarCastingActive => m_FarCastingActive;
@@ -96,6 +120,7 @@ namespace PrimerVolante.Lessons
                 m_LessonManager = UnityEngine.Object.FindAnyObjectByType<LessonManager>();
             }
 
+            ConfigureHollowBorderGlow();
             DiscoverFarCastInteractors();
             SetupButtons();
         }
@@ -212,6 +237,22 @@ namespace PrimerVolante.Lessons
         /// </summary>
         public void DisplayStep(LessonStepSO step, int stepIndex, int totalSteps)
         {
+            if (m_GlowCoroutine != null)
+            {
+                StopCoroutine(m_GlowCoroutine);
+                m_GlowCoroutine = null;
+            }
+
+            if (m_SuccessBorderGlow != null)
+            {
+                m_SuccessBorderGlow.gameObject.SetActive(false);
+            }
+
+            if (m_SuccessBadgeText != null)
+            {
+                m_SuccessBadgeText.gameObject.SetActive(false);
+            }
+
             if (m_StepContentPanel != null) m_StepContentPanel.SetActive(true);
             if (m_CompletionPanel != null) m_CompletionPanel.SetActive(false);
 
@@ -230,26 +271,253 @@ namespace PrimerVolante.Lessons
                 m_InstructionText.text = step.instructionText;
             }
 
+            bool isActionRequired = (step.completionMode == LessonStepCompletionMode.ActionRequired);
+
+            if (m_ContinueButton != null)
+            {
+                m_ContinueButton.interactable = !isActionRequired;
+            }
+
             if (m_ContinueButtonText != null)
             {
-                if (stepIndex == totalSteps - 1)
+                if (isActionRequired)
                 {
-                    if (m_LessonManager != null && m_LessonManager.ActiveLesson != null && m_LessonManager.ActiveLesson.lessonId == "LESSON_01")
-                    {
-                        m_ContinueButtonText.text = "Finalizar Calibración";
-                    }
-                    else
-                    {
-                        m_ContinueButtonText.text = "Finalizar Lección";
-                    }
+                    m_ContinueButtonText.text = "Esperando acción...";
                 }
                 else
                 {
-                    m_ContinueButtonText.text = "Continuar";
+                    if (stepIndex == totalSteps - 1)
+                    {
+                        if (m_LessonManager != null && m_LessonManager.ActiveLesson != null && m_LessonManager.ActiveLesson.lessonId == "LESSON_01")
+                        {
+                            m_ContinueButtonText.text = "Finalizar Calibración";
+                        }
+                        else
+                        {
+                            m_ContinueButtonText.text = "Finalizar Lección";
+                        }
+                    }
+                    else
+                    {
+                        m_ContinueButtonText.text = "Continuar";
+                    }
                 }
             }
 
             SetFarCasting(true);
+        }
+
+        /// <summary>
+        /// Dispara el feedback sensorial completo: borde verde esmeralda brillante (#00E676)
+        /// pulsando suavemente durante 0.8s, insignia [ ¡Acción Completada! ] y chime auditivo de confirmación.
+        /// </summary>
+        public void PlayActionSuccessFeedback(System.Action onCompleted = null)
+        {
+            if (m_GlowCoroutine != null)
+            {
+                StopCoroutine(m_GlowCoroutine);
+            }
+
+            if (gameObject.activeInHierarchy)
+            {
+                m_GlowCoroutine = StartCoroutine(ActionSuccessFeedbackRoutine(onCompleted));
+            }
+            else
+            {
+                PlayChimeSound();
+                onCompleted?.Invoke();
+            }
+        }
+
+        private System.Collections.IEnumerator ActionSuccessFeedbackRoutine(System.Action onCompleted)
+        {
+            PlayChimeSound();
+
+            if (m_SuccessBadgeText != null)
+            {
+                m_SuccessBadgeText.gameObject.SetActive(true);
+                m_SuccessBadgeText.text = "<b>[ ¡Acción Completada! ]</b>";
+            }
+
+            if (m_ContinueButtonText != null)
+            {
+                m_ContinueButtonText.text = "¡Acción Completada!";
+            }
+
+            Color emerald = new Color(0f, 0.902f, 0.463f, 1f); // #00E676
+
+            if (m_SuccessBorderGlow != null)
+            {
+                ConfigureHollowBorderGlow();
+                m_SuccessBorderGlow.color = new Color(emerald.r, emerald.g, emerald.b, 0f);
+                m_SuccessBorderGlow.gameObject.SetActive(true);
+            }
+
+            float duration = 0.8f;
+            float elapsed = 0f;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+
+                // Pulso suave senoidal
+                float pulse = Mathf.Sin(t * Mathf.PI);
+                float alpha = Mathf.Clamp01(pulse * 1.1f);
+
+                if (m_SuccessBorderGlow != null)
+                {
+                    m_SuccessBorderGlow.color = new Color(emerald.r, emerald.g, emerald.b, alpha);
+                }
+
+                yield return null;
+            }
+
+            if (m_SuccessBorderGlow != null)
+            {
+                m_SuccessBorderGlow.color = new Color(emerald.r, emerald.g, emerald.b, 0f);
+                m_SuccessBorderGlow.gameObject.SetActive(false);
+            }
+
+            if (m_SuccessBadgeText != null)
+            {
+                m_SuccessBadgeText.gameObject.SetActive(false);
+            }
+
+            m_GlowCoroutine = null;
+            onCompleted?.Invoke();
+        }
+
+        /// <summary>
+        /// Configura el componente Image del marco brillante con el sprite 9-slice hueco,
+        /// asegurando que fillCenter sea false para que solo se renderice el perímetro exterior.
+        /// </summary>
+        public void ConfigureHollowBorderGlow()
+        {
+            if (m_SuccessBorderGlow != null)
+            {
+                m_SuccessBorderGlow.sprite = GetOrCreateHollowBorderSprite();
+                m_SuccessBorderGlow.type = Image.Type.Sliced;
+                m_SuccessBorderGlow.fillCenter = false;
+                m_SuccessBorderGlow.raycastTarget = false;
+
+                // Eliminar cualquier componente Outline que actúe como sombra asimétrica
+                Outline outline = m_SuccessBorderGlow.GetComponent<Outline>();
+                if (outline != null)
+                {
+                    if (Application.isPlaying)
+                    {
+                        Destroy(outline);
+                    }
+                    else
+                    {
+                        DestroyImmediate(outline);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Genera procedimentalmente un sprite 9-slice de 16x16 con un marco exterior de 4px opaco
+        /// y un interior de 8x8 transparente (Color.clear) para renderizar bordes perimetrales huecos.
+        /// </summary>
+        public static Sprite GetOrCreateHollowBorderSprite()
+        {
+            if (s_HollowBorderSprite != null) return s_HollowBorderSprite;
+
+            int width = 16;
+            int height = 16;
+            int border = 4;
+            Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            tex.name = "HUD_HollowBorder_Texture";
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.filterMode = FilterMode.Bilinear;
+
+            Color[] pixels = new Color[width * height];
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    bool isBorder = (x < border || x >= width - border || y < border || y >= height - border);
+                    pixels[y * width + x] = isBorder ? Color.white : Color.clear;
+                }
+            }
+
+            tex.SetPixels(pixels);
+            tex.Apply();
+
+            s_HollowBorderSprite = Sprite.Create(
+                tex,
+                new Rect(0, 0, width, height),
+                new Vector2(0.5f, 0.5f),
+                100f,
+                0,
+                SpriteMeshType.FullRect,
+                new Vector4(border, border, border, border)
+            );
+            s_HollowBorderSprite.name = "HUD_HollowBorder_Sprite";
+            return s_HollowBorderSprite;
+        }
+
+        /// <summary>
+        /// Reproduce el sonido de confirmación agradable (chime). Si no hay clip asignado,
+        /// genera un chime armónico procedimental de dos tonos.
+        /// </summary>
+        public void PlayChimeSound()
+        {
+            if (m_AudioSource == null)
+            {
+                m_AudioSource = GetComponent<AudioSource>();
+                if (m_AudioSource == null)
+                {
+                    m_AudioSource = gameObject.AddComponent<AudioSource>();
+                }
+            }
+
+            if (m_AudioSource != null)
+            {
+                m_AudioSource.playOnAwake = false;
+                m_AudioSource.spatialBlend = 0f;
+
+                if (m_SuccessChimeClip == null)
+                {
+                    m_SuccessChimeClip = CreateProceduralChimeClip();
+                }
+
+                if (m_SuccessChimeClip != null)
+                {
+                    m_AudioSource.PlayOneShot(m_SuccessChimeClip, 0.85f);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Genera en memoria un clip de audio de confirmación suave y agradable (chime).
+        /// </summary>
+        public static AudioClip CreateProceduralChimeClip()
+        {
+            if (s_ProceduralChimeClip != null) return s_ProceduralChimeClip;
+
+            int sampleRate = 44100;
+            float duration = 0.45f;
+            int sampleCount = (int)(sampleRate * duration);
+            float[] samples = new float[sampleCount];
+
+            float freq1 = 659.25f; // E5
+            float freq2 = 987.77f; // B5
+
+            for (int i = 0; i < sampleCount; i++)
+            {
+                float t = (float)i / sampleRate;
+                float envelope = Mathf.Exp(-7.5f * t);
+                float wave = Mathf.Sin(2f * Mathf.PI * freq1 * t) * 0.6f +
+                             Mathf.Sin(2f * Mathf.PI * freq2 * t) * 0.4f;
+                samples[i] = wave * envelope * 0.7f;
+            }
+
+            s_ProceduralChimeClip = AudioClip.Create("StepCompleteChimeProcedural", sampleCount, 1, sampleRate, false);
+            s_ProceduralChimeClip.SetData(samples, 0);
+            return s_ProceduralChimeClip;
         }
 
         /// <summary>

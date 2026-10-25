@@ -5,6 +5,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using PrimerVolante.Lessons;
+using PrimerVolante.VR;
 
 namespace PrimerVolante.Testing.Editor
 {
@@ -89,23 +90,29 @@ namespace PrimerVolante.Testing.Editor
         {
             LessonStepSO step1 = CreateOrUpdateStep("Lesson01_Step01_SeatCalibration",
                 "Ajuste de Asiento y Postura",
-                "Para ajustar tu postura, altura y distancia del asiento, presiona el botón Menu en tu control izquierdo para abrir el menú de calibración.\nUna vez ajustado a tu comodidad, o si la posición inicial ya es óptima, apunta con el rayo y presiona 'Continuar'.",
-                LessonStepCompletionMode.ManualContinue,
+                "Para ajustar tu postura, altura y distancia del asiento, presiona el botón Menu en tu control izquierdo (o tecla Escape) para abrir el menú de calibración.",
+                LessonStepCompletionMode.ActionRequired,
+                LessonActionType.OpenCalibrationMenu,
+                0f,
                 CockpitControlFlags.SteeringWheel,
                 "");
 
             LessonStepSO step2 = CreateOrUpdateStep("Lesson01_Step02_SteeringWheelCheck",
                 "Comprobación del Volante",
-                "Toma el volante presionando el grip de cualquier controlador y gíralo suavemente hacia ambos lados para familiarizarte con su recorrido y verificar que tus brazos tengan la flexión adecuada.\nPresiona 'Continuar' cuando estés listo.",
-                LessonStepCompletionMode.ManualContinue,
+                "Toma el volante presionando el grip con ambas manos y gíralo hacia ambos lados para familiarizarte con su recorrido y verificar la flexión adecuada de tus brazos.",
+                LessonStepCompletionMode.ActionRequired,
+                LessonActionType.RotateSteeringWheel,
+                20f,
                 CockpitControlFlags.SteeringWheel,
                 "SteeringWheel_Pivot");
 
             LessonStepSO step3 = CreateOrUpdateStep("Lesson01_Step03_MirrorsCheck",
                 "Visibilidad de Espejos y Entorno",
-                "Comprueba los 3 espejos retrovisores resaltados en amarillo (central y laterales). Debes observar el tráfico posterior sin desviar en exceso la cabeza.\nPresiona 'Finalizar Calibración' para concluir la lección.",
-                LessonStepCompletionMode.ManualContinue,
-                CockpitControlFlags.SteeringWheel,
+                "Comprueba los 3 espejos retrovisores resaltados en amarillo (central y laterales) y ajusta su orientación hasta observar con claridad el entorno posterior.",
+                LessonStepCompletionMode.ActionRequired,
+                LessonActionType.AdjustMirrors,
+                0f,
+                CockpitControlFlags.SteeringWheel | CockpitControlFlags.Mirrors,
                 "Mirrors");
 
             return CreateOrUpdateLesson(LESSON_01_PATH, "LESSON_01", "Lección 1: Calibración del Ambiente de Manejo",
@@ -119,29 +126,37 @@ namespace PrimerVolante.Testing.Editor
         {
             LessonStepSO step1 = CreateOrUpdateStep("Lesson02_Step01_BrakePrecondition",
                 "Precondición de Seguridad: Freno de Pie",
-                "Antes de arrancar o manipular los mandos, mantén presionado el pedal de freno con tu pie derecho como precondición fundamental de seguridad.\nPresiona 'Continuar' manteniendo la posición.",
-                LessonStepCompletionMode.ManualContinue,
+                "Antes de arrancar o manipular los mandos, mantén presionado el pedal de freno con tu pie derecho como precondición fundamental de seguridad.",
+                LessonStepCompletionMode.ActionRequired,
+                LessonActionType.PressBrakePedal,
+                0.8f,
                 CockpitControlFlags.StartButton | CockpitControlFlags.Handbrake,
                 "");
 
             LessonStepSO step2 = CreateOrUpdateStep("Lesson02_Step02_EngineStart",
                 "Encendido del Motor (Start)",
-                "Manteniendo presionado el pedal de freno, presiona el botón Start/Stop en el tablero para encender el motor del vehículo.\nPresiona 'Continuar' una vez encendido.",
-                LessonStepCompletionMode.ManualContinue,
+                "Manteniendo presionado el pedal de freno a fondo, presiona el botón Start/Stop en el tablero para encender el motor del vehículo.",
+                LessonStepCompletionMode.ActionRequired,
+                LessonActionType.StartEngine,
+                0f,
                 CockpitControlFlags.StartButton,
                 "StartButton");
 
             LessonStepSO step3 = CreateOrUpdateStep("Lesson02_Step03_HandbrakeRelease",
                 "Liberación del Freno de Mano",
-                "Toma la palanca del freno de mano con tu mano derecha y bájala para liberar el freno de estacionamiento.\nPresiona 'Continuar' cuando esté completamente abajo.",
-                LessonStepCompletionMode.ManualContinue,
+                "Toma la palanca del freno de mano con tu mano derecha y bájala por completo para liberar el freno de estacionamiento.",
+                LessonStepCompletionMode.ActionRequired,
+                LessonActionType.ReleaseHandbrake,
+                0.05f,
                 CockpitControlFlags.Handbrake,
                 "VRHandbrake");
 
             LessonStepSO step4 = CreateOrUpdateStep("Lesson02_Step04_GearShifterPN",
                 "Selector de Marchas (P y N)",
-                "Familiarízate con las posiciones de reposo de la transmisión automática: Parking (P) para estacionar y Neutro (N) para punto muerto.\nPresiona 'Continuar' para concluir la lección.",
-                LessonStepCompletionMode.ManualContinue,
+                "Con el pedal de freno presionado, mueve la palanca de cambios desde Parking (P) hacia la posición Neutro (N).",
+                LessonStepCompletionMode.ActionRequired,
+                LessonActionType.ShiftToNeutral,
+                0f,
                 CockpitControlFlags.GearShifter,
                 "VRGearShifter");
 
@@ -156,22 +171,28 @@ namespace PrimerVolante.Testing.Editor
         {
             LessonStepSO step1 = CreateOrUpdateStep("Lesson03_Step01_TurnSignals",
                 "Luces de Giro / Guiños",
-                "Acciona la palanca de luces de giro situada a la izquierda del volante: muévela hacia arriba para girar a la derecha y hacia abajo para girar a la izquierda.\nPresiona 'Continuar' tras probar ambos lados.",
-                LessonStepCompletionMode.ManualContinue,
+                "Acciona la palanca de luces de giro situada a la izquierda del volante: muévela hacia abajo para indicar giro a la izquierda.",
+                LessonStepCompletionMode.ActionRequired,
+                LessonActionType.ActivateTurnSignalLeft,
+                0f,
                 CockpitControlFlags.TurnSignal,
                 "VRTurnSignal");
 
             LessonStepSO step2 = CreateOrUpdateStep("Lesson03_Step02_HazardLights",
                 "Balizas de Emergencia",
-                "Presiona el botón de balizas de emergencia (triángulo rojo en la consola) para advertir una detención riesgosa o emergencia en la vía.\nPresiona 'Continuar' cuando hayas verificado su encendido.",
-                LessonStepCompletionMode.ManualContinue,
+                "Presiona el botón de balizas de emergencia (triángulo rojo en la consola) para advertir una detención riesgosa o emergencia en la vía.",
+                LessonStepCompletionMode.ActionRequired,
+                LessonActionType.ActivateHazardLights,
+                0f,
                 CockpitControlFlags.HazardButton,
                 "HazardButton");
 
             LessonStepSO step3 = CreateOrUpdateStep("Lesson03_Step03_HeadlightKnob",
                 "Perilla de Luces Reglamentarias",
-                "Gira la perilla selectora de luces por sus posiciones reglamentarias: Apagadas (Off), Luces de Posición, Luces Bajas y guiño de Luces Altas.\nPresiona 'Continuar' para concluir la lección.",
-                LessonStepCompletionMode.ManualContinue,
+                "Gira la perilla selectora de luces en el tablero para encender las luces bajas reglamentarias de circulación.",
+                LessonStepCompletionMode.ActionRequired,
+                LessonActionType.CycleHeadlights,
+                0f,
                 CockpitControlFlags.HeadlightKnob,
                 "VRHeadlightKnob");
 
@@ -186,36 +207,46 @@ namespace PrimerVolante.Testing.Editor
         {
             LessonStepSO step1 = CreateOrUpdateStep("Lesson04_Step01_PreDriveChecklist",
                 "Checklist de Salida",
-                "Realiza el checklist previo a la marcha: enciende el motor, activa las luces reglamentarias bajas y libera el freno de mano manteniendo el pie en el freno.\nPresiona 'Continuar' para iniciar la marcha.",
-                LessonStepCompletionMode.ManualContinue,
+                "Realiza el checklist previo a la marcha: pisa el freno a fondo y enciende el motor presionando el botón Start.",
+                LessonStepCompletionMode.ActionRequired,
+                LessonActionType.StartEngine,
+                0f,
                 CockpitControlFlags.All,
-                "");
+                "StartButton");
 
             LessonStepSO step2 = CreateOrUpdateStep("Lesson04_Step02_DriveAcceleration",
                 "Tracción en Drive (D) y Aceleración",
-                "Coloca la palanca de cambios en posición Drive (D), suelta progresivamente el pedal de freno y acelera suavemente en línea recta hacia adelante.\nPresiona 'Continuar' al aproximarte al punto de frenado.",
-                LessonStepCompletionMode.ManualContinue,
+                "Coloca la palanca de cambios en posición Drive (D), suelta progresivamente el pedal de freno y acelera suavemente hacia adelante en línea recta.",
+                LessonStepCompletionMode.ActionRequired,
+                LessonActionType.DriveForward,
+                3f,
                 CockpitControlFlags.All,
                 "VRGearShifter");
 
             LessonStepSO step3 = CreateOrUpdateStep("Lesson04_Step03_ProgressiveBraking",
                 "Frenado Progresivo",
-                "Presiona el pedal de freno de manera suave y progresiva hasta detener la marcha por completo, manteniendo la distancia de seguridad.\nPresiona 'Continuar' cuando el vehículo esté totalmente inmóvil.",
-                LessonStepCompletionMode.ManualContinue,
+                "Presiona el pedal de freno de manera suave y progresiva hasta detener la marcha por completo, manteniendo la distancia de seguridad.",
+                LessonStepCompletionMode.ActionRequired,
+                LessonActionType.PressBrakePedal,
+                0.8f,
                 CockpitControlFlags.All,
                 "");
 
             LessonStepSO step4 = CreateOrUpdateStep("Lesson04_Step04_ReverseManeuver",
                 "Maniobra en Reversa (R)",
-                "Observa los 3 espejos retrovisores para comprobar que la zona posterior esté despejada, selecciona la marcha Reversa (R) y retrocede con precaución a baja velocidad.\nPresiona 'Continuar' tras completar la maniobra.",
-                LessonStepCompletionMode.ManualContinue,
+                "Observa los 3 espejos retrovisores para comprobar que la zona posterior esté despejada, selecciona la marcha Reversa (R) y retrocede con precaución.",
+                LessonStepCompletionMode.ActionRequired,
+                LessonActionType.DriveReverse,
+                2f,
                 CockpitControlFlags.All,
                 "VRGearShifter");
 
             LessonStepSO step5 = CreateOrUpdateStep("Lesson04_Step05_SecureStopAndPark",
                 "Detención Segura y Estacionamiento",
-                "Con el vehículo totalmente detenido, coloca la palanca de cambios en Parking (P), tira del freno de mano para asegurarlo y presiona el botón Start/Stop para apagar el motor.\nPresiona 'Finalizar Calibración' para concluir el curso de manejo.",
-                LessonStepCompletionMode.ManualContinue,
+                "Con el vehículo totalmente detenido, coloca la palanca de cambios en Parking (P), acciona el freno de mano hacia arriba para asegurarlo.",
+                LessonStepCompletionMode.ActionRequired,
+                LessonActionType.ShiftToPark,
+                0f,
                 CockpitControlFlags.All,
                 "VRHandbrake");
 
@@ -224,7 +255,8 @@ namespace PrimerVolante.Testing.Editor
         }
 
         private static LessonStepSO CreateOrUpdateStep(string fileName, string title, string instruction,
-            LessonStepCompletionMode mode, CockpitControlFlags allowedControls, string highlightTarget)
+            LessonStepCompletionMode mode, LessonActionType requiredAction, float actionNumericParameter,
+            CockpitControlFlags allowedControls, string highlightTarget)
         {
             string path = $"{STEPS_DIR}/{fileName}.asset";
             LessonStepSO step = AssetDatabase.LoadAssetAtPath<LessonStepSO>(path);
@@ -238,6 +270,8 @@ namespace PrimerVolante.Testing.Editor
             step.stepTitle = title;
             step.instructionText = instruction;
             step.completionMode = mode;
+            step.requiredAction = requiredAction;
+            step.actionNumericParameter = actionNumericParameter;
             step.allowedControls = allowedControls;
             step.highlightTargetName = highlightTarget;
 
@@ -319,6 +353,15 @@ namespace PrimerVolante.Testing.Editor
                     so.FindProperty("m_ActiveLesson").objectReferenceValue = curriculum[0];
                 }
 
+                VehicleController vehicle = UnityEngine.Object.FindAnyObjectByType<VehicleController>();
+                LessonActionMonitor monitor = manager.GetComponent<LessonActionMonitor>();
+                if (monitor == null)
+                {
+                    monitor = manager.gameObject.AddComponent<LessonActionMonitor>();
+                }
+                so.FindProperty("m_VehicleController").objectReferenceValue = vehicle;
+                so.FindProperty("m_ActionMonitor").objectReferenceValue = monitor;
+
                 so.ApplyModifiedProperties();
                 EditorUtility.SetDirty(manager);
             }
@@ -327,6 +370,40 @@ namespace PrimerVolante.Testing.Editor
             if (hudPanel != null)
             {
                 EditorUtility.SetDirty(hudPanel);
+            }
+
+            // Sincronizar asiento del conductor en XR Origin (DriverSeatFollower)
+            DriverSeatFollower seatFollower = UnityEngine.Object.FindAnyObjectByType<DriverSeatFollower>();
+            VehicleController playerVehicle = UnityEngine.Object.FindAnyObjectByType<VehicleController>();
+            if (seatFollower != null && playerVehicle != null)
+            {
+                Transform driverSeat = playerVehicle.transform.Find("DriverSeat");
+                if (driverSeat == null)
+                {
+                    foreach (Transform t in playerVehicle.GetComponentsInChildren<Transform>(true))
+                    {
+                        if (string.Equals(t.name, "DriverSeat", System.StringComparison.OrdinalIgnoreCase))
+                        {
+                            driverSeat = t;
+                            break;
+                        }
+                    }
+                }
+
+                if (driverSeat != null)
+                {
+                    seatFollower.DriverSeat = driverSeat;
+                    seatFollower.FollowSeat = true;
+                    seatFollower.SnapToSeat();
+
+                    var soFollower = new SerializedObject(seatFollower);
+                    soFollower.FindProperty("m_DriverSeat").objectReferenceValue = driverSeat;
+                    soFollower.FindProperty("m_FollowSeat").boolValue = true;
+                    soFollower.ApplyModifiedProperties();
+
+                    EditorUtility.SetDirty(seatFollower);
+                    Debug.Log($"[LessonsCurriculumSetup] 💺 DriverSeatFollower vinculado a '{driverSeat.name}' en '{playerVehicle.name}'.");
+                }
             }
 
             EditorSceneManager.MarkSceneDirty(currentScene);
