@@ -28,6 +28,10 @@ namespace PrimerVolante.Testing.Editor
         public const string SOURCE_SCENE_PATH = "Assets/Scenes/car09/CityMerged3.unity";
         public const string DEMO_SCENE_DIR = "Assets/Scenes/TestingScenes";
         public const string DEMO_SCENE_PATH = "Assets/Scenes/TestingScenes/GPSNavigationDemo.unity";
+        public const string WRONG_WAY_SOURCE_SCENE_PATH = WrongWaySetup.SCENE_PATH;
+        public const string WRONG_WAY_DEMO_SCENE_PATH = "Assets/Scenes/TestingScenes/GPSWrongWayDemo.unity";
+        private const float STADIUM_CENTER_X = 150f;
+        private static readonly Vector3 WRONG_WAY_OBSTACLE_OFFSET = new Vector3(60f, 0f, 0f);
         public const string PREFAB_PATH = "Assets/MadTroll_Studio/Low Poly 1970s Family Sedan 3D Model Free Download Car02/Prefabs/Car09.prefab";
 
         public const string GPS_TEXTURES_DIR = "Assets/Textures/UI/GPS";
@@ -70,14 +74,85 @@ namespace PrimerVolante.Testing.Editor
             SetupGPSInPrefab();
 
             // 4. Asegurar que exista la escena clonada
-            EnsureClonedSceneExists();
+            EnsureClonedSceneExists(SOURCE_SCENE_PATH, DEMO_SCENE_PATH);
 
+            // 5-16. Configurar y guardar la escena de prueba
+            if (!ConfigureGPSScene(DEMO_SCENE_PATH, routeLayer, vehicleLayer, npcLayer, roadsLayer, buildingLayer)) return;
+
+            Debug.Log("=================================================================");
+            Debug.Log("✅ [GPSNavigationSceneSetup] ¡Escena GPSNavigationDemo configurada sin duplicados!");
+            Debug.Log("=================================================================");
+        }
+
+        /// <summary>
+        /// Escena con GPS sobre CityWithWrongWay: suma el circuito del GPS a las infracciones, la calle de mano única,
+        /// las vallas y los obstáculos. Obstacle_Demo se mueve a la calle x = 180 porque en x = 120 quedaba sobre el circuito.
+        /// </summary>
+        [MenuItem("Tools/Primer Volante/GPS/Setup GPS Wrong Way Demo Scene")]
+        public static void SetupGPSWrongWayDemoScene()
+        {
+            Debug.Log("=================================================================");
+            Debug.Log("🚀 [GPSNavigationSceneSetup] Configurando Escena GPSWrongWayDemo...");
+            Debug.Log("=================================================================");
+
+            int routeLayer = EnsureLayer(ROUTE_LAYER_NAME);
+            int vehicleLayer = EnsureLayer(VEHICLE_LAYER_NAME);
+            int npcLayer = EnsureLayer(NPC_LAYER_NAME);
+            int roadsLayer = EnsureLayer(ROADS_LAYER_NAME);
+            int buildingLayer = EnsureLayer(BUILDING_LAYER_NAME);
+
+            // El GPS viene de Car09.prefab (configurado por SetupGPSInPrefab): no se vuelve a ensamblar acá.
+            EnsureDirectories();
+            EnsureClonedSceneExists(WRONG_WAY_SOURCE_SCENE_PATH, WRONG_WAY_DEMO_SCENE_PATH);
+
+            if (!ConfigureGPSScene(WRONG_WAY_DEMO_SCENE_PATH, routeLayer, vehicleLayer, npcLayer, roadsLayer, buildingLayer,
+                    MoveObstacleDemoOffCircuit)) return;
+
+            Debug.Log("=================================================================");
+            Debug.Log("✅ [GPSNavigationSceneSetup] ¡Escena GPSWrongWayDemo configurada sin duplicados!");
+            Debug.Log("=================================================================");
+        }
+
+        // Obstacle_Demo (US33) está en la calle x = 120, entre z = 60 y z = 120, justo donde baja el circuito (x = 116.5).
+        // Se corre a la paralela x = 180, del otro lado del estadio: misma pieza de calle y los mismos cruces, con un
+        // camión y un patrullero decorativos estacionados que dejan un paso parecido al de la calle original.
+        // Solo se mueven los que siguen al oeste del estadio, para que repetir el setup no los corra dos veces.
+        private static void MoveObstacleDemoOffCircuit(Scene scene)
+        {
+            GameObject demo = null;
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                if (root.name == ObstacleCollisionSetup.DEMO_GROUP_NAME) demo = root;
+            }
+
+            if (demo == null)
+            {
+                Debug.LogWarning($"[GPSNavigationSceneSetup] ⚠️ La escena no tiene {ObstacleCollisionSetup.DEMO_GROUP_NAME}: no hay obstáculos que mover.");
+                return;
+            }
+
+            int moved = 0;
+            foreach (Transform child in demo.transform)
+            {
+                if (child.position.x >= STADIUM_CENTER_X) continue;
+                child.position += WRONG_WAY_OBSTACLE_OFFSET;
+                EditorUtility.SetDirty(child);
+                moved++;
+            }
+
+            Debug.Log($"[GPSNavigationSceneSetup] 🚧 {moved} obstáculos de {demo.name} movidos {WRONG_WAY_OBSTACLE_OFFSET.x:F0} m a la calle x = 180.");
+        }
+
+        // Pasos 5-16 de la escena de prueba. beforeSave aplica los ajustes propios de cada escena.
+        private static bool ConfigureGPSScene(string scenePath, int routeLayer, int vehicleLayer, int npcLayer, int roadsLayer,
+            int buildingLayer, System.Action<Scene> beforeSave = null)
+        {
             // 5. Abrir la escena de prueba
-            Scene scene = EditorSceneManager.OpenScene(DEMO_SCENE_PATH, OpenSceneMode.Single);
+            Scene scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
             if (!scene.IsValid() || !scene.isLoaded)
             {
-                Debug.LogError($"[GPSNavigationSceneSetup] ❌ No se pudo abrir la escena en {DEMO_SCENE_PATH}");
-                return;
+                Debug.LogError($"[GPSNavigationSceneSetup] ❌ No se pudo abrir la escena en {scenePath}");
+                return false;
             }
 
             // 6. Localizar Car09 en la escena
@@ -85,7 +160,7 @@ namespace PrimerVolante.Testing.Editor
             if (carObj == null)
             {
                 Debug.LogError("[GPSNavigationSceneSetup] ❌ No se encontró la instancia de Car09 en la escena!");
-                return;
+                return false;
             }
 
             // 7. Limpieza estricta de duplicados y overrides locales en Car09 (la fuente de verdad es el prefab)
@@ -154,13 +229,12 @@ namespace PrimerVolante.Testing.Editor
                 EditorUtility.SetDirty(carRb);
             }
 
+            beforeSave?.Invoke(scene);
+
             // 11. Guardar escena
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
-
-            Debug.Log("=================================================================");
-            Debug.Log("✅ [GPSNavigationSceneSetup] ¡Escena GPSNavigationDemo configurada sin duplicados!");
-            Debug.Log("=================================================================");
+            return true;
         }
 
         [MenuItem("Tools/Primer Volante/GPS/Setup GPS in Car09 Prefab")]
@@ -388,9 +462,10 @@ namespace PrimerVolante.Testing.Editor
             RectTransform canvasRect = canvasObj.GetComponent<RectTransform>();
             if (canvasRect == null) canvasRect = canvasObj.AddComponent<RectTransform>();
 
-            canvasRect.localPosition = new Vector3(0.077f, 0.935f, 0.305f);
-            // Inclinación hacia la vista del conductor (Y: -12° hacia la izquierda, X: +12° mirando hacia arriba)
-            canvasRect.localRotation = Quaternion.Euler(12f, -12f, 0f);
+            // Pose ajustada a mano en GPSNavigationDemo para no atravesar el tablero del auto
+            canvasRect.localPosition = new Vector3(0.0401f, 0.9836f, 0.2631f);
+            // Inclinación hacia la vista del conductor
+            canvasRect.localRotation = Quaternion.Euler(10.734f, 14.893f, 2.089f);
             canvasRect.localScale = new Vector3(0.0004f, 0.0004f, 0.0004f);
             canvasRect.sizeDelta = new Vector2(480f, 360f);
 
@@ -841,7 +916,8 @@ namespace PrimerVolante.Testing.Editor
             {
                 if (r != null && roadsLayer != -1)
                 {
-                    SetLayerRecursively(r, roadsLayer);
+                    // Las zonas de carril de contramano conservan su capa LaneZone (WrongWayDetector solo mira esa capa).
+                    SetLayerRecursively(r, roadsLayer, excludeChildrenWithName: new[] { WrongWaySetup.LANE_ZONES_NAME });
                     EditorUtility.SetDirty(r);
                     roadsCount++;
                 }
@@ -1205,27 +1281,27 @@ namespace PrimerVolante.Testing.Editor
             }
         }
 
-        private static void EnsureClonedSceneExists()
+        private static void EnsureClonedSceneExists(string sourcePath, string targetPath)
         {
-            var targetScene = AssetDatabase.LoadAssetAtPath<SceneAsset>(DEMO_SCENE_PATH);
+            var targetScene = AssetDatabase.LoadAssetAtPath<SceneAsset>(targetPath);
             if (targetScene == null)
             {
-                var sourceScene = AssetDatabase.LoadAssetAtPath<SceneAsset>(SOURCE_SCENE_PATH);
+                var sourceScene = AssetDatabase.LoadAssetAtPath<SceneAsset>(sourcePath);
                 if (sourceScene == null)
                 {
-                    Debug.LogError($"[GPSNavigationSceneSetup] ❌ No se encontró la escena fuente en {SOURCE_SCENE_PATH}");
+                    Debug.LogError($"[GPSNavigationSceneSetup] ❌ No se encontró la escena fuente en {sourcePath}");
                     return;
                 }
 
-                bool copied = AssetDatabase.CopyAsset(SOURCE_SCENE_PATH, DEMO_SCENE_PATH);
+                bool copied = AssetDatabase.CopyAsset(sourcePath, targetPath);
                 if (copied)
                 {
                     AssetDatabase.Refresh();
-                    Debug.Log($"[GPSNavigationSceneSetup] 📋 Escena clonada exitosamente en {DEMO_SCENE_PATH}");
+                    Debug.Log($"[GPSNavigationSceneSetup] 📋 Escena clonada exitosamente en {targetPath}");
                 }
                 else
                 {
-                    Debug.LogError($"[GPSNavigationSceneSetup] ❌ Error al clonar {SOURCE_SCENE_PATH} a {DEMO_SCENE_PATH}");
+                    Debug.LogError($"[GPSNavigationSceneSetup] ❌ Error al clonar {sourcePath} a {targetPath}");
                 }
             }
         }

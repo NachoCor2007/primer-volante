@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef0c0859dfb5f9448817d6314bfa4d15, type: 3}
+  m_Name: Infraction_RED_LIGHT
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Evaluation.InfractionDefinitionSO
+  m_Id: RED_LIGHT
+  m_ShortTitle: "Sem\xE1foro en rojo"
+  m_DescriptionTemplate: "Cruzaste la l\xEDnea de detenci\xF3n con el sem\xE1foro en rojo. Fren\xE1 antes de la l\xEDnea y esper\xE1 la luz verde."
+  m_Severity: 1

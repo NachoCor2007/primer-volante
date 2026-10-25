@@ -66,6 +66,10 @@ namespace PrimerVolante.VR
         [FormerlySerializedAs("m_SelfCancelGraceAngle")]
         [SerializeField] private float m_OppositeCancelAngle = 50f;
 
+        [Header("Depuración")]
+        [Tooltip("Escribe en consola un log por cada cambio de estado. Apagado por defecto para no tapar el log de infracciones.")]
+        [SerializeField] private bool m_EnableDebugLogs = false;
+
         [Header("Eventos")]
         [Tooltip("Evento disparado cada vez que cambia el estado de la palanca.")]
         public TurnSignalStateEvent OnTurnSignalChanged = new TurnSignalStateEvent();
@@ -191,7 +195,8 @@ namespace PrimerVolante.VR
             {
                 currentSignal = newState;
                 OnTurnSignalChanged?.Invoke(currentSignal);
-                Debug.Log($"[VRTurnSignal] {gameObject.name}: Guiño cambiado a {currentSignal}");
+                if (m_EnableDebugLogs)
+                    Debug.Log($"[VRTurnSignal] {gameObject.name}: Guiño cambiado a {currentSignal}");
                 return true;
             }
             return false;
@@ -329,7 +334,8 @@ namespace PrimerVolante.VR
                 // Cancelación de seguridad por contra-giro hacia la izquierda
                 if (wheelAngle <= -m_OppositeCancelAngle)
                 {
-                    Debug.Log($"[VRTurnSignal] 🛑 Auto-cancelado de seguridad por CONTRA-GIRO. Volante: {wheelAngle:F1}° (Umbral: -{m_OppositeCancelAngle}°)");
+                    if (m_EnableDebugLogs)
+                        Debug.Log($"[VRTurnSignal] 🛑 Auto-cancelado de seguridad por CONTRA-GIRO. Volante: {wheelAngle:F1}° (Umbral: -{m_OppositeCancelAngle}°)");
                     m_IsTurnArmed = false;
                     CenterSignal();
                     return;
@@ -340,14 +346,16 @@ namespace PrimerVolante.VR
                 {
                     if (!m_IsTurnArmed)
                     {
-                        Debug.Log($"[VRTurnSignal] ⚙️ Mecanismo ARMADO (Guiño Derecho). Volante: {wheelAngle:F1}° >= {m_ArmTurnAngle}°");
+                        if (m_EnableDebugLogs)
+                            Debug.Log($"[VRTurnSignal] ⚙️ Mecanismo ARMADO (Guiño Derecho). Volante: {wheelAngle:F1}° >= {m_ArmTurnAngle}°");
                         m_IsTurnArmed = true;
                     }
                 }
                 // Cancelación por retorno al centro tras haber estado armado
                 else if (m_IsTurnArmed && wheelAngle <= m_CancelReturnAngle)
                 {
-                    Debug.Log($"[VRTurnSignal] ↩️ Auto-cancelado por RETORNO AL CENTRO. Volante: {wheelAngle:F1}° <= {m_CancelReturnAngle}°");
+                    if (m_EnableDebugLogs)
+                        Debug.Log($"[VRTurnSignal] ↩️ Auto-cancelado por RETORNO AL CENTRO. Volante: {wheelAngle:F1}° <= {m_CancelReturnAngle}°");
                     m_IsTurnArmed = false;
                     CenterSignal();
                 }
@@ -357,7 +365,8 @@ namespace PrimerVolante.VR
                 // Cancelación de seguridad por contra-giro hacia la derecha
                 if (wheelAngle >= m_OppositeCancelAngle)
                 {
-                    Debug.Log($"[VRTurnSignal] 🛑 Auto-cancelado de seguridad por CONTRA-GIRO. Volante: {wheelAngle:F1}° (Umbral: +{m_OppositeCancelAngle}°)");
+                    if (m_EnableDebugLogs)
+                        Debug.Log($"[VRTurnSignal] 🛑 Auto-cancelado de seguridad por CONTRA-GIRO. Volante: {wheelAngle:F1}° (Umbral: +{m_OppositeCancelAngle}°)");
                     m_IsTurnArmed = false;
                     CenterSignal();
                     return;
@@ -368,14 +377,16 @@ namespace PrimerVolante.VR
                 {
                     if (!m_IsTurnArmed)
                     {
-                        Debug.Log($"[VRTurnSignal] ⚙️ Mecanismo ARMADO (Guiño Izquierdo). Volante: {wheelAngle:F1}° <= -{m_ArmTurnAngle}°");
+                        if (m_EnableDebugLogs)
+                            Debug.Log($"[VRTurnSignal] ⚙️ Mecanismo ARMADO (Guiño Izquierdo). Volante: {wheelAngle:F1}° <= -{m_ArmTurnAngle}°");
                         m_IsTurnArmed = true;
                     }
                 }
                 // Cancelación por retorno al centro tras haber estado armado
                 else if (m_IsTurnArmed && wheelAngle >= -m_CancelReturnAngle)
                 {
-                    Debug.Log($"[VRTurnSignal] ↩️ Auto-cancelado por RETORNO AL CENTRO. Volante: {wheelAngle:F1}° >= -{m_CancelReturnAngle}°");
+                    if (m_EnableDebugLogs)
+                        Debug.Log($"[VRTurnSignal] ↩️ Auto-cancelado por RETORNO AL CENTRO. Volante: {wheelAngle:F1}° >= -{m_CancelReturnAngle}°");
                     m_IsTurnArmed = false;
                     CenterSignal();
                 }

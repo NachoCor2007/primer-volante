@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using PrimerVolante.Evaluation;
 using PrimerVolante.VR;
 using UnityEngine;
 using UnityEngine.Events;
@@ -11,7 +12,7 @@ namespace PrimerVolante.Environment
     /// Utiliza un Collider tipo Trigger ubicado en la línea de detención para detectar
     /// el paso de vehículos (jugador identificado por <see cref="VehicleController"/> o Tag).
     /// Si el <see cref="TrafficLightController"/> asociado se encuentra en luz roja,
-    /// dispara eventos de infracción y registra una advertencia con cooldown antirrebote.
+    /// informa la falta por <see cref="InfractionReporting"/> y dispara los eventos de infracción, con cooldown antirrebote.
     /// </summary>
     [RequireComponent(typeof(Collider))]
     [DisallowMultipleComponent]
@@ -31,6 +32,10 @@ namespace PrimerVolante.Environment
         [Header("Prevención de Rebote / Cooldown")]
         [Tooltip("Tiempo mínimo en segundos entre detecciones sucesivas para el mismo vehículo o cruce.")]
         [SerializeField] private float m_CooldownDuration = 3f;
+
+        [Header("Depuración")]
+        [Tooltip("Escribe un LogWarning propio por cada infracción. El InfractionManager ya la loguea; sin gestor loguea el respaldo de consola.")]
+        [SerializeField] private bool m_LogEvents = false;
 
         [Header("Eventos de Infracción")]
         [Tooltip("Evento Unity disparado cuando se confirma una infracción de luz roja.")]
@@ -148,9 +153,14 @@ namespace PrimerVolante.Environment
             m_LastViolationTimeByVehicle[vehicleKey] = currentTime;
             m_TotalViolationsRecorded++;
 
-            string vehicleName = vehicleKey != null ? vehicleKey.name : other.name;
-            string lightName = m_TrafficLight != null ? m_TrafficLight.name : "N/A";
-            Debug.LogWarning($"[RedLightViolationDetector] ⚠️ ¡Infracción de luz roja detectada! El vehículo '{vehicleName}' cruzó la línea de detención en semáforo '{lightName}' (Total: {m_TotalViolationsRecorded}).", this);
+            InfractionReporting.Report(InfractionReport.Create(InfractionIds.RedLight, this, vehicleKey.transform.position));
+
+            if (m_LogEvents)
+            {
+                string vehicleName = vehicleKey != null ? vehicleKey.name : other.name;
+                string lightName = m_TrafficLight != null ? m_TrafficLight.name : "N/A";
+                Debug.LogWarning($"[RedLightViolationDetector] ⚠️ ¡Infracción de luz roja detectada! El vehículo '{vehicleName}' cruzó la línea de detención en semáforo '{lightName}' (Total: {m_TotalViolationsRecorded}).", this);
+            }
 
             OnViolationDetected?.Invoke(other);
             onViolationDetectedEvent?.Invoke(other);
