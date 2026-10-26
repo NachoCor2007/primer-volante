@@ -1945,6 +1945,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &63897698
 PrefabInstance:
@@ -2353,6 +2354,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &73134002
 PrefabInstance:
@@ -3313,6 +3315,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &119100821
 PrefabInstance:
@@ -3721,6 +3724,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &127126588
 PrefabInstance:
@@ -4249,6 +4253,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &144045354
 PrefabInstance:
@@ -4420,6 +4425,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &146223418
 PrefabInstance:
@@ -5237,6 +5243,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &174753946
 PrefabInstance:
@@ -5808,6 +5815,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &210913731
 PrefabInstance:
@@ -6456,6 +6464,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &247763731
 PrefabInstance:
@@ -6839,6 +6848,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &260412541
 PrefabInstance:
@@ -7288,6 +7298,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &268394419
 PrefabInstance:
@@ -7651,6 +7662,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &277443409
 PrefabInstance:
@@ -8038,6 +8050,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &302131091
 PrefabInstance:
@@ -8267,6 +8280,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &310335017
 PrefabInstance:
@@ -8665,6 +8679,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &324491880
 PrefabInstance:
@@ -9291,6 +9306,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &348826372
 PrefabInstance:
@@ -9519,6 +9535,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &355488847
 PrefabInstance:
@@ -9821,6 +9838,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &363009366
 PrefabInstance:
@@ -10626,6 +10644,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1 &399546399
 GameObject:
@@ -11186,6 +11205,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &412353157
 PrefabInstance:
@@ -11402,6 +11422,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &415806040
 PrefabInstance:
@@ -11565,6 +11586,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &422293474
 PrefabInstance:
@@ -12024,6 +12046,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &428534179
 PrefabInstance:
@@ -12721,6 +12744,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &450333034
 PrefabInstance:
@@ -13509,6 +13533,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &479307635
 PrefabInstance:
@@ -15068,6 +15093,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &547118818
 PrefabInstance:
@@ -15354,6 +15380,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1 &555092420
 GameObject:
@@ -17508,6 +17535,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &630888693
 PrefabInstance:
@@ -17683,6 +17711,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &632322709
 PrefabInstance:
@@ -18239,6 +18268,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &655917966
 PrefabInstance:
@@ -18549,6 +18579,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &662699770
 PrefabInstance:
@@ -20993,7 +21024,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1261249950381600184, guid: a35a469300fd5a945995803b490aa706, type: 3}
       propertyPath: m_CullingMask.m_Bits
-      value: 4294967039
+      value: 4294950655
       objectReference: {fileID: 0}
     - target: {fileID: 1304104306990204114, guid: a35a469300fd5a945995803b490aa706, type: 3}
       propertyPath: m_Layer
@@ -21133,7 +21164,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3213079572670966982, guid: a35a469300fd5a945995803b490aa706, type: 3}
       propertyPath: m_CullingMask.m_Bits
-      value: 4294967039
+      value: 4294950655
       objectReference: {fileID: 0}
     - target: {fileID: 3275083744021979005, guid: a35a469300fd5a945995803b490aa706, type: 3}
       propertyPath: m_Layer
@@ -21445,7 +21476,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6969360881327934945, guid: a35a469300fd5a945995803b490aa706, type: 3}
       propertyPath: m_CullingMask.m_Bits
-      value: 4294967039
+      value: 4294950655
       objectReference: {fileID: 0}
     - target: {fileID: 6971181014756105917, guid: a35a469300fd5a945995803b490aa706, type: 3}
       propertyPath: m_Layer
@@ -22021,6 +22052,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1 &686530649 stripped
 GameObject:
@@ -22206,6 +22238,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &693260870
 PrefabInstance:
@@ -22553,6 +22586,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &699497903
 PrefabInstance:
@@ -23379,6 +23413,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &727388323
 PrefabInstance:
@@ -23493,6 +23528,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &730099740
 PrefabInstance:
@@ -23603,6 +23639,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &733211883
 PrefabInstance:
@@ -24730,6 +24767,7 @@ MonoBehaviour:
   m_QueryTriggerInteraction: 1
   m_ResumeDelay: 0.5
   m_ResumeHysteresisDistance: 0.5
+  m_LogEvents: 0
   onEmergencyBrakeEvent:
     m_PersistentCalls:
       m_Calls: []
@@ -24947,6 +24985,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &788196955
 PrefabInstance:
@@ -25376,6 +25415,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &811469920
 PrefabInstance:
@@ -25808,6 +25848,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &825842961
 PrefabInstance:
@@ -25971,6 +26012,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &829387548
 PrefabInstance:
@@ -26085,6 +26127,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &834262249
 PrefabInstance:
@@ -27025,6 +27068,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1 &861851959
 GameObject:
@@ -27609,6 +27653,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &873283521
 PrefabInstance:
@@ -28295,6 +28340,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &910561176
 PrefabInstance:
@@ -28409,6 +28455,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1 &914877361
 GameObject:
@@ -29112,6 +29159,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &949949622
 PrefabInstance:
@@ -30229,6 +30277,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &991844443
 PrefabInstance:
@@ -32047,6 +32096,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1044600039
 PrefabInstance:
@@ -32684,6 +32734,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!114 &1064489149 stripped
 MonoBehaviour:
@@ -32866,6 +32917,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1067884083
 PrefabInstance:
@@ -33238,6 +33290,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1085444485
 PrefabInstance:
@@ -33726,6 +33779,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1093869378
 PrefabInstance:
@@ -34528,6 +34582,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1125168404
 PrefabInstance:
@@ -34740,6 +34795,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1129429075
 PrefabInstance:
@@ -35079,6 +35135,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1133998098
 PrefabInstance:
@@ -35482,6 +35539,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1144857837
 PrefabInstance:
@@ -35870,6 +35928,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1152701545
 PrefabInstance:
@@ -36266,6 +36325,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1168276177
 PrefabInstance:
@@ -36429,6 +36489,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1170756287
 PrefabInstance:
@@ -36743,6 +36804,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1185754801
 PrefabInstance:
@@ -37204,6 +37266,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1 &1195575243
 GameObject:
@@ -39030,6 +39093,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1262789718
 PrefabInstance:
@@ -39961,6 +40025,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1288774995
 PrefabInstance:
@@ -40177,6 +40242,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1296181261
 PrefabInstance:
@@ -40446,6 +40512,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1303604205
 PrefabInstance:
@@ -40703,6 +40770,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1310705254
 PrefabInstance:
@@ -41479,6 +41547,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1344844905
 PrefabInstance:
@@ -42337,6 +42406,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1371128182
 PrefabInstance:
@@ -42756,6 +42826,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1385339517
 PrefabInstance:
@@ -43571,6 +43642,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1400259589
 PrefabInstance:
@@ -44081,6 +44153,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1411695262
 PrefabInstance:
@@ -44195,6 +44268,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1415932981
 PrefabInstance:
@@ -44938,6 +45012,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1428523129
 PrefabInstance:
@@ -45101,6 +45176,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1438110120
 PrefabInstance:
@@ -45215,6 +45291,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1438189181
 PrefabInstance:
@@ -46271,6 +46348,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1 &1465008754
 GameObject:
@@ -46568,6 +46646,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1473259742
 PrefabInstance:
@@ -47042,6 +47121,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1493529757
 PrefabInstance:
@@ -47152,6 +47232,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1496775005
 PrefabInstance:
@@ -48392,6 +48473,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1570451155
 PrefabInstance:
@@ -48584,6 +48666,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1576551584
 PrefabInstance:
@@ -48963,6 +49046,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1 &1595898391
 GameObject:
@@ -49522,7 +49606,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1767192439, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_CullingMask.m_Bits
-      value: 4294967039
+      value: 4294950911
       objectReference: {fileID: 0}
     - target: {fileID: 153982007679157697, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_Enabled
@@ -49870,6 +49954,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1611375111
 PrefabInstance:
@@ -50490,6 +50575,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1638829743
 PrefabInstance:
@@ -51139,6 +51225,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1657379430
 PrefabInstance:
@@ -51359,6 +51446,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1658475264
 PrefabInstance:
@@ -51718,6 +51806,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1665714232
 PrefabInstance:
@@ -51832,6 +51921,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1668161445
 PrefabInstance:
@@ -52636,6 +52726,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1699463626
 PrefabInstance:
@@ -52916,7 +53007,7 @@ Camera:
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 4294967039
+    m_Bits: 4294950911
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
@@ -53464,6 +53555,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1717667877
 PrefabInstance:
@@ -54724,6 +54816,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1 &1764082689
 GameObject:
@@ -55396,6 +55489,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1784568240
 PrefabInstance:
@@ -56164,6 +56258,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1804227158
 PrefabInstance:
@@ -56264,6 +56359,7 @@ MonoBehaviour:
   m_VehicleTag: 
   m_CheckVehicleController: 1
   m_CooldownDuration: 3
+  m_LogEvents: 0
   onViolationDetectedEvent:
     m_PersistentCalls:
       m_Calls: []
@@ -57624,6 +57720,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1852333446
 PrefabInstance:
@@ -58911,6 +59008,7 @@ MonoBehaviour:
   m_QueryTriggerInteraction: 1
   m_ResumeDelay: 0.6
   m_ResumeHysteresisDistance: 0.5
+  m_LogEvents: 0
   onEmergencyBrakeEvent:
     m_PersistentCalls:
       m_Calls: []
@@ -59079,6 +59177,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1891736564
 PrefabInstance:
@@ -59397,6 +59496,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1900955119
 PrefabInstance:
@@ -60487,6 +60587,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1933517356
 PrefabInstance:
@@ -61528,6 +61629,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &1964084094
 PrefabInstance:
@@ -64172,6 +64274,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &2037291644
 PrefabInstance:
@@ -64286,6 +64389,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &2037587521
 PrefabInstance:
@@ -65368,6 +65472,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &2075768646
 PrefabInstance:
@@ -65727,6 +65832,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1001 &2088078140
 PrefabInstance:
@@ -67103,6 +67209,7 @@ MonoBehaviour:
   m_CrashSpeedKmh: 5
   m_RearmSeconds: 1
   m_ContactGraceSeconds: 0.3
+  m_MinFaultSpeedKmh: 1
   m_LogEvents: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

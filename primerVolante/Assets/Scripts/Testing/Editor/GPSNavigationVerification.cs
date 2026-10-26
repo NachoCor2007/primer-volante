@@ -190,11 +190,10 @@ namespace PrimerVolante.Testing.Editor
                     Assert(localPos.y > 0.85f && Mathf.Abs(localPos.x - 0.077f) < 0.1f,
                         $"GPS_Display_Canvas debe estar ubicado sobre la consola central arriba de HazardButton (actual: {localPos})", ref total, ref passed);
 
-                    // Angulado hacia el conductor (rotación Y negativa, mirando hacia X negativo)
-                    Vector3 localAngles = canvasTransform.localEulerAngles;
-                    float yAngle = localAngles.y > 180f ? localAngles.y - 360f : localAngles.y;
-                    Assert(yAngle < -5f && yAngle > -35f,
-                        $"GPS_Display_Canvas debe estar angulado hacia el conductor (Y entre -5° y -35°, actual: {yAngle:F1}°)", ref total, ref passed);
+                    // Angulado hacia el conductor con la pose ajustada a mano (GPSNavigationSceneSetup.CANVAS_LOCAL_EULER)
+                    float poseError = Quaternion.Angle(canvasTransform.localRotation, Quaternion.Euler(GPSNavigationSceneSetup.CANVAS_LOCAL_EULER));
+                    Assert(poseError < 1f,
+                        $"GPS_Display_Canvas debe estar angulado hacia el conductor ({GPSNavigationSceneSetup.CANVAS_LOCAL_EULER}, actual: {canvasTransform.localEulerAngles}, diferencia: {poseError:F1}°)", ref total, ref passed);
 
                     // RawImage con RenderTexture
                     RawImage rawImage = canvasTransform.GetComponentInChildren<RawImage>(true);

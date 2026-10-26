@@ -9,7 +9,8 @@ namespace PrimerVolante.Testing.Editor
 {
     /// <summary>
     /// Herramienta de Editor para construir y configurar el tablero diegético (World Space Canvas)
-    /// en el vehículo Car06 y en la escena DashboardTestingScene.
+    /// en el vehículo Car06 y en la escena DashboardTestingScene. También agrega (sin regenerar el tablero)
+    /// los testigos de infracción y su chime a los prefabs de Car06 a Car09.
     /// </summary>
     public static class DashboardClusterSetup
     {
@@ -19,6 +20,27 @@ namespace PrimerVolante.Testing.Editor
         private const string ICON_POSITION_PATH = "Assets/Textures/UI/Dashboard/icon_lights_position.png";
         private const string ICON_LOWBEAM_PATH = "Assets/Textures/UI/Dashboard/icon_lights_lowbeam.png";
         private const string ICON_HIGHBEAM_PATH = "Assets/Textures/UI/Dashboard/icon_lights_highbeam.png";
+        public const string ICON_INFRACTION_PATH = "Assets/Textures/UI/Dashboard/icon_infraction_warning.png";
+
+        public const string INFRACTION_LEFT_NAME = "Indicator_Infraction_Left";
+        public const string INFRACTION_RIGHT_NAME = "Indicator_Infraction_Right";
+
+        /// <summary>Posición X (respecto del centro del canvas) de los testigos de infracción; el izquierdo usa -X.</summary>
+        public const float INFRACTION_INDICATOR_X = 150f;
+        public const float INFRACTION_INDICATOR_Y = -35f;
+        public const float INFRACTION_INDICATOR_SIZE = 40f;
+
+        private static readonly Color s_InfractionActiveColor = new Color(1f, 0.15f, 0.15f, 1f);
+        private static readonly Color s_InfractionInactiveColor = new Color(0.15f, 0.15f, 0.15f, 0.25f);
+        private const float INFRACTION_WARNING_DURATION = 3f;
+
+        private static readonly string[] s_VehiclePrefabsWithDashboard =
+        {
+            "Assets/MadTroll_Studio/Low Poly 1970s Family Sedan 3D Model Free Download Car02/Prefabs/Car06.prefab",
+            "Assets/MadTroll_Studio/Low Poly 1970s Family Sedan 3D Model Free Download Car02/Prefabs/Car07.prefab",
+            "Assets/MadTroll_Studio/Low Poly 1970s Family Sedan 3D Model Free Download Car02/Prefabs/Car08.prefab",
+            "Assets/MadTroll_Studio/Low Poly 1970s Family Sedan 3D Model Free Download Car02/Prefabs/Car09.prefab"
+        };
 
         private static Sprite LoadSprite(string path)
         {
@@ -62,6 +84,39 @@ namespace PrimerVolante.Testing.Editor
                     VehicleLightingSetup.ConfigureVehicleLighting(prefabRoot);
                     PrefabUtility.SaveAsPrefabAsset(prefabRoot, path);
                     Debug.Log($"[DashboardClusterSetup] ✅ {System.IO.Path.GetFileName(path)} actualizado con el nuevo tablero diegético e íconos!");
+                }
+                finally
+                {
+                    PrefabUtility.UnloadPrefabContents(prefabRoot);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Agrega a Car06-Car09 los testigos de infracción del tablero y el componente de audio del chime,
+        /// sin regenerar el tablero (no toca ningún otro hijo del canvas). Idempotente.
+        /// </summary>
+        [MenuItem("Tools/Primer Volante/Add Infraction Warning to Vehicle Prefabs (Car06-Car09)")]
+        public static void AddInfractionWarningToVehiclePrefabs()
+        {
+            foreach (var path in s_VehiclePrefabsWithDashboard)
+            {
+                if (!System.IO.File.Exists(path)) continue;
+                GameObject prefabRoot = PrefabUtility.LoadPrefabContents(path);
+                if (prefabRoot == null) continue;
+                try
+                {
+                    Transform canvas = prefabRoot.transform.Find("Dashboard_Cluster_Canvas");
+                    if (canvas == null)
+                    {
+                        Debug.LogWarning($"[DashboardClusterSetup] ⚠ {System.IO.Path.GetFileName(path)} no tiene Dashboard_Cluster_Canvas: se omite.");
+                        continue;
+                    }
+
+                    EnsureInfractionIndicators(canvas.gameObject);
+                    EnsureInfractionAudio(prefabRoot, canvas.gameObject);
+                    PrefabUtility.SaveAsPrefabAsset(prefabRoot, path);
+                    Debug.Log($"[DashboardClusterSetup] ✅ {System.IO.Path.GetFileName(path)}: testigos de infracción y chime configurados.");
                 }
                 finally
                 {
@@ -380,6 +435,10 @@ namespace PrimerVolante.Testing.Editor
 
             so.ApplyModifiedProperties();
 
+            // 9.b. Testigos de infracción (triángulos rojos a cada lado de la velocidad)
+            EnsureInfractionIndicators(canvasObj);
+            EnsureInfractionAudio(carRoot, canvasObj);
+
             // 10. Cablear botón de balizas (HazardButton) con VehicleController
             if (vehicleController != null)
             {
@@ -419,5 +478,208 @@ namespace PrimerVolante.Testing.Editor
             Debug.Log($"[DashboardClusterSetup] 🚀 Tablero diegético configurado y cableado exitosamente en {carRoot.name}!");
             return canvasObj;
         }
+
+        // ---------------------------------------------------------------- testigos de infracción
+
+        /// <summary>
+        /// Busca o crea <c>Indicator_Infraction_Left</c> e <c>Indicator_Infraction_Right</c> como hijos directos
+        /// del canvas (triángulo de advertencia, 40x40, arriba al centro a x = -150 / +150), y los cablea en el
+        /// <see cref="DashboardUIController"/> junto con colores y duración. Idempotente: si ya existen solo
+        /// reajusta layout, sprite y color; no duplica ni toca ningún otro hijo.
+        /// </summary>
+        public static void EnsureInfractionIndicators(GameObject canvasObj)
+        {
+            Sprite sprite = EnsureInfractionWarningIcon();
+
+            Image left = EnsureInfractionIndicator(canvasObj.transform, INFRACTION_LEFT_NAME, -INFRACTION_INDICATOR_X, sprite);
+            Image right = EnsureInfractionIndicator(canvasObj.transform, INFRACTION_RIGHT_NAME, INFRACTION_INDICATOR_X, sprite);
+
+            DashboardUIController controller = canvasObj.GetComponent<DashboardUIController>();
+            if (controller == null) controller = canvasObj.AddComponent<DashboardUIController>();
+
+            SerializedObject so = new SerializedObject(controller);
+            so.Update();
+            so.FindProperty("m_InfractionLeftIndicator").objectReferenceValue = left;
+            so.FindProperty("m_InfractionRightIndicator").objectReferenceValue = right;
+            so.FindProperty("m_InfractionActiveColor").colorValue = s_InfractionActiveColor;
+            so.FindProperty("m_InfractionInactiveColor").colorValue = s_InfractionInactiveColor;
+            so.FindProperty("m_InfractionWarningDuration").floatValue = INFRACTION_WARNING_DURATION;
+            so.ApplyModifiedProperties();
+            EditorUtility.SetDirty(controller);
+        }
+
+        private static Image EnsureInfractionIndicator(Transform canvas, string name, float x, Sprite sprite)
+        {
+            Transform existing = canvas.Find(name);
+            GameObject obj;
+            if (existing != null)
+            {
+                obj = existing.gameObject;
+            }
+            else
+            {
+                obj = new GameObject(name, typeof(RectTransform));
+                obj.transform.SetParent(canvas, false);
+            }
+
+            RectTransform rect = obj.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 1f);
+            rect.anchorMax = new Vector2(0.5f, 1f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = new Vector2(x, INFRACTION_INDICATOR_Y);
+            rect.sizeDelta = new Vector2(INFRACTION_INDICATOR_SIZE, INFRACTION_INDICATOR_SIZE);
+
+            Image image = obj.GetComponent<Image>();
+            if (image == null) image = obj.AddComponent<Image>();
+            image.sprite = sprite;
+            image.preserveAspect = true;
+            image.raycastTarget = false;
+            image.color = s_InfractionInactiveColor;
+            return image;
+        }
+
+        /// <summary>
+        /// Agrega (o completa) el <see cref="VehicleInfractionAudio"/> en el GameObject del canvas, con su
+        /// AudioSource, el perfil y el AudioMixerGroup del <see cref="VehicleCabinControlsAudio"/> del mismo
+        /// prefab. Si el prefab no tiene ese componente deja perfil y mixer sin tocar y avisa. Solo completa perfil y mixer vacíos.
+        /// </summary>
+        public static void EnsureInfractionAudio(GameObject carRoot, GameObject canvasObj)
+        {
+            AudioSource source = canvasObj.GetComponent<AudioSource>();
+            if (source == null) source = canvasObj.AddComponent<AudioSource>();
+            source.playOnAwake = false;
+            source.loop = false;
+            source.spatialBlend = 1f;
+
+            VehicleInfractionAudio audio = canvasObj.GetComponent<VehicleInfractionAudio>();
+            if (audio == null) audio = canvasObj.AddComponent<VehicleInfractionAudio>();
+
+            SerializedObject so = new SerializedObject(audio);
+            so.Update();
+            so.FindProperty("m_Dashboard").objectReferenceValue = canvasObj.GetComponent<DashboardUIController>();
+            so.FindProperty("m_Source").objectReferenceValue = source;
+
+            VehicleCabinControlsAudio cabin = carRoot.GetComponentInChildren<VehicleCabinControlsAudio>(true);
+            if (cabin != null)
+            {
+                // Solo completa lo que falta: no pisa un perfil o mixer elegido a mano.
+                SerializedObject cabinSo = new SerializedObject(cabin);
+                SerializedProperty profileProp = so.FindProperty("m_Profile");
+                SerializedProperty mixerProp = so.FindProperty("m_MixerGroup");
+                if (profileProp.objectReferenceValue == null)
+                    profileProp.objectReferenceValue = cabinSo.FindProperty("m_Profile").objectReferenceValue;
+                if (mixerProp.objectReferenceValue == null)
+                    mixerProp.objectReferenceValue = cabinSo.FindProperty("m_MixerGroup").objectReferenceValue;
+            }
+            else
+            {
+                Debug.LogWarning($"[DashboardClusterSetup] ⚠ {carRoot.name} no tiene VehicleCabinControlsAudio: VehicleInfractionAudio queda sin perfil ni mixer (no sonará).");
+            }
+
+            so.ApplyModifiedProperties();
+            EditorUtility.SetDirty(audio);
+            EditorUtility.SetDirty(source);
+        }
+
+        /// <summary>
+        /// Genera <c>icon_infraction_warning.png</c> si no existe (nunca lo pisa) y devuelve su sprite.
+        /// </summary>
+        public static Sprite EnsureInfractionWarningIcon()
+        {
+            if (!System.IO.File.Exists(ICON_INFRACTION_PATH))
+            {
+                System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(ICON_INFRACTION_PATH));
+                Texture2D tex = GenerateInfractionWarningTexture(128);
+                System.IO.File.WriteAllBytes(ICON_INFRACTION_PATH, tex.EncodeToPNG());
+                Object.DestroyImmediate(tex);
+                AssetDatabase.ImportAsset(ICON_INFRACTION_PATH, ImportAssetOptions.ForceSynchronousImport);
+            }
+            return LoadSprite(ICON_INFRACTION_PATH);
+        }
+
+        /// <summary>
+        /// Triángulo equilátero blanco (esquinas redondeadas, márgenes de 6 px, borde suavizado ~1.5 px) con un "!"
+        /// recortado en transparente (barra + punto), sobre fondo transparente.
+        /// </summary>
+        private static Texture2D GenerateInfractionWarningTexture(int size)
+        {
+            const float margin = 6f;
+            const float edgeSoftness = 1.5f;
+            const float cornerRadius = 7f;
+
+            float width = size - 2f * margin;
+            float height = width * 0.8660254f;
+            float cx = size * 0.5f;
+            float bottom = (size - height) * 0.5f;
+            float top = bottom + height;
+
+            // Vértices del triángulo "encogido" por el radio de las esquinas (la distancia a él, menos el radio,
+            // da el triángulo redondeado exacto con el mismo contorno exterior).
+            Vector2 centroid = new Vector2(cx, bottom + height / 3f);
+            Vector2[] outer =
+            {
+                new Vector2(cx - width * 0.5f, bottom),
+                new Vector2(cx + width * 0.5f, bottom),
+                new Vector2(cx, top)
+            };
+            // Escala hacia el centroide: inradio = height / 3.
+            float inradius = height / 3f;
+            float shrink = (inradius - cornerRadius) / inradius;
+            Vector2[] tri = new Vector2[3];
+            for (int i = 0; i < 3; i++) tri[i] = centroid + (outer[i] - centroid) * shrink;
+
+            // "!": barra con extremos redondeados y punto, centrados en x.
+            float barHalfWidth = 7f;
+            float barBottom = centroid.y + 3f;
+            float barTop = centroid.y + 41f;
+            Vector2 dotCenter = new Vector2(cx, bottom + 19f);
+            float dotRadius = 8f;
+
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    Vector2 p = new Vector2(x + 0.5f, y + 0.5f);
+
+                    float triSdf = SignedDistanceToTriangle(p, tri[0], tri[1], tri[2]) - cornerRadius;
+                    float alpha = Mathf.Clamp01(0.5f - triSdf / edgeSoftness);
+
+                    // Barra: segmento vertical con radio = mitad del ancho.
+                    float barSdf = DistanceToSegment(p, new Vector2(cx, barBottom + barHalfWidth * 0.5f),
+                        new Vector2(cx, barTop - barHalfWidth * 0.5f)) - barHalfWidth * 0.5f - 1.5f;
+                    float dotSdf = Vector2.Distance(p, dotCenter) - dotRadius;
+                    float cutSdf = Mathf.Min(barSdf, dotSdf);
+                    alpha *= Mathf.Clamp01(0.5f + cutSdf / edgeSoftness);
+
+                    pixels[y * size + x] = new Color32(255, 255, 255, (byte)Mathf.RoundToInt(alpha * 255f));
+                }
+            }
+
+            Texture2D tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            tex.SetPixels32(pixels);
+            tex.Apply();
+            return tex;
+        }
+
+        private static float DistanceToSegment(Vector2 p, Vector2 a, Vector2 b)
+        {
+            Vector2 ab = b - a;
+            float t = Mathf.Clamp01(Vector2.Dot(p - a, ab) / Mathf.Max(ab.sqrMagnitude, 1e-6f));
+            return Vector2.Distance(p, a + ab * t);
+        }
+
+        /// <summary>Distancia con signo (negativa adentro) de un punto a un triángulo.</summary>
+        private static float SignedDistanceToTriangle(Vector2 p, Vector2 a, Vector2 b, Vector2 c)
+        {
+            float d = Mathf.Min(DistanceToSegment(p, a, b), Mathf.Min(DistanceToSegment(p, b, c), DistanceToSegment(p, c, a)));
+            float s1 = Cross(b - a, p - a);
+            float s2 = Cross(c - b, p - b);
+            float s3 = Cross(a - c, p - c);
+            bool inside = (s1 >= 0f && s2 >= 0f && s3 >= 0f) || (s1 <= 0f && s2 <= 0f && s3 <= 0f);
+            return inside ? -d : d;
+        }
+
+        private static float Cross(Vector2 u, Vector2 v) => u.x * v.y - u.y * v.x;
     }
 }

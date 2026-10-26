@@ -1,8 +1,8 @@
 # Cómo funciona el sistema de infracciones (faltas leves y graves)
 
-Guía del gestor de infracciones implementado en **#15 US22**. Explica cómo un detector informa una falta, dónde se guarda, cómo se agrega una infracción nueva y cómo la van a leer el tablero (US24), el filtro de visión (US23) y el reporte final (US26).
+Guía del gestor de infracciones implementado en **#15 US22**. Explica cómo un detector informa una falta, dónde se guarda, cómo se agrega una infracción nueva y cómo la leen el tablero y el GPS (US24), y cómo la van a leer el filtro de visión (US23) y el reporte final (US26).
 
-> Alcance: el sistema **solo registra y cuenta**. No muestra nada en pantalla, no calcula puntaje ni nota final, no reinicia la prueba, no decide de quién es la culpa y no guarda a disco. Ver [Limitaciones](#limitaciones).
+> Alcance: el sistema **solo registra y cuenta**. Lo único que muestra es el [testigo del tablero](#testigo-en-el-tablero) (un ícono, sin texto) y el [aviso en la pantalla del GPS](#aviso-en-la-pantalla-del-gps) (el título corto, solo en Car09); no calcula puntaje ni nota final, no reinicia la prueba, no decide de quién es la culpa y no guarda a disco. Ver [Limitaciones](#limitaciones).
 
 ---
 
@@ -12,7 +12,7 @@ Antes de US22 cada sistema detectaba su falta por su cuenta y solo escribía en 
 
 Ahora hay un **repositorio central** (`InfractionManager`) y una **interfaz común** por la que cualquier sistema, actual o futuro, informa una falta **sin saber quién la guarda**. Cada infracción registrada se puede mostrar de dos formas:
 
-- **Título corto** ("Exceso de velocidad") en el tablero de la lección (US24).
+- **Título corto** ("Exceso de velocidad") en la pantalla del GPS (US24, solo Car09).
 - **Descripción completa** ("Superaste el límite de 40 km/h en este tramo. ...") en el reporte de fin de lección (US26).
 
 Registrar una falta **nunca interrumpe la simulación**: no toca `Time.timeScale`, no frena el auto, no recarga la escena y no lanza excepciones hacia el detector que reporta.
@@ -36,7 +36,7 @@ Registrar una falta **nunca interrumpe la simulación**: no toca `Time.timeScale
                                                                       |
                                        +------------------------------+------------------------------+
                                        v                              v                              v
-                              Tablero (US24)                 Filtro de visión (US23)         Reporte final (US26)
+                         Tablero y GPS (US24)                Filtro de visión (US23)         Reporte final (US26)
                               ShortTitle                     Severity                        Description + Records
 ```
 
@@ -320,7 +320,7 @@ public class InfractionBoardExample : MonoBehaviour
 
     private void Show(InfractionRecord record)
     {
-        // Tablero (US24): record.ShortTitle. Filtro de visión (US23): record.Severity.
+        // GPS (US24, ConsoleAlertDisplay): record.ShortTitle. Filtro de visión (US23): record.Severity.
         // Reporte final (US26): record.Description.
         Debug.Log($"{record.ShortTitle} ({record.Severity}) | leves {m_Log.MinorCount}, graves {m_Log.MajorCount}");
     }
@@ -358,6 +358,46 @@ Los estáticos se limpian al entrar a Play Mode (`[RuntimeInitializeOnLoadMethod
 
 ---
 
+## Testigo en el tablero
+
+Cada vez que el gestor registra una infracción, el tablero diegético detrás del volante prende **dos testigos rojos** (triángulo con "!", uno a cada lado del número de velocidad) y suena **un chime de dos tonos**. Es solo un aviso: no muestra el título ni la descripción (eso lo hace el [aviso en la pantalla del GPS](#aviso-en-la-pantalla-del-gps)), no distingue leve de grave y no parpadea.
+
+| Qué | Detalle |
+|---|---|
+| Qué escucha | `DashboardUIController` (en `Dashboard_Cluster_Canvas`) se suscribe a `IInfractionLog.InfractionRecorded` y `Cleared` del gestor activo (`InfractionReporting.Log`). Compara la referencia una vez por frame, así que no importa si el gestor se habilita después del tablero o si otro toma el lugar del activo. Sin gestor en la escena no pasa nada. |
+| Duración | **3 s** fijos en rojo (`m_InfractionWarningDuration` en el Inspector), después vuelven al gris tenue de apagado `(0.15, 0.15, 0.15, 0.25)`, el mismo de los guiños apagados. Un rojo tenue se confundía con el encendido. |
+| Otra infracción mientras está prendido | Los 3 s **se reinician** y el sonido vuelve a sonar una vez. |
+| `Cleared` | Apaga los testigos en el acto, sin sonido. |
+| Sonido | `VehicleInfractionAudio` (mismo GameObject que el canvas) escucha `DashboardUIController.InfractionWarningTriggered`, no el registro, así testigo y sonido coinciden. Cooldown mínimo de **0.5 s** entre sonidos (`InfractionChimeCooldown` del perfil): dos infracciones en el mismo frame suenan una sola vez, aunque el timer igual se reinicia. |
+| Probarlo sin gestor | `DashboardUIController.TriggerInfractionWarning()` (público) prende los testigos y dispara el evento. |
+| Cambiar el clip | El chime es un placeholder sintético: `Assets/Audio/Vehicle/infraction_chime.wav` ("ding-dong" descendente, La5 880 Hz y Mi5 660 Hz, ~0.75 s). Reemplazá el archivo con el mismo nombre, o asigná otro clip en `InfractionChime` del `VehicleAudioProfile` (hoy `VehicleAudioProfile_Car08`); el volumen es `InfractionChimeVolume` (1.0). La fuente es **2D** (`m_SpatialBlend = 0` en `VehicleInfractionAudio`): en 3D, a ~0.7 m del oyente, perdía más de la mitad del volumen y quedaba tapada por el motor y el ambiente. El generador nunca pisa un archivo existente. |
+| Ícono | `Assets/Textures/UI/Dashboard/icon_infraction_warning.png`, blanco sobre transparente y teñido por el color del `Image`. Se genera por código si falta. |
+
+Los testigos son dos `Image` (`Indicator_Infraction_Left` y `Indicator_Infraction_Right`, 40 x 40, ancla arriba al centro, x = -150 y +150, y = -35) hijos del canvas de Car06 a Car09. Para agregarlos a un prefab sin regenerar el tablero corré **Tools > Primer Volante > Add Infraction Warning to Vehicle Prefabs (Car06-Car09)** (idempotente; también agrega el `VehicleInfractionAudio` con el perfil y el mixer del `VehicleCabinControlsAudio` del mismo prefab). Car06 y Car07 no tienen `VehicleCabinControlsAudio`: ahí el chime queda sin perfil y no suena, pero el testigo funciona. Verificación: **Tools > Primer Volante > Verify Infraction Warning**.
+
+---
+
+## Aviso en la pantalla del GPS
+
+Cada vez que el gestor registra una infracción, la pantalla del GPS de la consola central cambia su **barra superior a roja** y muestra el **título corto** de la falta ("Choque", "Contramano", "Semáforo en rojo"...) con un triángulo de advertencia, **en lugar de la maniobra**, durante 3 s. Después vuelve la maniobra tal cual. No tapa el mapa. Es el aviso de US24 (#13).
+
+| Qué | Detalle |
+|---|---|
+| Dónde está | `Infraction_Alert`, último hijo de `GPS_Display_Canvas/Screen_Panel/Header_ManeuverBar` en **Car09**. Es un overlay rojo `(0.75, 0.08, 0.08, 1)` a pantalla completa de la barra, que tapa a `Maneuver_Icon` y `Maneuver_Text` sin apagarlos. Arranca inactivo. Lo maneja `ConsoleAlertDisplay` (`Assets/Scripts/UI/ConsoleAlertDisplay.cs`), en `GPS_Display_Canvas`. |
+| Qué muestra | Solo `record.ShortTitle`, sin encabezado. Ícono `icon_infraction_warning.png` (el mismo del testigo, blanco) a la izquierda. Rojo para **todas** las gravedades, coherente con el testigo. Si un título no entra, el texto se achica (mínimo 14) antes de cortarse. Un título nulo o vacío muestra "Infracción". |
+| Qué escucha | Igual que el testigo: `IInfractionLog.InfractionRecorded` y `Cleared` del gestor activo (`InfractionReporting.Log`), comparando la referencia una vez por frame. Sin gestor en la escena no pasa nada. |
+| Duración y cola | **3 s** por infracción (`m_DisplayDuration`). Si llega otra mientras se muestra una, se **encola** y se muestra al terminar la actual, 3 s cada una: no se pierde ninguna. Tres infracciones en el mismo frame tardan 9 s en mostrarse. Mide el tiempo con `Time.deltaTime`, igual que el testigo, pero **no está sincronizado con él**: el testigo se reinicia con cada infracción y se apaga 3 s después de la última, mientras el aviso sigue recorriendo la cola. |
+| Barra de tiempo | Una barra de **4 px** pegada al borde inferior del aviso. Arranca llena y se vacía en 3 s; se reinicia con cada infracción de la cola. Se acorta con `anchorMax.x` del relleno (`Infraction_Alert_Progress_Fill`), no con `Image.Type.Filled`, que sin sprite no recorta. |
+| `Cleared` | Vacía la cola y oculta el aviso en el acto. |
+| Solo Car09 | Es el único auto con GPS. Car06 a Car08 no tienen pantalla de GPS y siguen mostrando solo el testigo del tablero. |
+| Sonido | **No suena.** El chime es del testigo del tablero (`VehicleInfractionAudio`); este aviso no toca el audio. |
+| Probarlo sin gestor | `ConsoleAlertDisplay.Show("Contramano")` (público) encola un título como si viniera del registro. Para pruebas: `IsShowing`, `CurrentTitle`, `QueuedCount` y `RemainingFraction` (1 recién mostrado, 0 al terminar). También se puede reportar con `InfractionReporting.Report(InfractionReport.Create(...))`. |
+| Herramientas de Editor | **Tools > Primer Volante > GPS > Add Infraction Alert to Car09 Prefab** agrega o actualiza el aviso en el prefab (idempotente, vía `ConsoleAlertSetup.EnsureConsoleAlert`). `GPSNavigationSceneSetup.ConfigureGPSInVehicle` lo llama al final: reconstruye `GPS_Display_Canvas` desde cero y sin esa llamada un rebuild del GPS (**Setup GPS in Car09 Prefab**) borraría el aviso. Verificación: **Tools > Primer Volante > GPS > Verify Infraction Alert**. |
+
+Las escenas que usan Car09 (`CityMerged3`, `CityWithInfractions`, `CityWithWrongWay`, `Lesson_01_BasicDriving2`, `GPSNavigationDemo` y `GPSWrongWayDemo`) lo heredan del prefab y no tienen overrides sobre el aviso (lo comprueba la verificación). La escena para verlo en Play Mode con el gestor es `GPSWrongWayDemo`.
+
+---
+
 ## Setup y verificación
 
 | Qué | MenuItem | Qué hace |
@@ -365,6 +405,8 @@ Los estáticos se limpian al entrar a Play Mode (`[RuntimeInitializeOnLoadMethod
 | Setup | `Tools/Primer Volante/Setup Infraction Manager` | Crea o actualiza las 5 definiciones (`RED_LIGHT`, `SPEED_LIMIT`, `CRASH`, `GRAZE`, `WRONG_WAY`) y el catálogo en `Assets/Settings/Evaluation/`; crea `CityWithInfractions.unity` como copia de `CityMerged3` si no existe; deja un GameObject `InfractionManager` con el catálogo asignado y guarda la escena. Es idempotente. |
 | Setup del contramano | `Tools/Primer Volante/Setup Wrong Way Detection` | Idempotente. Crea la capa `LaneZone` y su matriz de colisiones, `RoadLaneDirection` y las zonas por carril en los prefabs de calle (y limpia las piezas excluidas), agrega `WrongWayDetector` a Car07, Car08 y Car09, crea los prefabs de los dos carteles y deja `CityWithWrongWay.unity` (copia de `CityWithInfractions`) con la calle de demostración `OneWayDemo`. Es la única escena que guarda. |
 | Verificación del contramano | `Tools/Primer Volante/Run Wrong Way Verification` | Funciones puras (`Classify`, `WrongWayEpisode`), capa, zonas de cada prefab con sus rangos, detector en los autos del jugador (y no en los NPC), catálogo y escenas (cada instancia de calle con zonas las tiene, `CityWithWrongWay` y sus carteles, `CityMerged3` y `CityWithInfractions` sin mano única y sin cambios). Al final corre `Run Infraction Manager Verification` de forma informativa. |
+| Testigo del tablero | `Tools/Primer Volante/Add Infraction Warning to Vehicle Prefabs (Car06-Car09)` y `Tools/Primer Volante/Verify Infraction Warning` | Agrega (idempotente) los testigos y el chime a los cuatro prefabs, y verifica layout, cableado, perfil, mixer y duración del clip. Ver [Testigo en el tablero](#testigo-en-el-tablero). |
+| Aviso del GPS | `Tools/Primer Volante/GPS/Add Infraction Alert to Car09 Prefab` y `Tools/Primer Volante/GPS/Verify Infraction Alert` | Agrega (idempotente) el overlay `Infraction_Alert` y el `ConsoleAlertDisplay` al prefab de Car09, y verifica jerarquía, valores, cableado, idempotencia, que un rebuild del GPS lo conserve y que ninguna escena de Car09 tenga overrides sobre él. Ver [Aviso en la pantalla del GPS](#aviso-en-la-pantalla-del-gps). |
 | Verificación | `Tools/Primer Volante/Run Infraction Manager Verification` | Catálogo, funciones puras, gestor en memoria, contexto de lección, escenas, y al final corre las suites existentes (`Run Obstacle Collision Verification`, `Run Lesson Boundary Verification` y `Run Traffic Light Tests`) de forma informativa. |
 
 Notas sobre la verificación:
@@ -377,9 +419,10 @@ Notas sobre la verificación:
 
 ## Limitaciones
 
-- **Solo registra**: sin UI (US23, US24, US26, US27 a US29), sin puntaje ni calificación final, sin persistencia a disco. Los registros viven en memoria y se pierden al salir de Play Mode.
+- **Solo registra**: sin UI salvo el testigo del tablero y el aviso del GPS (US23, US26, US27 a US29 siguen pendientes), sin puntaje ni calificación final, sin persistencia a disco. Los registros viven en memoria y se pierden al salir de Play Mode.
 - **No cuentan como infracción** (decisión del equipo, por ahora): arranque o apagado inválido del motor (`VehicleController.OnEngineStartRejected`), cambio de marcha inválido (`VRGearShifter.CanShiftTo`) y frenado de emergencia de un NPC (`NPCSafetyStop.OnEmergencyBrake`). El diseño permite sumarlos después sin tocar el gestor (ver [Agregar una infracción nueva](#agregar-una-infracción-nueva)).
 - **Sin atribución de culpa** (#23 US31): con el auto del jugador en movimiento, un choque con un NPC cuenta como falta aunque el NPC haya tenido la culpa. Solo se descartan los contactos con el jugador casi detenido (< 1 km/h). `ObstacleImpact.ObstacleSpeedKmh` ya trae la velocidad del NPC para cuando se implemente.
+- **Aviso del GPS, solo Car09**: Car06 a Car08 no tienen GPS, así que el título corto no se ve en ellos; ahí queda solo el testigo del tablero.
 - **Sin reinicio de la prueba** al tocar las vallas (US30): solo se registra la falta.
 - **Pocas escenas listas**: `CityWithInfractions` es la copia de `CityMerged3` donde se probó y `CityWithWrongWay` es la copia de esa donde se probó el contramano. `CityMerged3` y las escenas de lecciones no tienen gestor y usan el respaldo de consola; para sumarlo en otra escena, agregá un GameObject con `InfractionManager` y el catálogo `Assets/Settings/Evaluation/InfractionCatalog.asset`. Las lecciones con infracciones (#19 TASK-204) todavía no existen.
 - **Contramano, adelantamientos**: con la tolerancia de 10 m, un adelantamiento completo por el carril contrario **cuenta como falta**. No se detecta la línea discontinua ni el giro de guiño.

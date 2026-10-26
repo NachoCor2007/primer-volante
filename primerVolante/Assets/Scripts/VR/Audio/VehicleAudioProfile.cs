@@ -106,6 +106,10 @@ namespace PrimerVolante.VR
         public AudioClip KnobClick;
         public AudioClip GearClunk;
 
+        [Header("Tablero - Clips")]
+        [Tooltip("Chime de dos tonos que suena una vez al prenderse el testigo de infracción del tablero.")]
+        public AudioClip InfractionChime;
+
         [Header("Ambiente - Clips")]
         public AudioClip WindRoadLoop;
 
@@ -122,6 +126,7 @@ namespace PrimerVolante.VR
         [Range(0f, 1f)] public float StalkClickVolume = 0.7f;
         [Range(0f, 1f)] public float KnobClickVolume = 0.7f;
         [Range(0f, 1f)] public float GearClunkVolume = 0.8f;
+        [Range(0f, 1f)] public float InfractionChimeVolume = 1f;
         [Range(0f, 1f)] public float WindRoadMaxVolume = 0.5f;
 
         [Header("Motor - Capas y crossfade")]
@@ -181,6 +186,9 @@ namespace PrimerVolante.VR
         [Tooltip("Debounce en segundos del clic de la palanca de guiño.")]
         public float StalkClickDebounce = 0.08f;
 
+        [Tooltip("Segundos mínimos entre dos chimes de infracción (si caen dos juntas suena una sola vez).")]
+        public float InfractionChimeCooldown = 0.5f;
+
         [Header("Audio 3D")]
         [Tooltip("Distancia mínima del rolloff en la cabina (metros).")]
         public float CabinMinDistance = 0.3f;
@@ -222,6 +230,7 @@ namespace PrimerVolante.VR
             Check(StalkClick, nameof(StalkClick));
             Check(KnobClick, nameof(KnobClick));
             Check(GearClunk, nameof(GearClunk));
+            Check(InfractionChime, nameof(InfractionChime));
             Check(WindRoadLoop, nameof(WindRoadLoop));
             return missing.ToArray();
         }
