@@ -770,6 +770,9 @@ namespace PrimerVolante.Testing.Editor
             soGps.FindProperty("m_ArrivalPanel").objectReferenceValue = arrivalObj;
             soGps.FindProperty("m_ArrivalTitleText").objectReferenceValue = aTitleText;
             soGps.ApplyModifiedProperties();
+
+            // 14. Aviso de infracción (US24): el canvas se reconstruyó desde cero, así que se vuelve a agregar acá.
+            ConsoleAlertSetup.EnsureConsoleAlert(carRoot, fontAsset);
         }
 
         // =========================================================================
