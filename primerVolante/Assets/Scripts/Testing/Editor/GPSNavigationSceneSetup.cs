@@ -48,6 +48,10 @@ namespace PrimerVolante.Testing.Editor
         public const string NPC_BLOCK_ROUTE_NAME = "Route_Vehicle_Block";
         public const string NPC_GROUP_NAME = "NPC_Demo";
         public const string NPC_CAR_PREFAB_PATH = "Assets/Prefabs/NPCs/Vehicles/NPC_Car_color01.prefab";
+
+        // Pose de GPS_Display_Canvas ajustada a mano en GPSNavigationDemo para no atravesar el tablero del auto
+        public static readonly Vector3 CANVAS_LOCAL_POSITION = new Vector3(0.0401f, 0.9836f, 0.2631f);
+        public static readonly Vector3 CANVAS_LOCAL_EULER = new Vector3(10.734f, 14.893f, 2.089f);
         public const string ROUTE_OBJECT_NAME = "GPS_Circuit_Route";
 
         [MenuItem("Tools/Primer Volante/GPS/Setup GPS Demo Scene")]
@@ -462,10 +466,9 @@ namespace PrimerVolante.Testing.Editor
             RectTransform canvasRect = canvasObj.GetComponent<RectTransform>();
             if (canvasRect == null) canvasRect = canvasObj.AddComponent<RectTransform>();
 
-            // Pose ajustada a mano en GPSNavigationDemo para no atravesar el tablero del auto
-            canvasRect.localPosition = new Vector3(0.0401f, 0.9836f, 0.2631f);
+            canvasRect.localPosition = CANVAS_LOCAL_POSITION;
             // Inclinación hacia la vista del conductor
-            canvasRect.localRotation = Quaternion.Euler(10.734f, 14.893f, 2.089f);
+            canvasRect.localRotation = Quaternion.Euler(CANVAS_LOCAL_EULER);
             canvasRect.localScale = new Vector3(0.0004f, 0.0004f, 0.0004f);
             canvasRect.sizeDelta = new Vector2(480f, 360f);
 

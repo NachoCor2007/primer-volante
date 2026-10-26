@@ -225,8 +225,8 @@ namespace PrimerVolante.UI
         }
 
         /// <summary>
-        /// Asegura que la cámara principal de VR del jugador no renderice la capa GPSRoute,
-        /// pero mantenga visibles todas las capas del mundo real (Roads, Building, Vehicle, NPC, etc.).
+        /// Asegura que la cámara principal de VR del jugador y las cámaras de los espejos no rendericen la capa GPSRoute,
+        /// pero que la principal mantenga visibles todas las capas del mundo real (Roads, Building, Vehicle, NPC, etc.).
         /// </summary>
         public void ConfigureMainCameraCulling()
         {
@@ -244,6 +244,15 @@ namespace PrimerVolante.UI
                 if (vehicleLayer != -1) mainCam.cullingMask |= (1 << vehicleLayer);
                 if (roadsLayer != -1) mainCam.cullingMask |= (1 << roadsLayer);
                 if (buildingLayer != -1) mainCam.cullingMask |= (1 << buildingLayer);
+            }
+
+            // Los espejos reflejan el mundo real: la ruta del GPS tampoco debe verse en ellos.
+            if (routeLayer != -1 && m_VehicleTransform != null)
+            {
+                foreach (var mirror in m_VehicleTransform.GetComponentsInChildren<PrimerVolante.VR.VehicleMirrorCamera>(true))
+                {
+                    if (mirror.MirrorCamera != null) mirror.MirrorCamera.cullingMask &= ~(1 << routeLayer);
+                }
             }
         }
 
