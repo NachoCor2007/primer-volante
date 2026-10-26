@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Lesson04_Step05_DriveForward
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: "Avance y Aceleraci\xF3n"
-  instructionText: "Suelta suavemente el freno y acelera hacia adelante en l\xEDnea recta."
+  instructionText: "Suelta el freno y acelera (Trigger Derecho) hacia adelante en l\xEDnea recta."
   completionMode: 1
   requiredAction: 23
   actionNumericParameter: 4

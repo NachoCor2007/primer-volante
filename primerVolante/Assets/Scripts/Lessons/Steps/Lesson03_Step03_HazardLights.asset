@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Lesson03_Step03_HazardLights
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: Balizas de Emergencia
-  instructionText: "Presiona el bot\xF3n de balizas de emergencia (tri\xE1ngulo rojo en la consola) para advertir una detenci\xF3n riesgosa o advertencia vial."
+  instructionText: "Presiona el bot\xF3n de balizas de emergencia (bot\xF3n rojo con el tri\xE1ngulo a tu derecha) para advertir una detenci\xF3n riesgosa o advertencia vial."
   completionMode: 1
   requiredAction: 17
   actionNumericParameter: 0

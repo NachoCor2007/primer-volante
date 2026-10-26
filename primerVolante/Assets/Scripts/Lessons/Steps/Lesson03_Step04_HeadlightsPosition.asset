@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Lesson03_Step04_HeadlightsPosition
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: "Luces de Posici\xF3n"
-  instructionText: "Gira la perilla selectora de luces en el tablero al primer punto (Posici\xF3n) y su\xE9ltala para comprobar las luces reglamentarias de estacionamiento."
+  instructionText: "Rota la perilla selectora de luces, en sentido horario, al primer punto (Posici\xF3n) y su\xE9ltala para comprobar las luces reglamentarias de estacionamiento."
   completionMode: 1
   requiredAction: 19
   actionNumericParameter: 0

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Lesson03_Step06_HeadlightsHighBeam
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: Luces Altas de Ruta
-  instructionText: "Gira la perilla selectora de luces al tercer punto (Altas) y su\xE9ltala para activar el haz largo de ruta."
+  instructionText: "Rota la perilla selectora de luces al tercer punto (Altas) y su\xE9ltala para activar el haz largo de ruta."
   completionMode: 1
   requiredAction: 21
   actionNumericParameter: 0

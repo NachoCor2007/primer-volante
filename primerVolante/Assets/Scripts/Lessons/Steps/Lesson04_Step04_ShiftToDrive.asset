@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Lesson04_Step04_ShiftToDrive
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: Marcha en Drive (D)
-  instructionText: "Manteniendo presionado el freno de pie, coloca la palanca selectora en posici\xF3n Drive (D)."
+  instructionText: "Manteniendo presionado el freno, coloca la palanca selectora en posici\xF3n Drive (D)."
   completionMode: 1
   requiredAction: 11
   actionNumericParameter: 0

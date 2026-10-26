@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Lesson02_Step04_GearShifterPN
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: Selector de Marchas (P y N)
-  instructionText: "Con el pedal de freno presionado, mueve la palanca de cambios desde Parking (P) hacia la posici\xF3n Neutro (N)."
+  instructionText: "Con el freno presionado, mueve la palanca de cambios desde Parking (P) hacia la posici\xF3n Neutro (N)."
   completionMode: 1
   requiredAction: 14
   actionNumericParameter: 0

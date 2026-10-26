@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Lesson01_Step04_LeftMirror
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: Ajuste de Espejo Lateral Izquierdo
-  instructionText: "En el panel de la puerta, coloca el selector en 'L' y usa el mando de direcci\xF3n o flechas para orientar el espejo exterior izquierdo hasta observar el flanco del coche."
+  instructionText: "En el panel de la puerta, coloca el selector en 'L' y usa el mando de direcci\xF3n (Stick derecho) para orientar el espejo exterior izquierdo hasta observar el flanco del coche."
   completionMode: 1
   requiredAction: 5
   actionNumericParameter: 0

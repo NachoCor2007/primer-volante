@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Lesson01_Step03_RearviewMirror
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: Ajuste de Espejo Retrovisor Central
-  instructionText: "Toma el espejo retrovisor interior desde su borde con tu mano (Grip) o usa las teclas I/K/J/L y ori\xE9ntalo hasta tener una vista limpia de la luneta trasera."
+  instructionText: "Toma el espejo retrovisor interior desde su borde con tu mano (Grip) y ori\xE9ntalo hasta tener una vista limpia de la luneta trasera."
   completionMode: 1
   requiredAction: 4
   actionNumericParameter: 2.5

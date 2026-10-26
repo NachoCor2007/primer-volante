@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Lesson04_Step01_StartEngine
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: Encendido del Motor
-  instructionText: "Pisa el freno con tu pie derecho y presiona el bot\xF3n Start/Stop para arrancar el motor."
+  instructionText: "Presiona el freno (Trigger Izquierdo) y presiona el bot\xF3n Start/Stop para arrancar el motor."
   completionMode: 1
   requiredAction: 8
   actionNumericParameter: 0

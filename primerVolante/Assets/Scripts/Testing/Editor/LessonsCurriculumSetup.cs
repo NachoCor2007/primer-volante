@@ -90,7 +90,7 @@ namespace PrimerVolante.Testing.Editor
         {
             LessonStepSO step1 = CreateOrUpdateStep("Lesson01_Step01_SeatCalibration",
                 "Ajuste de Asiento y Postura",
-                "Para ajustar tu postura, altura y distancia del asiento, presiona el botón Menu en tu control izquierdo (o tecla Escape) para abrir el menú de calibración.\nAjusta tu posición y cierra el menú al finalizar para avanzar.",
+                "Para ajustar tu postura, altura y distancia del asiento, presiona el botón Menu en tu control izquierdo. Ajusta tu posición y presiona Reanudar para avanzar.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.OpenCalibrationMenu,
                 0f,
@@ -108,7 +108,7 @@ namespace PrimerVolante.Testing.Editor
 
             LessonStepSO step3 = CreateOrUpdateStep("Lesson01_Step03_RearviewMirror",
                 "Ajuste de Espejo Retrovisor Central",
-                "Toma el espejo retrovisor interior desde su borde con tu mano (Grip) o usa las teclas I/K/J/L y oriéntalo hasta tener una vista limpia de la luneta trasera.",
+                "Toma el espejo retrovisor interior desde su borde con tu mano (Grip) y oriéntalo hasta tener una vista limpia de la luneta trasera.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.AdjustRearviewMirror,
                 2.5f,
@@ -117,7 +117,7 @@ namespace PrimerVolante.Testing.Editor
 
             LessonStepSO step4 = CreateOrUpdateStep("Lesson01_Step04_LeftMirror",
                 "Ajuste de Espejo Lateral Izquierdo",
-                "En el panel de la puerta, coloca el selector en 'L' y usa el mando de dirección o flechas para orientar el espejo exterior izquierdo hasta observar el flanco del coche.",
+                "En el panel de la puerta, coloca el selector en 'L' y usa el mando de dirección (Stick derecho) para orientar el espejo exterior izquierdo hasta observar el flanco del coche.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.AdjustLeftMirror,
                 0f,
@@ -144,7 +144,7 @@ namespace PrimerVolante.Testing.Editor
         {
             LessonStepSO step1 = CreateOrUpdateStep("Lesson02_Step01_BrakePrecondition",
                 "Precondición de Seguridad: Freno de Pie",
-                "Antes de arrancar o manipular los mandos, mantén presionado el pedal de freno con tu pie derecho como precondición fundamental de seguridad.",
+                "Antes de arrancar o manipular los mandos, mantén presionado el freno (Trigger Izquierdo) como precondición fundamental de seguridad.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.PressBrakePedal,
                 0.8f,
@@ -153,7 +153,7 @@ namespace PrimerVolante.Testing.Editor
 
             LessonStepSO step2 = CreateOrUpdateStep("Lesson02_Step02_EngineStart",
                 "Encendido del Motor (Start)",
-                "Manteniendo presionado el pedal de freno a fondo, presiona el botón Start/Stop en el tablero para encender el motor del vehículo.",
+                "Manteniendo presionado el freno a fondo, presiona el botón Start/Stop en el tablero para encender el motor del vehículo.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.StartEngine,
                 0f,
@@ -171,7 +171,7 @@ namespace PrimerVolante.Testing.Editor
 
             LessonStepSO step4 = CreateOrUpdateStep("Lesson02_Step04_GearShifterPN",
                 "Selector de Marchas (P y N)",
-                "Con el pedal de freno presionado, mueve la palanca de cambios desde Parking (P) hacia la posición Neutro (N).",
+                "Con el freno presionado, mueve la palanca de cambios desde Parking (P) hacia la posición Neutro (N).",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.ShiftToNeutral,
                 0f,
@@ -207,7 +207,7 @@ namespace PrimerVolante.Testing.Editor
 
             LessonStepSO step3 = CreateOrUpdateStep("Lesson03_Step03_HazardLights",
                 "Balizas de Emergencia",
-                "Presiona el botón de balizas de emergencia (triángulo rojo en la consola) para advertir una detención riesgosa o advertencia vial.",
+                "Presiona el botón de balizas de emergencia (botón rojo con el triángulo a tu derecha) para advertir una detención riesgosa o advertencia vial.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.ActivateHazardLights,
                 0f,
@@ -216,7 +216,7 @@ namespace PrimerVolante.Testing.Editor
 
             LessonStepSO step4 = CreateOrUpdateStep("Lesson03_Step04_HeadlightsPosition",
                 "Luces de Posición",
-                "Gira la perilla selectora de luces en el tablero al primer punto (Posición) y suéltala para comprobar las luces reglamentarias de estacionamiento.",
+                "Rota la perilla selectora de luces, en sentido horario, al primer punto (Posición) y suéltala para comprobar las luces reglamentarias de estacionamiento.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.SetHeadlightsPosition,
                 0f,
@@ -225,7 +225,7 @@ namespace PrimerVolante.Testing.Editor
 
             LessonStepSO step5 = CreateOrUpdateStep("Lesson03_Step05_HeadlightsLowBeam",
                 "Luces Bajas Reglamentarias",
-                "Gira la perilla selectora de luces al segundo punto (Bajas) y suéltala para encender las luces de circulación obligatoria.",
+                "Rota la perilla selectora de luces al segundo punto (Bajas) y suéltala para encender las luces de circulación obligatoria.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.SetHeadlightsLowBeam,
                 0f,
@@ -234,7 +234,7 @@ namespace PrimerVolante.Testing.Editor
 
             LessonStepSO step6 = CreateOrUpdateStep("Lesson03_Step06_HeadlightsHighBeam",
                 "Luces Altas de Ruta",
-                "Gira la perilla selectora de luces al tercer punto (Altas) y suéltala para activar el haz largo de ruta.",
+                "Rota la perilla selectora de luces al tercer punto (Altas) y suéltala para activar el haz largo de ruta.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.SetHeadlightsHighBeam,
                 0f,
@@ -252,7 +252,7 @@ namespace PrimerVolante.Testing.Editor
         {
             LessonStepSO step1 = CreateOrUpdateStep("Lesson04_Step01_StartEngine",
                 "Encendido del Motor",
-                "Pisa el freno con tu pie derecho y presiona el botón Start/Stop para arrancar el motor.",
+                "Presiona el freno (Trigger Izquierdo) y presiona el botón Start/Stop para arrancar el motor.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.StartEngine,
                 0f,
@@ -261,7 +261,7 @@ namespace PrimerVolante.Testing.Editor
 
             LessonStepSO step2 = CreateOrUpdateStep("Lesson04_Step02_HeadlightsLowBeam",
                 "Luces Bajas Reglamentarias",
-                "Gira la perilla selectora para encender las luces bajas de circulación obligatoria.",
+                "Rota la perilla selectora para encender las luces bajas de circulación obligatoria.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.SetHeadlightsLowBeam,
                 0f,
@@ -279,7 +279,7 @@ namespace PrimerVolante.Testing.Editor
 
             LessonStepSO step4 = CreateOrUpdateStep("Lesson04_Step04_ShiftToDrive",
                 "Marcha en Drive (D)",
-                "Manteniendo presionado el freno de pie, coloca la palanca selectora en posición Drive (D).",
+                "Manteniendo presionado el freno, coloca la palanca selectora en posición Drive (D).",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.ShiftToDrive,
                 0f,
@@ -288,7 +288,7 @@ namespace PrimerVolante.Testing.Editor
 
             LessonStepSO step5 = CreateOrUpdateStep("Lesson04_Step05_DriveForward",
                 "Avance y Aceleración",
-                "Suelta suavemente el freno y acelera hacia adelante en línea recta.",
+                "Suelta el freno y acelera (Trigger Derecho) hacia adelante en línea recta.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.DriveForward,
                 4f,
@@ -297,7 +297,7 @@ namespace PrimerVolante.Testing.Editor
 
             LessonStepSO step6 = CreateOrUpdateStep("Lesson04_Step06_ProgressiveBraking",
                 "Frenado Progresivo",
-                "Presiona el pedal de freno de manera controlada hasta detener el vehículo por completo.",
+                "Presiona el freno de manera controlada hasta detener el vehículo por completo.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.PressBrakePedal,
                 0.8f,

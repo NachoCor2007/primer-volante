@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Lesson04_Step02_HeadlightsLowBeam
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: Luces Bajas Reglamentarias
-  instructionText: "Gira la perilla selectora para encender las luces bajas de circulaci\xF3n obligatoria."
+  instructionText: "Rota la perilla selectora para encender las luces bajas de circulaci\xF3n obligatoria."
   completionMode: 1
   requiredAction: 20
   actionNumericParameter: 0
