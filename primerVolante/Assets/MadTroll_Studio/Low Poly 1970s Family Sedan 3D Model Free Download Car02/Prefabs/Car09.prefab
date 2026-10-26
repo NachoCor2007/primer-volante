@@ -7110,7 +7110,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: 85831e093c6247d6b641c0cfc3c0669b, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -11629,7 +11629,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.StartButton
   m_VehicleController: {fileID: 1728493498108266381}
   m_TargetRenderer: {fileID: 8794220617931071959}
-  m_EngineOffColor: {r: 1, g: 1, b: 1, a: 1}
+  m_EngineOffColor: {r: 0.15, g: 0.65, b: 1, a: 1}
   m_EngineCrankingColor: {r: 1, g: 0.65, b: 0.1, a: 1}
   m_EngineOnColor: {r: 0.1, g: 0.9, b: 0.2, a: 1}
   m_EnableDebugLogs: 1
@@ -12111,8 +12111,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.VRToggleButton
   targetRenderer: {fileID: 7207281924524439656}
-  idleColor: {r: 1, g: 1, b: 1, a: 1}
-  toggledColor: {r: 1, g: 0.15, b: 0.05, a: 1}
+  idleColor: {r: 0.9, g: 0.15, b: 0.1, a: 1}
+  toggledColor: {r: 1, g: 0.35, b: 0.25, a: 1}
   enableVerboseLogs: 1
   OnToggledOn:
     m_PersistentCalls:
@@ -12573,7 +12573,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: a1fb490e4ec4414b8d4a85bf85f5876e, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -15636,7 +15636,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: 85831e093c6247d6b641c0cfc3c0669b, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
