@@ -1,4 +1,5 @@
 using System.Collections;
+using PrimerVolante.Evaluation;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -13,6 +14,7 @@ namespace PrimerVolante.VR
     /// - Tira de marchas (P, R, N, D) resaltando la activa
     /// - Testigo de freno de mano (P / !) en rojo
     /// - Testigos de luces frontales: posición (verde), bajas (verde agua) y altas (azul)
+    /// - Testigos de infracción: dos triángulos "!" rojos fijos durante unos segundos cada vez que el InfractionManager registra una falta
     /// </summary>
     public class DashboardUIController : MonoBehaviour
     {
@@ -94,6 +96,22 @@ namespace PrimerVolante.VR
         [Tooltip("Color inactivo de las luces altas.")]
         [SerializeField] private Color m_HighBeamInactiveColor = new Color(0.102f, 0.482f, 1f, 0.2f);
 
+        [Header("Testigos de Infracción")]
+        [Tooltip("Testigo de infracción a la izquierda del número de velocidad (triángulo con '!').")]
+        [SerializeField] private Graphic m_InfractionLeftIndicator;
+
+        [Tooltip("Testigo de infracción a la derecha del número de velocidad (triángulo con '!').")]
+        [SerializeField] private Graphic m_InfractionRightIndicator;
+
+        [Tooltip("Color de los testigos de infracción mientras están prendidos (rojo del freno de mano).")]
+        [SerializeField] private Color m_InfractionActiveColor = new Color(1f, 0.15f, 0.15f, 1f);
+
+        [Tooltip("Color de los testigos de infracción apagados (gris tenue, como los guiños apagados).")]
+        [SerializeField] private Color m_InfractionInactiveColor = new Color(0.15f, 0.15f, 0.15f, 0.25f);
+
+        [Tooltip("Segundos que quedan prendidos (fijos, sin parpadeo). Una infracción nueva reinicia el tiempo.")]
+        [SerializeField] private float m_InfractionWarningDuration = 3f;
+
         // Estados internos
         private bool m_HandbrakeActive = true;
         private HeadlightMode m_HeadlightMode = HeadlightMode.Off;
@@ -102,6 +120,8 @@ namespace PrimerVolante.VR
         private bool m_WasTurnSignalOrHazardActive = false;
         private GearState m_LastGear = (GearState)(-1);
         private TurnSignalLightController m_BlinkClock;
+        private float m_InfractionWarningRemaining;
+        private IInfractionLog m_SubscribedLog;
 
         /// <summary>
         /// Estado actual del freno de mano.
@@ -118,6 +138,17 @@ namespace PrimerVolante.VR
         /// </summary>
         public HeadlightMode CurrentHeadlightMode => m_HeadlightMode;
 
+        /// <summary>
+        /// True mientras los testigos de infracción están prendidos.
+        /// </summary>
+        public bool IsInfractionWarningActive => m_InfractionWarningRemaining > 0f;
+
+        /// <summary>
+        /// Se dispara una vez por cada infracción recibida (también si los testigos ya estaban prendidos).
+        /// El audio de la infracción escucha este evento para que testigo y sonido siempre coincidan.
+        /// </summary>
+        public event System.Action InfractionWarningTriggered;
+
         private void Awake()
         {
             if (m_VehicleController == null)
@@ -133,6 +164,23 @@ namespace PrimerVolante.VR
             {
                 m_BlinkClock = m_VehicleController.GetComponentInChildren<TurnSignalLightController>(true);
             }
+        }
+
+        private void OnEnable()
+        {
+            RefreshInfractionLogSubscription();
+        }
+
+        private void OnDisable()
+        {
+            UnsubscribeFromInfractionLog();
+            m_InfractionWarningRemaining = 0f;
+            UpdateInfractionIndicators();
+        }
+
+        private void OnDestroy()
+        {
+            UnsubscribeFromInfractionLog();
         }
 
         private void Start()
@@ -153,10 +201,13 @@ namespace PrimerVolante.VR
             UpdateHandbrakeDisplay();
             UpdateHeadlightsDisplay();
             ResetTurnSignalIndicators();
+            UpdateInfractionIndicators();
         }
 
         private void Update()
         {
+            RefreshInfractionLogSubscription();
+            UpdateInfractionWarning();
             UpdateSpeedometer();
             UpdateTurnSignals();
             UpdateGear();
@@ -384,6 +435,79 @@ namespace PrimerVolante.VR
                     ? m_HighBeamActiveColor
                     : m_HighBeamInactiveColor;
             }
+        }
+
+        /// <summary>
+        /// Prende los testigos de infracción, reinicia el tiempo de 3 s (configurable) y dispara
+        /// <see cref="InfractionWarningTriggered"/>. Lo llama el handler de <c>InfractionRecorded</c>;
+        /// es público para poder probarlo sin gestor de infracciones.
+        /// </summary>
+        public void TriggerInfractionWarning()
+        {
+            m_InfractionWarningRemaining = Mathf.Max(m_InfractionWarningDuration, Mathf.Epsilon);
+            UpdateInfractionIndicators();
+            InfractionWarningTriggered?.Invoke();
+        }
+
+        private void UpdateInfractionWarning()
+        {
+            if (m_InfractionWarningRemaining <= 0f) return;
+
+            m_InfractionWarningRemaining -= Time.deltaTime;
+            if (m_InfractionWarningRemaining <= 0f)
+            {
+                m_InfractionWarningRemaining = 0f;
+                UpdateInfractionIndicators();
+            }
+        }
+
+        private void UpdateInfractionIndicators()
+        {
+            Color color = IsInfractionWarningActive ? m_InfractionActiveColor : m_InfractionInactiveColor;
+
+            if (m_InfractionLeftIndicator != null)
+                m_InfractionLeftIndicator.color = color;
+
+            if (m_InfractionRightIndicator != null)
+                m_InfractionRightIndicator.color = color;
+        }
+
+        /// <summary>
+        /// Mantiene la suscripción al registro del gestor de infracciones activo. El gestor puede
+        /// habilitarse después que el tablero o ser reemplazado por otro en espera, así que se compara
+        /// una referencia por frame en lugar de asumir el orden de OnEnable.
+        /// </summary>
+        private void RefreshInfractionLogSubscription()
+        {
+            IInfractionLog log = InfractionReporting.Log;
+            if (ReferenceEquals(log, m_SubscribedLog)) return;
+
+            UnsubscribeFromInfractionLog();
+            if (log == null) return;
+
+            m_SubscribedLog = log;
+            m_SubscribedLog.InfractionRecorded += OnInfractionRecorded;
+            m_SubscribedLog.Cleared += OnInfractionsCleared;
+        }
+
+        private void UnsubscribeFromInfractionLog()
+        {
+            if (m_SubscribedLog == null) return;
+
+            m_SubscribedLog.InfractionRecorded -= OnInfractionRecorded;
+            m_SubscribedLog.Cleared -= OnInfractionsCleared;
+            m_SubscribedLog = null;
+        }
+
+        private void OnInfractionRecorded(InfractionRecord record)
+        {
+            TriggerInfractionWarning();
+        }
+
+        private void OnInfractionsCleared()
+        {
+            m_InfractionWarningRemaining = 0f;
+            UpdateInfractionIndicators();
         }
     }
 }

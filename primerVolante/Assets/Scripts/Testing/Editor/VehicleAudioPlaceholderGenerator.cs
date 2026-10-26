@@ -29,6 +29,7 @@ namespace PrimerVolante.Testing.Editor
     /// | stalk_click.wav               | one-shot ~60 ms | clic de palanca de guiño                                     |
     /// | knob_click.wav                | one-shot ~45 ms | clic de perilla                                              |
     /// | gear_clunk.wav                | one-shot ~0.15 s| golpe grave de selector                                      |
+    /// | infraction_chime.wav          | one-shot ~0.7 s | chime "ding-dong" descendente, tipo aviso de cinturón         |
     /// | wind_road_loop.wav            | loop ~3 s       | ruido rosa/marrón filtrado, sin corte                        |
     ///
     /// Los loops del motor deben ser mono, sin clic en el punto de loop y con las RPM de
@@ -49,7 +50,8 @@ namespace PrimerVolante.Testing.Editor
             "engine_start.wav", "engine_stop.wav", "engine_start_fail.wav",
             "blinker_tick.wav", "blinker_tock.wav",
             "handbrake_ratchet_click.wav", "handbrake_pull_full.wav", "handbrake_release.wav",
-            "button_click.wav", "stalk_click.wav", "knob_click.wav", "gear_clunk.wav"
+            "button_click.wav", "stalk_click.wav", "knob_click.wav", "gear_clunk.wav",
+            "infraction_chime.wav"
         };
 
         [MenuItem("Tools/Primer Volante/Generate Vehicle Audio Placeholders")]
@@ -81,10 +83,12 @@ namespace PrimerVolante.Testing.Editor
             created += Write("stalk_click.wav", GenDoubleClick());
             created += Write("knob_click.wav", GenClick(0.045f, 950f, 0.010f, 0.7f, 16));
             created += Write("gear_clunk.wav", GenThunk(0.15f, 70f, 260f, 0.035f, 22));
+            created += Write("infraction_chime.wav", GenInfractionChime());
             created += Write("wind_road_loop.wav", GenWindRoad());
 
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
             ApplyImportSettings();
+            AssignInfractionChimeToProfiles();
 
             Debug.Log($"[VehicleAudioPlaceholderGenerator] 🔊 Placeholders generados: {created} nuevos (los existentes no se tocan).");
         }
@@ -98,6 +102,36 @@ namespace PrimerVolante.Testing.Editor
                 ConfigureImporter($"{AUDIO_FOLDER}/{file}", true);
             foreach (string file in s_OneShotFiles)
                 ConfigureImporter($"{AUDIO_FOLDER}/{file}", false);
+        }
+
+        /// <summary>
+        /// Asigna <c>infraction_chime.wav</c> a todo <see cref="PrimerVolante.VR.VehicleAudioProfile"/> del
+        /// proyecto que todavía no tenga <c>InfractionChime</c> (no pisa un clip ya elegido).
+        /// </summary>
+        public static int AssignInfractionChimeToProfiles()
+        {
+            var clip = AssetDatabase.LoadAssetAtPath<AudioClip>($"{AUDIO_FOLDER}/infraction_chime.wav");
+            if (clip == null) return 0;
+
+            int assigned = 0;
+            foreach (string guid in AssetDatabase.FindAssets("t:VehicleAudioProfile"))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                var profile = AssetDatabase.LoadAssetAtPath<PrimerVolante.VR.VehicleAudioProfile>(path);
+                if (profile == null) continue;
+
+                var so = new SerializedObject(profile);
+                SerializedProperty prop = so.FindProperty("InfractionChime");
+                if (prop == null || prop.objectReferenceValue != null) continue;
+
+                prop.objectReferenceValue = clip;
+                so.ApplyModifiedPropertiesWithoutUndo();
+                EditorUtility.SetDirty(profile);
+                assigned++;
+            }
+
+            if (assigned > 0) AssetDatabase.SaveAssets();
+            return assigned;
         }
 
         private static void ConfigureImporter(string path, bool isLoop)
@@ -393,6 +427,40 @@ namespace PrimerVolante.Testing.Editor
                 loop[i] = h * 0.35f + sub * 0.3f + loop[i] * noiseAmp * 0.35f;
             }
             return loop;
+        }
+
+        /// <summary>
+        /// Chime "ding-dong" descendente: La5 (880 Hz) y, a los 0.22 s, Mi5 (660 Hz). Cada nota es un seno
+        /// con ataque de 5 ms, decaimiento exponencial (0.35 s) y un 2º armónico suave (0.25) para que suene
+        /// a campanita. Largo total 0.75 s, termina en silencio (fade de los últimos 60 ms).
+        /// </summary>
+        private static float[] GenInfractionChime()
+        {
+            const float seconds = 0.75f;
+            const float attack = 0.005f;
+            const float decay = 0.35f;
+            const float fadeOut = 0.06f;
+
+            var b = Buffer(seconds);
+            AddBellNote(b, 0f, 880f, attack, decay);
+            AddBellNote(b, 0.22f, 660f, attack, decay);
+
+            int fadeSamples = Mathf.RoundToInt(fadeOut * SAMPLE_RATE);
+            for (int i = 0; i < fadeSamples; i++)
+                b[b.Length - 1 - i] *= i / (float)fadeSamples;
+            return b;
+        }
+
+        private static void AddBellNote(float[] buf, float startSec, float freq, float attack, float decay)
+        {
+            int start = Mathf.RoundToInt(startSec * SAMPLE_RATE);
+            for (int i = 0; start + i < buf.Length; i++)
+            {
+                float t = i / (float)SAMPLE_RATE;
+                float env = Mathf.Min(1f, t / attack) * Mathf.Exp(-t / decay);
+                float tone = Mathf.Sin(2f * Mathf.PI * freq * t) + 0.25f * Mathf.Sin(2f * Mathf.PI * freq * 2f * t);
+                buf[start + i] += tone * env;
+            }
         }
 
         private static float[] GenWindRoad()
