@@ -797,6 +797,8 @@ namespace PrimerVolante.Testing.Editor
                         Vector3 half = Vector3.Scale(solid.size * 0.5f, solid.transform.lossyScale) * 0.95f;
                         foreach (Collider hit in Physics.OverlapBox(center, half, solid.transform.rotation, ~0, QueryTriggerInteraction.Ignore))
                         {
+                            // Otras escenas abiertas (p. ej. GPSNavigationDemo, que copia este grupo) comparten la física del Editor.
+                            if (hit.gameObject.scene != scene) continue;
                             if (hit.transform.IsChildOf(boundary.transform)) continue;
                             if (hit.transform.root.name.StartsWith("Road")) continue;
                             intruders.Add(hit.transform.root.name);
