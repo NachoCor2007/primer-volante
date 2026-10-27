@@ -24,9 +24,9 @@ namespace PrimerVolante.Testing.Editor
         public const string ORIGINAL_SCENE_PATH = "Assets/SimplePoly City - Low Poly Assets/Demo/TestingScenes/CityMerged_ScriptedEvents.unity";
         public const string TARGET_SCENE_DIR = "Assets/Scenes/Lessons";
         public const string TARGET_SCENE_PATH = "Assets/Scenes/Lessons/Lesson_01_BasicDriving.unity";
-        public const string LESSON_DATA_DIR = "Assets/Scripts/Lessons";
+        public const string LESSON_DATA_DIR = "Assets/Scripts/Lessons/Curriculum";
         public const string STEPS_DATA_DIR = "Assets/Scripts/Lessons/Steps";
-        public const string LESSON_DATA_PATH = "Assets/Scripts/Lessons/LessonData_01.asset";
+        public const string LESSON_DATA_PATH = "Assets/Scripts/Lessons/Curriculum/LessonData_01.asset";
         public const string FONT_PATH = "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset";
         public const string PREFAB_CAR09_PATH = "Assets/MadTroll_Studio/Low Poly 1970s Family Sedan 3D Model Free Download Car02/Prefabs/Car09.prefab";
         public const string LESSON_AUDIO_DIR = "Assets/Audio/Lessons";
@@ -154,9 +154,13 @@ namespace PrimerVolante.Testing.Editor
             {
                 AssetDatabase.CreateFolder("Assets/Scenes", "Lessons");
             }
-            if (!AssetDatabase.IsValidFolder(LESSON_DATA_DIR))
+            if (!AssetDatabase.IsValidFolder("Assets/Scripts/Lessons"))
             {
                 AssetDatabase.CreateFolder("Assets/Scripts", "Lessons");
+            }
+            if (!AssetDatabase.IsValidFolder(LESSON_DATA_DIR))
+            {
+                AssetDatabase.CreateFolder("Assets/Scripts/Lessons", "Curriculum");
             }
             if (!AssetDatabase.IsValidFolder(STEPS_DATA_DIR))
             {
@@ -278,7 +282,14 @@ namespace PrimerVolante.Testing.Editor
         private static LessonStepSO CreateOrUpdateStep(string fileName, string title, string instruction,
             LessonStepCompletionMode mode, CockpitControlFlags allowedControls, string highlightTarget)
         {
-            string path = $"{STEPS_DATA_DIR}/{fileName}.asset";
+            string subFolder = fileName.Length >= 8 && fileName.StartsWith("Lesson") ? fileName.Substring(0, 8) : "";
+            string dir = string.IsNullOrEmpty(subFolder) ? STEPS_DATA_DIR : $"{STEPS_DATA_DIR}/{subFolder}";
+            if (!AssetDatabase.IsValidFolder(dir))
+            {
+                AssetDatabase.CreateFolder(STEPS_DATA_DIR, subFolder);
+            }
+
+            string path = $"{dir}/{fileName}.asset";
             LessonStepSO step = AssetDatabase.LoadAssetAtPath<LessonStepSO>(path);
             bool isNew = false;
             if (step == null)
@@ -754,7 +765,7 @@ namespace PrimerVolante.Testing.Editor
                 var curriculumLessons = new List<LessonDefinitionSO>();
                 for (int l = 1; l <= 4; l++)
                 {
-                    string lPath = $"Assets/Scripts/Lessons/LessonData_0{l}.asset";
+                    string lPath = $"Assets/Scripts/Lessons/Curriculum/LessonData_0{l}.asset";
                     LessonDefinitionSO lDef = AssetDatabase.LoadAssetAtPath<LessonDefinitionSO>(lPath);
                     if (lDef != null) curriculumLessons.Add(lDef);
                 }

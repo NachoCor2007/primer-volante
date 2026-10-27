@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
-  m_Name: Lesson04_Step05_SecureStopAndPark
+  m_Name: Lesson02_Step01_BrakePrecondition
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
-  stepTitle: "Detenci\xF3n Segura y Estacionamiento"
-  instructionText: "Con el veh\xEDculo totalmente detenido, coloca la palanca de cambios en Parking (P), acciona el freno de mano hacia arriba para asegurarlo."
+  stepTitle: "Precondici\xF3n de Seguridad: Freno"
+  instructionText: "Antes de arrancar o manipular los mandos, mant\xE9n presionado el freno (Trigger Izquierdo) como precondici\xF3n fundamental de seguridad."
   completionMode: 1
-  requiredAction: 13
-  actionNumericParameter: 0
-  allowedControls: -1
-  highlightTargetName: VRHandbrake
+  requiredAction: 7
+  actionNumericParameter: 0.8
+  allowedControls: 12
+  highlightTargetName: 
   ambienceIntensity: 0

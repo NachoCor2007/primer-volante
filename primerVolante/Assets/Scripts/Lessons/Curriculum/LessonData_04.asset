@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: LessonData_04
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonDefinitionSO
   lessonId: LESSON_04
-  lessonTitle: "Lecci\xF3n 4: Din\xE1mica de Marcha, Maniobras y Detenci\xF3n"
+  lessonTitle: "Lecci\xF3n 4: Din\xE1mica y Maniobras"
   steps:
   - {fileID: 11400000, guid: ca727ff67abc2cd40965f2816953685f, type: 2}
   - {fileID: 11400000, guid: 6d20ddc17f3c18b40bcea06eb420bd85, type: 2}

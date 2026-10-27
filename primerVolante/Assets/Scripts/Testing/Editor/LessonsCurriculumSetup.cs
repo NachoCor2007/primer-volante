@@ -19,13 +19,14 @@ namespace PrimerVolante.Testing.Editor
     public static class LessonsCurriculumSetup
     {
         public const string LESSONS_DIR = "Assets/Scripts/Lessons";
+        public const string CURRICULUM_DIR = "Assets/Scripts/Lessons/Curriculum";
         public const string STEPS_DIR = "Assets/Scripts/Lessons/Steps";
         public const string SCENE_PATH = "Assets/Scenes/Lessons/Lesson_01_BasicDriving.unity";
 
-        public const string LESSON_01_PATH = "Assets/Scripts/Lessons/LessonData_01.asset";
-        public const string LESSON_02_PATH = "Assets/Scripts/Lessons/LessonData_02.asset";
-        public const string LESSON_03_PATH = "Assets/Scripts/Lessons/LessonData_03.asset";
-        public const string LESSON_04_PATH = "Assets/Scripts/Lessons/LessonData_04.asset";
+        public const string LESSON_01_PATH = "Assets/Scripts/Lessons/Curriculum/LessonData_01.asset";
+        public const string LESSON_02_PATH = "Assets/Scripts/Lessons/Curriculum/LessonData_02.asset";
+        public const string LESSON_03_PATH = "Assets/Scripts/Lessons/Curriculum/LessonData_03.asset";
+        public const string LESSON_04_PATH = "Assets/Scripts/Lessons/Curriculum/LessonData_04.asset";
 
         [MenuItem("Tools/Primer Volante/Lessons/Setup All Lessons Curriculum")]
         public static void SetupAllCurriculum()
@@ -77,9 +78,23 @@ namespace PrimerVolante.Testing.Editor
             {
                 AssetDatabase.CreateFolder("Assets/Scripts", "Lessons");
             }
+            if (!AssetDatabase.IsValidFolder(CURRICULUM_DIR))
+            {
+                AssetDatabase.CreateFolder(LESSONS_DIR, "Curriculum");
+            }
             if (!AssetDatabase.IsValidFolder(STEPS_DIR))
             {
                 AssetDatabase.CreateFolder(LESSONS_DIR, "Steps");
+            }
+
+            string[] lessonFolders = new[] { "Lesson01", "Lesson02", "Lesson03", "Lesson04" };
+            foreach (string sub in lessonFolders)
+            {
+                string path = $"{STEPS_DIR}/{sub}";
+                if (!AssetDatabase.IsValidFolder(path))
+                {
+                    AssetDatabase.CreateFolder(STEPS_DIR, sub);
+                }
             }
         }
 
@@ -143,7 +158,7 @@ namespace PrimerVolante.Testing.Editor
         public static LessonDefinitionSO SetupLesson02()
         {
             LessonStepSO step1 = CreateOrUpdateStep("Lesson02_Step01_BrakePrecondition",
-                "Precondición de Seguridad: Freno de Pie",
+                "Precondición de Seguridad: Freno",
                 "Antes de arrancar o manipular los mandos, mantén presionado el freno (Trigger Izquierdo) como precondición fundamental de seguridad.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.PressBrakePedal,
@@ -246,7 +261,7 @@ namespace PrimerVolante.Testing.Editor
         }
 
         /// <summary>
-        /// Lección 4: Dinámica de Marcha, Maniobras y Detención.
+        /// Lección 4: Dinámica y Maniobras.
         /// </summary>
         public static LessonDefinitionSO SetupLesson04()
         {
@@ -322,7 +337,7 @@ namespace PrimerVolante.Testing.Editor
                 CockpitControlFlags.All,
                 "VRHandbrake, VRGearShifter");
 
-            return CreateOrUpdateLesson(LESSON_04_PATH, "LESSON_04", "Lección 4: Dinámica de Marcha, Maniobras y Detención",
+            return CreateOrUpdateLesson(LESSON_04_PATH, "LESSON_04", "Lección 4: Dinámica y Maniobras",
                 new[] { step1, step2, step3, step4, step5, step6, step7, step8 });
         }
 
@@ -330,7 +345,14 @@ namespace PrimerVolante.Testing.Editor
             LessonStepCompletionMode mode, LessonActionType requiredAction, float actionNumericParameter,
             CockpitControlFlags allowedControls, string highlightTarget)
         {
-            string path = $"{STEPS_DIR}/{fileName}.asset";
+            string subFolder = fileName.Length >= 8 && fileName.StartsWith("Lesson") ? fileName.Substring(0, 8) : "";
+            string dir = string.IsNullOrEmpty(subFolder) ? STEPS_DIR : $"{STEPS_DIR}/{subFolder}";
+            if (!AssetDatabase.IsValidFolder(dir))
+            {
+                AssetDatabase.CreateFolder(STEPS_DIR, subFolder);
+            }
+
+            string path = $"{dir}/{fileName}.asset";
             LessonStepSO step = AssetDatabase.LoadAssetAtPath<LessonStepSO>(path);
             bool isNew = false;
             if (step == null)
