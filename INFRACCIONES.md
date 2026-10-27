@@ -82,7 +82,7 @@ El gestor de la escena es el GameObject raíz **`InfractionManager`** de `Assets
 
 ## Infracciones actuales
 
-Las fuentes son los cinco sistemas que detectan faltas. Los textos están en los assets y se editan sin tocar código.
+Las fuentes son los seis sistemas que detectan faltas. Los textos están en los assets y se editan sin tocar código.
 
 | Id | Fuente | Gravedad | Título corto | Plantilla de la descripción | Parámetros |
 |---|---|---|---|---|---|
@@ -91,6 +91,7 @@ Las fuentes son los cinco sistemas que detectan faltas. Los textos están en los
 | `CRASH` | `ObstacleCollisionDetector`: choque con un cono, un vehículo (NPC o estacionado) o un peatón (siempre choque); `LessonBoundary`: el auto alcanza las vallas de la lección | Grave | Choque | Chocaste con {object} a {speed} km/h. Reducí la velocidad y mantené distancia con los obstáculos. | `object`, `speed` |
 | `GRAZE` | `ObstacleCollisionDetector`: roce con un cono o un vehículo (NPC o estacionado) | Leve | Roce | Rozaste {object} a {speed} km/h. Calculá mejor las distancias al maniobrar. | `object`, `speed` |
 | `WRONG_WAY` | `WrongWayDetector`: circulación en contramano, **una por episodio** (calle de doble mano por el carril contrario, o calle de mano única en contra del sentido) | Grave | Contramano | Circulaste en contramano {where}. Circulá siempre por la derecha y respetá el sentido de circulación señalizado. | `where` |
+| `TURN_SIGNAL` | `TurnSignalDetector`: doblar (45° o más) sin el guiño puesto hacia ese lado en los 20 m previos, **una por giro**; solo en las escenas donde está aplicado (hoy `GPSTurnSignalDemo`) | Leve | Giro sin señalizar | Doblaste {direction} {reason}. Poné el guiño con anticipación antes de doblar. | `direction`, `reason` |
 
 Los ids son pocos a propósito: qué se chocó no cambia la gravedad, así que viaja en el parámetro `object` y no en el id. `object` es el nombre con artículo indefinido y en minúscula, para que la plantilla se lea natural: `"un cono"`, `"un vehículo"`, `"un peatón"`, `"una valla"`. `speed` es la velocidad del jugador en km/h, formateada con `F0`.
 
@@ -112,6 +113,7 @@ Detalles de cada fuente:
 - **Vallas**: se informa una vez por pasada (la deduplicación por vehículo de `LessonBoundary` sigue igual) y se reporta como `CRASH` con `object` = `"una valla"` (constante privada `k_BarrierLabel`). La posición y la velocidad son las del contacto. Ya no existe una infracción propia de las vallas.
 - **Obstáculos**: se informa un id por episodio de contacto. `ObstacleImpactMath.InfractionIdFor(ObstacleKind, ObstacleImpactSeverity)` devuelve `CRASH` o `GRAZE` según la gravedad (un peatón ya se clasifica siempre como choque en `Classify`), y `ObstacleImpactMath.ObjectLabelFor(ObstacleKind)` da el valor del parámetro `object` (`"un cono"`, `"un vehículo"`, `"un peatón"`; `"un obstáculo"` si el tipo no tiene mapeo). La velocidad es la del jugador (`PlayerSpeedKmh`); la posición es el punto de contacto. **Con el auto del jugador casi detenido no hay falta**: si `PlayerSpeedKmh` es menor que `Min Fault Speed Kmh` (1 km/h por defecto, configurable por obstáculo), quien chocó fue el obstáculo (un NPC que embiste, un peatón que camina contra el auto) y solo se emite el evento (`ObstacleImpactMath.IsPlayerFault`).
 - **Contramano**: el detector `WrongWayDetector` va en el **auto del jugador** (Car07, Car08 y Car09, junto al `VehicleController`) y la regla vive en **zonas por carril** dentro de los prefabs de calle. Ver [Contramano en detalle](#contramano-en-detalle).
+- **Giro sin señalizar**: el `TurnSignalDetector` va como componente de la **instancia** del auto del jugador en cada escena donde se quiera (no está en los prefabs del auto). Las curvas `Road Corner_01` y `Road Corner_02` y el extremo cerrado de las puntas `Road Lane_04` (z local de −6 a +10) son zonas exentas. Cómo activarlo en otras escenas, agregar zonas exentas o suspenderlo: [`ACTIVAR_GUINO_EN_ESCENAS.md`](ACTIVAR_GUINO_EN_ESCENAS.md).
 
 Las velocidades se formatean como enteros (`F0`). Los eventos C# y UnityEvents que ya existían (`OnViolationDetected`, `OnVehicleReachedBoundary`, `OnImpact`, `AnyImpact`) **se mantienen**: otros sistemas, como el audio, los usan. La falta se informa por `InfractionReporting` y el evento queda para reacciones. **No registres faltas suscribiéndote a esos eventos** (por ejemplo a `AnyImpact`): se contarían dos veces.
 
