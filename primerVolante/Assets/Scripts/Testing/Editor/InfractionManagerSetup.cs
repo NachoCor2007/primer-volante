@@ -40,7 +40,7 @@ namespace PrimerVolante.Testing.Editor
             }
         }
 
-        /// <summary>Las 5 infracciones actuales, en el orden del catálogo.</summary>
+        /// <summary>Las 6 infracciones actuales, en el orden del catálogo.</summary>
         public static readonly Spec[] Specs =
         {
             new Spec(InfractionIds.RedLight, "Semáforo en rojo",
@@ -58,6 +58,9 @@ namespace PrimerVolante.Testing.Editor
             new Spec(InfractionIds.WrongWay, "Contramano",
                 "Circulaste en contramano {where}. Circulá siempre por la derecha y respetá el sentido de circulación señalizado.",
                 InfractionSeverity.Major, "where"),
+            new Spec(InfractionIds.TurnSignal, "Giro sin señalizar",
+                "Doblaste {direction} {reason}. Poné el guiño con anticipación antes de doblar.",
+                InfractionSeverity.Minor, "direction", "reason"),
         };
 
         /// <summary>Ruta del asset de una definición: <c>Infraction_&lt;Id&gt;.asset</c>.</summary>
@@ -80,6 +83,16 @@ namespace PrimerVolante.Testing.Editor
         }
 
         // ------------------------------------------------------------------ Catálogo
+
+        /// <summary>
+        /// Crea o actualiza solo las definiciones y el catálogo (sin tocar ninguna escena). Lo usan los setups de
+        /// las infracciones nuevas. Devuelve el catálogo o null si falló.
+        /// </summary>
+        public static InfractionCatalogSO EnsureDefinitionsAndCatalog()
+        {
+            int created = 0, updated = 0;
+            return EnsureCatalog(ref created, ref updated);
+        }
 
         private static InfractionCatalogSO EnsureCatalog(ref int created, ref int updated)
         {

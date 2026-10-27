@@ -30,5 +30,11 @@ namespace PrimerVolante.Evaluation
         /// una calle de mano única (grave). Parámetro: <c>where</c>.
         /// </summary>
         public const string WrongWay = "WRONG_WAY";
+
+        /// <summary>
+        /// Giro sin señalizar: doblar sin guiño, con el guiño al lado contrario o sin la anticipación suficiente (leve).
+        /// Parámetros: <c>direction</c> (ej. "a la derecha") y <c>reason</c> (ej. "sin poner el guiño").
+        /// </summary>
+        public const string TurnSignal = "TURN_SIGNAL";
     }
 }
