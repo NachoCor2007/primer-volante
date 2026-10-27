@@ -126,6 +126,7 @@ namespace PrimerVolante.Testing.Editor
             VerifyTracker(ref total, ref passed);
             VerifyTrackerEdgeCases(ref total, ref passed);
             VerifyTrackerFixes(ref total, ref passed);
+            VerifyReactionMargin(ref total, ref passed);
             VerifyDetectorComponent(ref total, ref passed);
             VerifyData(ref total, ref passed);
             VerifyPrefabs(ref total, ref passed);
@@ -249,7 +250,8 @@ namespace PrimerVolante.Testing.Editor
             Assert(sim.Faults.Count == 0 && sim.Tracker.LastOutcome == TurnSignalOutcome.Signaled,
                 $"Dos giros seguidos con el guiño puesto al terminar el primero: sin falta ({Describe(sim)})", ref total, ref passed);
 
-            // El mismo caso con el guiño puesto recién al inicio del segundo giro.
+            // El mismo caso con el guiño puesto recién al inicio del segundo giro y solo 10 m entre giros: el margen de
+            // reacción (15 m tras el fin del giro) deja la ventana vacía, así que alcanza con el guiño al inicio.
             sim = new Sim();
             sim.Drive(30f, Off);
             sim.Drive(25f, Right);
@@ -257,8 +259,19 @@ namespace PrimerVolante.Testing.Editor
             sim.Drive(10f, Off);
             sim.Turn(90f, 15f, Right);
             sim.Drive(20f, Off);
+            Assert(sim.Faults.Count == 0 && sim.Tracker.LastOutcome == TurnSignalOutcome.Signaled,
+                $"Dos giros con 10 m entre ellos y el guiño recién al inicio del segundo: sin falta por el margen de reacción ({Describe(sim)})", ref total, ref passed);
+
+            // Con 25 m entre giros el margen ya no cubre todo: el guiño recién al inicio sigue siendo tarde.
+            sim = new Sim();
+            sim.Drive(30f, Off);
+            sim.Drive(25f, Right);
+            sim.Turn(90f, 15f, Right, afterSignal: Off);
+            sim.Drive(25f, Off);
+            sim.Turn(90f, 15f, Right);
+            sim.Drive(20f, Off);
             Assert(sim.Faults.Count == 1 && sim.Faults[0].Direction == Right && sim.Faults[0].Reason == TurnSignalFaultReason.TooLate,
-                $"Dos giros seguidos con el guiño recién en el segundo: 1 falta por anticipación ({Describe(sim)})", ref total, ref passed);
+                $"Dos giros con 25 m entre ellos y el guiño recién al inicio del segundo: 1 falta por anticipación ({Describe(sim)})", ref total, ref passed);
 
             // Giro dentro de una zona exenta.
             sim = new Sim();
@@ -562,6 +575,240 @@ namespace PrimerVolante.Testing.Editor
                 $"C4: en zona los primeros metros, fuera 10+ m antes del giro, sin guiño: 1 falta ({Describe(sim)})", ref total, ref passed);
         }
 
+        // ---------------------------------------------------------------- Tracker: margen de reacción tras un giro
+
+        // Un giro a la derecha bien señalizado (el guiño se auto-cancela a mitad del giro), como primer giro.
+        private static Sim FirstRightTurn(float? reactionMarginM = null)
+        {
+            var sim = new Sim();
+            if (reactionMarginM.HasValue) sim.Tracker.ReactionMarginM = reactionMarginM.Value;
+            sim.Drive(30f, Off);
+            sim.Drive(25f, Right);
+            sim.Turn(90f, 15f, Right, afterSignal: Off);
+            return sim;
+        }
+
+        private static void VerifyReactionMargin(ref int total, ref int passed)
+        {
+            // Cuadra corta (lado de una plaza): 18 m derechos, 6 m Off (auto-cancelado y reacción) y 12 m con Right.
+            var sim = FirstRightTurn();
+            sim.Drive(6f, Off);
+            sim.Drive(12f, Right);
+            sim.Turn(90f, 15f, Right, afterSignal: Off);
+            sim.Drive(20f, Off);
+            Assert(sim.Faults.Count == 0 && sim.Tracker.LastOutcome == TurnSignalOutcome.Signaled,
+                $"Margen: cuadra corta, guiño puesto a los 6 m del fin del giro anterior: sin falta ({Describe(sim)})", ref total, ref passed);
+
+            // Cuadra corta con un corte de 2 m justo antes del inicio (cae dentro de [borde + 15, inicio]).
+            sim = FirstRightTurn();
+            sim.Drive(6f, Off);
+            sim.Drive(10f, Right);
+            sim.Drive(2f, Off);
+            sim.Turn(90f, 15f, Right, afterSignal: Off);
+            sim.Drive(20f, Off);
+            Assert(sim.Faults.Count == 1 && sim.Faults[0].Reason == TurnSignalFaultReason.TooLate,
+                $"Margen: cuadra corta con un corte de 2 m antes del inicio: 1 falta por anticipación ({Describe(sim)})", ref total, ref passed);
+
+            // Cuadra corta sin guiño en el segundo giro.
+            sim = FirstRightTurn();
+            sim.Drive(18f, Off);
+            sim.Turn(90f, 15f, Off);
+            sim.Drive(20f, Off);
+            Assert(sim.Faults.Count == 1 && sim.Faults[0].Reason == TurnSignalFaultReason.NoSignal,
+                $"Margen: cuadra corta sin guiño: 1 falta NoSignal ({Describe(sim)})", ref total, ref passed);
+
+            // Cuadra corta con el guiño del lado contrario al inicio: el margen no cambia la precedencia.
+            sim = FirstRightTurn();
+            sim.Drive(18f, Left);
+            sim.Turn(90f, 15f, Left);
+            sim.Drive(20f, Off);
+            Assert(sim.Faults.Count == 1 && sim.Faults[0].Reason == TurnSignalFaultReason.WrongSide,
+                $"Margen: cuadra corta con el guiño contrario: 1 falta WrongSide ({Describe(sim)})", ref total, ref passed);
+
+            // Cuadra larga: 40 m derechos con el guiño puesto solo 8 m antes del inicio. La regla de 20 m sigue igual.
+            sim = FirstRightTurn();
+            sim.Drive(32f, Off);
+            sim.Drive(8f, Right);
+            sim.Turn(90f, 15f, Right);
+            sim.Drive(20f, Off);
+            Assert(sim.Faults.Count == 1 && sim.Faults[0].Reason == TurnSignalFaultReason.TooLate,
+                $"Margen: cuadra larga (40 m), guiño puesto 8 m antes del inicio: 1 falta por anticipación ({Describe(sim)})", ref total, ref passed);
+
+            // Cuadra larga con 21 m de guiño previo: sin falta.
+            sim = FirstRightTurn();
+            sim.Drive(19f, Off);
+            sim.Drive(21f, Right);
+            sim.Turn(90f, 15f, Right);
+            sim.Drive(20f, Off);
+            Assert(sim.Faults.Count == 0, $"Margen: cuadra larga con 21 m de guiño previo: sin falta ({Describe(sim)})", ref total, ref passed);
+
+            // Tras un reset (borde de arranque) el margen no se aplica: guiño a los 6 m del reset, giro a los 18 m.
+            sim = FirstRightTurn();
+            sim.Tracker.Reset();
+            sim.Drive(6f, Off);
+            sim.Drive(12f, Right);
+            sim.Turn(90f, 15f, Right);
+            sim.Drive(20f, Off);
+            Assert(sim.Faults.Count == 1 && sim.Faults[0].Reason == TurnSignalFaultReason.TooLate,
+                $"Margen: tras un reset el borde no tiene margen (6 m Off a 18 m del reset): 1 falta por anticipación ({Describe(sim)})", ref total, ref passed);
+
+            // Primer giro desde el arranque (sin giro anterior), con 18 m: borde de reset, sin margen.
+            sim = new Sim();
+            sim.Drive(6f, Off);
+            sim.Drive(12f, Right);
+            sim.Turn(90f, 15f, Right);
+            sim.Drive(20f, Off);
+            Assert(sim.Faults.Count == 1 && sim.Faults[0].Reason == TurnSignalFaultReason.TooLate,
+                $"Margen: primer giro del arranque con el guiño a los 6 m: 1 falta por anticipación ({Describe(sim)})", ref total, ref passed);
+
+            // El primer giro es una falta y el segundo cae en cuadra corta: el borde también es un fin de giro.
+            sim = new Sim();
+            sim.Drive(30f, Off);
+            sim.Turn(90f, 15f, Off);
+            sim.Drive(6f, Off);
+            sim.Drive(12f, Right);
+            sim.Turn(90f, 15f, Right);
+            sim.Drive(20f, Off);
+            Assert(sim.Faults.Count == 1 && sim.Faults[0].Reason == TurnSignalFaultReason.NoSignal,
+                $"Margen: tras un giro con falta, cuadra corta bien señalizada: solo la falta del primero ({Describe(sim)})", ref total, ref passed);
+
+            // El primer giro es exento (zona) y el segundo cae en cuadra corta.
+            sim = new Sim();
+            sim.Drive(30f, Off, exempt: true);
+            sim.Turn(90f, 15f, Off, exempt: true);
+            sim.Drive(6f, Off);
+            sim.Drive(12f, Right);
+            sim.Turn(90f, 15f, Right);
+            sim.Drive(20f, Off);
+            Assert(sim.Faults.Count == 0, $"Margen: tras un giro exento, cuadra corta bien señalizada: sin falta ({Describe(sim)})", ref total, ref passed);
+
+            // Fin del giro por el tope de 30 m: también cuenta como borde de giro.
+            sim = new Sim();
+            sim.Drive(30f, Off);
+            sim.Turn(90f, 15f, Off);
+            sim.Wobble(8f, 4f, 25f, Off);
+            sim.Drive(6f, Off);
+            bool stabilized = !sim.Tracker.IsAwaitingStability && !sim.Tracker.IsTurning;
+            sim.Drive(12f, Right);
+            sim.Turn(90f, 15f, Right);
+            sim.Drive(20f, Off);
+            Assert(stabilized && sim.Faults.Count == 1 && sim.Faults[0].Reason == TurnSignalFaultReason.NoSignal,
+                $"Margen: tras un giro cerrado por el tope de 30 m, cuadra corta bien señalizada: solo la falta del primero (estabilizado: {stabilized}; {Describe(sim)})", ref total, ref passed);
+
+            // F2: el margen efectivo nunca baja de SampleSpacingM: con 0 o negativo, un segundo giro bien señalizado
+            // tras el auto-cancelado no da falta por las muestras apagadas del giro anterior (igual que con 0,5).
+            foreach (float margin in new[] { 0.5f, 0f, -5f })
+            {
+                sim = FirstRightTurn(margin);
+                sim.Drive(18f, Right);
+                sim.Turn(90f, 15f, Right, afterSignal: Off);
+                sim.Drive(20f, Off);
+                Assert(sim.Faults.Count == 0 && sim.Tracker.LastOutcome == TurnSignalOutcome.Signaled,
+                    $"Margen {margin}: el guiño puesto apenas termina el giro anterior no da falta por muestras del giro anterior ({Describe(sim)})", ref total, ref passed);
+            }
+
+            // F4: una pausa (frenada casi total) sin giro en curso dentro del margen conserva lo que quedaba. El giro anterior
+            // ya terminó (7 m rectos), se frena un instante, el guiño se pone a los 10 m del fin del giro y se dobla a ~19 m.
+            sim = FirstRightTurn();
+            sim.Drive(7f, Off);
+            sim.Pause();
+            sim.Drive(3f, Off);
+            sim.Drive(8f, Right);
+            sim.Turn(90f, 15f, Right, afterSignal: Off);
+            sim.Drive(20f, Off);
+            Assert(sim.Faults.Count == 0 && sim.Tracker.LastOutcome == TurnSignalOutcome.Signaled,
+                $"Margen pendiente: frenada casi total 7 m después del giro, guiño a los 10 m, giro a ~19 m: sin falta ({Describe(sim)})", ref total, ref passed);
+
+            // F4: lo mismo con marcha atrás (sin girar) en vez de una frenada.
+            sim = FirstRightTurn();
+            sim.Drive(7f, Off);
+            sim.Reverse(0f);
+            sim.Drive(3f, Off);
+            sim.Drive(8f, Right);
+            sim.Turn(90f, 15f, Right, afterSignal: Off);
+            sim.Drive(20f, Off);
+            Assert(sim.Faults.Count == 0, $"Margen pendiente: marcha atrás recta 7 m después del giro: sin falta ({Describe(sim)})", ref total, ref passed);
+
+            // F4: dos pausas seguidas dentro del margen: el margen pendiente se va consumiendo con lo recorrido.
+            sim = FirstRightTurn();
+            sim.Drive(7f, Off);
+            sim.Pause();
+            sim.Drive(3f, Off);
+            sim.Pause();
+            sim.Drive(8f, Right);
+            sim.Turn(90f, 15f, Right, afterSignal: Off);
+            sim.Drive(20f, Off);
+            Assert(sim.Faults.Count == 0, $"Margen pendiente: dos frenadas dentro del margen: sin falta ({Describe(sim)})", ref total, ref passed);
+
+            // F4: la misma frenada 20 m después del giro (margen ya consumido): sin cambio, el guiño tardío es falta.
+            sim = FirstRightTurn();
+            sim.Drive(20f, Off);
+            sim.Pause();
+            sim.Drive(3f, Off);
+            sim.Drive(8f, Right);
+            sim.Turn(90f, 15f, Right, afterSignal: Off);
+            sim.Drive(20f, Off);
+            Assert(sim.Faults.Count == 1 && sim.Faults[0].Reason == TurnSignalFaultReason.TooLate,
+                $"Margen pendiente: frenada 20 m después del giro (margen consumido) y guiño tardío: 1 falta por anticipación ({Describe(sim)})", ref total, ref passed);
+
+            // F4: el caso aceptado "detenido en la esquina" (sin giro anterior) sigue sin falta.
+            sim = new Sim();
+            sim.Drive(30f, Off);
+            sim.Pause();
+            sim.Drive(4f, Right);
+            sim.Turn(90f, 15f, Right, afterSignal: Off);
+            sim.Drive(20f, Off);
+            Assert(sim.Faults.Count == 0, $"Detenido en la esquina, pone el guiño y dobla: sin falta ({Describe(sim)})", ref total, ref passed);
+
+            // F4: una supresión (Reset público) dentro del margen NO conserva el margen.
+            sim = FirstRightTurn();
+            sim.Drive(7f, Off);
+            sim.Tracker.Reset();
+            sim.Drive(3f, Off);
+            sim.Drive(8f, Right);
+            sim.Turn(90f, 15f, Right, afterSignal: Off);
+            sim.Drive(20f, Off);
+            Assert(sim.Faults.Count == 1 && sim.Faults[0].Reason == TurnSignalFaultReason.TooLate,
+                $"Margen pendiente: un reset por supresión dentro del margen no lo conserva: 1 falta por anticipación ({Describe(sim)})", ref total, ref passed);
+
+            // F6: sin allocations por paso con giros reales repetidos (bien y mal señalizados, cuadras cortas incluidas).
+            sim = FirstRightTurn();
+            sim.Drive(5f, Off);
+            float heading = sim.Heading;
+            int detections = 0, faults = 0;
+            StepCycles(sim.Tracker, ref heading, 4, ref detections, ref faults); // calentamiento
+            detections = 0;
+            faults = 0;
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            StepCycles(sim.Tracker, ref heading, 20, ref detections, ref faults);
+            long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            Assert(allocated == 0 && detections == 20 && faults == 10,
+                $"Margen: sin allocations por paso con giros reales ({allocated} bytes; {detections} giros, {faults} faltas en 20 ciclos)", ref total, ref passed);
+        }
+
+        // Ciclos de cuadra corta (18 m rectos y giro de 90° a la derecha), sin allocations. Los pares tienen el guiño puesto
+        // a los 6 m del giro anterior (bien señalizados gracias al margen) y los impares no tienen guiño (falta).
+        private static void StepCycles(TurnSignalTracker tracker, ref float heading, int cycles, ref int detections, ref int faults)
+        {
+            for (int cycle = 0; cycle < cycles; cycle++)
+            {
+                bool signaled = cycle % 2 == 0;
+                for (int i = 0; i < 72; i++) StepOnce(tracker, heading, signaled && i >= 24 ? Right : Off, ref detections, ref faults);
+                for (int i = 0; i < 60; i++)
+                {
+                    heading += 1.5f;
+                    StepOnce(tracker, heading, signaled && i < 24 ? Right : Off, ref detections, ref faults);
+                }
+            }
+        }
+
+        private static void StepOnce(TurnSignalTracker tracker, float heading, TurnSignalState signal, ref int detections, ref int faults)
+        {
+            TurnSignalFault? fault = tracker.Step(heading, k_StepM, signal, false);
+            if (tracker.TurnDetectedThisStep) detections++;
+            if (fault.HasValue) faults++;
+        }
+
         // ---------------------------------------------------------------- Detector (componente)
 
         private static void VerifyDetectorComponent(ref int total, ref int passed)
@@ -583,6 +830,21 @@ namespace PrimerVolante.Testing.Editor
                 // ResetTracking no falla y deja el rastreo en blanco.
                 detector.ResetTracking();
                 Assert(detector.LastOutcome == TurnSignalOutcome.None && !detector.IsTurning, "ResetTracking público descarta el rastreo", ref total, ref passed);
+
+                // El margen de reacción serializado (15 m por defecto) llega al tracker, y también un cambio posterior.
+                const System.Reflection.BindingFlags nonPublic = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                var trackerField = typeof(TurnSignalDetector).GetField("m_Tracker", nonPublic);
+                var marginField = typeof(TurnSignalDetector).GetField("m_ReactionMarginM", nonPublic);
+                Invoke(detector, "OnEnable");
+                var detectorTracker = trackerField?.GetValue(detector) as TurnSignalTracker;
+                bool defaultSynced = marginField != null && detectorTracker != null &&
+                                     Mathf.Approximately((float)marginField.GetValue(detector), 15f) && Mathf.Approximately(detectorTracker.ReactionMarginM, 15f);
+                marginField?.SetValue(detector, 7f);
+                Invoke(detector, "OnValidate");
+                bool changeSynced = detectorTracker != null && Mathf.Approximately(detectorTracker.ReactionMarginM, 7f);
+                marginField?.SetValue(detector, 15f);
+                Invoke(detector, "OnValidate");
+                Assert(defaultSynced && changeSynced, $"El margen de reacción serializado (15 m) llega al tracker, y un cambio también (por defecto: {defaultSynced}; cambio: {changeSynced})", ref total, ref passed);
 
                 // Con una máscara ya asignada no la pisa.
                 detector.ZoneMask = 1 << 3;
