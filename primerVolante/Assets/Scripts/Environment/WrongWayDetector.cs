@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using PrimerVolante.Evaluation;
 using UnityEngine;
 
@@ -67,13 +66,10 @@ namespace PrimerVolante.Environment
         private Rigidbody m_Body;
         private WrongWayEpisode m_Episode;
         private readonly Collider[] m_Buffer = new Collider[k_BufferSize];
-        private readonly HashSet<object> m_Suppressors = new HashSet<object>();
+        private readonly SuppressionSet m_Suppression = new SuppressionSet("[WrongWayDetector]");
         private WrongWayClassification m_LastClassification = WrongWayClassification.Neutral;
         private bool m_WasWrongWay;
         private bool m_WarnedFullBuffer;
-
-        // Dueños que son UnityEngine.Object y ya fueron destruidos. Sin captura: no genera basura por llamada.
-        private static readonly Predicate<object> s_IsDestroyedOwner = owner => owner is UnityEngine.Object unityObject && unityObject == null;
 
         /// <summary>Se dispara al empezar un episodio de contramano (primer paso en contra). No registra la falta.</summary>
         public event Action<WrongWayDetector> OnWrongWayStarted;
@@ -95,14 +91,7 @@ namespace PrimerVolante.Environment
         /// que son objetos de Unity ya destruidos se descartan solos, así que un paso de lección destruido sin
         /// liberar no deja el detector suspendido para siempre.
         /// </summary>
-        public bool IsSuppressed
-        {
-            get
-            {
-                if (m_Suppressors.Count > 0) m_Suppressors.RemoveWhere(s_IsDestroyedOwner);
-                return m_Suppressors.Count > 0;
-            }
-        }
+        public bool IsSuppressed => m_Suppression.IsActive;
 
         /// <summary>Última clasificación calculada (para depurar).</summary>
         public WrongWayClassification LastClassification => m_LastClassification;
@@ -195,21 +184,9 @@ namespace PrimerVolante.Environment
         /// </example>
         public void SetSuppressed(object owner, bool suppressed)
         {
-            if (owner == null)
-            {
-                Debug.LogWarning("[WrongWayDetector] ⚠️ SetSuppressed requiere un dueño (this); se ignora la llamada.");
-                return;
-            }
+            if (!m_Suppression.Set(owner, suppressed)) return;
 
-            if (suppressed)
-            {
-                m_Suppressors.Add(owner);
-                DiscardEpisode();
-            }
-            else
-            {
-                m_Suppressors.Remove(owner);
-            }
+            if (suppressed) DiscardEpisode();
         }
 
         private void FixedUpdate()

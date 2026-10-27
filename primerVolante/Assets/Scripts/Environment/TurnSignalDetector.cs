@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using PrimerVolante.Evaluation;
 using PrimerVolante.VR;
 using UnityEngine;
@@ -78,27 +76,17 @@ namespace PrimerVolante.Environment
         private VehicleController m_Vehicle;
         private TurnSignalTracker m_Tracker;
         private readonly Collider[] m_Buffer = new Collider[k_BufferSize];
-        private readonly HashSet<object> m_Suppressors = new HashSet<object>();
+        private readonly SuppressionSet m_Suppression = new SuppressionSet("[TurnSignalDetector]");
         private bool m_InExemptZone;
         private bool m_WarnedFullBuffer;
         private bool m_WarnedNoVehicle;
-
-        // Dueños que son UnityEngine.Object y ya fueron destruidos. Sin captura: no genera basura por llamada.
-        private static readonly Predicate<object> s_IsDestroyedOwner = owner => owner is UnityEngine.Object unityObject && unityObject == null;
 
         /// <summary>
         /// true mientras algún dueño tenga suspendido el detector (ver <see cref="SetSuppressed"/>). Los dueños
         /// que son objetos de Unity ya destruidos se descartan solos, así que un paso de lección destruido sin
         /// liberar no deja el detector suspendido para siempre.
         /// </summary>
-        public bool IsSuppressed
-        {
-            get
-            {
-                if (m_Suppressors.Count > 0) m_Suppressors.RemoveWhere(s_IsDestroyedOwner);
-                return m_Suppressors.Count > 0;
-            }
-        }
+        public bool IsSuppressed => m_Suppression.IsActive;
 
         /// <summary>Último desvío (grados) respecto del rumbo de referencia; positivo = a la derecha.</summary>
         public float LastDeltaDeg => m_Tracker != null ? m_Tracker.LastDeltaDeg : 0f;
@@ -233,21 +221,9 @@ namespace PrimerVolante.Environment
         /// </example>
         public void SetSuppressed(object owner, bool suppressed)
         {
-            if (owner == null)
-            {
-                Debug.LogWarning("[TurnSignalDetector] ⚠️ SetSuppressed requiere un dueño (this); se ignora la llamada.");
-                return;
-            }
+            if (!m_Suppression.Set(owner, suppressed)) return;
 
-            if (suppressed)
-            {
-                m_Suppressors.Add(owner);
-                Tracker.Reset();
-            }
-            else
-            {
-                m_Suppressors.Remove(owner);
-            }
+            if (suppressed) Tracker.Reset();
         }
 
         private void FixedUpdate()
