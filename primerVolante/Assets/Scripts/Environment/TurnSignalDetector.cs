@@ -48,6 +48,10 @@ namespace PrimerVolante.Environment
         [Tooltip("Metros de anticipación con el guiño correcto antes del inicio del giro.")]
         [SerializeField] private float m_AnticipationM = 20f;
 
+        [Tooltip("Metros después del fin del giro anterior en los que no se exige guiño (reacción tras el auto-cancelado de la palanca). Una pausa (frenada casi total, reversa) conserva lo que quede; un arranque o una supresión no. Mínimo 0,5 m.")]
+        [Min(0.5f)]
+        [SerializeField] private float m_ReactionMarginM = 15f;
+
         [Header("Fin del giro")]
         [Tooltip("Cambio neto máximo del rumbo (grados) en los últimos metros recorridos para considerarlo estable (el giro terminó).")]
         [SerializeField] private float m_StableAngleDeg = 5f;
@@ -200,6 +204,7 @@ namespace PrimerVolante.Environment
             m_Tracker.TurnDetectDeg = m_TurnAngleDeg;
             m_Tracker.TurnStartDeg = m_TurnStartAngleDeg;
             m_Tracker.AnticipationM = m_AnticipationM;
+            m_Tracker.ReactionMarginM = m_ReactionMarginM;
             m_Tracker.StableDeg = m_StableAngleDeg;
             m_Tracker.StableRangeDeg = m_StableRangeDeg;
             m_Tracker.StableDistanceM = m_StableDistanceM;

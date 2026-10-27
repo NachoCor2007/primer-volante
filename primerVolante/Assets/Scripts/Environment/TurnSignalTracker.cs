@@ -18,12 +18,14 @@ namespace PrimerVolante.Environment
     /// <para><b>Referencia.</b> Mientras no hay un giro en curso y el rumbo está estable (ver Fin del giro), la
     /// referencia pasa a ser el rumbo actual y se actualiza el posible inicio: así un conductor que endereza
     /// después de un giro, o que deriva lentamente, no deja el inicio pegado al giro anterior.</para>
-    /// <para><b>Anticipación estricta.</b> La ventana es <c>[inicio − X', inicio]</c>, con <c>X' = min(</c>
-    /// <see cref="AnticipationM"/>, distancia desde el fin del giro anterior, distancia desde el último reset
-    /// <c>)</c>. Está bien señalizado solo si el guiño fue igual a la dirección del giro en <b>todas</b> las muestras
-    /// de la ventana, incluida la del inicio. La ventana se recorta una muestra después de su borde (fin del giro
-    /// anterior o reset) para no exigir lo que el conductor no pudo hacer antes; si queda vacía alcanza con el
-    /// guiño al inicio. El guiño después del inicio no importa (el <c>VRTurnSignal</c> se auto-cancela en el giro).</para>
+    /// <para><b>Anticipación estricta.</b> La ventana es <c>[max(inicio − </c><see cref="AnticipationM"/><c>, borde +
+    /// margen), inicio]</c>. Está bien señalizado solo si el guiño fue igual a la dirección del giro en <b>todas</b>
+    /// las muestras de la ventana, incluida la del inicio. La ventana se recorta para no exigir lo que el conductor
+    /// no pudo hacer antes. Borde de reset (arranque, supresión, reversa sin giro): una muestra
+    /// (<see cref="SampleSpacingM"/>) después. Borde de fin de giro: <see cref="ReactionMarginM"/> (15 m) después,
+    /// el tiempo que tarda en volver a poner el guiño tras el auto-cancelado de la palanca. Si una pausa reinicia
+    /// el rastreo dentro de ese margen, lo que quedaba se conserva ("margen pendiente") y la ventana del próximo
+    /// giro no empieza antes. Si la ventana queda vacía alcanza con el guiño al inicio. El guiño después del inicio no importa (el <c>VRTurnSignal</c> se auto-cancela en el giro).</para>
     /// <para><b>Precedencia del motivo</b> (<see cref="TurnSignalFaultReason"/>), según el guiño al inicio:
     /// (1) igual a la dirección del giro: si toda la ventana fue correcta no hay falta; si no, <c>TooLate</c>
     /// (puesto tarde o con cortes); (2) hacia el lado contrario: <c>WrongSide</c>, aunque antes hubiera estado
@@ -37,7 +39,7 @@ namespace PrimerVolante.Environment
     /// terminado igual. Una vuelta en U da una sola falta porque el giro sigue "en curso" hasta que el rumbo se
     /// estabiliza. Un giro real (6 a 9°/m) y un cambio de carril no cumplen el criterio mientras ocurren.</para>
     /// <para><b>Pausa.</b> <see cref="Pause"/> se llama cuando el auto se frena casi del todo o va en marcha
-    /// atrás. Sin giro en curso reinicia (<see cref="Reset"/>): lo girado en reversa no cuenta. Con un giro ya
+    /// atrás. Sin giro en curso reinicia (<see cref="Reset"/>, conservando el margen de reacción pendiente): lo girado en reversa no cuenta. Con un giro ya
     /// detectado (|δ| llegó a <see cref="TurnDetectDeg"/>) conserva la referencia, el inicio y el estado
     /// "evaluado", así una maniobra de 3 puntos o una U lenta da como máximo una falta. Un giro parcial no
     /// detectado (|δ| ≥ <see cref="TurnStartDeg"/>) se conserva si la pausa es por baja velocidad, pero se descarta
@@ -72,6 +74,10 @@ namespace PrimerVolante.Environment
         private float m_Reference;
         private float m_BoundaryDistance;
 
+        // Distancia acumulada hasta la que no se exige guiño por el margen de reacción tras el fin de un giro. La
+        // ventana del próximo giro no empieza antes. Una pausa con reinicio conserva lo que quedaba del margen.
+        private float m_MarginEndDistance;
+
         // Tramo recto en curso: posible inicio del giro.
         private float m_StartDistance;
         private TurnSignalState m_SignalAtStart;
@@ -90,6 +96,14 @@ namespace PrimerVolante.Environment
 
         /// <summary>Metros de anticipación exigidos al guiño antes del inicio del giro.</summary>
         public float AnticipationM { get; set; } = 20f;
+
+        /// <summary>
+        /// Metros después del fin de un giro anterior durante los cuales no se exige guiño: tiempo de reacción tras el
+        /// auto-cancelado de la palanca. Solo aplica después del fin de un giro, y una pausa que reinicia
+        /// (<see cref="Pause"/>) conserva lo que quedaba; <see cref="Reset"/> (arranque, supresión) no lo conserva.
+        /// Nunca baja de <see cref="SampleSpacingM"/>.
+        /// </summary>
+        public float ReactionMarginM { get; set; } = 15f;
 
         /// <summary>Cambio neto máximo del rumbo (grados) en los últimos <see cref="StableDistanceM"/> para considerarlo estable.</summary>
         public float StableDeg { get; set; } = 5f;
@@ -156,6 +170,7 @@ namespace PrimerVolante.Environment
             m_LastSampleDistance = float.NegativeInfinity;
             m_Cumulative = 0f;
             m_BoundaryDistance = 0f;
+            m_MarginEndDistance = 0f;
             m_HasReference = false;
             m_Turning = false;
             m_AwaitingStability = false;
@@ -180,7 +195,14 @@ namespace PrimerVolante.Environment
         {
             TurnDetectedThisStep = false;
             if (m_Turning || m_AwaitingStability) return;
-            if (reversing || !HasTurnInProgress) Reset();
+            if (reversing || !HasTurnInProgress)
+            {
+                // El reinicio de la pausa conserva lo que quedaba del margen de reacción del giro anterior: el
+                // conductor que frena un instante en la senda después de girar no pierde esos metros.
+                float pendingMargin = Mathf.Max(0f, m_MarginEndDistance - m_Cumulative);
+                Reset();
+                m_MarginEndDistance = pendingMargin;
+            }
         }
 
         /// <summary>
@@ -250,9 +272,9 @@ namespace PrimerVolante.Environment
                 return null;
             }
 
-            // Ventana [inicio − X', inicio]: recortada por la anticipación, por el borde (fin del giro anterior o
-            // reset) más una muestra, y nunca después del inicio.
-            float windowStart = Mathf.Max(m_StartDistance - AnticipationM, m_BoundaryDistance + SampleSpacingM);
+            // Ventana [inicio − X', inicio]: recortada por la anticipación, por el borde más una muestra, por el margen
+            // de reacción pendiente (fin de giro, o lo que quedaba al reiniciar por una pausa) y nunca después del inicio.
+            float windowStart = Mathf.Max(m_StartDistance - AnticipationM, m_BoundaryDistance + SampleSpacingM, m_MarginEndDistance);
             if (windowStart > m_StartDistance) windowStart = m_StartDistance;
 
             bool allCorrect = true, anyCorrect = false;
@@ -301,6 +323,7 @@ namespace PrimerVolante.Environment
                 m_AwaitingStability = false;
                 m_Reference = headingDeg;
                 m_BoundaryDistance = Mathf.Max(SettledSince(headingDeg), m_DetectDistance);
+                m_MarginEndDistance = m_BoundaryDistance + Mathf.Max(ReactionMarginM, SampleSpacingM);
                 m_StartDistance = m_Cumulative;
                 m_SignalAtStart = signal;
                 m_ExemptSeen = inExemptZone;
