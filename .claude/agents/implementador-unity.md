@@ -27,6 +27,13 @@ Recibís un prompt con un diseño **ya acordado con el usuario**. Tu trabajo es 
 - No uses APIs de Unity obsoletas (warnings `CS0618` u otros). Ejemplo: usá `Object.FindAnyObjectByType<T>()` en vez de `FindFirstObjectByType<T>()`. Verificá que una API no esté deprecada antes de usarla.
 - Al terminar, el proyecto tiene que compilar sin errores ni warnings nuevos.
 
+### Tests
+Toda feature se entrega con tests ejecutados, no solo escritos.
+- **Verificación en Editor**: seguí la convención del proyecto en `Assets/Scripts/Testing/Editor/`, es decir, una clase estática `<Feature>Verification.cs` (o `<Feature>Tests.cs`) con un `[MenuItem("Tools/Primer Volante/Verify <Feature>")]`. Tiene que contar las pruebas pasadas sobre el total y loguear el resultado con `Debug.Log`. Usá como modelo una existente, por ejemplo `InfractionWarningVerification.cs` o `WrongWayVerification.cs`. Si la feature necesita armar la escena, usá un `<Feature>Setup.cs` con su propio MenuItem, como hacen las demás.
+- **Comportamiento en Play Mode**: si la feature depende de manejar o de la física, probala en Play Mode con el Unity CLI. Para manejar Car08/Car09, usá un Gamepad virtual (`InputSystem.AddDevice<Gamepad>` + `QueueStateEvent`) y soltá el freno de mano con `VRHandbrake.SetEngagementImmediate(0)`. `simulate_key` no mueve el auto. Para escenarios largos, usá una máquina de estados en `EditorApplication.update` vía `eval_file` y leé líneas `[TEST]` de la consola. Al terminar, eliminá el Gamepad virtual.
+- **Regresiones**: corré también las verificaciones existentes de los sistemas que tocaste.
+- Ejecutá los tests con el Unity CLI y leé el resultado en la consola. Si alguno falla, corregí y volvé a correrlos. Si no podés hacerlo pasar, reportalo con el error real; no lo des por bueno.
+
 ### Git
 - Trabajá en la rama que indica el prompt.
 - Commiteá solo si el prompt lo pide. Los mensajes de commit no llevan `Co-Authored-By` ni ninguna atribución a Claude: el usuario es el único autor.
@@ -37,6 +44,6 @@ Recibís un prompt con un diseño **ya acordado con el usuario**. Tu trabajo es 
 Terminá con un reporte breve:
 1. **Hecho**: qué se implementó, con los archivos creados o modificados (rutas).
 2. **Escena**: ruta de la escena nueva y qué contiene.
-3. **Verificación**: qué probaste y el resultado real (si algo falló, decilo con el error).
+3. **Tests**: qué tests creaste y cuáles corriste (MenuItem o escenario de Play Mode), con el resultado real, por ejemplo `12/12`. Si algo falló, incluí el error.
 4. **Desvíos y decisiones**: cualquier cosa en la que te apartaste del prompt o que tuviste que decidir vos, y por qué.
 5. **Pendiente**: lo que falta o lo que el usuario debería probar a mano (por ejemplo, en el visor VR).

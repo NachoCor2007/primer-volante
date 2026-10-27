@@ -51,7 +51,7 @@ El subagente **no ve esta conversación**: el prompt tiene que ser autocontenido
 3. **Diseño acordado**: detalle de cada pieza. Incluí las decisiones que tomó el usuario, para que el subagente no las vuelva a discutir.
 4. **Escena nueva**: los cambios van en una escena nueva. Indicá la escena base a duplicar, el nombre y la ruta de la nueva (ej. `Assets/Scenes/car09/CityWith<Feature>.unity`). Preguntá al usuario si no está claro cuál es la base.
 5. **Tools y skills a usar**: lista concreta de qué usar y para qué. El Unity CLI va siempre primero, con las operaciones concretas que va a necesitar (duplicar la escena base, crear GameObjects y componentes, asignar referencias, verificar compilación, probar en Play Mode). Después, el resto (ej. "las indicaciones de Play Mode driving tests para probar manejando con un Gamepad virtual"). El objetivo es que el subagente no tenga que pensar qué herramientas usar.
-6. **Verificación**: cómo comprobar que funciona (compilación sin errores ni warnings nuevos, pruebas en Play Mode, qué mirar en consola).
+6. **Tests**: qué tiene que verificar la clase `<Feature>Verification` (casos concretos), qué escenarios de Play Mode hay que correr y qué se espera ver en la consola, y qué verificaciones existentes correr para descartar regresiones.
 7. **Criterios de aceptación** y **fuera de alcance**.
 8. **Git**: rama en la que trabajar, y si tiene que commitear o no (preguntale al usuario si no lo dijo).
 
@@ -61,6 +61,14 @@ Mostrale el prompt completo al usuario y **esperá su aprobación explícita**. 
 Con el prompt aprobado, lanzá el agente `implementador-unity` (Agent tool, `subagent_type: "implementador-unity"`) con el prompt tal cual fue aprobado.
 
 Cuando termine:
-- Resumile al usuario lo que reportó: qué se hizo, qué quedó pendiente, problemas encontrados.
+- Resumile al usuario lo que reportó: qué se hizo, el resultado de los tests, qué quedó pendiente y los problemas encontrados.
 - Si reporta algo que contradice el diseño o que no pudo resolver, planteáselo al usuario antes de seguir.
-- Actualizá la memoria del diseño (ej. "implementado AAAA-MM-DD en la rama X").
+
+### 6. Code review
+La revisión la hacés vos, no el subagente, para que el código lo revise alguien distinto de quien lo escribió:
+1. Corré la skill `code-review` con nivel `high` sobre los cambios del subagente.
+2. Mostrale los hallazgos al usuario y acordá cuáles corregir.
+3. Mandale las correcciones al mismo subagente con `SendMessage`, así conserva su contexto. Pedile que vuelva a correr los tests afectados.
+4. Repetí la revisión si las correcciones fueron grandes.
+
+Al final, actualizá la memoria del diseño (ej. "implementado AAAA-MM-DD en la rama X, revisado").
