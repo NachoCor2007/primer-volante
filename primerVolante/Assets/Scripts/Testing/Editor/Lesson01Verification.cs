@@ -608,6 +608,10 @@ namespace PrimerVolante.Testing.Editor
                 Assert(!highlighter.IsHighlighting && highlighter.CurrentTarget == null,
                     "ClearHighlight() debe apagar el resaltado y limpiar CurrentTarget", ref total, ref passed);
 
+                // En Edit Mode no corren Awake/OnDestroy del highlighter: se revierte a mano el _EMISSION que forzó sobre
+                // los .mat compartidos, o el próximo SaveAssets lo persiste.
+                InteractableHighlighter.RestoreForcedEmissionKeywords();
+
                 // Verificación de ocultamiento del Canvas HUD durante el menú in-game
                 if (menuController != null && hudPanel != null)
                 {

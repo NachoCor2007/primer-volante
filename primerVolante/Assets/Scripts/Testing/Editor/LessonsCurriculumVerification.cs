@@ -319,6 +319,10 @@ namespace PrimerVolante.Testing.Editor
             highlighter.ClearHighlight();
             Assert(!highlighter.IsHighlighting && highlighter.CurrentTargets.Count == 0,
                 "ClearHighlight() debe apagar el resaltado y vaciar la lista de objetivos", ref total, ref passed);
+
+            // En Edit Mode no corren Awake/OnDestroy del highlighter: se revierte a mano el _EMISSION que forzó sobre
+            // los .mat compartidos, o el próximo SaveAssets lo persiste.
+            InteractableHighlighter.RestoreForcedEmissionKeywords();
         }
 
         // =========================================================================
