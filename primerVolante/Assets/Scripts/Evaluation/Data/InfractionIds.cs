@@ -30,5 +30,19 @@ namespace PrimerVolante.Evaluation
         /// una calle de mano única (grave). Parámetro: <c>where</c>.
         /// </summary>
         public const string WrongWay = "WRONG_WAY";
+
+        /// <summary>
+        /// Giro sin señalizar: doblar sin guiño, con el guiño al lado contrario o sin la anticipación suficiente (leve).
+        /// Parámetros: <c>direction</c> (ej. "a la derecha") y <c>reason</c> (ej. "sin poner el guiño").
+        /// </summary>
+        public const string TurnSignal = "TURN_SIGNAL";
+
+        /// <summary>
+        /// Circular sin las luces bajas puestas: con el motor en marcha, recorrer 2 m (adelante o en reversa) con las
+        /// luces apagadas, de posición o altas (leve). Una falta por tramo; poner las bajas la rearma.
+        /// Parámetros: <c>when</c> ("Arrancaste" si en este encendido todavía no circuló con bajas, si no "Circulaste")
+        /// y <c>lights</c> (ej. "con las luces apagadas").
+        /// </summary>
+        public const string LowBeam = "LOW_BEAM";
     }
 }

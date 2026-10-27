@@ -10,6 +10,8 @@ namespace PrimerVolante.Lessons
     /// Soporta resaltado individual o multiobjetivo simultáneo (ej. los soportes y carcasas de espejos retrovisores).
     /// Utiliza MaterialPropertyBlock para no instanciar materiales ni ensuciar assets.
     /// Modula _EmissionColor sobre materiales Lit (asegurando keyword _EMISSION).
+    /// El keyword se activa sobre el material compartido (asset): se registra para revertirlo al destruirse la última
+    /// instancia y, en el Editor, al salir de Play Mode, de modo que el highlighter no deje .mat modificados en disco.
     /// Excluye explícitamente cualquier cristal reflectante (Mirror_Glass) y cámaras de retrovisores.
     /// </summary>
     public class InteractableHighlighter : MonoBehaviour
@@ -19,6 +21,10 @@ namespace PrimerVolante.Lessons
         private static readonly int ColorPropertyId = Shader.PropertyToID("_Color");
 
         private static readonly Color WarmYellowTint = new Color(1f, 0.95f, 0.3f, 1f);
+
+        // Materiales a los que el highlighter activó _EMISSION (solo los que no lo tenían), para revertirlos luego.
+        private static readonly HashSet<Material> s_MaterialsWithForcedEmission = new HashSet<Material>();
+        private static int s_LiveInstances;
 
         [Header("Configuración de Resaltado")]
         [Tooltip("Color base de emisión o realce del interactuable a resaltar.")]
@@ -50,6 +56,8 @@ namespace PrimerVolante.Lessons
 
         private void Awake()
         {
+            s_LiveInstances++;
+
             if (m_PropertyBlock == null)
             {
                 m_PropertyBlock = new MaterialPropertyBlock();
@@ -166,6 +174,7 @@ namespace PrimerVolante.Lessons
                                 if (!mat.IsKeywordEnabled("_EMISSION"))
                                 {
                                     mat.EnableKeyword("_EMISSION");
+                                    s_MaterialsWithForcedEmission.Add(mat);
                                 }
                             }
                             else if (mat.HasProperty(BaseColorPropertyId) || mat.HasProperty(ColorPropertyId))
@@ -352,7 +361,7 @@ namespace PrimerVolante.Lessons
                 }
                 else
                 {
-                    VRSideMirror[] sideMirrors = UnityEngine.Object.FindObjectsByType<VRSideMirror>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                    VRSideMirror[] sideMirrors = UnityEngine.Object.FindObjectsByType<VRSideMirror>(FindObjectsInactive.Include);
                     for (int i = 0; i < sideMirrors.Length; i++)
                     {
                         if (sideMirrors[i].Side == VRSideMirror.MirrorSide.Left)
@@ -405,7 +414,7 @@ namespace PrimerVolante.Lessons
                 }
                 else
                 {
-                    VRSideMirror[] sideMirrors = UnityEngine.Object.FindObjectsByType<VRSideMirror>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                    VRSideMirror[] sideMirrors = UnityEngine.Object.FindObjectsByType<VRSideMirror>(FindObjectsInactive.Include);
                     for (int i = 0; i < sideMirrors.Length; i++)
                     {
                         if (sideMirrors[i].Side == VRSideMirror.MirrorSide.Right)
@@ -603,5 +612,49 @@ namespace PrimerVolante.Lessons
         {
             ClearHighlight();
         }
+
+        private void OnDestroy()
+        {
+            s_LiveInstances = Mathf.Max(0, s_LiveInstances - 1);
+
+            // Sin instancias vivas nadie usa el glow: se devuelven los materiales compartidos a su estado original.
+            if (s_LiveInstances == 0)
+            {
+                RestoreForcedEmissionKeywords();
+            }
+        }
+
+        /// <summary>
+        /// Desactiva _EMISSION en los materiales a los que el highlighter se lo había activado y vacía el registro.
+        /// Evita que el keyword forzado sobre el asset quede persistido al guardar assets en el Editor.
+        /// </summary>
+        public static void RestoreForcedEmissionKeywords()
+        {
+            foreach (Material mat in s_MaterialsWithForcedEmission)
+            {
+                // Unity sobrecarga == para objetos destruidos: se omiten los materiales que ya no existen.
+                if (mat != null)
+                {
+                    mat.DisableKeyword("_EMISSION");
+                }
+            }
+
+            s_MaterialsWithForcedEmission.Clear();
+        }
+
+#if UNITY_EDITOR
+        // Red de seguridad: al volver a Edit Mode se revierten los keywords forzados durante Play Mode.
+        [UnityEditor.InitializeOnLoadMethod]
+        private static void RegisterPlayModeRestore()
+        {
+            UnityEditor.EditorApplication.playModeStateChanged += state =>
+            {
+                if (state == UnityEditor.PlayModeStateChange.EnteredEditMode)
+                {
+                    RestoreForcedEmissionKeywords();
+                }
+            };
+        }
+#endif
     }
 }

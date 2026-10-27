@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using PrimerVolante.Environment;
 using UnityEditor;
@@ -45,40 +44,9 @@ namespace PrimerVolante.Testing.Editor
         // Devuelve una descripción de lo hecho (vacía si falló).
         private static string SetupDemoScene()
         {
-            Scene scene = SceneManager.GetSceneByPath(SCENE_PATH);
-            string status;
-            if (!scene.IsValid() || !scene.isLoaded)
+            if (!DemoSceneSetup.OpenOrCopyScene(SOURCE_SCENE_PATH, SCENE_PATH, "CityWithInfractions", "[WrongWaySetup]", out Scene scene, out string status))
             {
-                for (int i = 0; i < SceneManager.sceneCount; i++)
-                {
-                    Scene open = SceneManager.GetSceneAt(i);
-                    if (open.isDirty)
-                    {
-                        Debug.LogError($"[WrongWaySetup] ❌ {open.name} tiene cambios sin guardar: guardalos antes de abrir {SCENE_PATH}.");
-                        return "Escena de demostración: no se pudo abrir.";
-                    }
-                }
-
-                if (!File.Exists(SCENE_PATH))
-                {
-                    if (!AssetDatabase.CopyAsset(SOURCE_SCENE_PATH, SCENE_PATH))
-                    {
-                        Debug.LogError($"[WrongWaySetup] ❌ No se pudo copiar {SOURCE_SCENE_PATH} a {SCENE_PATH}.");
-                        return "Escena de demostración: no se pudo copiar.";
-                    }
-
-                    status = "copiada de CityWithInfractions";
-                }
-                else
-                {
-                    status = "reutilizada";
-                }
-
-                scene = EditorSceneManager.OpenScene(SCENE_PATH, OpenSceneMode.Single);
-            }
-            else
-            {
-                status = "ya estaba abierta";
+                return "Escena de demostración: no se pudo abrir.";
             }
 
             if (!SetupDemoStreet(scene, out string summary)) return "Escena de demostración: falló (ver errores).";

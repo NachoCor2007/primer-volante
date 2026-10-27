@@ -30,6 +30,8 @@ namespace PrimerVolante.Testing.Editor
             { "CRASH", InfractionSeverity.Major },
             { "GRAZE", InfractionSeverity.Minor },
             { "WRONG_WAY", InfractionSeverity.Major },
+            { "TURN_SIGNAL", InfractionSeverity.Minor },
+            { "LOW_BEAM", InfractionSeverity.Minor },
         };
 
         // Valores de ejemplo con los que se formatean todas las plantillas.
@@ -39,6 +41,10 @@ namespace PrimerVolante.Testing.Editor
             { "speed", "52" },
             { "object", "un cono" },
             { "where", "por el carril contrario de una calle de doble mano" },
+            { "direction", "a la derecha" },
+            { "reason", "sin poner el guiño" },
+            { "when", "Arrancaste" },
+            { "lights", "con las luces apagadas" },
         };
 
         private const BindingFlags k_Instance = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
@@ -83,7 +89,7 @@ namespace PrimerVolante.Testing.Editor
                 .Where(f => f.IsLiteral && f.FieldType == typeof(string))
                 .Select(f => (string)f.GetRawConstantValue())
                 .ToList();
-            Assert(ids.Count == 5, $"InfractionIds tiene 5 constantes ({ids.Count})", ref total, ref passed);
+            Assert(ids.Count == 7, $"InfractionIds tiene 7 constantes ({ids.Count})", ref total, ref passed);
             Assert(catalog.Definitions.Count == ids.Count,
                 $"El catálogo tiene exactamente una definición por constante ({catalog.Definitions.Count} definiciones, {ids.Count} constantes)", ref total, ref passed);
             Assert(catalog.Definitions.All(d => d != null && ids.Contains(d.Id)),
