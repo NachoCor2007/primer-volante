@@ -1,11 +1,7 @@
-using System.Linq;
 using PrimerVolante.Environment;
 using PrimerVolante.Evaluation;
-using PrimerVolante.VR;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace PrimerVolante.Testing.Editor
 {
@@ -45,6 +41,9 @@ namespace PrimerVolante.Testing.Editor
         public static void SetupAll()
         {
             Debug.Log("[TurnSignalSetup] 🔧 Configurando la detección de giro sin señalizar (TURN_SIGNAL)...");
+
+            // Antes de tocar prefabs o assets: si hay una escena sucia (también la demo, si ya está abierta), se aborta sin cambios.
+            if (DemoSceneSetup.HasDirtyScenes("[TurnSignalSetup]", SCENE_PATH)) return;
 
             int layer = EnsureAssets(out int zones, out InfractionCatalogSO catalog);
             if (layer < 0) return;
@@ -184,66 +183,8 @@ namespace PrimerVolante.Testing.Editor
         // Devuelve una descripción de lo hecho o null si falló.
         private static string SetupScene(int layer)
         {
-            string status;
-            Scene scene = SceneManager.GetSceneByPath(SCENE_PATH);
-            if (scene.IsValid() && scene.isLoaded)
-            {
-                status = "ya estaba abierta";
-            }
-            else
-            {
-                for (int i = 0; i < SceneManager.sceneCount; i++)
-                {
-                    Scene open = SceneManager.GetSceneAt(i);
-                    if (open.isDirty)
-                    {
-                        Debug.LogError($"[TurnSignalSetup] ❌ {open.name} tiene cambios sin guardar: guardalos antes de abrir {SCENE_PATH}.");
-                        return null;
-                    }
-                }
-
-                if (!System.IO.File.Exists(SCENE_PATH))
-                {
-                    if (!AssetDatabase.CopyAsset(SOURCE_SCENE_PATH, SCENE_PATH))
-                    {
-                        Debug.LogError($"[TurnSignalSetup] ❌ No se pudo copiar {SOURCE_SCENE_PATH} a {SCENE_PATH}.");
-                        return null;
-                    }
-
-                    status = "copiada de GPSWrongWayDemo";
-                }
-                else
-                {
-                    status = "reutilizada";
-                }
-
-                scene = EditorSceneManager.OpenScene(SCENE_PATH, OpenSceneMode.Single);
-            }
-
-            VehicleController car = scene.GetRootGameObjects()
-                .SelectMany(r => r.GetComponentsInChildren<VehicleController>(true))
-                .FirstOrDefault(v => v.gameObject.name == CAR_NAME);
-            if (car == null)
-            {
-                Debug.LogError($"[TurnSignalSetup] ❌ {scene.name} no tiene un '{CAR_NAME}' con VehicleController.");
-                return null;
-            }
-
-            var detector = car.GetComponent<TurnSignalDetector>();
-            if (detector == null)
-            {
-                detector = Undo.AddComponent<TurnSignalDetector>(car.gameObject);
-                status += ", detector agregado";
-            }
-
-            var so = new SerializedObject(detector);
-            so.FindProperty("m_ZoneMask").FindPropertyRelative("m_Bits").intValue = 1 << layer;
-            so.ApplyModifiedPropertiesWithoutUndo();
-            EditorUtility.SetDirty(detector);
-
-            EditorSceneManager.MarkSceneDirty(scene);
-            EditorSceneManager.SaveScene(scene);
-            return status;
+            return DemoSceneSetup.EnsureCarComponent<TurnSignalDetector>(SOURCE_SCENE_PATH, SCENE_PATH, CAR_NAME, "GPSWrongWayDemo", "[TurnSignalSetup]",
+                so => so.FindProperty("m_ZoneMask").FindPropertyRelative("m_Bits").intValue = 1 << layer, skipDirtyCheck: true);
         }
     }
 }
