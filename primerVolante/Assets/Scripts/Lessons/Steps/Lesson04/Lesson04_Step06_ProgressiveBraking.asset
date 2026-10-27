@@ -10,10 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
-  m_Name: Lesson01_Step01_SeatCalibration
+  m_Name: Lesson04_Step06_ProgressiveBraking
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
-  stepTitle: Ajuste de Asiento y Postura
-  instructionText: "Para ajustar tu postura, altura y distancia del asiento, presiona el bot\xF3n Menu en tu control izquierdo para abrir el men\xFA de calibraci\xF3n.\nUna vez ajustado a tu comodidad, o si la posici\xF3n inicial ya es \xF3ptima, apunta con el rayo y presiona 'Continuar'."
-  completionMode: 0
-  allowedControls: 1
+  stepTitle: Frenado Progresivo
+  instructionText: "Presiona el freno de manera controlada hasta detener el veh\xEDculo por completo."
+  completionMode: 1
+  requiredAction: 7
+  actionNumericParameter: 0.8
+  allowedControls: -1
   highlightTargetName: 
+  ambienceIntensity: 0

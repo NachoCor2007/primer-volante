@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
+  m_Name: Lesson02_Step03_HandbrakeRelease
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
+  stepTitle: "Liberaci\xF3n del Freno de Mano"
+  instructionText: "Toma la palanca del freno de mano con tu mano derecha y b\xE1jala por completo para liberar el freno de estacionamiento."
+  completionMode: 1
+  requiredAction: 9
+  actionNumericParameter: 0.05
+  allowedControls: 4
+  highlightTargetName: VRHandbrake
+  ambienceIntensity: 0

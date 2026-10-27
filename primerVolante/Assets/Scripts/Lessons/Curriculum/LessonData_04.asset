@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ddb44700c534d9e49b589a387f99012f, type: 3}
+  m_Name: LessonData_04
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonDefinitionSO
+  lessonId: LESSON_04
+  lessonTitle: "Lecci\xF3n 4: Din\xE1mica y Maniobras"
+  steps:
+  - {fileID: 11400000, guid: ca727ff67abc2cd40965f2816953685f, type: 2}
+  - {fileID: 11400000, guid: 6d20ddc17f3c18b40bcea06eb420bd85, type: 2}
+  - {fileID: 11400000, guid: 7ff03a51bbb51e346a5ef64db70ea321, type: 2}
+  - {fileID: 11400000, guid: d17578016cdf5de499a45ab332ea20c8, type: 2}
+  - {fileID: 11400000, guid: 6559f655e9a35c54cb5411315e451ebc, type: 2}
+  - {fileID: 11400000, guid: 168abc5d4f632874f8220a0d9b4b30c3, type: 2}
+  - {fileID: 11400000, guid: acec37209615185418ee40c6258dc41b, type: 2}
+  - {fileID: 11400000, guid: 917134abe95836645b0959850b47462d, type: 2}

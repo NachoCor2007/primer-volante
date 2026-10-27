@@ -111,6 +111,14 @@ namespace PrimerVolante.VR
 
         private GearState m_CurrentGear = GearState.Park;
 
+        [Header("Posición y Rotación Inicial de Spawn")]
+        [SerializeField] private Vector3 m_InitialSpawnPosition;
+        [SerializeField] private Quaternion m_InitialSpawnRotation = Quaternion.identity;
+        private bool m_SpawnTransformCached = false;
+
+        public Vector3 InitialSpawnPosition => m_InitialSpawnPosition;
+        public Quaternion InitialSpawnRotation => m_InitialSpawnRotation;
+
         [Header("Estado del Motor")]
         [SerializeField] private bool m_EngineRunning = false;
 
@@ -286,6 +294,92 @@ namespace PrimerVolante.VR
         }
 
         /// <summary>
+        /// Asigna el modo de las luces frontales reglamentarias.
+        /// </summary>
+        public void SetHeadlightMode(HeadlightMode mode)
+        {
+            CurrentHeadlights = mode;
+            if (m_LightingController != null)
+            {
+                m_LightingController.SetHeadlightMode(mode);
+            }
+        }
+
+        /// <summary>
+        /// Restablece el vehículo por completo a su estado inerte inicial ("Base 0"):
+        /// Motor apagado, freno de mano accionado (1.0), caja en Parking (P), luces/balizas/guiños apagados,
+        /// volante centrado (0°) y posición/rotación reseteadas al spawn inicial sin velocidad residual.
+        /// </summary>
+        public void ResetToBaseState()
+        {
+            if (m_Rigidbody == null || m_SteeringWheel == null || m_GearShifter == null || m_Handbrake == null)
+            {
+                ConfigurePhysicsAndColliders();
+            }
+
+            if (!m_SpawnTransformCached)
+            {
+                m_InitialSpawnPosition = transform.position;
+                m_InitialSpawnRotation = transform.rotation;
+                m_SpawnTransformCached = true;
+            }
+
+            // 1. Motor: Apagado forzado y detención de arranque (cranking)
+            m_IsCranking = false;
+            m_CrankTimeRemaining = 0f;
+            SetEngineRunning(false);
+
+            // 2. Freno de mano: Totalmente accionado
+            if (m_Handbrake != null)
+            {
+                m_Handbrake.SetEngagementImmediate(1f);
+            }
+
+            // 3. Palanca de cambios: Parking (P)
+            m_CurrentGear = GearState.Park;
+            if (m_GearShifter != null)
+            {
+                m_GearShifter.SetRotationToGear(GearState.Park);
+            }
+
+            // 4. Luces y Señalización: Apagadas
+            SetHeadlightMode(HeadlightMode.Off);
+            SetHazardActive(false);
+            SetTurnSignal(TurnSignalState.Off);
+            if (m_TurnSignal != null)
+            {
+                m_TurnSignal.SetSignalAnimated(TurnSignalState.Off);
+            }
+
+            // 5. Volante: Centrado
+            if (m_SteeringWheel != null)
+            {
+                m_SteeringWheel.ResetToCenter();
+            }
+
+            // 6. Física y Posición: Restaurar spawn inicial y detener velocidad
+            m_CurrentSpeedMs = 0f;
+            m_ThrottleValue = 0f;
+            m_BrakeValue = 0f;
+
+            transform.position = m_InitialSpawnPosition;
+            transform.rotation = m_InitialSpawnRotation;
+
+            if (m_Rigidbody != null)
+            {
+                m_Rigidbody.linearVelocity = Vector3.zero;
+                m_Rigidbody.angularVelocity = Vector3.zero;
+                m_Rigidbody.position = m_InitialSpawnPosition;
+                m_Rigidbody.rotation = m_InitialSpawnRotation;
+            }
+
+            if (m_EnableDebugLogs)
+            {
+                Debug.Log($"[VehicleController] 🔄 ResetToBaseState completado: Pos={m_InitialSpawnPosition}, Rot={m_InitialSpawnRotation.eulerAngles}, Motor={IsEngineRunning}, Gear={m_CurrentGear}, FrenoMano={HandbrakeEngagement:F2}");
+            }
+        }
+
+        /// <summary>
         /// Enciende o apaga el motor de forma inmediata (sin fase de arranque). Al apagarlo,
         /// detiene el vehículo instantáneamente. Mantenido por compatibilidad; para el flujo
         /// con validación y arranque temporizado usar <see cref="TryToggleEngine"/>.
@@ -394,6 +488,12 @@ namespace PrimerVolante.VR
 
         private void Awake()
         {
+            if (!m_SpawnTransformCached)
+            {
+                m_InitialSpawnPosition = transform.position;
+                m_InitialSpawnRotation = transform.rotation;
+                m_SpawnTransformCached = true;
+            }
             ConfigurePhysicsAndColliders();
         }
 

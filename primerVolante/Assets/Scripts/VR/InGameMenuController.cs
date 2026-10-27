@@ -73,6 +73,12 @@ namespace PrimerVolante.VR
 
         public bool IsOpen => m_MenuRoot != null && m_MenuRoot.activeSelf;
 
+        /// <summary>Evento disparado cuando el menú in-game se abre.</summary>
+        public event System.Action MenuOpened;
+
+        /// <summary>Evento disparado cuando el menú in-game se cierra.</summary>
+        public event System.Action MenuClosed;
+
         /// <summary>true mientras el menú tiene la simulación detenida.</summary>
         public bool IsSimulationPaused => m_IsSimulationPaused;
 
@@ -198,6 +204,7 @@ namespace PrimerVolante.VR
             ShowMainPanel();
             SetFarCastingForMenu(true);
             SetSimulationPaused(true);
+            MenuOpened?.Invoke();
         }
 
         /// <summary>
@@ -210,6 +217,7 @@ namespace PrimerVolante.VR
             m_MenuRoot.SetActive(false);
             SetFarCastingForMenu(false);
             SetSimulationPaused(false);
+            MenuClosed?.Invoke();
         }
 
         /// <summary>

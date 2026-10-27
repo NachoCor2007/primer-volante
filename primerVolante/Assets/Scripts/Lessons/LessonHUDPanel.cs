@@ -10,13 +10,17 @@ namespace PrimerVolante.Lessons
     /// Panel HUD en espacio de mundo situado sobre el volante en la cabina del vehículo.
     /// Muestra la información del paso actual, la instrucción para el conductor,
     /// y el botón interactivo de confirmación/avance mediante raycast de VR.
-    /// Al terminar la lección, presenta el panel de felicitaciones.
+    /// Al terminar la lección, presenta el panel de felicitaciones con opciones para
+    /// repetir la lección o continuar a la siguiente lección del currículum.
     /// </summary>
     public class LessonHUDPanel : MonoBehaviour
     {
         [Header("Referencias de Lección")]
         [Tooltip("Gestor de lecciones asociado. Si es nulo, se busca automáticamente.")]
         [SerializeField] private LessonManager m_LessonManager;
+
+        [Tooltip("Controlador del menú in-game / pausa / calibración.")]
+        [SerializeField] private InGameMenuController m_InGameMenuController;
 
         [Header("Textos Principales")]
         [Tooltip("Texto para el título de la lección.")]
@@ -51,14 +55,32 @@ namespace PrimerVolante.Lessons
         [Tooltip("Botón para reiniciar la lección.")]
         [SerializeField] private Button m_RestartButton;
 
+        [Tooltip("Botón para avanzar a la siguiente lección.")]
+        [SerializeField] private Button m_NextLessonButton;
+
+        [Tooltip("Texto dentro del botón Siguiente Lección.")]
+        [SerializeField] private TextMeshProUGUI m_NextLessonButtonText;
+
         [Header("Interacción VR (Raycast / Far Casting)")]
         [Tooltip("Near-Far Interactors de las manos VR a los que se les habilita el rayo a distancia " +
                  "mientras se interactúa con el HUD de la lección. El rayo queda restringido a la capa UI " +
                  "(no interactúa con volante, espejos, etc.).")]
         [SerializeField] private NearFarInteractor[] m_FarCastInteractors;
 
+        [Header("Feedback Sensorial de Acción")]
+        [Tooltip("Borde o marco brillante del HUD para feedback visual de acción completada.")]
+        [SerializeField] private Image m_SuccessBorderGlow;
+
+        [Tooltip("Fuente de audio para el sonido de confirmación.")]
+        [SerializeField] private AudioSource m_AudioSource;
+
+        [Tooltip("Clip sonoro de confirmación / chime positivo.")]
+        [SerializeField] private AudioClip m_SuccessChimeClip;
+
         private Canvas m_Canvas;
         private bool m_FarCastingActive = false;
+        private Coroutine m_GlowCoroutine;
+        private static Sprite s_HollowBorderSprite;
 
         // Propiedades públicas para acceso e inspección en tests
         public TextMeshProUGUI LessonTitleText => m_LessonTitleText;
@@ -69,7 +91,21 @@ namespace PrimerVolante.Lessons
         public GameObject StepContentPanel => m_StepContentPanel;
         public GameObject CompletionPanel => m_CompletionPanel;
         public Button RestartButton => m_RestartButton;
+        public Button NextLessonButton => m_NextLessonButton;
+        public TextMeshProUGUI NextLessonButtonText => m_NextLessonButtonText;
         public NearFarInteractor[] FarCastInteractors => m_FarCastInteractors;
+        public Image SuccessBorderGlow => m_SuccessBorderGlow;
+        public AudioSource AudioSource => m_AudioSource;
+        public AudioClip SuccessChimeClip
+        {
+            get => m_SuccessChimeClip;
+            set => m_SuccessChimeClip = value;
+        }
+        public InGameMenuController InGameMenuController
+        {
+            get => m_InGameMenuController;
+            set => SetInGameMenuController(value);
+        }
         public Canvas Canvas => m_Canvas != null ? m_Canvas : (m_Canvas = GetComponent<Canvas>());
         public Camera WorldCamera => Canvas != null ? Canvas.worldCamera : null;
         public bool FarCastingActive => m_FarCastingActive;
@@ -87,6 +123,12 @@ namespace PrimerVolante.Lessons
                 m_LessonManager = UnityEngine.Object.FindAnyObjectByType<LessonManager>();
             }
 
+            if (m_InGameMenuController == null)
+            {
+                m_InGameMenuController = UnityEngine.Object.FindAnyObjectByType<InGameMenuController>();
+            }
+
+            ConfigureHollowBorderGlow();
             DiscoverFarCastInteractors();
             SetupButtons();
         }
@@ -94,11 +136,59 @@ namespace PrimerVolante.Lessons
         private void OnEnable()
         {
             SetFarCasting(true);
+            SubscribeToMenuController(true);
         }
 
         private void OnDisable()
         {
             SetFarCasting(false);
+            SubscribeToMenuController(false);
+        }
+
+        public void SetInGameMenuController(InGameMenuController menuController)
+        {
+            SubscribeToMenuController(false);
+            m_InGameMenuController = menuController;
+            SubscribeToMenuController(true);
+        }
+
+        private void SubscribeToMenuController(bool subscribe)
+        {
+            if (m_InGameMenuController == null) return;
+            if (subscribe)
+            {
+                m_InGameMenuController.MenuOpened -= HandleInGameMenuOpened;
+                m_InGameMenuController.MenuOpened += HandleInGameMenuOpened;
+                m_InGameMenuController.MenuClosed -= HandleInGameMenuClosed;
+                m_InGameMenuController.MenuClosed += HandleInGameMenuClosed;
+                if (m_InGameMenuController.IsOpen && Canvas != null)
+                {
+                    Canvas.enabled = false;
+                }
+            }
+            else
+            {
+                m_InGameMenuController.MenuOpened -= HandleInGameMenuOpened;
+                m_InGameMenuController.MenuClosed -= HandleInGameMenuClosed;
+            }
+        }
+
+        private void HandleInGameMenuOpened()
+        {
+            if (Canvas != null)
+            {
+                Canvas.enabled = false;
+            }
+            SetFarCasting(false);
+        }
+
+        private void HandleInGameMenuClosed()
+        {
+            if (Canvas != null)
+            {
+                Canvas.enabled = true;
+            }
+            SetFarCasting(true);
         }
 
         public void BindToLessonManager(LessonManager manager)
@@ -131,6 +221,12 @@ namespace PrimerVolante.Lessons
             {
                 m_RestartButton.onClick.RemoveAllListeners();
                 m_RestartButton.onClick.AddListener(OnRestartClicked);
+            }
+
+            if (m_NextLessonButton != null)
+            {
+                m_NextLessonButton.onClick.RemoveAllListeners();
+                m_NextLessonButton.onClick.AddListener(OnNextLessonClicked);
             }
         }
 
@@ -184,11 +280,30 @@ namespace PrimerVolante.Lessons
             }
         }
 
+        private void OnNextLessonClicked()
+        {
+            if (m_LessonManager != null)
+            {
+                m_LessonManager.StartNextLesson();
+            }
+        }
+
         /// <summary>
         /// Presenta la información y controles del paso actual de la lección.
         /// </summary>
         public void DisplayStep(LessonStepSO step, int stepIndex, int totalSteps)
         {
+            if (m_GlowCoroutine != null)
+            {
+                StopCoroutine(m_GlowCoroutine);
+                m_GlowCoroutine = null;
+            }
+
+            if (m_SuccessBorderGlow != null)
+            {
+                m_SuccessBorderGlow.gameObject.SetActive(false);
+            }
+
             if (m_StepContentPanel != null) m_StepContentPanel.SetActive(true);
             if (m_CompletionPanel != null) m_CompletionPanel.SetActive(false);
 
@@ -207,15 +322,36 @@ namespace PrimerVolante.Lessons
                 m_InstructionText.text = step.instructionText;
             }
 
+            bool isActionRequired = (step.completionMode == LessonStepCompletionMode.ActionRequired);
+
+            if (m_ContinueButton != null)
+            {
+                m_ContinueButton.interactable = !isActionRequired;
+            }
+
             if (m_ContinueButtonText != null)
             {
-                if (stepIndex == totalSteps - 1)
+                if (isActionRequired)
                 {
-                    m_ContinueButtonText.text = "Finalizar Calibración";
+                    m_ContinueButtonText.text = "Esperando acción...";
                 }
                 else
                 {
-                    m_ContinueButtonText.text = "Continuar";
+                    if (stepIndex == totalSteps - 1)
+                    {
+                        if (m_LessonManager != null && m_LessonManager.ActiveLesson != null && m_LessonManager.ActiveLesson.lessonId == "LESSON_01")
+                        {
+                            m_ContinueButtonText.text = "Finalizar Calibración";
+                        }
+                        else
+                        {
+                            m_ContinueButtonText.text = "Finalizar Lección";
+                        }
+                    }
+                    else
+                    {
+                        m_ContinueButtonText.text = "Continuar";
+                    }
                 }
             }
 
@@ -223,12 +359,233 @@ namespace PrimerVolante.Lessons
         }
 
         /// <summary>
-        /// Muestra la pantalla de finalización de la lección con felicitaciones.
+        /// Dispara el feedback sensorial completo: borde verde esmeralda brillante (#00E676)
+        /// pulsando suavemente durante 0.8s, chime auditivo de confirmación y cambio en el texto del botón a '¡Acción Completada!'.
+        /// </summary>
+        public void PlayActionSuccessFeedback(System.Action onCompleted = null)
+        {
+            if (m_GlowCoroutine != null)
+            {
+                StopCoroutine(m_GlowCoroutine);
+            }
+
+            // Reproducir notificación sonora de acción completada de inmediato
+            PlayChimeSound();
+
+            if (gameObject.activeInHierarchy)
+            {
+                m_GlowCoroutine = StartCoroutine(ActionSuccessFeedbackRoutine(onCompleted));
+            }
+            else
+            {
+                onCompleted?.Invoke();
+            }
+        }
+
+        private System.Collections.IEnumerator ActionSuccessFeedbackRoutine(System.Action onCompleted)
+        {
+            if (m_ContinueButtonText != null)
+            {
+                m_ContinueButtonText.text = "¡Acción Completada!";
+            }
+
+            Color emerald = new Color(0f, 0.902f, 0.463f, 1f); // #00E676
+
+            if (m_SuccessBorderGlow != null)
+            {
+                ConfigureHollowBorderGlow();
+                m_SuccessBorderGlow.color = new Color(emerald.r, emerald.g, emerald.b, 0f);
+                m_SuccessBorderGlow.gameObject.SetActive(true);
+            }
+
+            float duration = 0.8f;
+            float elapsed = 0f;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+
+                // Pulso suave senoidal
+                float pulse = Mathf.Sin(t * Mathf.PI);
+                float alpha = Mathf.Clamp01(pulse * 1.1f);
+
+                if (m_SuccessBorderGlow != null)
+                {
+                    m_SuccessBorderGlow.color = new Color(emerald.r, emerald.g, emerald.b, alpha);
+                }
+
+                yield return null;
+            }
+
+            if (m_SuccessBorderGlow != null)
+            {
+                m_SuccessBorderGlow.color = new Color(emerald.r, emerald.g, emerald.b, 0f);
+                m_SuccessBorderGlow.gameObject.SetActive(false);
+            }
+
+            m_GlowCoroutine = null;
+            onCompleted?.Invoke();
+        }
+
+        /// <summary>
+        /// Configura el componente Image del marco brillante con el sprite 9-slice hueco,
+        /// asegurando que fillCenter sea false para que solo se renderice el perímetro exterior.
+        /// </summary>
+        public void ConfigureHollowBorderGlow()
+        {
+            if (m_SuccessBorderGlow != null)
+            {
+                m_SuccessBorderGlow.sprite = GetOrCreateHollowBorderSprite();
+                m_SuccessBorderGlow.type = Image.Type.Sliced;
+                m_SuccessBorderGlow.fillCenter = false;
+                m_SuccessBorderGlow.raycastTarget = false;
+
+                // Eliminar cualquier componente Outline que actúe como sombra asimétrica
+                Outline outline = m_SuccessBorderGlow.GetComponent<Outline>();
+                if (outline != null)
+                {
+                    if (Application.isPlaying)
+                    {
+                        Destroy(outline);
+                    }
+                    else
+                    {
+                        DestroyImmediate(outline);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Genera procedimentalmente un sprite 9-slice de 16x16 con un marco exterior de 4px opaco
+        /// y un interior de 8x8 transparente (Color.clear) para renderizar bordes perimetrales huecos.
+        /// </summary>
+        public static Sprite GetOrCreateHollowBorderSprite()
+        {
+            if (s_HollowBorderSprite != null) return s_HollowBorderSprite;
+
+            int width = 16;
+            int height = 16;
+            int border = 4;
+            Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            tex.name = "HUD_HollowBorder_Texture";
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.filterMode = FilterMode.Bilinear;
+
+            Color[] pixels = new Color[width * height];
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    bool isBorder = (x < border || x >= width - border || y < border || y >= height - border);
+                    pixels[y * width + x] = isBorder ? Color.white : Color.clear;
+                }
+            }
+
+            tex.SetPixels(pixels);
+            tex.Apply();
+
+            s_HollowBorderSprite = Sprite.Create(
+                tex,
+                new Rect(0, 0, width, height),
+                new Vector2(0.5f, 0.5f),
+                100f,
+                0,
+                SpriteMeshType.FullRect,
+                new Vector4(border, border, border, border)
+            );
+            s_HollowBorderSprite.name = "HUD_HollowBorder_Sprite";
+            return s_HollowBorderSprite;
+        }
+
+        /// <summary>
+        /// Reproduce el sonido de confirmación agradable (chime). Si no hay clip asignado,
+        /// genera un chime armónico procedimental de dos tonos.
+        /// </summary>
+        /// <summary>
+        /// Reproduce el sonido de confirmación agradable (chime) para notificar al conductor que la acción
+        /// requerida fue completada con éxito y que debe volver a prestar atención al panel HUD sobre el volante.
+        /// Utiliza el asset físico 'step_notification_chime.wav' configurado a máximo volumen y en 2D estéreo directo.
+        /// </summary>
+        public void PlayChimeSound()
+        {
+            if (m_AudioSource == null)
+            {
+                m_AudioSource = GetComponent<AudioSource>();
+                if (m_AudioSource == null)
+                {
+                    m_AudioSource = gameObject.AddComponent<AudioSource>();
+                }
+            }
+
+            if (m_AudioSource != null)
+            {
+                m_AudioSource.playOnAwake = false;
+                m_AudioSource.spatialBlend = 0f;
+                m_AudioSource.volume = 1f;
+
+                if (m_SuccessChimeClip == null)
+                {
+#if UNITY_EDITOR
+                    m_SuccessChimeClip = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Lessons/step_notification_chime.wav");
+#endif
+                    if (m_SuccessChimeClip == null)
+                    {
+                        m_SuccessChimeClip = Resources.Load<AudioClip>("Audio/Lessons/step_notification_chime");
+                    }
+                }
+
+                if (m_SuccessChimeClip != null)
+                {
+                    m_AudioSource.PlayOneShot(m_SuccessChimeClip, 1.0f);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Muestra la pantalla de finalización de la lección con felicitaciones
+        /// y ofrece la opción de repetir la lección o continuar a la siguiente si existe.
+        /// REGLA EXPLÍCITA: Permanece en completo silencio (NO reproduce ningún sonido ni fanfarria).
         /// </summary>
         public void DisplayCompletion(LessonDefinitionSO lesson)
         {
+            // Silencio garantizado al finalizar la lección entera (sin chimes ni fanfarrias)
+            if (m_AudioSource != null && m_AudioSource.isPlaying)
+            {
+                m_AudioSource.Stop();
+            }
+
             if (m_StepContentPanel != null) m_StepContentPanel.SetActive(false);
             if (m_CompletionPanel != null) m_CompletionPanel.SetActive(true);
+
+            bool hasNextLesson = m_LessonManager != null && m_LessonManager.HasNextLesson;
+
+            if (m_NextLessonButton != null)
+            {
+                m_NextLessonButton.gameObject.SetActive(hasNextLesson);
+            }
+
+            // Acomodar botones según disponibilidad de siguiente lección
+            if (m_RestartButton != null)
+            {
+                RectTransform restartRt = m_RestartButton.GetComponent<RectTransform>();
+                if (restartRt != null)
+                {
+                    restartRt.anchoredPosition = hasNextLesson ? new Vector2(-135f, -195f) : new Vector2(0f, -195f);
+                    restartRt.sizeDelta = hasNextLesson ? new Vector2(240f, 46f) : new Vector2(260f, 46f);
+                }
+            }
+
+            if (m_NextLessonButton != null)
+            {
+                RectTransform nextRt = m_NextLessonButton.GetComponent<RectTransform>();
+                if (nextRt != null)
+                {
+                    nextRt.anchoredPosition = new Vector2(135f, -195f);
+                    nextRt.sizeDelta = new Vector2(240f, 46f);
+                }
+            }
 
             if (m_CompletionTitleText != null)
             {
@@ -237,7 +594,14 @@ namespace PrimerVolante.Lessons
 
             if (m_CompletionDescriptionText != null)
             {
-                m_CompletionDescriptionText.text = $"Has completado satisfactoriamente la {lesson.lessonTitle}.\nTu ambiente y vista de manejo han sido calibrados de manera óptima.";
+                if (hasNextLesson)
+                {
+                    m_CompletionDescriptionText.text = $"Has completado satisfactoriamente la {lesson.lessonTitle}.\n¿Deseas continuar a la siguiente lección o repetir la actual?";
+                }
+                else
+                {
+                    m_CompletionDescriptionText.text = $"Has completado satisfactoriamente la {lesson.lessonTitle}.\n¡Felicitaciones por completar el curso de manejo en Primer Volante!";
+                }
             }
 
             SetFarCasting(true);

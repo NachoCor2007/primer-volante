@@ -10,10 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
-  m_Name: Lesson01_Step03_MirrorsCheck
+  m_Name: Lesson03_Step04_HeadlightsPosition
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
-  stepTitle: Visibilidad de Espejos y Entorno
-  instructionText: "Verifica la visibilidad de los tres espejos retrovisores (central y laterales). Debes observar el tr\xE1fico posterior sin desviar en exceso la cabeza. \nPresiona 'Finalizar Calibraci\xF3n' para concluir la lecci\xF3n."
-  completionMode: 0
-  allowedControls: 1
-  highlightTargetName: VRRearviewMirror
+  stepTitle: "Luces de Posici\xF3n"
+  instructionText: "Rota la perilla selectora de luces, en sentido horario, al primer punto (Posici\xF3n) y su\xE9ltala para comprobar las luces reglamentarias de estacionamiento."
+  completionMode: 1
+  requiredAction: 19
+  actionNumericParameter: 0
+  allowedControls: 64
+  highlightTargetName: VRHeadlightKnob
+  ambienceIntensity: 0

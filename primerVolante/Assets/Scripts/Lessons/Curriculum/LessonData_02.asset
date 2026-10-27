@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ddb44700c534d9e49b589a387f99012f, type: 3}
+  m_Name: LessonData_02
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonDefinitionSO
+  lessonId: LESSON_02
+  lessonTitle: "Lecci\xF3n 2: Puesta en Marcha y Transmisi\xF3n"
+  steps:
+  - {fileID: 11400000, guid: 1871ed35e72e7cb46af9de3b984c637b, type: 2}
+  - {fileID: 11400000, guid: 7b60929af9df1da44917681a13c5c251, type: 2}
+  - {fileID: 11400000, guid: 610a4b08673d8ca4b90607f7c48f199d, type: 2}
+  - {fileID: 11400000, guid: b7a6543a8545fa447a08e4f43a3d2b59, type: 2}

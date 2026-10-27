@@ -14,6 +14,38 @@ namespace PrimerVolante.Lessons
     }
 
     /// <summary>
+    /// Tipo de acción física requerida por el conductor para avanzar de paso de forma guiada e interactiva.
+    /// </summary>
+    public enum LessonActionType
+    {
+        None = 0,               // Informativo o manual (presionar Continuar / lectura)
+        OpenCalibrationMenu,    // Abrir menú de calibración (Escape o botón Menú)
+        RotateSteeringWheel,    // Girar el volante hacia ambos lados (recorrido comprobado)
+        AdjustMirrors,          // Ajustar espejo interior o laterales (genérico)
+        AdjustRearviewMirror,   // Ajustar espejo retrovisor interior
+        AdjustLeftMirror,       // Ajustar espejo lateral izquierdo con panel selector
+        AdjustRightMirror,      // Ajustar espejo lateral derecho con panel selector
+        PressBrakePedal,        // Pisar pedal de freno a fondo (BrakeValue >= 0.8)
+        StartEngine,            // Arrancar el motor (IsEngineRunning == true)
+        ReleaseHandbrake,       // Bajar freno de mano (Engagement <= 0.05f)
+        EngageHandbrake,        // Subir freno de mano (Engagement >= 0.95f)
+        ShiftToDrive,           // Palanca en D
+        ShiftToReverse,         // Palanca en R
+        ShiftToPark,            // Palanca en P
+        ShiftToNeutral,         // Palanca en N
+        ActivateTurnSignalLeft, // Guiño izquierdo activo
+        ActivateTurnSignalRight,// Guiño derecho activo
+        ActivateHazardLights,   // Balizas activadas
+        CycleHeadlights,        // Encender luces reglamentarias (bajas o posición)
+        SetHeadlightsPosition,  // Modo Posición (primer punto de perilla)
+        SetHeadlightsLowBeam,   // Modo Bajas reglamentarias (segundo punto de perilla)
+        SetHeadlightsHighBeam,  // Modo Altas de ruta (tercer punto de perilla)
+        SecureStopAndPark,      // Palanca en Parking y freno de mano accionado
+        DriveForward,           // Avanzar en D al menos X metros
+        DriveReverse            // Retroceder en R al menos X metros
+    }
+
+    /// <summary>
     /// Flags de controles de cabina permitidos durante un paso de lección.
     /// Permite habilitar o deshabilitar selectivamente interactuables del vehículo.
     /// </summary>
@@ -28,6 +60,7 @@ namespace PrimerVolante.Lessons
         HazardButton = 1 << 4,
         TurnSignal = 1 << 5,
         HeadlightKnob = 1 << 6,
+        Mirrors = 1 << 7,
         All = ~0
     }
 
@@ -58,6 +91,12 @@ namespace PrimerVolante.Lessons
 
         [Tooltip("Modo de compleción del paso.")]
         public LessonStepCompletionMode completionMode = LessonStepCompletionMode.ManualContinue;
+
+        [Tooltip("Acción requerida del conductor para completar el paso de forma guiada.")]
+        public LessonActionType requiredAction = LessonActionType.None;
+
+        [Tooltip("Parámetro numérico opcional para la acción (ej: metros a recorrer o umbrales de giro/freno).")]
+        public float actionNumericParameter = 0f;
 
         [Tooltip("Flags de controles permitidos durante este paso.")]
         public CockpitControlFlags allowedControls = CockpitControlFlags.None;
