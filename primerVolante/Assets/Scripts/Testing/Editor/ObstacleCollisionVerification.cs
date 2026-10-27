@@ -483,7 +483,6 @@ namespace PrimerVolante.Testing.Editor
                 return;
             }
 
-            // "Indicator_PositionLights debe existir en el cluster" es un fallo preexistente de Car06, ajeno a US33.
             RunSuite("Tools/Primer Volante/Run NPC Verification", "NPCVerification", 0, ref total, ref passed);
 
             // LessonBoundaryVerification abre CityWithBarriers en modo aditivo: con otra escena abierta que ya tiene
@@ -501,7 +500,7 @@ namespace PrimerVolante.Testing.Editor
             }
 
             RunSuite("Tools/Primer Volante/Run Cockpit Integration Verification", "CockpitIntegrationVerification", 0, ref total, ref passed);
-            RunSuite("Tools/Primer Volante/Run Vehicle Lighting Verification", "VehicleLightingVerification", 1, ref total, ref passed);
+            RunSuite("Tools/Primer Volante/Run Vehicle Lighting Verification", "VehicleLightingVerification", 0, ref total, ref passed);
             RunSuite("Tools/Primer Volante/Run Sound Integration Verification", "SoundIntegrationVerification", 0, ref total, ref passed);
             RunSuite("Tools/Primer Volante/Run Turn Signal Verification", "TurnSignalVerification", 0, ref total, ref passed);
             RunSuite("Tools/Primer Volante/Run Traffic Light Tests", "TrafficLightTests", 0, ref total, ref passed);

@@ -490,14 +490,11 @@ namespace PrimerVolante.Testing.Editor
                 return;
             }
 
-            // Estas tres suites anidan VehicleLightingVerification, que hoy da 31/31 pero espera 1 fallo preexistente (el cluster ya tiene
-            // Indicator_PositionLights): esa expectativa vencida les suma fallos que son ajenos a US20 y a todo el audio. Se descuentan
-            // explícitamente (Sound 1, NPC 2, Obstacle 3 = línea base medida antes de tocar el audio del entorno).
             string startPath = SceneManager.GetActiveScene().path;
 
-            RunSuite("Tools/Primer Volante/Run Sound Integration Verification", "SoundIntegrationVerification", ref total, ref passed, 1);
-            RunSuite("Tools/Primer Volante/Run Obstacle Collision Verification", "ObstacleCollisionVerification", ref total, ref passed, 3);
-            RunSuite("Tools/Primer Volante/Run NPC Verification", "NPCVerification", ref total, ref passed, 2);
+            RunSuite("Tools/Primer Volante/Run Sound Integration Verification", "SoundIntegrationVerification", ref total, ref passed);
+            RunSuite("Tools/Primer Volante/Run Obstacle Collision Verification", "ObstacleCollisionVerification", ref total, ref passed);
+            RunSuite("Tools/Primer Volante/Run NPC Verification", "NPCVerification", ref total, ref passed);
             RunSuite("Tools/Primer Volante/Run Traffic Light Tests", "TrafficLightTests", ref total, ref passed);
             RunSuite("Tools/Primer Volante/Run Scripted Event Tests", "ScriptedEventTests", ref total, ref passed);
             RunSuite("Tools/Primer Volante/Run Cockpit Integration Verification", "CockpitIntegrationVerification", ref total, ref passed);

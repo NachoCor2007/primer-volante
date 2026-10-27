@@ -608,8 +608,7 @@ namespace PrimerVolante.Testing.Editor
         // ---------------------------------------------------------------- Suites existentes
 
         // Informativo: lee la línea "N/M pruebas pasadas" de cada suite. Se saltan si hay escenas sin guardar porque
-        // algunas guardan o reemplazan la escena abierta. Algunas suites anidan VehicleLightingVerification, que
-        // espera "1 fallo preexistente" desactualizado: se documenta y no se arregla.
+        // algunas guardan o reemplazan la escena abierta.
         private static void ReportExistingSuites()
         {
             for (int i = 0; i < SceneManager.sceneCount; i++)

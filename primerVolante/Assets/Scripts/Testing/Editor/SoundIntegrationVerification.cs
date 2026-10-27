@@ -301,10 +301,7 @@ namespace PrimerVolante.Testing.Editor
         private static void VerifyExistingSuites(ref int total, ref int passed)
         {
             RunSuite("Tools/Primer Volante/Run Cockpit Integration Verification", "CockpitIntegrationVerification", ref total, ref passed);
-            // VehicleLightingVerification instancia Car06 (no Car07/Car08) y ya fallaba antes de este trabajo en
-            // "Indicator_PositionLights debe existir en el cluster": es un fallo preexistente y ajeno al audio.
-            RunSuite("Tools/Primer Volante/Run Vehicle Lighting Verification", "VehicleLightingVerification", ref total, ref passed,
-                "Indicator_PositionLights debe existir en el cluster");
+            RunSuite("Tools/Primer Volante/Run Vehicle Lighting Verification", "VehicleLightingVerification", ref total, ref passed);
         }
 
         private static void RunSuite(string menuPath, string name, ref int total, ref int passed, string knownFailure = null)

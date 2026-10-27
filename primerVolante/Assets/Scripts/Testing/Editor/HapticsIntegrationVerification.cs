@@ -304,7 +304,7 @@ namespace PrimerVolante.Testing.Editor
 
         private static void VerifyExistingSuites(ref int total, ref int passed)
         {
-            // La suite de sonido ejecuta a su vez las de cockpit e iluminación (con su fallo preexistente conocido),
+            // La suite de sonido ejecuta a su vez las de cockpit e iluminación,
             // así que sirve para detectar que Car08 y la escena siguen funcionando tras agregar los hápticos.
             RunSuite("Tools/Primer Volante/Run Sound Integration Verification", "SoundIntegrationVerification", ref total, ref passed);
         }
@@ -315,8 +315,7 @@ namespace PrimerVolante.Testing.Editor
             int suiteTotal = 0, suitePassed = 0;
             void OnLog(string message, string stack, LogType type)
             {
-                // Fallo preexistente y ajeno (ver SoundIntegrationVerification.VerifyExistingSuites).
-                if (message.Contains("[FAIL]") && !message.Contains("Indicator_PositionLights debe existir en el cluster")) fails++;
+                if (message.Contains("[FAIL]")) fails++;
                 Match m = Regex.Match(message, @"RESULTADO FINAL:\s*(\d+)/(\d+)");
                 if (m.Success)
                 {

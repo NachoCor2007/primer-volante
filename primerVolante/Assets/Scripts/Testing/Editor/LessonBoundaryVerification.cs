@@ -866,8 +866,8 @@ namespace PrimerVolante.Testing.Editor
 
         // ---------------------------------------------------------------- Suites existentes
 
-        // NPCVerification vuelve a correr Cockpit, VehicleLighting, SoundIntegration y TurnSignal (con su único fallo
-        // preexistente de Car06 ya contemplado), así que su resultado final cubre las cinco suites.
+        // NPCVerification vuelve a correr Cockpit, VehicleLighting, SoundIntegration y TurnSignal, así que su resultado
+        // final cubre las cinco suites.
         private static void VerifyExistingSuites(ref int total, ref int passed)
         {
             // Las suites existentes (Sound, Haptics) guardan la escena abierta si estaba sucia: si hay cambios

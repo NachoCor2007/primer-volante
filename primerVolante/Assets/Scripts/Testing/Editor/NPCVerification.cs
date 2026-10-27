@@ -530,11 +530,8 @@ namespace PrimerVolante.Testing.Editor
         private static void VerifyExistingSuites(ref int total, ref int passed)
         {
             RunSuite("Tools/Primer Volante/Run Cockpit Integration Verification", "CockpitIntegrationVerification", ref total, ref passed);
-            // "Indicator_PositionLights debe existir en el cluster" es un fallo preexistente de Car06, ajeno a los NPC.
-            RunSuite("Tools/Primer Volante/Run Vehicle Lighting Verification", "VehicleLightingVerification", ref total, ref passed,
-                "Indicator_PositionLights debe existir en el cluster", expectedKnownFailures: 1);
-            RunSuite("Tools/Primer Volante/Run Sound Integration Verification", "SoundIntegrationVerification", ref total, ref passed,
-                "Indicator_PositionLights debe existir en el cluster", expectedKnownFailures: 0);
+            RunSuite("Tools/Primer Volante/Run Vehicle Lighting Verification", "VehicleLightingVerification", ref total, ref passed);
+            RunSuite("Tools/Primer Volante/Run Sound Integration Verification", "SoundIntegrationVerification", ref total, ref passed);
             RunSuite("Tools/Primer Volante/Run Turn Signal Verification", "TurnSignalVerification", ref total, ref passed);
         }
 
