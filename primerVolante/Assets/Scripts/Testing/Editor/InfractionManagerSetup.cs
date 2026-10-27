@@ -40,7 +40,7 @@ namespace PrimerVolante.Testing.Editor
             }
         }
 
-        /// <summary>Las 6 infracciones actuales, en el orden del catálogo.</summary>
+        /// <summary>Las 7 infracciones actuales, en el orden del catálogo.</summary>
         public static readonly Spec[] Specs =
         {
             new Spec(InfractionIds.RedLight, "Semáforo en rojo",
@@ -61,6 +61,9 @@ namespace PrimerVolante.Testing.Editor
             new Spec(InfractionIds.TurnSignal, "Giro sin señalizar",
                 "Doblaste {direction} {reason}. Poné el guiño con anticipación antes de doblar.",
                 InfractionSeverity.Minor, "direction", "reason"),
+            new Spec(InfractionIds.LowBeam, "Sin luces bajas",
+                "{when} {lights}. Encendé las luces bajas antes de empezar a circular y mantenelas puestas.",
+                InfractionSeverity.Minor, "when", "lights"),
         };
 
         /// <summary>Ruta del asset de una definición: <c>Infraction_&lt;Id&gt;.asset</c>.</summary>
