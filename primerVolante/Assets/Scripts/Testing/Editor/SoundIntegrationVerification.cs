@@ -92,8 +92,9 @@ namespace PrimerVolante.Testing.Editor
                     Assert(unassigned.Count == 0, $"{c.GetType().Name}: referencias sin asignar ({string.Join(", ", unassigned)})", ref total, ref passed);
                 }
 
-                // AudioSources propias (se excluye el AudioSource preexistente del panel de espejos y el del
-                // impacto contra obstáculos de US33, que se verifica en ObstacleCollisionVerification)
+                // AudioSources propias (se excluye el AudioSource preexistente del panel de espejos, el del
+                // impacto contra obstáculos de US33, que se verifica en ObstacleCollisionVerification, y el del chime
+                // del testigo de infracción, que es 2D y se verifica en InfractionWarningVerification)
                 var loopNames = new HashSet<string> { "Engine_Idle", "Engine_Mid", "Engine_High" };
                 var obstacleSensor = root.GetComponent<PrimerVolante.Environment.ObstacleContactSensor>();
                 int checkedSources = 0;
@@ -101,6 +102,7 @@ namespace PrimerVolante.Testing.Editor
                 {
                     if (src.GetComponentInParent<VRSideMirrorControlPanel>(true) != null) continue;
                     if (obstacleSensor != null && src == obstacleSensor.ImpactSource) continue;
+                    if (src.GetComponent<VehicleInfractionAudio>() != null) continue;
                     checkedSources++;
 
                     bool expectLoop = loopNames.Contains(src.name) || src.transform.parent.name == "Audio_RoadNoise";
@@ -299,10 +301,7 @@ namespace PrimerVolante.Testing.Editor
         private static void VerifyExistingSuites(ref int total, ref int passed)
         {
             RunSuite("Tools/Primer Volante/Run Cockpit Integration Verification", "CockpitIntegrationVerification", ref total, ref passed);
-            // VehicleLightingVerification instancia Car06 (no Car07/Car08) y ya fallaba antes de este trabajo en
-            // "Indicator_PositionLights debe existir en el cluster": es un fallo preexistente y ajeno al audio.
-            RunSuite("Tools/Primer Volante/Run Vehicle Lighting Verification", "VehicleLightingVerification", ref total, ref passed,
-                "Indicator_PositionLights debe existir en el cluster");
+            RunSuite("Tools/Primer Volante/Run Vehicle Lighting Verification", "VehicleLightingVerification", ref total, ref passed);
         }
 
         private static void RunSuite(string menuPath, string name, ref int total, ref int passed, string knownFailure = null)

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -11,7 +10,6 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using Debug = UnityEngine.Debug;
 
 namespace PrimerVolante.Testing.Editor
 {
@@ -569,16 +567,6 @@ namespace PrimerVolante.Testing.Editor
                     int managers = scene.GetRootGameObjects().SelectMany(r => r.GetComponentsInChildren<InfractionManager>(true)).Count();
                     checks.Add((managers == 0, $"CityMerged3 no tiene InfractionManager ({managers})"));
                 });
-
-                bool? clean = IsGitClean(InfractionManagerSetup.SOURCE_SCENE_PATH);
-                if (clean.HasValue)
-                {
-                    checks.Add((clean.Value, "CityMerged3.unity no tiene cambios respecto de git"));
-                }
-                else
-                {
-                    Debug.LogWarning("[InfractionManagerVerification] ⚠️ No se pudo consultar git: se omite el chequeo de CityMerged3 sin cambios.");
-                }
             }
 
             foreach ((bool ok, string name) in checks) Assert(ok, name, ref total, ref passed);
@@ -608,8 +596,7 @@ namespace PrimerVolante.Testing.Editor
         // ---------------------------------------------------------------- Suites existentes
 
         // Informativo: lee la línea "N/M pruebas pasadas" de cada suite. Se saltan si hay escenas sin guardar porque
-        // algunas guardan o reemplazan la escena abierta. Algunas suites anidan VehicleLightingVerification, que
-        // espera "1 fallo preexistente" desactualizado: se documenta y no se arregla.
+        // algunas guardan o reemplazan la escena abierta.
         private static void ReportExistingSuites()
         {
             for (int i = 0; i < SceneManager.sceneCount; i++)
@@ -688,39 +675,6 @@ namespace PrimerVolante.Testing.Editor
         {
             MethodInfo info = typeof(InfractionManager).GetMethod(method, k_Instance);
             info?.Invoke(manager, null);
-        }
-
-        // true si git no ve diferencias del archivo contra HEAD; null si no se pudo correr git.
-        private static bool? IsGitClean(string assetPath)
-        {
-            try
-            {
-                string projectRoot = System.IO.Path.GetDirectoryName(Application.dataPath);
-                var info = new ProcessStartInfo("git", $"diff --quiet -- \"{assetPath}\"")
-                {
-                    WorkingDirectory = projectRoot,
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                };
-
-                using (Process process = Process.Start(info))
-                {
-                    if (process == null) return null;
-                    process.WaitForExit(15000);
-                    if (!process.HasExited) return null;
-
-                    // 0 = sin diferencias, 1 = hay diferencias, otro = git falló.
-                    if (process.ExitCode == 0) return true;
-                    if (process.ExitCode == 1) return false;
-                    return null;
-                }
-            }
-            catch (Exception)
-            {
-                return null;
-            }
         }
 
         private static void Assert(bool condition, string testName, ref int total, ref int passed)

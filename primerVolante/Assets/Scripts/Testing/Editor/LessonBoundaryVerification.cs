@@ -797,6 +797,8 @@ namespace PrimerVolante.Testing.Editor
                         Vector3 half = Vector3.Scale(solid.size * 0.5f, solid.transform.lossyScale) * 0.95f;
                         foreach (Collider hit in Physics.OverlapBox(center, half, solid.transform.rotation, ~0, QueryTriggerInteraction.Ignore))
                         {
+                            // Otras escenas abiertas (p. ej. GPSNavigationDemo, que copia este grupo) comparten la física del Editor.
+                            if (hit.gameObject.scene != scene) continue;
                             if (hit.transform.IsChildOf(boundary.transform)) continue;
                             if (hit.transform.root.name.StartsWith("Road")) continue;
                             intruders.Add(hit.transform.root.name);
@@ -864,8 +866,8 @@ namespace PrimerVolante.Testing.Editor
 
         // ---------------------------------------------------------------- Suites existentes
 
-        // NPCVerification vuelve a correr Cockpit, VehicleLighting, SoundIntegration y TurnSignal (con su único fallo
-        // preexistente de Car06 ya contemplado), así que su resultado final cubre las cinco suites.
+        // NPCVerification vuelve a correr Cockpit, VehicleLighting, SoundIntegration y TurnSignal, así que su resultado
+        // final cubre las cinco suites.
         private static void VerifyExistingSuites(ref int total, ref int passed)
         {
             // Las suites existentes (Sound, Haptics) guardan la escena abierta si estaba sucia: si hay cambios

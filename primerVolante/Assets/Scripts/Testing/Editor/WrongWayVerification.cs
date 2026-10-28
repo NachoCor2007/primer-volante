@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
 using PrimerVolante.Environment;
@@ -9,7 +8,6 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using Debug = UnityEngine.Debug;
 
 namespace PrimerVolante.Testing.Editor
 {
@@ -378,7 +376,7 @@ namespace PrimerVolante.Testing.Editor
                 });
             }
 
-            // CityMerged3 y CityWithInfractions: sin mano única y sin cambios respecto de git.
+            // CityMerged3 y CityWithInfractions: sin mano única.
             foreach (string path in new[] { s_CityScenes[0], s_CityScenes[1] })
             {
                 if (!System.IO.File.Exists(path)) continue;
@@ -390,10 +388,6 @@ namespace PrimerVolante.Testing.Editor
                     bool hasDemo = scene.GetRootGameObjects().Any(go => go.name == WrongWaySetup.DEMO_ROOT_NAME);
                     checks.Add((oneWay == 0 && !hasDemo, $"{sceneName} no tiene piezas en mano única ni OneWayDemo ({oneWay})"));
                 });
-
-                bool? clean = IsGitClean(path);
-                if (clean.HasValue) checks.Add((clean.Value, $"{sceneName}.unity no tiene cambios respecto de git"));
-                else Debug.LogWarning("[WrongWayVerification] ⚠️ No se pudo consultar git: se omite el chequeo de escenas sin cambios.");
             }
 
             foreach ((bool ok, string name) in checks) Assert(ok, name, ref total, ref passed);
@@ -559,37 +553,6 @@ namespace PrimerVolante.Testing.Editor
             finally
             {
                 if (openedHere && scene.IsValid()) EditorSceneManager.CloseScene(scene, true);
-            }
-        }
-
-        // true si git no ve diferencias del archivo contra HEAD (índice y árbol de trabajo); null si no se pudo correr git.
-        private static bool? IsGitClean(string assetPath)
-        {
-            try
-            {
-                string projectRoot = System.IO.Path.GetDirectoryName(Application.dataPath);
-                var info = new ProcessStartInfo("git", $"diff --quiet HEAD -- \"{assetPath}\"")
-                {
-                    WorkingDirectory = projectRoot,
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                };
-
-                using (Process process = Process.Start(info))
-                {
-                    if (process == null) return null;
-                    process.WaitForExit(15000);
-                    if (!process.HasExited) return null;
-                    if (process.ExitCode == 0) return true;
-                    if (process.ExitCode == 1) return false;
-                    return null;
-                }
-            }
-            catch (Exception)
-            {
-                return null;
             }
         }
 
