@@ -312,6 +312,8 @@ namespace PrimerVolante.Lessons
                 m_LessonTitleText.text = m_LessonManager.ActiveLesson.lessonTitle;
             }
 
+            ClearStepWarning();
+
             if (m_StepProgressText != null)
             {
                 m_StepProgressText.text = $"Paso {stepIndex + 1} de {totalSteps}: {step.stepTitle}";
@@ -426,6 +428,83 @@ namespace PrimerVolante.Lessons
 
             m_GlowCoroutine = null;
             onCompleted?.Invoke();
+        }
+
+        /// <summary>
+        /// Muestra una advertencia o falta en color rojo en el HUD sobre el volante y reproduce el sonido de advertencia.
+        /// </summary>
+        public void ShowStepWarning(string warningMessage, AudioClip warningClip = null)
+        {
+            if (m_GlowCoroutine != null)
+            {
+                StopCoroutine(m_GlowCoroutine);
+                m_GlowCoroutine = null;
+            }
+
+            if (m_InstructionText != null)
+            {
+                m_InstructionText.text = $"<color=#FF3B30>{warningMessage}</color>";
+            }
+
+            if (m_ContinueButtonText != null)
+            {
+                m_ContinueButtonText.text = "Falta Cometida";
+            }
+
+            if (m_SuccessBorderGlow != null)
+            {
+                ConfigureHollowBorderGlow();
+                m_SuccessBorderGlow.color = new Color(1f, 0.23f, 0.19f, 0.95f);
+                m_SuccessBorderGlow.gameObject.SetActive(true);
+            }
+
+            PlayWarningSound(warningClip);
+        }
+
+        /// <summary>
+        /// Limpia el estado de advertencia del HUD.
+        /// </summary>
+        public void ClearStepWarning()
+        {
+            if (m_SuccessBorderGlow != null && m_GlowCoroutine == null)
+            {
+                m_SuccessBorderGlow.gameObject.SetActive(false);
+            }
+        }
+
+        /// <summary>
+        /// Emite un sonido de advertencia audible para alertar de la falta.
+        /// </summary>
+        public void PlayWarningSound(AudioClip customClip = null)
+        {
+            if (m_AudioSource == null)
+            {
+                m_AudioSource = GetComponent<AudioSource>();
+                if (m_AudioSource == null)
+                {
+                    m_AudioSource = gameObject.AddComponent<AudioSource>();
+                }
+            }
+
+            if (m_AudioSource != null)
+            {
+                m_AudioSource.playOnAwake = false;
+                m_AudioSource.spatialBlend = 0f;
+                m_AudioSource.volume = 1f;
+
+                AudioClip clipToPlay = customClip;
+                if (clipToPlay == null)
+                {
+#if UNITY_EDITOR
+                    clipToPlay = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Vehicle/infraction_chime.wav");
+#endif
+                }
+
+                if (clipToPlay != null)
+                {
+                    m_AudioSource.PlayOneShot(clipToPlay, 1.0f);
+                }
+            }
         }
 
         /// <summary>

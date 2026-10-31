@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
+  m_Name: Lesson06_Step04_ParallelParkingRight
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
+  stepTitle: "Estacionamiento en Paralelo al Cord\xF3n"
+  instructionText: "Alinea el auto paralelo al veh\xEDculo de referencia delantero, coloca Reversa (R) girando a 45\xB0 hacia la vereda, y quiebra la direcci\xF3n al lado opuesto al tomar la referencia del espejo para acomodar el veh\xEDculo paralelo al cord\xF3n a menos de 30 cm sin golpear los obst\xE1culos."
+  completionMode: 1
+  requiredAction: 32
+  actionNumericParameter: 0
+  allowedControls: -1
+  highlightTargetName: VRGearShifter, SteeringWheel_Pivot
+  ambienceIntensity: 0

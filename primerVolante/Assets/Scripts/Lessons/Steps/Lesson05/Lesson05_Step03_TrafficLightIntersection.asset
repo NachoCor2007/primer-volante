@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
+  m_Name: Lesson05_Step03_TrafficLightIntersection
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
+  stepTitle: "Intersecci\xF3n Semaforizada"
+  instructionText: "Aprox\xEDmate a la intersecci\xF3n; si el sem\xE1foro est\xE1 en rojo o amarillo, det\xE9nte por completo antes de la senda peatonal. Reanuda la marcha y cruza al recibir la luz verde."
+  completionMode: 1
+  requiredAction: 27
+  actionNumericParameter: 0
+  allowedControls: -1
+  highlightTargetName: 
+  ambienceIntensity: 0

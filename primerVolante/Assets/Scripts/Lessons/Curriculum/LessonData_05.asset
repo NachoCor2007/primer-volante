@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ddb44700c534d9e49b589a387f99012f, type: 3}
+  m_Name: LessonData_05
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonDefinitionSO
+  lessonId: LESSON_05
+  lessonTitle: "Lecci\xF3n 5: Giros e Intersecciones"
+  steps:
+  - {fileID: 11400000, guid: 6104b690a76dbb441b31678e2b820f72, type: 2}
+  - {fileID: 11400000, guid: cdbf1f093dcf6d246aa05885b81ef114, type: 2}
+  - {fileID: 11400000, guid: a7baa56eb427f194fbec99df58e6dad1, type: 2}
+  - {fileID: 11400000, guid: 42598ad985e9ef64eac3de9335fd9812, type: 2}
+  - {fileID: 11400000, guid: ac666bc788aecbe4a819e7eee9672c77, type: 2}

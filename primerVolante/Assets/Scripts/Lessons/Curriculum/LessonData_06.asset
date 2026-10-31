@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ddb44700c534d9e49b589a387f99012f, type: 3}
+  m_Name: LessonData_06
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonDefinitionSO
+  lessonId: LESSON_06
+  lessonTitle: "Lecci\xF3n 6: Maniobras de Estacionamiento y Precisi\xF3n"
+  steps:
+  - {fileID: 11400000, guid: 923493342c5670b40b94580551d033ab, type: 2}
+  - {fileID: 11400000, guid: f46737f7d85e69347a620aacf190674f, type: 2}
+  - {fileID: 11400000, guid: a888cce9db2bbd448a8a1ee74082178e, type: 2}
+  - {fileID: 11400000, guid: edefbe2c8be1c0c43b4f140f264a391d, type: 2}
+  - {fileID: 11400000, guid: 9ebab2419d04bb945a218dadbfc16695, type: 2}
