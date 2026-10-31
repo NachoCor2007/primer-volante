@@ -14,6 +14,11 @@ namespace PrimerVolante.VR
         [Tooltip("Controlador del vehículo a encender/apagar. Si se deja vacío, se busca en los padres.")]
         [SerializeField] private VehicleController m_VehicleController;
 
+        [Header("Comportamiento")]
+        [Tooltip("Si está activo (por defecto), la pulsación alterna el motor. Si se apaga, la pulsación solo dispara el evento " +
+                 "Pressed y no toca el motor (p. ej. el botón de encendido hace de botón de confirmar en el menú principal).")]
+        [SerializeField] private bool m_TogglesEngine = true;
+
         [Header("Estado Visual")]
         [Tooltip("Renderer cuyo color cambia según el estado del motor. Si se deja vacío, se busca en los hijos.")]
         [SerializeField] private Renderer m_TargetRenderer;
@@ -32,6 +37,12 @@ namespace PrimerVolante.VR
 
         private Material m_InstancedMaterial;
         private XRSimpleInteractable m_Interactable;
+
+        /// <summary>Se dispara en cada pulsación del botón (<see cref="Press"/>), tanto física como de la capa de pruebas.</summary>
+        public event System.Action Pressed;
+
+        /// <summary>true si la pulsación alterna el motor.</summary>
+        public bool TogglesEngine => m_TogglesEngine;
 
         private void Awake()
         {
@@ -78,7 +89,20 @@ namespace PrimerVolante.VR
 
         private void OnSelectEntered(SelectEnterEventArgs args)
         {
-            ToggleEngine();
+            Press();
+        }
+
+        /// <summary>
+        /// Hace lo mismo que una pulsación física: dispara <see cref="Pressed"/> y, si <c>m_TogglesEngine</c> está activo,
+        /// alterna el motor. Sin alternar el motor igual da el feedback de "aceptado" (clic y háptico) vía
+        /// <see cref="VehicleController.NotifyControlPressed"/>; con el motor, TryToggleEngine ya lo dispara (no se duplica).
+        /// Útil para tests y para la capa de pruebas con teclado/gamepad.
+        /// </summary>
+        public void Press()
+        {
+            if (m_TogglesEngine) ToggleEngine();
+            else if (m_VehicleController != null) m_VehicleController.NotifyControlPressed();
+            Pressed?.Invoke();
         }
 
         /// <summary>

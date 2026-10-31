@@ -125,6 +125,10 @@ namespace PrimerVolante.VR
         [Tooltip("Duración en segundos del arranque (estado Cranking) antes de quedar en marcha. 0 = arranque instantáneo.")]
         [SerializeField] private float m_CrankDuration = 0f;
 
+        [Tooltip("Bloquea el motor: no se puede encender (TryToggleEngine lo rechaza y SetEngineRunning(true) no lo enciende). " +
+                 "Opt-in: lo usa el menú principal en cabina para que el auto no haga ruido. Apagado por defecto.")]
+        [SerializeField] private bool m_EngineLocked = false;
+
         private bool m_IsCranking;
         private float m_CrankTimeRemaining;
 
@@ -236,6 +240,9 @@ namespace PrimerVolante.VR
         /// (velocidad y dirección de avance quedan a cero de inmediato).
         /// </summary>
         public bool IsEngineRunning => m_EngineRunning;
+
+        /// <summary>true si el motor está bloqueado y no puede encenderse (ver <see cref="SetEngineLocked"/>).</summary>
+        public bool IsEngineLocked => m_EngineLocked;
 
         /// <summary>
         /// Estado actual del motor (Off, Cranking o Running).
@@ -386,6 +393,7 @@ namespace PrimerVolante.VR
         /// </summary>
         public void SetEngineRunning(bool running)
         {
+            if (running && m_EngineLocked) return;
             if (m_EngineRunning == running && !m_IsCranking) return;
 
             m_IsCranking = false;
@@ -415,6 +423,12 @@ namespace PrimerVolante.VR
             OnEngineToggleRequested?.Invoke();
 
             if (m_IsCranking) return false;
+
+            if (m_EngineLocked && !m_EngineRunning)
+            {
+                RejectEngineToggle("Encendido bloqueado: el motor está bloqueado.");
+                return false;
+            }
 
             string verb = m_EngineRunning ? "Apagado" : "Encendido";
 
@@ -446,6 +460,26 @@ namespace PrimerVolante.VR
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Bloquea o desbloquea el motor. Al bloquear con el motor encendido (o arrancando) se apaga una vez de forma normal.
+        /// Con el bloqueo, <see cref="TryToggleEngine"/> rechaza el arranque y <c>SetEngineRunning(true)</c> no lo enciende.
+        /// </summary>
+        public void SetEngineLocked(bool locked)
+        {
+            m_EngineLocked = locked;
+            if (locked && (m_EngineRunning || m_IsCranking)) SetEngineRunning(false);
+        }
+
+        /// <summary>
+        /// Avisa que se pulsó el botón de arranque SIN pedir un cambio de motor (p. ej. el botón hace de "confirmar" en
+        /// el menú principal). Dispara <see cref="OnEngineToggleRequested"/>: suena el clic y vibra el háptico de
+        /// "aceptado", y no se dispara el rechazo. No llamar junto con <see cref="TryToggleEngine"/> (ya lo dispara).
+        /// </summary>
+        public void NotifyControlPressed()
+        {
+            OnEngineToggleRequested?.Invoke();
         }
 
         private void RejectEngineToggle(string reason)
