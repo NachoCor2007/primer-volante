@@ -46,6 +46,12 @@ namespace PrimerVolante.VR
                  "abierto standalone (grados).")]
         [SerializeField] private float m_StandaloneYawOffsetDegrees = 45f;
 
+        [Tooltip("Transform cuyo frente horizontal es la referencia de los 45° del panel de calibración standalone " +
+                 "(el vehículo o el asiento): el panel queda siempre al noreste del auto, sin importar hacia dónde mire la cabeza. " +
+                 "Si se deja vacío se autodetecta el VehicleController (o el asiento del DriverSeatFollower); si no hay ninguno, " +
+                 "cae al comportamiento anterior (45° a la derecha del frente de la cabeza).")]
+        [SerializeField] private Transform m_StandaloneForwardReference;
+
         [Header("Entrada (VR - Botón Menu físico)")]
         [Tooltip("Si se apaga, se ignoran el botón Menu del control y la tecla de teclado (el menú de pausa no se puede abrir). " +
                  "Se apaga en el menú principal en cabina, donde el menú de pausa no aplica.")]
@@ -110,6 +116,13 @@ namespace PrimerVolante.VR
             if (m_DriverSeatFollower == null)
             {
                 m_DriverSeatFollower = Object.FindAnyObjectByType<DriverSeatFollower>();
+            }
+
+            if (m_StandaloneForwardReference == null)
+            {
+                VehicleController vehicle = Object.FindAnyObjectByType<VehicleController>();
+                if (vehicle != null) m_StandaloneForwardReference = vehicle.transform;
+                else if (m_DriverSeatFollower != null) m_StandaloneForwardReference = m_DriverSeatFollower.DriverSeat;
             }
 
             if (m_MenuRoot != null)
@@ -243,7 +256,8 @@ namespace PrimerVolante.VR
 
         /// <summary>
         /// Abre solo el panel de calibración, sin pausar el tiempo ni el audio y sin botón Volver. Lo ubica a
-        /// <c>m_StandaloneYawOffsetDegrees</c> (45°) a la derecha del frente horizontal de la cabeza, a
+        /// <c>m_StandaloneYawOffsetDegrees</c> (45°) a la derecha del frente horizontal del auto
+        /// (<c>m_StandaloneForwardReference</c>; sin referencia, de la cabeza), medido desde los ojos, a
         /// <c>m_DistanceFromHead</c>, a la altura de los ojos y mirando a la cabeza. Acompaña al jugador al calibrar
         /// (<see cref="DriverSeatFollower.CalibrationOffsetChanged"/>). Se cierra con <see cref="CloseMenu"/>.
         /// Lo usa el menú principal en cabina (página Calibración).
@@ -252,7 +266,7 @@ namespace PrimerVolante.VR
         {
             if (m_MenuRoot == null) return;
 
-            PositionInFrontOfHead(m_StandaloneYawOffsetDegrees);
+            PositionInFrontOfHead(m_StandaloneYawOffsetDegrees, m_StandaloneForwardReference);
             m_MenuRoot.SetActive(true);
             ShowCalibrationPanel();
             if (m_CalibrationBackButton != null) m_CalibrationBackButton.SetActive(false);
@@ -327,7 +341,7 @@ namespace PrimerVolante.VR
             if (m_CalibrationPanel != null) m_CalibrationPanel.SetActive(true);
         }
 
-        private void PositionInFrontOfHead(float yawOffsetDegrees = 0f)
+        private void PositionInFrontOfHead(float yawOffsetDegrees = 0f, Transform forwardReference = null)
         {
             if (m_HeadTransform == null)
             {
@@ -335,11 +349,15 @@ namespace PrimerVolante.VR
                 if (m_HeadTransform == null) return;
             }
 
-            Vector3 forward = m_HeadTransform.forward;
+            // El frente horizontal sale de la referencia (auto/asiento) si la hay; si no, de la cabeza.
+            Transform frontSource = forwardReference != null ? forwardReference : m_HeadTransform;
+            Vector3 forward = frontSource.forward;
             forward.y = 0f;
             if (forward.sqrMagnitude < 0.0001f)
             {
-                forward = m_HeadTransform.up;
+                forward = m_HeadTransform.forward;
+                forward.y = 0f;
+                if (forward.sqrMagnitude < 0.0001f) forward = m_HeadTransform.up;
             }
             forward.Normalize();
             if (yawOffsetDegrees != 0f) forward = Quaternion.AngleAxis(yawOffsetDegrees, Vector3.up) * forward;
