@@ -5,9 +5,30 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 0
-    path: Assets/Scenes/SampleScene.unity
-    guid: 55daccc09a3b69647bbab145b54a3ab3
+  - enabled: 1
+    path: Assets/Scenes/car09/MainMenu.unity
+    guid: f98ea560bf4cbf7469554bbf09d25596
+  - enabled: 1
+    path: Assets/Scenes/City_Master.unity
+    guid: 9a7c006bc40c5d849bda052d2e6164fa
+  - enabled: 1
+    path: Assets/Scenes/Lessons/Lesson_01_BasicDriving.unity
+    guid: df8ffeaf337e38e43b8a288afe5688f2
+  - enabled: 1
+    path: Assets/Scenes/Lessons/Lesson_02_EngineTransmission.unity
+    guid: efdd0774229d91546a3718ca23a62306
+  - enabled: 1
+    path: Assets/Scenes/Lessons/Lesson_03_LightingSignals.unity
+    guid: be2ac1638fcdc7c479407da094e38e5a
+  - enabled: 1
+    path: Assets/Scenes/Lessons/Lesson_04_DrivingManeuvers.unity
+    guid: cb4eb38ae0544bf4d9455446d5f6e230
+  - enabled: 1
+    path: Assets/Scenes/Lessons/Lesson_05_TurnIntersections.unity
+    guid: 3eb5178e11728c24da0c3f17a135c088
+  - enabled: 1
+    path: Assets/Scenes/Lessons/Lesson_06_ParkingManeuvers.unity
+    guid: 4c53b02c5229d2540bfbd4c1c501c9ce
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: bfa1182bd221b4ca89619141f66f1260, type: 2}
     Unity.XR.WindowsMR.Settings: {fileID: 11400000, guid: dc5a169419fa04987b057f65238cf3ba, type: 2}

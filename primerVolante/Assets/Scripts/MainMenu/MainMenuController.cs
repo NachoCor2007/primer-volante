@@ -388,9 +388,13 @@ namespace PrimerVolante.MainMenu
 
             int index = m_LessonList.CursorIndex;
             LessonDefinitionSO lesson = m_LessonList.GetLesson(index);
-            // Placeholder: por ahora no carga ninguna escena.
             Debug.Log("[MainMenu] Lección seleccionada: " + (lesson != null ? lesson.lessonId : "(sin definir)"));
             m_LessonList.MarkSelected(index);
+
+            if (lesson != null && Application.isPlaying && LessonSceneFlowManager.Instance != null)
+            {
+                LessonSceneFlowManager.Instance.LoadLesson(lesson);
+            }
         }
 
         private void SetPage(MainMenuPage page)

@@ -55,6 +55,9 @@ namespace PrimerVolante.Lessons
         [Tooltip("Botón para reiniciar la lección.")]
         [SerializeField] private Button m_RestartButton;
 
+        [Tooltip("Botón para volver al menú principal.")]
+        [SerializeField] private Button m_MainMenuButton;
+
         [Tooltip("Botón para avanzar a la siguiente lección.")]
         [SerializeField] private Button m_NextLessonButton;
 
@@ -91,6 +94,7 @@ namespace PrimerVolante.Lessons
         public GameObject StepContentPanel => m_StepContentPanel;
         public GameObject CompletionPanel => m_CompletionPanel;
         public Button RestartButton => m_RestartButton;
+        public Button MainMenuButton => m_MainMenuButton;
         public Button NextLessonButton => m_NextLessonButton;
         public TextMeshProUGUI NextLessonButtonText => m_NextLessonButtonText;
         public NearFarInteractor[] FarCastInteractors => m_FarCastInteractors;
@@ -223,6 +227,12 @@ namespace PrimerVolante.Lessons
                 m_RestartButton.onClick.AddListener(OnRestartClicked);
             }
 
+            if (m_MainMenuButton != null)
+            {
+                m_MainMenuButton.onClick.RemoveAllListeners();
+                m_MainMenuButton.onClick.AddListener(OnMainMenuClicked);
+            }
+
             if (m_NextLessonButton != null)
             {
                 m_NextLessonButton.onClick.RemoveAllListeners();
@@ -280,9 +290,21 @@ namespace PrimerVolante.Lessons
             }
         }
 
+        private void OnMainMenuClicked()
+        {
+            if (LessonSceneFlowManager.Instance != null)
+            {
+                LessonSceneFlowManager.Instance.ReturnToMainMenu();
+            }
+        }
+
         private void OnNextLessonClicked()
         {
-            if (m_LessonManager != null)
+            if (LessonSceneFlowManager.Instance != null && m_LessonManager != null && m_LessonManager.ActiveLesson != null)
+            {
+                LessonSceneFlowManager.Instance.LoadNextLesson(m_LessonManager.ActiveLesson);
+            }
+            else if (m_LessonManager != null)
             {
                 m_LessonManager.StartNextLesson();
             }
@@ -645,24 +667,66 @@ namespace PrimerVolante.Lessons
                 m_NextLessonButton.gameObject.SetActive(hasNextLesson);
             }
 
-            // Acomodar botones según disponibilidad de siguiente lección
-            if (m_RestartButton != null)
+            if (m_MainMenuButton != null)
             {
-                RectTransform restartRt = m_RestartButton.GetComponent<RectTransform>();
-                if (restartRt != null)
-                {
-                    restartRt.anchoredPosition = hasNextLesson ? new Vector2(-135f, -195f) : new Vector2(0f, -195f);
-                    restartRt.sizeDelta = hasNextLesson ? new Vector2(240f, 46f) : new Vector2(260f, 46f);
-                }
+                m_MainMenuButton.gameObject.SetActive(true);
             }
 
-            if (m_NextLessonButton != null)
+            // Acomodar botones según disponibilidad de siguiente lección
+            if (hasNextLesson)
             {
-                RectTransform nextRt = m_NextLessonButton.GetComponent<RectTransform>();
-                if (nextRt != null)
+                // 3 botones: Reiniciar | Volver al Menú | Siguiente Lección
+                if (m_RestartButton != null)
                 {
-                    nextRt.anchoredPosition = new Vector2(135f, -195f);
-                    nextRt.sizeDelta = new Vector2(240f, 46f);
+                    RectTransform restartRt = m_RestartButton.GetComponent<RectTransform>();
+                    if (restartRt != null)
+                    {
+                        restartRt.anchoredPosition = new Vector2(-180f, -195f);
+                        restartRt.sizeDelta = new Vector2(165f, 46f);
+                    }
+                }
+
+                if (m_MainMenuButton != null)
+                {
+                    RectTransform menuRt = m_MainMenuButton.GetComponent<RectTransform>();
+                    if (menuRt != null)
+                    {
+                        menuRt.anchoredPosition = new Vector2(0f, -195f);
+                        menuRt.sizeDelta = new Vector2(165f, 46f);
+                    }
+                }
+
+                if (m_NextLessonButton != null)
+                {
+                    RectTransform nextRt = m_NextLessonButton.GetComponent<RectTransform>();
+                    if (nextRt != null)
+                    {
+                        nextRt.anchoredPosition = new Vector2(180f, -195f);
+                        nextRt.sizeDelta = new Vector2(165f, 46f);
+                    }
+                }
+            }
+            else
+            {
+                // 2 botones: Reiniciar | Volver al Menú
+                if (m_RestartButton != null)
+                {
+                    RectTransform restartRt = m_RestartButton.GetComponent<RectTransform>();
+                    if (restartRt != null)
+                    {
+                        restartRt.anchoredPosition = new Vector2(-95f, -195f);
+                        restartRt.sizeDelta = new Vector2(180f, 46f);
+                    }
+                }
+
+                if (m_MainMenuButton != null)
+                {
+                    RectTransform menuRt = m_MainMenuButton.GetComponent<RectTransform>();
+                    if (menuRt != null)
+                    {
+                        menuRt.anchoredPosition = new Vector2(95f, -195f);
+                        menuRt.sizeDelta = new Vector2(180f, 46f);
+                    }
                 }
             }
 
