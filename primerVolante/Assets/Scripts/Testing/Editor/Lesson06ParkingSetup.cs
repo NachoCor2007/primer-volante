@@ -413,7 +413,7 @@ namespace PrimerVolante.Testing.Editor
             trigger45.StationType = ParkingStationType.Diagonal45;
             BoxCollider col45 = station45Obj.GetComponent<BoxCollider>();
             col45.isTrigger = true;
-            col45.center = new Vector3(0f, 1f, 0f);
+            col45.center = new Vector3(-0.09f, 1f, 0.44f);
             col45.size = new Vector3(3.2f, 2.5f, 6.0f);
 
             hl45 = EnsureGroundQuad(station45Obj.transform, "GroundVisual_YellowZone_45", new Vector2(3.0f, 5.5f), yellowMat);

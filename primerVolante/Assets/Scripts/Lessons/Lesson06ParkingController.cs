@@ -85,7 +85,7 @@ namespace PrimerVolante.Lessons
                                         (m_VehicleController.CurrentGear == GearState.Park || m_VehicleController.CurrentGear == GearState.P) &&
                                         m_VehicleController.HandbrakeEngagement >= 0.85f &&
                                         m_VehicleController.CurrentSpeedKmh < 0.2f &&
-                                        (m_ParallelZone == null || m_ParallelZone.IsVehicleInside);
+                                        (m_ParallelZone == null || m_ParallelZone.IsVehicleFullyInside(m_VehicleController));
 
         private void Awake()
         {
@@ -216,19 +216,19 @@ namespace PrimerVolante.Lessons
             }
 
             // - Paso 2: Acaba de frenar centrado en 45°, debe poner P y freno de mano en ese mismo sitio.
-            if (stepIndex == 2 && m_Diagonal45Zone != null && m_Diagonal45Zone.IsVehicleInside)
+            if (stepIndex == 2 && m_Diagonal45Zone != null && m_Diagonal45Zone.IsVehicleFullyInside(m_VehicleController))
             {
                 yield break;
             }
 
             // - Paso 4: Acaba de frenar de culata en 90°, debe poner P y freno de mano en ese mismo sitio.
-            if (stepIndex == 4 && m_Bay90Zone != null && m_Bay90Zone.IsVehicleInside)
+            if (stepIndex == 4 && m_Bay90Zone != null && m_Bay90Zone.IsVehicleFullyInside(m_VehicleController))
             {
                 yield break;
             }
 
             // - Paso 6: Acaba de frenar en paralelo, debe apagar balizas, poner P y freno de mano.
-            if (stepIndex == 6 && m_ParallelZone != null && m_ParallelZone.IsVehicleInside)
+            if (stepIndex == 6 && m_ParallelZone != null && m_ParallelZone.IsVehicleFullyInside(m_VehicleController))
             {
                 yield break;
             }
