@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using PrimerVolante.Lessons;
 using PrimerVolante.MainMenu;
@@ -507,6 +508,7 @@ namespace PrimerVolante.Testing.Editor
             {
                 VerifyMenuController(scene, controller, car, menu, shifter, startButton);
                 VerifyGearSettle(controller, menu);
+                VerifyExitOverlay(scene, controller, menu, startButton);
                 VerifyInGameMenu(scene, menu);
             }
             finally
@@ -524,24 +526,35 @@ namespace PrimerVolante.Testing.Editor
             try
             {
                 controller.Restart();
+                Check(controller.ActiveGearTabIndex == -1 && !StripVisible(controller), "Splash: la tira de marchas está oculta");
                 controller.HandleGearChanged(GearState.R);
                 Check(controller.CurrentPage == MainMenuPage.Splash, "Palanca: en el Splash no queda ningún cambio pendiente");
                 Check(!controller.HasPendingGear, "Splash: HandleGearChanged no deja marcha pendiente");
+                Check(!StripVisible(controller), "Splash: mover la palanca no muestra la tira");
                 controller.HandleGearChanged(GearState.P);
                 controller.HandleIgnitionPressed();
+                Check(StripVisible(controller) && ActiveTab(controller) == 0 && controller.CurrentPage == MainMenuPage.Lessons,
+                    "Al salir del Splash la tira y la página quedan en la marcha actual (P)");
 
-                // Barrido P -> R -> N -> D en menos de 0,25 s: solo termina en Créditos, sin abrir la calibración.
+                // Barrido P -> R -> N -> D en menos de 0,25 s: la pestaña sigue a la palanca en cada notificación,
+                // pero la página (y la calibración) esperan la estabilidad.
                 opened = 0;
                 controller.HandleGearChanged(GearState.R);
+                Check(ActiveTab(controller) == 1 && controller.CurrentPage == MainMenuPage.Lessons, "Barrido: la pestaña pasa a R al instante y la página no cambia");
                 controller.Tick(0.05f);
                 controller.HandleGearChanged(GearState.N);
+                Check(ActiveTab(controller) == 2 && controller.CurrentPage == MainMenuPage.Lessons, "Barrido: la pestaña pasa a N al instante y la página no cambia");
                 controller.Tick(0.05f);
                 controller.HandleGearChanged(GearState.D);
+                Check(ActiveTab(controller) == 3 && controller.CurrentPage == MainMenuPage.Lessons, "Barrido: la pestaña pasa a D al instante y la página no cambia");
                 controller.Tick(0.10f);
                 Check(controller.CurrentPage == MainMenuPage.Lessons && controller.HasPendingGear,
                     "Barrido P->R->N->D rápido: mientras no se estabiliza no cambia de página");
+                Check(controller.LegendString.Contains("Volante") && PageRootActive(controller, MainMenuPage.Lessons) && !PageRootActive(controller, MainMenuPage.Credits),
+                    "Barrido: la leyenda y la página visible siguen en Lecciones hasta estabilizarse");
                 controller.Tick(0.20f);
                 Check(controller.CurrentPage == MainMenuPage.Credits && !controller.HasPendingGear, "Barrido P->R->N->D rápido: termina solo en Créditos");
+                Check(ActiveTab(controller) == 3 && PageRootActive(controller, MainMenuPage.Credits), "Marcha estable en D: la tira y la página coinciden");
                 Check(opened == 0 && !menu.IsOpen, $"Barrido P->R->N->D rápido: la calibración nunca se abre (MenuOpened = {opened})");
 
                 // Una marcha estable más de 0,25 s sí cambia de página.
@@ -550,6 +563,7 @@ namespace PrimerVolante.Testing.Editor
                 Check(controller.CurrentPage == MainMenuPage.Credits, "Marcha estable 0,20 s (< 0,25 s): todavía no cambia de página");
                 controller.Tick(0.10f);
                 Check(controller.CurrentPage == MainMenuPage.Calibration && menu.IsOpen && opened == 1, "Marcha N estable 0,30 s: cambia a Calibración y abre la calibración una vez");
+                Check(ActiveTab(controller) == 2 && PageRootActive(controller, MainMenuPage.Calibration), "Marcha estable en N: la tira y la página coinciden");
 
                 // Un rebote N -> D -> N dentro de la espera no cierra ni reabre la calibración.
                 opened = 0;
@@ -569,6 +583,146 @@ namespace PrimerVolante.Testing.Editor
             }
         }
 
+        // Freno de mano: tirado del todo pide salir (overlay), bajarlo cancela, la ignición confirma.
+        private static void VerifyExitOverlay(Scene scene, MainMenuController controller, InGameMenuController menu, StartButton startButton)
+        {
+            var handbrake = FindFirst<VRHandbrake>(scene);
+            var highlighter = FindFirst<InteractableHighlighter>(scene);
+            Check(handbrake != null, "Escena: hay un VRHandbrake");
+            if (handbrake == null) return;
+
+            var logs = new List<string>();
+            Application.LogCallback capture = (msg, stack, type) => { if (type == LogType.Log) logs.Add(msg); };
+            Application.logMessageReceived += capture;
+            int exits = 0;
+            System.Action onExit = () => exits++;
+            controller.ExitRequested += onExit;
+            controller.SetPerformQuit(false); // los tests solo verifican el evento: nunca cierran nada
+            try
+            {
+                controller.Restart();
+                Check(Approx(handbrake.Engagement, 0f), $"Freno de mano: arranca abajo (Engagement = {handbrake.Engagement:F2})");
+                Check(!controller.ExitOverlayVisible && !OverlayActive(controller), "Arranque: el overlay de salida está oculto");
+                Check(controller.LegendString.Contains("Freno de mano: tirar para salir"), "Splash: la leyenda incluye 'Freno de mano: tirar para salir'");
+                Check(highlighter == null || !highlighter.CurrentTargets.Contains(handbrake.gameObject), "Splash: el freno de mano no se resalta");
+
+                // Histéresis: 0,96 muestra, 0,9 sigue, 0,8 oculta.
+                handbrake.SetEngagementImmediate(0.96f);
+                controller.Tick(0.016f);
+                Check(controller.ExitOverlayVisible && OverlayActive(controller), "Freno 0,96: se muestra el overlay de salida");
+                Check(logs.Contains("[MainMenu] Salida solicitada"), "Freno 0,96: loguea 'Salida solicitada'");
+                Check(controller.LegendString.Contains("Botón de encendido: confirmar salida") && controller.LegendString.Contains("Freno de mano: bajar para cancelar")
+                    && !controller.LegendString.Contains("tirar para salir"), "Overlay: la leyenda pasa a confirmar salida / bajar para cancelar");
+                Check(highlighter == null || (highlighter.CurrentTargets.Count == 1 && highlighter.CurrentTargets[0] == startButton.gameObject), "Overlay: solo se resalta la ignición");
+                handbrake.SetEngagementImmediate(0.9f);
+                controller.Tick(0.016f);
+                Check(controller.ExitOverlayVisible, "Freno 0,9: el overlay sigue visible (histéresis)");
+                handbrake.SetEngagementImmediate(0.8f);
+                controller.Tick(0.016f);
+                Check(!controller.ExitOverlayVisible && !OverlayActive(controller), "Freno 0,8: el overlay se oculta (cancelación)");
+                Check(logs.Contains("[MainMenu] Salida cancelada"), "Freno 0,8: loguea 'Salida cancelada'");
+                Check(controller.LegendString.Contains("comenzar") && controller.LegendString.Contains("Freno de mano: tirar para salir"),
+                    "Cancelar: la leyenda vuelve a la del Splash");
+                Check(highlighter == null || highlighter.CurrentTargets.Contains(startButton.gameObject), "Cancelar: vuelve el resaltado anterior");
+
+                // Splash: la ignición confirma la salida y NO sale del Splash.
+                handbrake.SetEngagementImmediate(1f);
+                controller.Tick(0.016f);
+                logs.Clear();
+                startButton.Press();
+                Check(exits == 1 && controller.CurrentPage == MainMenuPage.Splash, "Splash + overlay: Press() dispara ExitRequested y no sale del Splash");
+                Check(logs.Contains("[MainMenu] Saliendo del simulador"), "Confirmar: loguea 'Saliendo del simulador'");
+
+                // Sin overlay, la ignición sale del Splash como siempre.
+                handbrake.SetEngagementImmediate(0f);
+                controller.Tick(0.016f);
+                startButton.Press();
+                Check(exits == 1 && controller.CurrentPage == MainMenuPage.Lessons, "Sin overlay: Press() sale del Splash y no dispara ExitRequested");
+
+                // Lecciones: con overlay no selecciona; sin overlay sí.
+                handbrake.SetEngagementImmediate(0.97f);
+                controller.Tick(0.016f);
+                startButton.Press();
+                Check(exits == 2 && controller.SelectedLessonIndex == -1, "Lecciones + overlay: Press() dispara ExitRequested y no selecciona lección");
+                handbrake.SetEngagementImmediate(0f);
+                controller.Tick(0.016f);
+                startButton.Press();
+                Check(exits == 2 && controller.SelectedLessonIndex == controller.CursorIndex, "Lecciones sin overlay: Press() selecciona la lección como antes");
+
+                // La línea del freno de mano está en la leyenda de todas las pantallas.
+                bool legendEverywhere = controller.LegendString.Contains("Freno de mano: tirar para salir");
+                foreach (GearState gear in new[] { GearState.R, GearState.N, GearState.D, GearState.P })
+                {
+                    controller.HandleGearChanged(gear);
+                    controller.Tick(0.3f);
+                    legendEverywhere &= controller.LegendString.Contains("Freno de mano: tirar para salir");
+                }
+                Check(legendEverywhere, "La leyenda de las 4 páginas y del Splash incluye 'Freno de mano: tirar para salir'");
+                Check(highlighter == null || !highlighter.CurrentTargets.Contains(handbrake.gameObject), "Ninguna pantalla resalta el freno de mano");
+
+                // Calibración abierta: el overlay aparece, la calibración sigue abierta y la salida se confirma igual.
+                controller.HandleGearChanged(GearState.N);
+                controller.Tick(0.3f);
+                Check(controller.CurrentPage == MainMenuPage.Calibration && menu.IsOpen, "Calibración abierta (precondición del overlay)");
+                handbrake.SetEngagementImmediate(1f);
+                controller.Tick(0.016f);
+                Check(controller.ExitOverlayVisible && menu.IsOpen, "Calibración + freno a fondo: el overlay aparece y la calibración sigue abierta");
+                startButton.Press();
+                Check(exits == 3 && menu.IsOpen && controller.CurrentPage == MainMenuPage.Calibration, "Calibración + overlay: Press() dispara ExitRequested sin cerrar la calibración");
+                handbrake.SetEngagementImmediate(0f);
+                controller.Tick(0.016f);
+                Check(!controller.ExitOverlayVisible && menu.IsOpen, "Calibración: al cancelar el overlay, la calibración sigue abierta");
+                controller.HandleGearChanged(GearState.P);
+                controller.Tick(0.3f);
+            }
+            finally
+            {
+                Application.logMessageReceived -= capture;
+                controller.ExitRequested -= onExit;
+                controller.SetPerformQuit(true);
+                handbrake.SetEngagementImmediate(0f);
+                if (menu.IsOpen) menu.CloseMenu();
+            }
+        }
+
+        private static bool StripVisible(MainMenuController c)
+        {
+            var go = new SerializedObject(c).FindProperty("m_GearStripRoot").objectReferenceValue as GameObject;
+            return go != null && go.activeSelf;
+        }
+
+        private static bool OverlayActive(MainMenuController c)
+        {
+            var go = new SerializedObject(c).FindProperty("m_ExitOverlay").objectReferenceValue as GameObject;
+            return go != null && go.activeSelf;
+        }
+
+        private static bool PageRootActive(MainMenuController c, MainMenuPage page)
+        {
+            SerializedProperty roots = new SerializedObject(c).FindProperty("m_PageRoots");
+            var go = roots.GetArrayElementAtIndex((int)page).objectReferenceValue as GameObject;
+            return go != null && go.activeSelf;
+        }
+
+        // Pestaña realmente resaltada (color activo) en la tira; -1 si ninguna o si la tira está oculta.
+        private static int ActiveTab(MainMenuController c)
+        {
+            var so = new SerializedObject(c);
+            Color active = so.FindProperty("m_ActiveTabColor").colorValue;
+            SerializedProperty tabs = so.FindProperty("m_GearTabs");
+            int found = -1;
+            for (int i = 0; i < tabs.arraySize; i++)
+            {
+                var tab = tabs.GetArrayElementAtIndex(i).objectReferenceValue as TMPro.TextMeshProUGUI;
+                if (tab != null && tab.color == active)
+                {
+                    if (found != -1) return -2; // más de una resaltada
+                    found = i;
+                }
+            }
+            return StripVisible(c) ? found : -1;
+        }
+
         private static void VerifyMenuController(Scene scene, MainMenuController controller, VehicleController car, InGameMenuController menu,
             VRGearShifter shifter, StartButton startButton)
         {
@@ -586,6 +740,8 @@ namespace PrimerVolante.Testing.Editor
                 Check(!car.IsEngineRunning, "MainMenuController: motor apagado al arrancar");
                 var body = car.GetComponent<Rigidbody>();
                 Check(body != null && body.constraints == RigidbodyConstraints.FreezeAll, "MainMenuController: Rigidbody del auto en FreezeAll");
+                var brake = FindFirst<VRHandbrake>(scene);
+                Check(brake != null && Approx(brake.Engagement, 0f), "MainMenuController: el freno de mano arranca abajo (Engagement 0)");
 
                 // Durante el Splash la palanca no cambia de página: se registra y se aplica al salir.
                 controller.HandleGearChanged(GearState.N);
@@ -692,15 +848,41 @@ namespace PrimerVolante.Testing.Editor
             Check(calibrationPanel.activeSelf && !mainPanel.activeSelf, "OpenCalibrationStandalone: solo el panel de calibración está activo");
             Check(!backButton.activeSelf, "OpenCalibrationStandalone: el botón Volver está oculto");
 
-            Vector3 toMenu = menu.MenuRoot.transform.position - head.position;
-            Vector3 headForward = head.forward; headForward.y = 0f;
-            Vector3 flat = toMenu; flat.y = 0f;
-            float yaw = Vector3.SignedAngle(headForward, flat, Vector3.up);
-            Check(Mathf.Abs(yaw - 45f) <= 2f, $"OpenCalibrationStandalone: a 45° (±2°) a la derecha del frente de la cabeza (yaw = {yaw:F1}°)");
-            Check(Mathf.Abs(toMenu.magnitude - distance) < 0.01f, $"OpenCalibrationStandalone: a {distance:F1} m de la cabeza ({toMenu.magnitude:F2} m)");
-            Check(Mathf.Abs(toMenu.y) < 0.001f, "OpenCalibrationStandalone: a la altura de los ojos");
-            Vector3 faceDir = menu.MenuRoot.transform.forward;
-            Check(Vector3.Dot(faceDir, toMenu.normalized) > 0.99f, "OpenCalibrationStandalone: el panel mira a la cabeza (misma convención que OpenMenu)");
+            // El frente de referencia de los 45° es el del AUTO (m_StandaloneForwardReference), no el de la cabeza.
+            var forwardRef = so.FindProperty("m_StandaloneForwardReference").objectReferenceValue as Transform;
+            Check(forwardRef != null, "InGameMenuController (escena): m_StandaloneForwardReference asignado (frente del auto)");
+            if (forwardRef == null) return;
+            Quaternion headRotation = head.rotation;
+            try
+            {
+                CheckStandalonePlacement(menu, head, forwardRef, distance, "cabeza al frente");
+
+                // Con la cabeza girada a la derecha, a la izquierda y hacia atrás, el panel sigue al noreste del auto.
+                foreach (float turn in new[] { 90f, -90f, 180f })
+                {
+                    head.rotation = Quaternion.Euler(0f, forwardRef.eulerAngles.y + turn, 0f);
+                    menu.CloseMenu();
+                    menu.OpenCalibrationStandalone();
+                    CheckStandalonePlacement(menu, head, forwardRef, distance, $"cabeza girada {turn:F0}°");
+                }
+
+                // Sin referencia: comportamiento anterior (45° a la derecha del frente de la CABEZA).
+                SetField(menu, "m_StandaloneForwardReference", null);
+                head.rotation = Quaternion.Euler(0f, forwardRef.eulerAngles.y + 90f, 0f);
+                menu.CloseMenu();
+                menu.OpenCalibrationStandalone();
+                CheckStandalonePlacement(menu, head, head, distance, "sin referencia (comportamiento anterior, cabeza girada 90°)");
+                Vector3 headFwd = head.forward; headFwd.y = 0f;
+                Vector3 carFwd = forwardRef.forward; carFwd.y = 0f;
+                Check(Mathf.Abs(Vector3.SignedAngle(carFwd, headFwd, Vector3.up) - 90f) < 1f, "Sin referencia: el panel acompaña a la cabeza, no al auto");
+                SetField(menu, "m_StandaloneForwardReference", forwardRef);
+            }
+            finally
+            {
+                head.rotation = headRotation;
+                menu.CloseMenu();
+                menu.OpenCalibrationStandalone();
+            }
 
             menu.CloseMenu();
             Check(!menu.IsOpen && backButton.activeSelf, "CloseMenu: cierra y restaura el botón Volver");
@@ -718,6 +900,20 @@ namespace PrimerVolante.Testing.Editor
                 Object.DestroyImmediate(defaultGo);
             }
             // Que Escape y el botón Menu no abren nada se prueba en Play Mode (wasPressedThisFrame no funciona en Edit Mode).
+        }
+
+        // Panel de calibración standalone: a 45° (±2°) a la derecha del frente horizontal de frontSource, a la distancia
+        // pedida de los ojos, a su altura y mirando hacia la cabeza.
+        private static void CheckStandalonePlacement(InGameMenuController menu, Transform head, Transform frontSource, float distance, string label)
+        {
+            Vector3 toMenu = menu.MenuRoot.transform.position - head.position;
+            Vector3 front = frontSource.forward; front.y = 0f;
+            Vector3 flat = toMenu; flat.y = 0f;
+            float yaw = Vector3.SignedAngle(front, flat, Vector3.up);
+            Check(Mathf.Abs(yaw - 45f) <= 2f, $"OpenCalibrationStandalone ({label}): a 45° (±2°) a la derecha del frente de {(frontSource == head ? "la cabeza" : "auto")} (yaw = {yaw:F1}°)");
+            Check(Mathf.Abs(toMenu.magnitude - distance) < 0.01f, $"OpenCalibrationStandalone ({label}): a {distance:F1} m de los ojos ({toMenu.magnitude:F2} m)");
+            Check(Mathf.Abs(toMenu.y) < 0.001f, $"OpenCalibrationStandalone ({label}): a la altura de los ojos");
+            Check(Vector3.Dot(menu.MenuRoot.transform.forward, toMenu.normalized) > 0.99f, $"OpenCalibrationStandalone ({label}): el panel mira a la cabeza (misma convención que OpenMenu)");
         }
 
         // ------------------------------------------------------------------ helpers
