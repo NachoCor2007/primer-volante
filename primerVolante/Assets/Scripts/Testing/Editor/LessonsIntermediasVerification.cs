@@ -390,6 +390,14 @@ namespace PrimerVolante.Testing.Editor
             Assert(arrow45 != null, "GroundVisual_Arrow_45 debe existir marcando la dirección del auto en dársena 45°", ref total, ref passed);
             Assert(arrow90 != null, "GroundVisual_Arrow_90 debe existir marcando la dirección de culata hacia la calle en dársena 90°", ref total, ref passed);
             Assert(arrowParallel != null, "GroundVisual_Arrow_Parallel debe existir marcando la dirección de circulación en dársena paralelo", ref total, ref passed);
+
+            // Validar auras 3D perimetrales holográficas que se levantan de los bordes del suelo
+            GameObject aura45 = GameObject.Find("GroundVisual_Aura_45");
+            GameObject aura90 = GameObject.Find("GroundVisual_Aura_90");
+            GameObject auraParallel = GameObject.Find("GroundVisual_Aura_Parallel");
+            Assert(aura45 != null, "GroundVisual_Aura_45 debe existir proyectando el aura 3D en dársena 45°", ref total, ref passed);
+            Assert(aura90 != null, "GroundVisual_Aura_90 debe existir proyectando el aura 3D en dársena 90°", ref total, ref passed);
+            Assert(auraParallel != null, "GroundVisual_Aura_Parallel debe existir proyectando el aura 3D en dársena paralelo", ref total, ref passed);
         }
 
         // =========================================================================

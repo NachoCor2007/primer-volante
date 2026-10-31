@@ -402,6 +402,7 @@ namespace PrimerVolante.Testing.Editor
             GameObject conePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(CONE_PREFAB_PATH);
             GameObject carPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(STATIC_CAR_PREFAB_PATH);
             Material yellowMat = EnsureYellowZoneMaterial();
+            Material auraMat = EnsureAuraMaterial();
 
             // -------------------------------------------------------------
             // Estación 1: Dársena a 45° (Espiga)
@@ -417,6 +418,7 @@ namespace PrimerVolante.Testing.Editor
 
             hl45 = EnsureGroundQuad(station45Obj.transform, "GroundVisual_YellowZone_45", new Vector2(3.0f, 5.5f), yellowMat);
             EnsureDirectionArrowOnGround(station45Obj.transform, "GroundVisual_Arrow_45", ParkingStationType.Diagonal45);
+            EnsureAuraPerimeter(station45Obj.transform, "GroundVisual_Aura_45", new Vector2(3.0f, 5.5f), auraMat, hl45.transform.localPosition);
             SpawnConesAround(station45Obj.transform, conePrefab, new Vector2(3.2f, 6.0f));
             SpawnStaticCar(station45Obj.transform, carPrefab, new Vector3(-3.2f, 0f, 0f), Quaternion.identity);
             SpawnStaticCar(station45Obj.transform, carPrefab, new Vector3(3.2f, 0f, 0f), Quaternion.identity);
@@ -435,6 +437,7 @@ namespace PrimerVolante.Testing.Editor
 
             hl90 = EnsureGroundQuad(station90Obj.transform, "GroundVisual_YellowZone_90", new Vector2(3.0f, 5.5f), yellowMat);
             EnsureDirectionArrowOnGround(station90Obj.transform, "GroundVisual_Arrow_90", ParkingStationType.Bay90Reverse);
+            EnsureAuraPerimeter(station90Obj.transform, "GroundVisual_Aura_90", new Vector2(3.0f, 5.5f), auraMat, hl90.transform.localPosition);
             SpawnConesAround(station90Obj.transform, conePrefab, new Vector2(3.2f, 6.0f));
             SpawnStaticCar(station90Obj.transform, carPrefab, new Vector3(-3.2f, 0f, 0f), Quaternion.identity);
             SpawnStaticCar(station90Obj.transform, carPrefab, new Vector3(3.2f, 0f, 0f), Quaternion.identity);
@@ -453,6 +456,7 @@ namespace PrimerVolante.Testing.Editor
 
             hlParallel = EnsureGroundQuad(stationParallelObj.transform, "GroundVisual_YellowZone_Parallel", new Vector2(2.8f, 6.5f), yellowMat);
             EnsureDirectionArrowOnGround(stationParallelObj.transform, "GroundVisual_Arrow_Parallel", ParkingStationType.ParallelRight);
+            EnsureAuraPerimeter(stationParallelObj.transform, "GroundVisual_Aura_Parallel", new Vector2(2.8f, 6.5f), auraMat, hlParallel.transform.localPosition);
             // Autos estáticos delimitando el cajón paralelo: delantero y trasero
             SpawnStaticCar(stationParallelObj.transform, carPrefab, new Vector3(0f, 0f, 6.5f), Quaternion.identity);
             SpawnStaticCar(stationParallelObj.transform, carPrefab, new Vector3(0f, 0f, -6.5f), Quaternion.identity);
@@ -519,6 +523,56 @@ namespace PrimerVolante.Testing.Editor
             l.color = new Color(1.0f, 0.85f, 0.2f);
             l.intensity = 2.0f;
             l.shadows = LightShadows.None;
+        }
+
+        private static Material EnsureAuraMaterial()
+        {
+            const string matPath = "Assets/Environment/Materials/M_Parking_AuraPerimeter.mat";
+            Material mat = AssetDatabase.LoadAssetAtPath<Material>(matPath);
+            if (mat == null)
+            {
+                Shader shader = Shader.Find("Custom/ParkingAura") ?? Shader.Find("Universal Render Pipeline/Unlit");
+                mat = new Material(shader);
+                mat.name = "M_Parking_AuraPerimeter";
+                mat.SetColor("_BaseColor", new Color(1.0f, 0.82f, 0.08f, 1.0f));
+                if (mat.HasProperty("_Intensity")) mat.SetFloat("_Intensity", 2.6f);
+                if (mat.HasProperty("_FadePower")) mat.SetFloat("_FadePower", 1.5f);
+                if (mat.HasProperty("_GroundGlowBoost")) mat.SetFloat("_GroundGlowBoost", 3.0f);
+                if (mat.HasProperty("_WaveSpeed")) mat.SetFloat("_WaveSpeed", 3.0f);
+                if (mat.HasProperty("_WaveFreq")) mat.SetFloat("_WaveFreq", 10.0f);
+                AssetDatabase.CreateAsset(mat, matPath);
+                AssetDatabase.SaveAssets();
+            }
+            return mat;
+        }
+
+        private static GameObject EnsureAuraPerimeter(Transform parent, string name, Vector2 size, Material mat, Vector3 localPos)
+        {
+            Transform existing = parent.Find(name);
+            GameObject auraObj;
+            if (existing != null)
+            {
+                auraObj = existing.gameObject;
+            }
+            else
+            {
+                auraObj = new GameObject(name);
+                auraObj.transform.SetParent(parent, false);
+            }
+
+            auraObj.transform.localPosition = new Vector3(localPos.x, 0f, localPos.z);
+            auraObj.transform.localRotation = Quaternion.identity;
+            auraObj.transform.localScale = Vector3.one;
+
+            ParkingAuraPerimeter aura = auraObj.GetComponent<ParkingAuraPerimeter>();
+            if (aura == null) aura = auraObj.AddComponent<ParkingAuraPerimeter>();
+            aura.Size = size;
+            aura.Height = 0.60f;
+            aura.AuraMaterial = mat;
+            aura.BuildAuraMesh();
+
+            EditorUtility.SetDirty(auraObj);
+            return auraObj;
         }
 
         private static Material EnsureArrowMaterial()

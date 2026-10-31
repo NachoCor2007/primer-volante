@@ -275,7 +275,7 @@ namespace PrimerVolante.Lessons
             {
                 foreach (Transform child in highlight.transform.parent)
                 {
-                    if (child.name.StartsWith("GroundVisual_Arrow"))
+                    if (child.name.StartsWith("GroundVisual_Arrow") || child.name.StartsWith("GroundVisual_Aura"))
                     {
                         child.gameObject.SetActive(active);
                     }
