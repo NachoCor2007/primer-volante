@@ -105,6 +105,20 @@ namespace PrimerVolante.Lessons
             if (s_Instance == this) s_Instance = null;
         }
 
+        private void Start()
+        {
+            if (m_VehicleController != null)
+            {
+                m_VehicleController.SetEngineRunning(true);
+                m_VehicleController.SetGear(GearState.Park);
+                VRGearShifter shifter = m_VehicleController.GetComponentInChildren<VRGearShifter>(true);
+                if (shifter != null)
+                {
+                    shifter.SetRotationToGear(GearState.Park);
+                }
+            }
+        }
+
         public void AutoDiscoverReferences()
         {
             if (m_LessonManager == null)
@@ -213,6 +227,7 @@ namespace PrimerVolante.Lessons
             if (lesson == null || lesson.lessonId != "LESSON_05") return;
             ResetStepMetrics(0);
             UpdateVisualIndicators(0);
+            RepositionVehicleToStepStart(0);
         }
 
         private void OnStepChanged(LessonStepSO step, int stepIndex, int totalSteps)
@@ -479,13 +494,13 @@ namespace PrimerVolante.Lessons
                 stalk.SetSignalAnimated(TurnSignalState.Off);
             }
 
-            // Asegurar motor en marcha, transmisión en Drive y freno de mano liberado
+            // Asegurar motor en marcha, transmisión en Parking (P) y palanca física sincronizada
             m_VehicleController.SetEngineRunning(true);
-            m_VehicleController.SetGear(GearState.Drive);
+            m_VehicleController.SetGear(GearState.Park);
             VRGearShifter shifter = m_VehicleController.GetComponentInChildren<VRGearShifter>(true);
             if (shifter != null)
             {
-                shifter.SetRotationToGear(GearState.Drive);
+                shifter.SetRotationToGear(GearState.Park);
             }
 
             VRHandbrake handbrake = m_VehicleController.GetComponentInChildren<VRHandbrake>(true);

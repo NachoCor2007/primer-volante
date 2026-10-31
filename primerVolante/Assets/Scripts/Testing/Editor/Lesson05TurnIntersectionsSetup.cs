@@ -104,6 +104,18 @@ namespace PrimerVolante.Testing.Editor
                     rb.position = spawnPoints[0].position;
                     rb.rotation = spawnPoints[0].rotation;
                 }
+
+                VehicleController vc = car09.GetComponent<VehicleController>();
+                if (vc != null)
+                {
+                    vc.SetEngineRunning(true);
+                    vc.SetGear(GearState.Park);
+                    VRGearShifter shifter = car09.GetComponentInChildren<VRGearShifter>(true);
+                    if (shifter != null)
+                    {
+                        shifter.SetRotationToGear(GearState.Park);
+                    }
+                }
             }
 
             // 9. Crear la línea de advertencia en el asfalto y el pórtico holográfico (a 20m de la esquina) para el Paso 2
