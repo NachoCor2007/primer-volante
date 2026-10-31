@@ -93,6 +93,12 @@ namespace PrimerVolante.Lessons
             AutoDiscoverReferences();
         }
 
+        private void Start()
+        {
+            // Garantizar estado inicial al entrar a Play: auto apagado, Parking (P) y freno de mano accionado
+            RepositionToStation(0);
+        }
+
         private void OnEnable()
         {
             if (s_Instance == null) s_Instance = this;
@@ -183,12 +189,28 @@ namespace PrimerVolante.Lessons
         private IEnumerator TransitionToStepRoutine(int stepIndex)
         {
             // Pasos que continúan fluidos en el mismo sitio (NO reposicionar ni interrumpir la vista):
-            // - Paso 1: Acaba de encender balizas en el acceso, continúa la marcha hacia 45°.
+            // - Paso 1: Acaba de encender balizas en el acceso, activar marcha y continuar hacia 45°.
             if (stepIndex == 1 && m_VehicleController != null)
             {
                 Transform spawn1 = GetSpawnForStep(1);
                 if (spawn1 != null && Vector3.Distance(m_VehicleController.transform.position, spawn1.position) < 4.5f)
                 {
+                    m_VehicleController.SetEngineRunning(true);
+                    m_VehicleController.SetHazardActive(true);
+                    m_VehicleController.SetGear(GearState.Drive);
+
+                    VRGearShifter shifter = m_VehicleController.GetComponentInChildren<VRGearShifter>(true);
+                    if (shifter != null)
+                    {
+                        shifter.SetRotationToGear(GearState.Drive);
+                    }
+
+                    VRHandbrake handbrake = m_VehicleController.GetComponentInChildren<VRHandbrake>(true);
+                    if (handbrake != null)
+                    {
+                        handbrake.SetEngagementImmediate(0f);
+                    }
+
                     yield break;
                 }
             }
@@ -312,32 +334,47 @@ namespace PrimerVolante.Lessons
                 m_VehicleController.SteeringWheel.ResetToCenter();
             }
 
-            m_VehicleController.SetEngineRunning(true);
+            VRGearShifter shifter = m_VehicleController.GetComponentInChildren<VRGearShifter>(true);
+            VRHandbrake handbrake = m_VehicleController.GetComponentInChildren<VRHandbrake>(true);
 
             if (stepIndex == 0)
             {
-                // En el primer paso debe encender las balizas el alumno
+                // Al iniciar la lección 6: auto apagado, palanca en Parking (P), freno de mano accionado y balizas apagadas
+                m_VehicleController.SetEngineRunning(false);
+                m_VehicleController.SetGear(GearState.Park);
+                if (shifter != null)
+                {
+                    shifter.SetRotationToGear(GearState.Park);
+                }
+                if (handbrake != null)
+                {
+                    handbrake.SetEngagementImmediate(1f);
+                }
                 m_VehicleController.SetHazardActive(false);
-                m_VehicleController.SetGear(GearState.Drive);
             }
             else if (stepIndex == 1 || stepIndex == 3 || stepIndex == 5)
             {
                 // Para las maniobras 45°, 90° y Paralelo:
-                // Balizas activadas, transmisión en Drive (D) y freno de mano abajo
+                // Motor encendido, balizas activadas, transmisión en Drive (D) y freno de mano abajo
+                m_VehicleController.SetEngineRunning(true);
                 m_VehicleController.SetHazardActive(true);
                 m_VehicleController.SetGear(GearState.Drive);
 
-                VRGearShifter shifter = m_VehicleController.GetComponentInChildren<VRGearShifter>(true);
                 if (shifter != null)
                 {
                     shifter.SetRotationToGear(GearState.Drive);
                 }
 
-                VRHandbrake handbrake = m_VehicleController.GetComponentInChildren<VRHandbrake>(true);
                 if (handbrake != null)
                 {
                     handbrake.SetEngagementImmediate(0f);
                 }
+            }
+            else if (stepIndex == 2 || stepIndex == 4 || stepIndex == 6)
+            {
+                // Para los pasos de aseguramiento en dársena: motor en marcha y balizas activadas
+                m_VehicleController.SetEngineRunning(true);
+                m_VehicleController.SetHazardActive(true);
             }
 
             if (m_SeatFollower != null)
