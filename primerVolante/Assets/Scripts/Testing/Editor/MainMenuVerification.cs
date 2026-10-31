@@ -509,6 +509,7 @@ namespace PrimerVolante.Testing.Editor
                 VerifyMenuController(scene, controller, car, menu, shifter, startButton);
                 VerifyGearSettle(controller, menu);
                 VerifyExitOverlay(scene, controller, menu, startButton);
+                VerifyExitOverlayModels(scene, controller, startButton);
                 VerifyInGameMenu(scene, menu);
             }
             finally
@@ -683,6 +684,107 @@ namespace PrimerVolante.Testing.Editor
                 handbrake.SetEngagementImmediate(0f);
                 if (menu.IsOpen) menu.CloseMenu();
             }
+        }
+
+        // Los modelos 3D de los mandos se dibujan sobre la UI: bajo el overlay de salida no deben verse.
+        private static void VerifyExitOverlayModels(Scene scene, MainMenuController controller, StartButton startButton)
+        {
+            var handbrake = FindFirst<VRHandbrake>(scene);
+            List<ControllerIllustration> illustrations = FindAll<ControllerIllustration>(scene);
+            Check(illustrations.Count == 5, $"Escena: 5 ControllerIllustration (2 del Splash y 3 de Controles) (hay {illustrations.Count})");
+            if (handbrake == null || illustrations.Count == 0) return;
+
+            // Awake no corre en Edit Mode: se arman los modelos a mano.
+            foreach (ControllerIllustration ill in illustrations) ill.Build();
+            Check(illustrations.TrueForAll(i => i.ControllerTransform != null), "ControllerIllustration: los 5 modelos se armaron");
+            var press = illustrations.Find(i => i.PressAnimation);
+            Check(press != null && press.ButtonTransform != null, "ControllerIllustration: el Splash tiene la ilustración Pulsar con su botón 3D");
+
+            controller.SetPerformQuit(false);
+            try
+            {
+                controller.Restart();
+                Check(VisibleModelRenderers(controller, MainMenuPage.Splash) > 0 && VisibleModelRenderers(controller, MainMenuPage.Controls) == 0,
+                    "Splash sin overlay: se ven los modelos del Splash y no los de Controles");
+
+                // Splash + overlay: ningún renderer de ControllerIllustration visible (incluido el botón 3D de Pulsar).
+                handbrake.SetEngagementImmediate(1f);
+                controller.Tick(0.016f);
+                Check(controller.ExitOverlayVisible && TotalVisibleModelRenderers(controller) == 0,
+                    $"Splash + overlay: ningún renderer de ControllerIllustration visible ({TotalVisibleModelRenderers(controller)})");
+                Check(press.ButtonTransform.GetComponentsInChildren<Renderer>(true).All(r => !r.enabled), "Splash + overlay: el botón 3D de Pulsar también está oculto");
+
+                // Cancelar: vuelven los de la página actual y no los de las otras.
+                handbrake.SetEngagementImmediate(0f);
+                controller.Tick(0.016f);
+                Check(!controller.ExitOverlayVisible && VisibleModelRenderers(controller, MainMenuPage.Splash) > 0 && VisibleModelRenderers(controller, MainMenuPage.Controls) == 0,
+                    "Cancelar en el Splash: vuelven los modelos del Splash y los de Controles siguen ocultos");
+
+                // La animación Pulsar no queda rota tras ocultarse y volver a mostrarse.
+                press.EvaluateAt(0f);
+                float restZ = press.ButtonTransform.localPosition.z;
+                press.EvaluateAt(0.3f * 3.2f);
+                Check(Mathf.Abs(press.ButtonTransform.localPosition.z - restZ) > 0.005f, "Pulsar tras volver a mostrarse: el botón se sigue hundiendo");
+                press.EvaluateAt(0.9f * 3.2f);
+                Check(Mathf.Abs(press.ButtonTransform.localPosition.z - restZ) < 0.0001f, "Pulsar tras volver a mostrarse: el botón vuelve al reposo (no queda hundido)");
+
+                // Controles + overlay.
+                startButton.Press();
+                controller.HandleGearChanged(GearState.R);
+                controller.Tick(0.3f);
+                Check(controller.CurrentPage == MainMenuPage.Controls && VisibleModelRenderers(controller, MainMenuPage.Controls) > 0 && VisibleModelRenderers(controller, MainMenuPage.Splash) == 0,
+                    "Controles sin overlay: se ven los modelos de Controles");
+                handbrake.SetEngagementImmediate(1f);
+                controller.Tick(0.016f);
+                Check(controller.ExitOverlayVisible && TotalVisibleModelRenderers(controller) == 0, "Controles + overlay: ningún renderer de ControllerIllustration visible");
+                handbrake.SetEngagementImmediate(0f);
+                controller.Tick(0.016f);
+                Check(VisibleModelRenderers(controller, MainMenuPage.Controls) > 0 && VisibleModelRenderers(controller, MainMenuPage.Splash) == 0,
+                    "Cancelar en Controles: vuelven los modelos de Controles y no los del Splash");
+
+                // Cambio de página con el overlay visible: los modelos de la página nueva tampoco aparecen hasta cancelar.
+                controller.HandleGearChanged(GearState.P);
+                controller.Tick(0.3f);
+                handbrake.SetEngagementImmediate(1f);
+                controller.Tick(0.016f);
+                controller.HandleGearChanged(GearState.R);
+                controller.Tick(0.3f);
+                Check(controller.ExitOverlayVisible && controller.CurrentPage == MainMenuPage.Controls && TotalVisibleModelRenderers(controller) == 0,
+                    "Overlay visible + cambio de página a Controles: los modelos de la página nueva siguen sin mostrarse");
+                handbrake.SetEngagementImmediate(0f);
+                controller.Tick(0.016f);
+                Check(VisibleModelRenderers(controller, MainMenuPage.Controls) > 0, "Al cancelar, aparecen los modelos de la página nueva (Controles)");
+            }
+            finally
+            {
+                controller.SetPerformQuit(true);
+                handbrake.SetEngagementImmediate(0f);
+            }
+        }
+
+        // Renderers de modelos 3D realmente visibles (habilitados y con la página activa) dentro de una página.
+        private static int VisibleModelRenderers(MainMenuController c, MainMenuPage page)
+        {
+            SerializedProperty roots = new SerializedObject(c).FindProperty("m_PageRoots");
+            var root = roots.GetArrayElementAtIndex((int)page).objectReferenceValue as GameObject;
+            if (root == null) return 0;
+
+            int count = 0;
+            foreach (ControllerIllustration ill in root.GetComponentsInChildren<ControllerIllustration>(true))
+            {
+                foreach (Renderer r in ill.GetComponentsInChildren<Renderer>(true))
+                {
+                    if (r.enabled && r.gameObject.activeInHierarchy) count++;
+                }
+            }
+            return count;
+        }
+
+        private static int TotalVisibleModelRenderers(MainMenuController c)
+        {
+            int total = 0;
+            foreach (MainMenuPage page in System.Enum.GetValues(typeof(MainMenuPage))) total += VisibleModelRenderers(c, page);
+            return total;
         }
 
         private static bool StripVisible(MainMenuController c)
