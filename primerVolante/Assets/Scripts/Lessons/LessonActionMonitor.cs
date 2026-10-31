@@ -545,15 +545,23 @@ namespace PrimerVolante.Lessons
                 // Lección 6: Maniobras de Estacionamiento y Precisión (Delegación en dársenas y físicas)
                 case LessonActionType.ParkDiagonal45:
                     return Lesson06ParkingController.Instance != null &&
-                           Lesson06ParkingController.Instance.IsDiagonalParked;
+                           Lesson06ParkingController.Instance.IsDiagonalPositioned;
+
+                case LessonActionType.SecureDiagonal45:
+                    return Lesson06ParkingController.Instance != null &&
+                           Lesson06ParkingController.Instance.IsDiagonalSecured;
 
                 case LessonActionType.ParkBay90Reverse:
                     return Lesson06ParkingController.Instance != null &&
-                           Lesson06ParkingController.Instance.IsBay90Parked;
+                           Lesson06ParkingController.Instance.IsBay90Positioned;
+
+                case LessonActionType.SecureBay90:
+                    return Lesson06ParkingController.Instance != null &&
+                           Lesson06ParkingController.Instance.IsBay90Secured;
 
                 case LessonActionType.ParkParallelRight:
                     return Lesson06ParkingController.Instance != null &&
-                           Lesson06ParkingController.Instance.IsParallelParked;
+                           Lesson06ParkingController.Instance.IsParallelPositioned;
 
                 case LessonActionType.SecureParkDeactivateHazards:
                     return Lesson06ParkingController.Instance != null &&

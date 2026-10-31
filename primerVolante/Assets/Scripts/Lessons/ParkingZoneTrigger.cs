@@ -56,6 +56,9 @@ namespace PrimerVolante.Lessons
             }
         }
 
+        public bool IsVehiclePositionedProperly => m_CurrentVehicle != null && m_IsVehicleInside && IsVehiclePositioned(m_CurrentVehicle);
+        public bool IsVehicleSecuredProperly => m_CurrentVehicle != null && m_IsVehicleInside && IsVehicleSecuredInZone(m_CurrentVehicle);
+
         private void Awake()
         {
             m_Collider = GetComponent<BoxCollider>();
@@ -115,6 +118,36 @@ namespace PrimerVolante.Lessons
                 default:
                     return transform.forward;
             }
+        }
+
+        /// <summary>
+        /// Evalúa si el vehículo ingresó al recuadro de la dársena, está detenido y correctamente alineado.
+        /// No exige palanca en P ni freno de mano todavía (permite completar la maniobra de conducción pura).
+        /// </summary>
+        public bool IsVehiclePositioned(VehicleController vehicle)
+        {
+            if (vehicle == null || !m_IsVehicleInside) return false;
+
+            if (vehicle.CurrentSpeedKmh > m_MaxStopSpeedKmh) return false;
+
+            Vector3 targetHeading = GetTargetForwardDirection();
+            float headingAngle = Vector3.Angle(vehicle.transform.forward, targetHeading);
+            if (headingAngle > m_MaxAlignmentAngleDeg) return false;
+
+            return true;
+        }
+
+        /// <summary>
+        /// Evalúa si el vehículo, estando dentro de la dársena, colocó la marcha en Park (P)
+        /// y subió firmemente el freno de mano (>= 0.85).
+        /// </summary>
+        public bool IsVehicleSecuredInZone(VehicleController vehicle)
+        {
+            if (vehicle == null || !m_IsVehicleInside) return false;
+
+            bool isParkGear = (vehicle.CurrentGear == GearState.Park || vehicle.CurrentGear == GearState.P);
+            bool isHandbrakeEngaged = vehicle.HandbrakeEngagement >= 0.85f;
+            return isParkGear && isHandbrakeEngaged;
         }
 
         /// <summary>

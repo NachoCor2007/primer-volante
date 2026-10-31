@@ -53,10 +53,12 @@ namespace PrimerVolante.Lessons
 
         // Lección 6: Maniobras de Estacionamiento y Precisión
         // (Paso 1 utiliza ActivateHazardLights)
-        ParkDiagonal45,                 // Paso 2: Entrada a dársena de 45°
-        ParkBay90Reverse,               // Paso 3: Entrada a 90° de culata marcha atrás
-        ParkParallelRight,              // Paso 4: Estacionamiento paralelo al cordón derecho
-        SecureParkDeactivateHazards     // Paso 5: Apagar balizas, Parking y freno de mano
+        ParkDiagonal45,                 // Paso 2: Entrada y detención en dársena de 45°
+        SecureDiagonal45,               // Paso 3: Asegurar en dársena 45° (P y freno de mano)
+        ParkBay90Reverse,               // Paso 4: Entrada y detención a 90° de culata
+        SecureBay90,                   // Paso 5: Asegurar en batería 90° (P y freno de mano)
+        ParkParallelRight,              // Paso 6: Estacionamiento y detención en paralelo
+        SecureParkDeactivateHazards     // Paso 7: Finalizar, apagar balizas, Parking y freno de mano
     }
 
     /// <summary>

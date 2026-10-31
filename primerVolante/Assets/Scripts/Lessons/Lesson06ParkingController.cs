@@ -71,11 +71,21 @@ namespace PrimerVolante.Lessons
         public bool IsDiagonalParked => m_Diagonal45Zone != null && m_Diagonal45Zone.IsVehicleParkedProperly;
         public bool IsBay90Parked => m_Bay90Zone != null && m_Bay90Zone.IsVehicleParkedProperly;
         public bool IsParallelParked => m_ParallelZone != null && m_ParallelZone.IsVehicleParkedProperly;
+
+        public bool IsDiagonalPositioned => m_Diagonal45Zone != null && m_Diagonal45Zone.IsVehiclePositionedProperly;
+        public bool IsDiagonalSecured => m_Diagonal45Zone != null && m_Diagonal45Zone.IsVehicleSecuredProperly;
+
+        public bool IsBay90Positioned => m_Bay90Zone != null && m_Bay90Zone.IsVehiclePositionedProperly;
+        public bool IsBay90Secured => m_Bay90Zone != null && m_Bay90Zone.IsVehicleSecuredProperly;
+
+        public bool IsParallelPositioned => m_ParallelZone != null && m_ParallelZone.IsVehiclePositionedProperly;
+
         public bool IsVehicleSecured => m_VehicleController != null &&
                                         !m_VehicleController.IsHazardActive &&
                                         (m_VehicleController.CurrentGear == GearState.Park || m_VehicleController.CurrentGear == GearState.P) &&
                                         m_VehicleController.HandbrakeEngagement >= 0.85f &&
-                                        m_VehicleController.CurrentSpeedKmh < 0.2f;
+                                        m_VehicleController.CurrentSpeedKmh < 0.2f &&
+                                        (m_ParallelZone == null || m_ParallelZone.IsVehicleInside);
 
         private void Awake()
         {
@@ -172,20 +182,31 @@ namespace PrimerVolante.Lessons
 
         private IEnumerator TransitionToStepRoutine(int stepIndex)
         {
-            // Paso 1 (45°): Si el vehículo ya está en el acceso a la playa (cerca del Spawn 1/2),
-            // no interrumpir con fade para permitir continuar la marcha tras activar las balizas.
+            // Pasos que continúan fluidos en el mismo sitio (NO reposicionar ni interrumpir la vista):
+            // - Paso 1: Acaba de encender balizas en el acceso, continúa la marcha hacia 45°.
             if (stepIndex == 1 && m_VehicleController != null)
             {
-                Transform spawn1 = (m_StepSpawnPoints != null && m_StepSpawnPoints.Length > 1) ? m_StepSpawnPoints[1] : null;
+                Transform spawn1 = GetSpawnForStep(1);
                 if (spawn1 != null && Vector3.Distance(m_VehicleController.transform.position, spawn1.position) < 4.5f)
                 {
                     yield break;
                 }
             }
 
-            // Paso 4 (Asegurar vehículo): Si el auto ya se encuentra dentro de la dársena en paralelo,
-            // no teletransportar para que el alumno complete el apagado de balizas y freno de mano.
-            if (stepIndex == 4 && m_ParallelZone != null && m_ParallelZone.IsVehicleInside)
+            // - Paso 2: Acaba de frenar centrado en 45°, debe poner P y freno de mano en ese mismo sitio.
+            if (stepIndex == 2 && m_Diagonal45Zone != null && m_Diagonal45Zone.IsVehicleInside)
+            {
+                yield break;
+            }
+
+            // - Paso 4: Acaba de frenar de culata en 90°, debe poner P y freno de mano en ese mismo sitio.
+            if (stepIndex == 4 && m_Bay90Zone != null && m_Bay90Zone.IsVehicleInside)
+            {
+                yield break;
+            }
+
+            // - Paso 6: Acaba de frenar en paralelo, debe apagar balizas, poner P y freno de mano.
+            if (stepIndex == 6 && m_ParallelZone != null && m_ParallelZone.IsVehicleInside)
             {
                 yield break;
             }
@@ -211,17 +232,17 @@ namespace PrimerVolante.Lessons
 
         /// <summary>
         /// Resalta el recuadro amarillo en el asfalto y su flecha indicadora correspondiente al objetivo activo.
+        /// En el Paso 0 (balizas) NINGÚN plano es visible.
         /// </summary>
         public void UpdateGroundHighlights(int stepIndex)
         {
-            // Paso 0: Balizas en aproximación -> recuadros visibles de forma neutra
-            // Paso 1: Dársena 45° activo
-            // Paso 2: Dársena 90° activo
-            // Paso 3: Dársena Paralelo activo
-            // Paso 4: Asegurar vehículo
-            SetStationVisualActive(m_GroundHighlight45, stepIndex <= 1);
-            SetStationVisualActive(m_GroundHighlight90, stepIndex == 0 || stepIndex == 2);
-            SetStationVisualActive(m_GroundHighlightParallel, stepIndex == 0 || stepIndex == 3);
+            // Paso 0: Balizas -> NINGÚN recuadro visible en el asfalto
+            // Pasos 1 y 2: Dársena 45° visible (maniobra y aseguramiento)
+            // Pasos 3 y 4: Dársena 90° visible (maniobra y aseguramiento)
+            // Pasos 5 y 6: Dársena Paralelo visible (maniobra y aseguramiento)
+            SetStationVisualActive(m_GroundHighlight45, stepIndex == 1 || stepIndex == 2);
+            SetStationVisualActive(m_GroundHighlight90, stepIndex == 3 || stepIndex == 4);
+            SetStationVisualActive(m_GroundHighlightParallel, stepIndex == 5 || stepIndex == 6);
         }
 
         private void SetStationVisualActive(GameObject highlight, bool active)
@@ -241,12 +262,37 @@ namespace PrimerVolante.Lessons
         }
 
         /// <summary>
+        /// Obtiene el punto de partida correspondiente al paso actual.
+        /// </summary>
+        public Transform GetSpawnForStep(int stepIndex)
+        {
+            if (m_StepSpawnPoints == null || m_StepSpawnPoints.Length == 0) return null;
+
+            switch (stepIndex)
+            {
+                case 0: // Balizas
+                    return m_StepSpawnPoints.Length > 0 ? m_StepSpawnPoints[0] : null;
+                case 1: // Maniobra 45°
+                case 2: // Asegurar 45°
+                    return m_StepSpawnPoints.Length > 1 ? m_StepSpawnPoints[1] : null;
+                case 3: // Maniobra 90°
+                case 4: // Asegurar 90°
+                    return m_StepSpawnPoints.Length > 2 ? m_StepSpawnPoints[2] : null;
+                case 5: // Maniobra Paralelo
+                    return m_StepSpawnPoints.Length > 3 ? m_StepSpawnPoints[3] : null;
+                case 6: // Asegurar final
+                default:
+                    return m_StepSpawnPoints.Length > 4 ? m_StepSpawnPoints[4] : null;
+            }
+        }
+
+        /// <summary>
         /// Reposiciona el vehículo suavemente en el punto de inicio de la estación correspondiente.
         /// </summary>
         public void RepositionToStation(int stepIndex)
         {
             if (m_VehicleController == null) return;
-            Transform spawn = (stepIndex >= 0 && stepIndex < m_StepSpawnPoints.Length) ? m_StepSpawnPoints[stepIndex] : null;
+            Transform spawn = GetSpawnForStep(stepIndex);
             if (spawn == null) return;
 
             m_VehicleController.transform.position = spawn.position;
@@ -274,7 +320,7 @@ namespace PrimerVolante.Lessons
                 m_VehicleController.SetHazardActive(false);
                 m_VehicleController.SetGear(GearState.Drive);
             }
-            else if (stepIndex >= 1 && stepIndex <= 3)
+            else if (stepIndex == 1 || stepIndex == 3 || stepIndex == 5)
             {
                 // Para las maniobras 45°, 90° y Paralelo:
                 // Balizas activadas, transmisión en Drive (D) y freno de mano abajo

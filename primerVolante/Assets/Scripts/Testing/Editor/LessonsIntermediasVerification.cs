@@ -194,13 +194,15 @@ namespace PrimerVolante.Testing.Editor
             {
                 Assert(l6.lessonId == "LESSON_06", $"LessonData_06 debe tener lessonId 'LESSON_06' (actual: '{l6.lessonId}')", ref total, ref passed);
                 Assert(!string.IsNullOrEmpty(l6.lessonTitle), "LessonData_06 debe tener lessonTitle no vacío", ref total, ref passed);
-                Assert(l6.steps != null && l6.steps.Count == 5, $"LessonData_06 debe contener exactamente 5 pasos (encontrados: {l6.steps?.Count ?? 0})", ref total, ref passed);
+                Assert(l6.steps != null && l6.steps.Count == 7, $"LessonData_06 debe contener exactamente 7 pasos (encontrados: {l6.steps?.Count ?? 0})", ref total, ref passed);
 
                 LessonActionType[] expectedActions = new[]
                 {
                     LessonActionType.ActivateHazardLights,
                     LessonActionType.ParkDiagonal45,
+                    LessonActionType.SecureDiagonal45,
                     LessonActionType.ParkBay90Reverse,
+                    LessonActionType.SecureBay90,
                     LessonActionType.ParkParallelRight,
                     LessonActionType.SecureParkDeactivateHazards
                 };

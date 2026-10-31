@@ -174,34 +174,52 @@ namespace PrimerVolante.Testing.Editor
                 "HazardButton");
 
             LessonStepSO step2 = CreateOrUpdateStep("Lesson06_Step02_DiagonalParking45",
-                "Estacionamiento a 45°",
-                "Avanza y entra de frente centrado en el recuadro amarillo. Coloca P y freno de mano.",
+                "Maniobra a 45° (Espiga)",
+                "Avanza y entra de frente centrado en el recuadro amarillo hasta detenerte.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.ParkDiagonal45,
                 0f,
                 CockpitControlFlags.All,
+                "");
+
+            LessonStepSO step3 = CreateOrUpdateStep("Lesson06_Step03_SecureDiagonal45",
+                "Asegurar en Dársena 45°",
+                "Coloca la palanca en Parking (P) y sube firmemente el freno de mano.",
+                LessonStepCompletionMode.ActionRequired,
+                LessonActionType.SecureDiagonal45,
+                0f,
+                CockpitControlFlags.All,
                 "VRGearShifter, VRHandbrake");
 
-            LessonStepSO step3 = CreateOrUpdateStep("Lesson06_Step03_BayParking90Reverse",
-                "Estacionamiento a 90°",
+            LessonStepSO step4 = CreateOrUpdateStep("Lesson06_Step04_BayParking90Reverse",
+                "Maniobra a 90° (Culata)",
                 "Pasa la dársena, pon Reversa (R) y estaciona de culata dentro del recuadro amarillo.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.ParkBay90Reverse,
                 0f,
                 CockpitControlFlags.All,
-                "VRGearShifter");
+                "");
 
-            LessonStepSO step4 = CreateOrUpdateStep("Lesson06_Step04_ParallelParkingRight",
-                "Estacionamiento en Paralelo",
+            LessonStepSO step5 = CreateOrUpdateStep("Lesson06_Step05_SecureBay90",
+                "Asegurar en Batería 90°",
+                "Coloca la palanca en Parking (P) y sube firmemente el freno de mano.",
+                LessonStepCompletionMode.ActionRequired,
+                LessonActionType.SecureBay90,
+                0f,
+                CockpitControlFlags.All,
+                "VRGearShifter, VRHandbrake");
+
+            LessonStepSO step6 = CreateOrUpdateStep("Lesson06_Step06_ParallelParkingRight",
+                "Maniobra en Paralelo",
                 "Avanza por la calle, alinéate al auto delantero y maniobra marcha atrás hasta el recuadro amarillo.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.ParkParallelRight,
                 0f,
                 CockpitControlFlags.All,
-                "VRGearShifter, SteeringWheel_Pivot");
+                "");
 
-            LessonStepSO step5 = CreateOrUpdateStep("Lesson06_Step05_SecurePark",
-                "Asegurar el Vehículo",
+            LessonStepSO step7 = CreateOrUpdateStep("Lesson06_Step07_SecurePark",
+                "Asegurar y Finalizar",
                 "Apaga las balizas, coloca Parking (P) y sube firmemente el freno de mano.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.SecureParkDeactivateHazards,
@@ -218,7 +236,7 @@ namespace PrimerVolante.Testing.Editor
 
             lesson.lessonId = "LESSON_06";
             lesson.lessonTitle = "Lección 6: Maniobras de Estacionamiento y Precisión";
-            lesson.steps = new List<LessonStepSO> { step1, step2, step3, step4, step5 };
+            lesson.steps = new List<LessonStepSO> { step1, step2, step3, step4, step5, step6, step7 };
 
             EditorUtility.SetDirty(lesson);
             AssetDatabase.SaveAssets();
@@ -691,9 +709,9 @@ namespace PrimerVolante.Testing.Editor
             spawns[2] = EnsureChildTransform(container.transform, "SpawnPoint_03_Bay90Reverse",
                 new Vector3(228.00f, 0.02f, 91.50f), Quaternion.Euler(0f, 270f, 0f));
 
-            // Paso 4: En la calle exterior en dirección a la dársena en paralelo
+            // Paso 4: En la calle exterior en dirección a la dársena en paralelo (posición manual del usuario)
             spawns[3] = EnsureChildTransform(container.transform, "SpawnPoint_04_ParallelApproach",
-                new Vector3(241.20f, 0.02f, 78.00f), Quaternion.Euler(0f, 0f, 0f));
+                new Vector3(241.20f, 0.02f, 71.60f), Quaternion.Euler(0f, 0f, 0f));
 
             // Paso 5: Auto estacionado listo para asegurar
             spawns[4] = EnsureChildTransform(container.transform, "SpawnPoint_05_SecurePark",

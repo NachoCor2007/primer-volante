@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
-  m_Name: Lesson06_Step03_BayParking90Reverse
+  m_Name: Lesson06_Step05_SecureBay90
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
-  stepTitle: "Estacionamiento a 90\xB0"
-  instructionText: "Pasa la d\xE1rsena, pon Reversa (R) y estaciona de culata dentro del recuadro amarillo."
+  stepTitle: "Asegurar en Bater\xEDa 90\xB0"
+  instructionText: Coloca la palanca en Parking (P) y sube firmemente el freno de mano.
   completionMode: 1
-  requiredAction: 31
+  requiredAction: 33
   actionNumericParameter: 0
   allowedControls: -1
-  highlightTargetName: VRGearShifter
+  highlightTargetName: VRGearShifter, VRHandbrake
   ambienceIntensity: 0

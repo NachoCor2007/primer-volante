@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
-  m_Name: Lesson06_Step04_ParallelParkingRight
+  m_Name: Lesson06_Step04_BayParking90Reverse
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
-  stepTitle: Estacionamiento en Paralelo
-  instructionText: "Avanza por la calle, alin\xE9ate al auto delantero y maniobra marcha atr\xE1s hasta el recuadro amarillo."
+  stepTitle: "Maniobra a 90\xB0 (Culata)"
+  instructionText: "Pasa la d\xE1rsena, pon Reversa (R) y estaciona de culata dentro del recuadro amarillo."
   completionMode: 1
   requiredAction: 32
   actionNumericParameter: 0
   allowedControls: -1
-  highlightTargetName: VRGearShifter, SteeringWheel_Pivot
+  highlightTargetName: 
   ambienceIntensity: 0

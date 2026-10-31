@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
   m_Name: Lesson06_Step02_DiagonalParking45
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
-  stepTitle: "Estacionamiento a 45\xB0"
-  instructionText: Avanza y entra de frente centrado en el recuadro amarillo. Coloca P y freno de mano.
+  stepTitle: "Maniobra a 45\xB0 (Espiga)"
+  instructionText: Avanza y entra de frente centrado en el recuadro amarillo hasta detenerte.
   completionMode: 1
   requiredAction: 30
   actionNumericParameter: 0
   allowedControls: -1
-  highlightTargetName: VRGearShifter, VRHandbrake
+  highlightTargetName: 
   ambienceIntensity: 0
