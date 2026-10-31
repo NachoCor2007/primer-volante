@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Lesson06_Step04_ParallelParkingRight
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: Estacionamiento en Paralelo
-  instructionText: "Maniobra marcha atr\xE1s entre los dos veh\xEDculos hasta quedar paralelo en el recuadro amarillo."
+  instructionText: "Avanza por la calle, alin\xE9ate al auto delantero y maniobra marcha atr\xE1s hasta el recuadro amarillo."
   completionMode: 1
   requiredAction: 32
   actionNumericParameter: 0

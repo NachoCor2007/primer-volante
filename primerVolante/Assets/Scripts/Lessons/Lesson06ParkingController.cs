@@ -54,6 +54,7 @@ namespace PrimerVolante.Lessons
         [SerializeField] private Transform[] m_StepSpawnPoints = new Transform[5];
 
         private int m_CurrentStepIndex = -1;
+        private Coroutine m_TransitionCoroutine;
 
         public static Lesson06ParkingController Instance => s_Instance;
         public LessonManager LessonManager => m_LessonManager;
@@ -161,6 +162,51 @@ namespace PrimerVolante.Lessons
         {
             m_CurrentStepIndex = stepIndex;
             UpdateGroundHighlights(stepIndex);
+
+            if (m_TransitionCoroutine != null)
+            {
+                StopCoroutine(m_TransitionCoroutine);
+            }
+            m_TransitionCoroutine = StartCoroutine(TransitionToStepRoutine(stepIndex));
+        }
+
+        private IEnumerator TransitionToStepRoutine(int stepIndex)
+        {
+            // Paso 1 (45°): Si el vehículo ya está en el acceso a la playa (cerca del Spawn 1/2),
+            // no interrumpir con fade para permitir continuar la marcha tras activar las balizas.
+            if (stepIndex == 1 && m_VehicleController != null)
+            {
+                Transform spawn1 = (m_StepSpawnPoints != null && m_StepSpawnPoints.Length > 1) ? m_StepSpawnPoints[1] : null;
+                if (spawn1 != null && Vector3.Distance(m_VehicleController.transform.position, spawn1.position) < 4.5f)
+                {
+                    yield break;
+                }
+            }
+
+            // Paso 4 (Asegurar vehículo): Si el auto ya se encuentra dentro de la dársena en paralelo,
+            // no teletransportar para que el alumno complete el apagado de balizas y freno de mano.
+            if (stepIndex == 4 && m_ParallelZone != null && m_ParallelZone.IsVehicleInside)
+            {
+                yield break;
+            }
+
+            if (m_ScreenFader != null)
+            {
+                yield return m_ScreenFader.FadeOutRoutine(0.4f);
+            }
+            else
+            {
+                yield return new WaitForSeconds(0.2f);
+            }
+
+            RepositionToStation(stepIndex);
+
+            yield return new WaitForSeconds(0.15f);
+
+            if (m_ScreenFader != null)
+            {
+                yield return m_ScreenFader.FadeInRoutine(0.4f);
+            }
         }
 
         /// <summary>
@@ -218,6 +264,34 @@ namespace PrimerVolante.Lessons
             if (m_VehicleController.SteeringWheel != null)
             {
                 m_VehicleController.SteeringWheel.ResetToCenter();
+            }
+
+            m_VehicleController.SetEngineRunning(true);
+
+            if (stepIndex == 0)
+            {
+                // En el primer paso debe encender las balizas el alumno
+                m_VehicleController.SetHazardActive(false);
+                m_VehicleController.SetGear(GearState.Drive);
+            }
+            else if (stepIndex >= 1 && stepIndex <= 3)
+            {
+                // Para las maniobras 45°, 90° y Paralelo:
+                // Balizas activadas, transmisión en Drive (D) y freno de mano abajo
+                m_VehicleController.SetHazardActive(true);
+                m_VehicleController.SetGear(GearState.Drive);
+
+                VRGearShifter shifter = m_VehicleController.GetComponentInChildren<VRGearShifter>(true);
+                if (shifter != null)
+                {
+                    shifter.SetRotationToGear(GearState.Drive);
+                }
+
+                VRHandbrake handbrake = m_VehicleController.GetComponentInChildren<VRHandbrake>(true);
+                if (handbrake != null)
+                {
+                    handbrake.SetEngagementImmediate(0f);
+                }
             }
 
             if (m_SeatFollower != null)

@@ -193,7 +193,7 @@ namespace PrimerVolante.Testing.Editor
 
             LessonStepSO step4 = CreateOrUpdateStep("Lesson06_Step04_ParallelParkingRight",
                 "Estacionamiento en Paralelo",
-                "Maniobra marcha atrás entre los dos vehículos hasta quedar paralelo en el recuadro amarillo.",
+                "Avanza por la calle, alinéate al auto delantero y maniobra marcha atrás hasta el recuadro amarillo.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.ParkParallelRight,
                 0f,
@@ -331,14 +331,14 @@ namespace PrimerVolante.Testing.Editor
                 exemptObj.layer = laneZoneLayer;
             }
 
-            // Ubicada en el playón de maniobras (X=120, entre Z=60 y Z=120)
-            exemptObj.transform.position = new Vector3(120f, 0f, 90f);
+            // Ubicada cubriendo la playa de estacionamiento y el tramo de calle exterior (X=190 a 250, Z=60 a 120)
+            exemptObj.transform.position = new Vector3(220f, 1.5f, 90f);
 
             BoxCollider box = exemptObj.GetComponent<BoxCollider>();
             if (box == null) box = exemptObj.AddComponent<BoxCollider>();
             box.isTrigger = true;
-            box.center = new Vector3(0f, 1.5f, 0f);
-            box.size = new Vector3(35f, 4f, 75f);
+            box.center = Vector3.zero;
+            box.size = new Vector3(60f, 5f, 60f);
 
             TurnSignalExemptZone zone = exemptObj.GetComponent<TurnSignalExemptZone>();
             if (zone == null) zone = exemptObj.AddComponent<TurnSignalExemptZone>();
@@ -679,25 +679,25 @@ namespace PrimerVolante.Testing.Editor
 
             Transform[] spawns = new Transform[5];
 
-            // Paso 1: Aproximación con balizas
+            // Paso 1: Entrada a la playa y balizas
             spawns[0] = EnsureChildTransform(container.transform, "SpawnPoint_01_HazardApproach",
-                new Vector3(120.0f, 0.02f, 115.0f), Quaternion.Euler(0f, 180f, 0f));
+                new Vector3(230.30f, 0.02f, 89.40f), Quaternion.Euler(0f, 270f, 0f));
 
             // Paso 2: Entrada a dársena de 45°
             spawns[1] = EnsureChildTransform(container.transform, "SpawnPoint_02_Diagonal45",
-                new Vector3(120.0f, 0.02f, 112.0f), Quaternion.Euler(0f, 180f, 0f));
+                new Vector3(230.30f, 0.02f, 89.40f), Quaternion.Euler(0f, 270f, 0f));
 
-            // Paso 3: Posición adelantada para maniobra de culata a 90°
+            // Paso 3: Inicio de pasillo para ir a dársena de 90° de culata
             spawns[2] = EnsureChildTransform(container.transform, "SpawnPoint_03_Bay90Reverse",
-                new Vector3(120.0f, 0.02f, 82.0f), Quaternion.Euler(0f, 180f, 0f));
+                new Vector3(228.00f, 0.02f, 91.50f), Quaternion.Euler(0f, 270f, 0f));
 
-            // Paso 4: Posición paralela al auto delantero para reversa en cordón
+            // Paso 4: En la calle exterior en dirección a la dársena en paralelo
             spawns[3] = EnsureChildTransform(container.transform, "SpawnPoint_04_ParallelApproach",
-                new Vector3(119.5f, 0.02f, 78.5f), Quaternion.Euler(0f, 180f, 0f));
+                new Vector3(241.20f, 0.02f, 78.00f), Quaternion.Euler(0f, 0f, 0f));
 
             // Paso 5: Auto estacionado listo para asegurar
             spawns[4] = EnsureChildTransform(container.transform, "SpawnPoint_05_SecurePark",
-                new Vector3(122.5f, 0.02f, 72.0f), Quaternion.Euler(0f, 180f, 0f));
+                new Vector3(244.89f, 0.02f, 90.17f), Quaternion.Euler(0f, 0f, 0f));
 
             return spawns;
         }
