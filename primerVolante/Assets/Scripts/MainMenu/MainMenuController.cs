@@ -82,6 +82,20 @@ namespace PrimerVolante.MainMenu
                  "dispara OnGearChanged en cada marcha que cruza (P a D pasa por R y N): así no se abren páginas de paso.")]
         [SerializeField] private float m_GearSettleSeconds = 0.25f;
 
+        [Header("Salida (freno de mano)")]
+        [Tooltip("Overlay de confirmación de salida sobre el canvas principal. Se muestra con el freno de mano tirado del todo.")]
+        [SerializeField] private GameObject m_ExitOverlay;
+
+        [Tooltip("Engagement del freno de mano (0..1) desde el cual se muestra el overlay de salida.")]
+        [SerializeField] private float m_ExitRaiseThreshold = 0.95f;
+
+        [Tooltip("Histéresis: el overlay se oculta (cancelación) recién cuando el freno baja de este valor. Debe ser menor al umbral de salida.")]
+        [SerializeField] private float m_ExitCancelThreshold = 0.85f;
+
+        [Tooltip("Si está activo, confirmar la salida cierra la aplicación (Application.Quit; en el Editor, sale de Play Mode). " +
+                 "Los tests y el Play Mode de prueba lo apagan para verificar solo el evento ExitRequested.")]
+        [SerializeField] private bool m_PerformQuit = true;
+
         [Header("Capa de pruebas (Editor)")]
         [Tooltip("Tecla que simula pulsar el botón de ignición. (South y la tecla E las usa VehicleController para el motor.)")]
         [SerializeField] private Key m_IgnitionKey = Key.Enter;
@@ -95,6 +109,10 @@ namespace PrimerVolante.MainMenu
         private bool m_HasPendingGear;
         private GearState m_PendingGear;
         private float m_PendingGearTimer;
+        private bool m_ExitOverlayVisible;
+
+        /// <summary>Se dispara al confirmar la salida con la ignición (antes de cerrar la aplicación si <c>m_PerformQuit</c>).</summary>
+        public event System.Action ExitRequested;
 
         // Única fuente de verdad del mapeo página <-> marcha, indexada por MainMenuPage (Splash no tiene marcha propia).
         private static readonly GearState[] s_GearByPage =
@@ -140,6 +158,18 @@ namespace PrimerVolante.MainMenu
         /// <summary>true mientras hay un cambio de marcha esperando estabilizarse (<c>m_GearSettleSeconds</c>).</summary>
         public bool HasPendingGear => m_HasPendingGear;
 
+        /// <summary>true mientras se muestra el overlay de confirmación de salida.</summary>
+        public bool ExitOverlayVisible => m_ExitOverlayVisible;
+
+        /// <summary>Índice (0..3 = P, R, N, D) de la pestaña resaltada en la tira de marchas, o -1 si está oculta (Splash).</summary>
+        public int ActiveGearTabIndex => m_Page == MainMenuPage.Splash ? -1 : (int)PageForGear(m_CurrentGear) - (int)MainMenuPage.Lessons;
+
+        /// <summary>Enciende o apaga el cierre real de la aplicación al confirmar la salida (para tests y Play Mode de prueba).</summary>
+        public void SetPerformQuit(bool performQuit)
+        {
+            m_PerformQuit = performQuit;
+        }
+
         private void Start()
         {
             Initialize();
@@ -175,6 +205,8 @@ namespace PrimerVolante.MainMenu
 
             if (m_GearShifter != null) m_CurrentGear = m_GearShifter.CurrentGear;
             m_Scroll.Reset();
+            m_ExitOverlayVisible = false;
+            if (m_ExitOverlay != null) m_ExitOverlay.SetActive(false);
 
             Subscribe();
             m_Page = MainMenuPage.Splash;
@@ -213,14 +245,18 @@ namespace PrimerVolante.MainMenu
             if (m_LessonList == null) m_LessonList = Object.FindAnyObjectByType<LessonListPanel>(FindObjectsInactive.Include);
         }
 
-        /// <summary>Motor apagado y bloqueado, freno de mano puesto y Rigidbody congelado: el auto no se mueve ni hace ruido.</summary>
+        /// <summary>
+        /// Motor apagado y bloqueado y Rigidbody congelado: el auto no se mueve ni hace ruido. El freno de mano arranca
+        /// ABAJO (Engagement 0): tirarlo del todo pide salir (overlay). Este ajuste inicial ocurre en el primer frame, dentro
+        /// del período de gracia de los scripts de audio y hápticos del freno, así que no suena ni vibra.
+        /// </summary>
         private void ImmobilizeVehicle()
         {
             if (m_Vehicle == null) return;
 
             m_Vehicle.SetEngineRunning(false);
             m_Vehicle.SetEngineLocked(true);
-            if (m_Handbrake != null) m_Handbrake.SetEngagementImmediate(1f);
+            if (m_Handbrake != null) m_Handbrake.SetEngagementImmediate(0f);
 
             var body = m_Vehicle.GetComponent<Rigidbody>();
             if (body != null)
@@ -260,14 +296,26 @@ namespace PrimerVolante.MainMenu
             m_CurrentGear = gear;
             if (m_Page == MainMenuPage.Splash) return;
 
+            // La tira de marchas sigue a la palanca en el momento (también las marchas de paso); lo demás espera.
+            UpdateGearStrip();
+
             m_PendingGear = gear;
             m_PendingGearTimer = 0f;
             m_HasPendingGear = true;
         }
 
-        /// <summary>Pulsación de la ignición: sale del Splash, o selecciona la lección bajo el cursor en Lecciones.</summary>
+        /// <summary>
+        /// Pulsación de la ignición. Con el overlay de salida visible confirma la salida (tiene prioridad sobre la página).
+        /// Si no: sale del Splash, o selecciona la lección bajo el cursor en Lecciones.
+        /// </summary>
         public void HandleIgnitionPressed()
         {
+            if (m_ExitOverlayVisible)
+            {
+                ConfirmExit();
+                return;
+            }
+
             switch (m_Page)
             {
                 case MainMenuPage.Splash:
@@ -278,6 +326,44 @@ namespace PrimerVolante.MainMenu
                     SelectCurrentLesson();
                     break;
             }
+        }
+
+        private void ConfirmExit()
+        {
+            Debug.Log("[MainMenu] Saliendo del simulador");
+            ExitRequested?.Invoke();
+
+            if (!m_PerformQuit) return;
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+        }
+
+        // Freno de mano: tirado del todo (>= umbral) pide salir; bajarlo de la histéresis cancela.
+        private void UpdateExitOverlay()
+        {
+            if (m_Handbrake == null) return;
+
+            float engagement = m_Handbrake.Engagement;
+            if (!m_ExitOverlayVisible && engagement >= m_ExitRaiseThreshold)
+            {
+                SetExitOverlay(true);
+                Debug.Log("[MainMenu] Salida solicitada");
+            }
+            else if (m_ExitOverlayVisible && engagement < m_ExitCancelThreshold)
+            {
+                SetExitOverlay(false);
+                Debug.Log("[MainMenu] Salida cancelada");
+            }
+        }
+
+        private void SetExitOverlay(bool visible)
+        {
+            m_ExitOverlayVisible = visible;
+            if (m_ExitOverlay != null) m_ExitOverlay.SetActive(visible);
+            UpdateLegendAndHighlight();
         }
 
         private void SelectCurrentLesson()
@@ -322,23 +408,41 @@ namespace PrimerVolante.MainMenu
                 if (m_PageRoots[i] != null) m_PageRoots[i].SetActive(i == (int)m_Page);
             }
 
+            UpdateGearStrip();
+            UpdateLegendAndHighlight();
+        }
+
+        // La pestaña activa sigue a la marcha registrada (m_CurrentGear), no a la página: se mueve al instante.
+        // Durante el Splash la tira está oculta.
+        private void UpdateGearStrip()
+        {
             bool splash = m_Page == MainMenuPage.Splash;
             if (m_GearStripRoot != null) m_GearStripRoot.SetActive(!splash);
+
+            int activeTab = ActiveGearTabIndex;
             for (int i = 0; i < m_GearTabs.Length; i++)
             {
                 if (m_GearTabs[i] == null) continue;
-                bool active = !splash && i == (int)m_Page - (int)MainMenuPage.Lessons;
+                bool active = i == activeTab;
                 m_GearTabs[i].color = active ? m_ActiveTabColor : m_InactiveTabColor;
                 m_GearTabs[i].fontStyle = active ? FontStyles.Bold : FontStyles.Normal;
             }
-
-            UpdateLegendAndHighlight();
         }
 
         private void UpdateLegendAndHighlight()
         {
             var lines = new List<string>();
             var targets = new List<GameObject>();
+
+            if (m_ExitOverlayVisible)
+            {
+                // Con el overlay de salida: solo se confirma o se cancela; se resalta la ignición.
+                lines.Add("Botón de encendido: confirmar salida");
+                lines.Add("Freno de mano: bajar para cancelar");
+                AddTarget(targets, m_StartButton != null ? m_StartButton.gameObject : null);
+                ApplyLegend(lines, targets);
+                return;
+            }
 
             switch (m_Page)
             {
@@ -365,6 +469,13 @@ namespace PrimerVolante.MainMenu
                     break;
             }
 
+            // En todas las pantallas: cómo salir. Sin resaltar el freno de mano.
+            lines.Add("Freno de mano: tirar para salir");
+            ApplyLegend(lines, targets);
+        }
+
+        private void ApplyLegend(List<string> lines, List<GameObject> targets)
+        {
             if (m_LegendText != null) m_LegendText.text = string.Join("\n\n", lines);
             if (m_LegendRoot != null) m_LegendRoot.SetActive(lines.Count > 0);
             if (m_Highlighter != null) m_Highlighter.HighlightTargets(targets);
@@ -382,12 +493,14 @@ namespace PrimerVolante.MainMenu
         }
 
         /// <summary>
-        /// Avanza el menú <paramref name="dt"/> segundos: aplica la marcha pendiente si lleva estable
+        /// Avanza el menú <paramref name="dt"/> segundos: revisa el freno de mano (overlay de salida), aplica la marcha pendiente si lleva estable
         /// <c>m_GearSettleSeconds</c> y, en la página Lecciones, mueve el cursor con el ángulo actual del volante.
         /// La llama Update; los tests la llaman con dt inyectado.
         /// </summary>
         public void Tick(float dt)
         {
+            UpdateExitOverlay();
+
             if (m_HasPendingGear)
             {
                 m_PendingGearTimer += dt;
