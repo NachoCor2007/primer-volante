@@ -24,6 +24,7 @@ namespace PrimerVolante.Testing.Editor
         public const string CANVAS_NAME = "MainMenu_Canvas";
         public const string CONTROLLER_NAME = "MainMenuController";
         public const string HIGHLIGHTER_NAME = "MainMenu_Highlighter";
+        public const string ExitOverlayName = "ExitOverlay";
 
         private const string FONT_PATH = "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset";
         private const string CONTROLLER_MODEL_PATH = "Assets/Samples/XR Interaction Toolkit/3.5.1/Starter Assets/Models/UniversalController.fbx";
@@ -118,6 +119,8 @@ namespace PrimerVolante.Testing.Editor
                 backButton = FindDeep(root != null ? root.transform : null, "Button_Back");
             }
             SetObject(inGameMenu, "m_CalibrationBackButton", backButton != null ? backButton.gameObject : null);
+            // La calibración standalone se ubica al noreste del frente del auto, no de la cabeza (instancia de escena, no el prefab).
+            SetObject(inGameMenu, "m_StandaloneForwardReference", car.transform);
 
             InteractableHighlighter highlighter = EnsureHighlighter();
 
@@ -143,6 +146,7 @@ namespace PrimerVolante.Testing.Editor
             so.FindProperty("m_GearStripRoot").objectReferenceValue = gearStrip;
             so.FindProperty("m_LegendRoot").objectReferenceValue = legendRoot;
             so.FindProperty("m_LegendText").objectReferenceValue = legendText;
+            so.FindProperty("m_ExitOverlay").objectReferenceValue = canvasObj.transform.Find(ExitOverlayName).gameObject;
             SetObjectArray(so.FindProperty("m_PageRoots"), pageRoots);
             SetObjectArray(so.FindProperty("m_GearTabs"), gearTabs);
             so.ApplyModifiedProperties();
@@ -291,6 +295,8 @@ namespace PrimerVolante.Testing.Editor
             for (int i = 0; i < pageRoots.Length; i++) pageRoots[i].SetActive(i == (int)MainMenuPage.Splash);
             gearStrip.SetActive(false);
 
+            BuildExitOverlay(canvasObj.transform, font);
+
             int uiLayer = LayerMask.NameToLayer("UI");
             if (uiLayer >= 0)
             {
@@ -301,6 +307,34 @@ namespace PrimerVolante.Testing.Editor
             }
 
             return canvasObj;
+        }
+
+        // Overlay de confirmación de salida (freno de mano tirado del todo). Último hijo: se dibuja sobre todo lo demás.
+        private static void BuildExitOverlay(Transform canvas, TMP_FontAsset font)
+        {
+            Image overlay = AddImage(canvas, ExitOverlayName, new Color(0.02f, 0.02f, 0.04f, 1f));
+            Stretch(overlay.rectTransform, 0f, 0f, 0f, 0f);
+
+            RectTransform box = CreateRect("Box", overlay.transform);
+            box.anchorMin = box.anchorMax = new Vector2(0.5f, 0.5f);
+            box.sizeDelta = new Vector2(2000f, 800f);
+            Image boxBg = box.gameObject.AddComponent<Image>();
+            boxBg.color = new Color(0.30f, 0.07f, 0.07f, 1f);
+
+            TextMeshProUGUI title = AddText(box, "Title", font, "¿Salir del simulador?", 120f, Color.white, TextAlignmentOptions.Center);
+            AnchorTop(title.rectTransform, 70f, 170f);
+
+            TextMeshProUGUI body = AddText(box, "Body", font,
+                "Pulsá el botón de encendido para confirmar · Bajá el freno de mano para cancelar", 76f,
+                new Color(1f, 0.9f, 0.7f), TextAlignmentOptions.Center);
+            body.textWrappingMode = TextWrappingModes.Normal;
+            body.rectTransform.anchorMin = new Vector2(0.05f, 0f);
+            body.rectTransform.anchorMax = new Vector2(0.95f, 0f);
+            body.rectTransform.pivot = new Vector2(0.5f, 0f);
+            body.rectTransform.sizeDelta = new Vector2(0f, 360f);
+            body.rectTransform.anchoredPosition = new Vector2(0f, 90f);
+
+            overlay.gameObject.SetActive(false);
         }
 
         private static GameObject BuildSplashPage(RectTransform content, TMP_FontAsset font, GameObject controllerModel)
