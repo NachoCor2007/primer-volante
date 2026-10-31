@@ -110,13 +110,24 @@ namespace PrimerVolante.Testing.Editor
             Transform warningLine = EnsureWarningLine20m(scene);
 
             // 10. Configurar o encontrar el semáforo para el Paso 3
-            TrafficLightController trafficLight = UnityEngine.Object.FindAnyObjectByType<TrafficLightController>();
+            TrafficLightController trafficLight = null;
+            GameObject light10 = GameObject.Find("Props_Traffic Signal_big (10)");
+            if (light10 != null)
+            {
+                trafficLight = light10.GetComponent<TrafficLightController>();
+            }
+            if (trafficLight == null)
+            {
+                trafficLight = UnityEngine.Object.FindAnyObjectByType<TrafficLightController>();
+            }
+
+            Transform stopLine = EnsureStopLineTrafficLight(scene);
 
             // 11. Configurar Pantalla Diegética de GPS y Trazado de Ruta Urbana en Car09
             GPSRouteRenderer routeRenderer = SetupGPSCircuitInScene(scene, car09);
 
             // 12. Configurar LessonHUDPanel, LessonManager y Lesson05TurnIntersectionsController
-            SetupLessonControllers(scene, car09, lessonData, spawnPoints, warningLine, trafficLight, screenFader, turnDetector, routeRenderer);
+            SetupLessonControllers(scene, car09, lessonData, spawnPoints, warningLine, stopLine, trafficLight, screenFader, turnDetector, routeRenderer);
 
             // 13. Asegurar zonas exentas en prefabs e infracciones en la escena
             TurnSignalSetup.EnsureAssets(out _, out _);
@@ -176,7 +187,7 @@ namespace PrimerVolante.Testing.Editor
 
             LessonStepSO step2 = CreateOrUpdateStep("Lesson05_Step02_TurnSignal20mDistance",
                 "Anticipación 20 Metros",
-                "Acelera y activa el guiño derecho ANTES de cruzar la franja en el asfalto. Completa el giro.",
+                "Acelera y activa el guiño derecho ANTES de cruzar el portal de 20m. Luego completa el giro.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.TurnSignalAnticipation20m,
                 20f,
@@ -184,17 +195,17 @@ namespace PrimerVolante.Testing.Editor
                 "VRTurnSignal");
 
             LessonStepSO step3 = CreateOrUpdateStep("Lesson05_Step03_TrafficLightIntersection",
-                "Cruce con Semáforo",
-                "1. Detén el auto antes de la senda ante la luz roja.\n2. Espera la luz verde y cruza.",
+                "Semáforo y Giro a la Derecha",
+                "Detén el auto en la senda ante la luz roja con el guiño derecho. Al pasar a verde, dobla a la derecha.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.CrossTrafficLightIntersection,
                 0f,
                 CockpitControlFlags.All,
-                "");
+                "VRTurnSignal");
 
             LessonStepSO step4 = CreateOrUpdateStep("Lesson05_Step04_LeftTurnCrossing",
                 "Giro a la Izquierda",
-                "Coloca el guiño hacia abajo (izquierda) con anticipación y gira al carril derecho.",
+                "Coloca el guiño hacia abajo (izquierda) con anticipación y gira 90° a la izquierda en la bocacalle sin invadir la contramano.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.CompleteLeftTurnCrossing,
                 20f,
@@ -203,7 +214,7 @@ namespace PrimerVolante.Testing.Editor
 
             LessonStepSO step5 = CreateOrUpdateStep("Lesson05_Step05_CurbsideStop",
                 "Detención en Cordón",
-                "Arrimarse al cordón, frenar por completo, colocar Parking (P) y subir el freno de mano.",
+                "Arrimarse al cordón derecho, frenar por completo, colocar Parking (P) y subir el freno de mano.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.CurbsideStop,
                 0f,
@@ -292,17 +303,17 @@ namespace PrimerVolante.Testing.Editor
             spawns[1] = EnsureChildTransform(container.transform, "SpawnPoint_02_Turn20m",
                 new Vector3(66.0f, 0.02f, 116.5f), Quaternion.Euler(0f, 90f, 0f));
 
-            // Paso 3: Cruce semaforizado (acercándose al semáforo en X=116.5, Z=105, rumbo Sur -Z)
+            // Paso 3: Cruce semaforizado y giro a la derecha (X=116.5, Z=95.0, rumbo Sur -Z)
             spawns[2] = EnsureChildTransform(container.transform, "SpawnPoint_03_TrafficLight",
-                new Vector3(116.5f, 0.02f, 105.0f), Quaternion.Euler(0f, 180f, 0f));
+                new Vector3(116.5f, 0.02f, 95.0f), Quaternion.Euler(0f, 180f, 0f));
 
-            // Paso 4: Giro a la izquierda a 90° (rumbo Sur aproximándose al cruce para girar al Este)
+            // Paso 4: Anticipación y giro a la izquierda a 90° (calle Z=63.5, X=105.0, rumbo Oeste -X)
             spawns[3] = EnsureChildTransform(container.transform, "SpawnPoint_04_LeftTurn",
-                new Vector3(116.5f, 0.02f, 75.0f), Quaternion.Euler(0f, 180f, 0f));
-
-            // Paso 5: Arrime y detención en cordón derecho
-            spawns[4] = EnsureChildTransform(container.transform, "SpawnPoint_05_CurbsideStop",
                 new Vector3(105.0f, 0.02f, 63.5f), Quaternion.Euler(0f, 270f, 0f));
+
+            // Paso 5: Arrime y detención en cordón derecho (calle X=60 rumbo Sur, carril X=56.5, Z=45.0)
+            spawns[4] = EnsureChildTransform(container.transform, "SpawnPoint_05_CurbsideStop",
+                new Vector3(56.5f, 0.02f, 45.0f), Quaternion.Euler(0f, 180f, 0f));
 
             return spawns;
         }
@@ -414,14 +425,15 @@ namespace PrimerVolante.Testing.Editor
             int roadsLayer = GPSNavigationSceneSetup.EnsureLayer(GPSNavigationSceneSetup.ROADS_LAYER_NAME);
             int buildingLayer = GPSNavigationSceneSetup.EnsureLayer(GPSNavigationSceneSetup.BUILDING_LAYER_NAME);
 
-            // Trazar el circuito urbano con SplineContainer en la escena
-            SplineContainer splineContainer = GPSNavigationSceneSetup.BuildUrbanCircuitSpline(scene);
+            // Trazar las 5 sub-rutas con SplineContainer en la escena (una por paso)
+            SplineContainer splineContainer = BuildLesson05Splines(scene);
 
             // Cablear el SplineContainer a GPSRouteRenderer en Car09
             GPSRouteRenderer routeRenderer = car09.GetComponent<GPSRouteRenderer>() ?? car09.GetComponentInChildren<GPSRouteRenderer>(true);
             if (routeRenderer != null && splineContainer != null)
             {
                 routeRenderer.RouteContainer = splineContainer;
+                routeRenderer.SplineIndex = 0;
                 routeRenderer.InitializeRoute();
                 EditorUtility.SetDirty(routeRenderer);
             }
@@ -437,8 +449,102 @@ namespace PrimerVolante.Testing.Editor
             return routeRenderer;
         }
 
+        private static Transform EnsureStopLineTrafficLight(Scene scene)
+        {
+            GameObject lineObj = GameObject.Find("StopLine_TrafficLight_Step03");
+            if (lineObj == null)
+            {
+                lineObj = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                lineObj.name = "StopLine_TrafficLight_Step03";
+                SceneManager.MoveGameObjectToScene(lineObj, scene);
+                Collider col = lineObj.GetComponent<Collider>();
+                if (col != null) UnityEngine.Object.DestroyImmediate(col);
+            }
+
+            // Ubicada transversalmente en el carril X=116.5 antes de la senda peatonal en Z=71.5
+            lineObj.transform.position = new Vector3(116.5f, 0.03f, 71.5f);
+            lineObj.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+            lineObj.transform.localScale = new Vector3(7.5f, 0.5f, 1f);
+
+            MeshRenderer mr = lineObj.GetComponent<MeshRenderer>();
+            if (mr != null)
+            {
+                Material yellowMat = AssetDatabase.LoadAssetAtPath<Material>(YELLOW_ZONE_MAT_PATH);
+                if (yellowMat != null)
+                {
+                    mr.sharedMaterial = yellowMat;
+                }
+            }
+            return lineObj.transform;
+        }
+
+        public static SplineContainer BuildLesson05Splines(Scene scene)
+        {
+            GameObject routeRoot = GameObject.Find(GPSNavigationSceneSetup.ROUTE_OBJECT_NAME);
+            if (routeRoot == null)
+            {
+                routeRoot = new GameObject(GPSNavigationSceneSetup.ROUTE_OBJECT_NAME);
+                SceneManager.MoveGameObjectToScene(routeRoot, scene);
+            }
+            routeRoot.transform.position = Vector3.zero;
+            routeRoot.transform.rotation = Quaternion.identity;
+            routeRoot.transform.localScale = Vector3.one;
+
+            SplineContainer container = routeRoot.GetComponent<SplineContainer>();
+            if (container == null) container = routeRoot.AddComponent<SplineContainer>();
+
+            const float Y = 0.02f;
+            var list = new List<Spline>();
+
+            // Spline 0: Paso 1 - Giro a la derecha 90° inmediato (X=63.5 N -> Z=116.5 E)
+            var s0 = new Spline { Closed = false };
+            s0.Add(new BezierKnot(new Unity.Mathematics.float3(63.5f, Y, 110.0f), Unity.Mathematics.float3.zero, new Unity.Mathematics.float3(0f, 0f, 3f)), TangentMode.Broken);
+            s0.Add(new BezierKnot(new Unity.Mathematics.float3(63.5f, Y, 113.5f), new Unity.Mathematics.float3(0f, 0f, -2f), new Unity.Mathematics.float3(0f, 0f, 2f)), TangentMode.Broken);
+            s0.Add(new BezierKnot(new Unity.Mathematics.float3(66.5f, Y, 116.5f), new Unity.Mathematics.float3(-2f, 0f, 0f), new Unity.Mathematics.float3(2f, 0f, 0f)), TangentMode.Broken);
+            s0.Add(new BezierKnot(new Unity.Mathematics.float3(78.0f, Y, 116.5f), new Unity.Mathematics.float3(-3f, 0f, 0f), Unity.Mathematics.float3.zero), TangentMode.Broken);
+            list.Add(s0);
+
+            // Spline 1: Paso 2 - Anticipación 20m y giro a la derecha 90° (Z=116.5 E -> X=116.5 S)
+            var s1 = new Spline { Closed = false };
+            s1.Add(new BezierKnot(new Unity.Mathematics.float3(66.0f, Y, 116.5f), Unity.Mathematics.float3.zero, new Unity.Mathematics.float3(5f, 0f, 0f)), TangentMode.Broken);
+            s1.Add(new BezierKnot(new Unity.Mathematics.float3(90.5f, Y, 116.5f), new Unity.Mathematics.float3(-5f, 0f, 0f), new Unity.Mathematics.float3(5f, 0f, 0f)), TangentMode.Broken);
+            s1.Add(new BezierKnot(new Unity.Mathematics.float3(110.5f, Y, 116.5f), new Unity.Mathematics.float3(-5f, 0f, 0f), new Unity.Mathematics.float3(3.3f, 0f, 0f)), TangentMode.Broken);
+            s1.Add(new BezierKnot(new Unity.Mathematics.float3(116.5f, Y, 110.5f), new Unity.Mathematics.float3(0f, 0f, 3.3f), new Unity.Mathematics.float3(0f, 0f, -5f)), TangentMode.Broken);
+            s1.Add(new BezierKnot(new Unity.Mathematics.float3(116.5f, Y, 100.0f), new Unity.Mathematics.float3(0f, 0f, 5f), Unity.Mathematics.float3.zero), TangentMode.Broken);
+            list.Add(s1);
+
+            // Spline 2: Paso 3 - Semáforo y giro a la derecha 90° (X=116.5 S -> Z=63.5 W)
+            var s2 = new Spline { Closed = false };
+            s2.Add(new BezierKnot(new Unity.Mathematics.float3(116.5f, Y, 95.0f), Unity.Mathematics.float3.zero, new Unity.Mathematics.float3(0f, 0f, -5f)), TangentMode.Broken);
+            s2.Add(new BezierKnot(new Unity.Mathematics.float3(116.5f, Y, 71.5f), new Unity.Mathematics.float3(0f, 0f, 5f), new Unity.Mathematics.float3(0f, 0f, -2.5f)), TangentMode.Broken);
+            s2.Add(new BezierKnot(new Unity.Mathematics.float3(113.5f, Y, 63.5f), new Unity.Mathematics.float3(2.5f, 0f, 0f), new Unity.Mathematics.float3(-5f, 0f, 0f)), TangentMode.Broken);
+            s2.Add(new BezierKnot(new Unity.Mathematics.float3(105.0f, Y, 63.5f), new Unity.Mathematics.float3(3f, 0f, 0f), Unity.Mathematics.float3.zero), TangentMode.Broken);
+            list.Add(s2);
+
+            // Spline 3: Paso 4 - Giro a la IZQUIERDA 90° en intersección (Z=63.5 W -> X=56.5 S)
+            var s3 = new Spline { Closed = false };
+            s3.Add(new BezierKnot(new Unity.Mathematics.float3(105.0f, Y, 63.5f), Unity.Mathematics.float3.zero, new Unity.Mathematics.float3(-8f, 0f, 0f)), TangentMode.Broken);
+            s3.Add(new BezierKnot(new Unity.Mathematics.float3(80.0f, Y, 63.5f), new Unity.Mathematics.float3(8f, 0f, 0f), new Unity.Mathematics.float3(-6f, 0f, 0f)), TangentMode.Broken);
+            s3.Add(new BezierKnot(new Unity.Mathematics.float3(63.5f, Y, 63.5f), new Unity.Mathematics.float3(5f, 0f, 0f), new Unity.Mathematics.float3(-4f, 0f, -2f)), TangentMode.Broken);
+            s3.Add(new BezierKnot(new Unity.Mathematics.float3(56.5f, Y, 55.0f), new Unity.Mathematics.float3(2f, 0f, 3f), new Unity.Mathematics.float3(0f, 0f, -4f)), TangentMode.Broken);
+            s3.Add(new BezierKnot(new Unity.Mathematics.float3(56.5f, Y, 45.0f), new Unity.Mathematics.float3(0f, 0f, 4f), Unity.Mathematics.float3.zero), TangentMode.Broken);
+            list.Add(s3);
+
+            // Spline 4: Paso 5 - Detención en cordón derecho (calle X=60 rumbo Sur)
+            var s4 = new Spline { Closed = false };
+            s4.Add(new BezierKnot(new Unity.Mathematics.float3(56.5f, Y, 45.0f), Unity.Mathematics.float3.zero, new Unity.Mathematics.float3(0f, 0f, -4f)), TangentMode.Broken);
+            s4.Add(new BezierKnot(new Unity.Mathematics.float3(56.5f, Y, 35.0f), new Unity.Mathematics.float3(0f, 0f, 3f), new Unity.Mathematics.float3(-0.8f, 0f, -3f)), TangentMode.Broken);
+            s4.Add(new BezierKnot(new Unity.Mathematics.float3(54.0f, Y, 25.0f), new Unity.Mathematics.float3(0.5f, 0f, 2f), new Unity.Mathematics.float3(-0.3f, 0f, -2f)), TangentMode.Broken);
+            s4.Add(new BezierKnot(new Unity.Mathematics.float3(53.5f, Y, 20.0f), new Unity.Mathematics.float3(0f, 0f, 2f), Unity.Mathematics.float3.zero), TangentMode.Broken);
+            list.Add(s4);
+
+            container.Splines = list;
+            EditorUtility.SetDirty(container);
+            return container;
+        }
+
         private static void SetupLessonControllers(Scene scene, GameObject car09, LessonDefinitionSO lessonData,
-            Transform[] spawnPoints, Transform warningLine, TrafficLightController trafficLight,
+            Transform[] spawnPoints, Transform warningLine, Transform stopLine, TrafficLightController trafficLight,
             VRScreenFader screenFader, TurnSignalDetector turnDetector, GPSRouteRenderer routeRenderer)
         {
             GameObject managerObj = GameObject.Find("Lesson_Manager");
@@ -504,6 +610,10 @@ namespace PrimerVolante.Testing.Editor
             soCtrl.FindProperty("m_TrafficLight").objectReferenceValue = trafficLight;
             soCtrl.FindProperty("m_InfractionManager").objectReferenceValue = infractionMgr;
             soCtrl.FindProperty("m_WarningLine20m").objectReferenceValue = warningLine;
+            if (stopLine != null && soCtrl.FindProperty("m_StopLineTrafficLight") != null)
+            {
+                soCtrl.FindProperty("m_StopLineTrafficLight").objectReferenceValue = stopLine;
+            }
 
             GameObject warningGate = GameObject.Find("WarningGate_20m_Hologram");
             if (warningGate != null && soCtrl.FindProperty("m_WarningGateHologram") != null)

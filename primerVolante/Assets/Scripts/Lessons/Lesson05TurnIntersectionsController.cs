@@ -304,6 +304,11 @@ namespace PrimerVolante.Lessons
             {
                 m_TrafficLight.SetState(TrafficLightState.Red);
             }
+
+            if (m_RouteRenderer != null)
+            {
+                m_RouteRenderer.SplineIndex = stepIndex;
+            }
         }
 
         private void OnInfractionRecorded(InfractionRecord record)
@@ -452,7 +457,7 @@ namespace PrimerVolante.Lessons
             // Actualizar la ruta del GPS para que se sincronice con el nuevo spawn del paso
             if (m_RouteRenderer != null)
             {
-                m_RouteRenderer.InitializeRoute();
+                m_RouteRenderer.SplineIndex = stepIndex;
             }
         }
 
@@ -479,13 +484,14 @@ namespace PrimerVolante.Lessons
             float currentHeading = m_VehicleController.transform.eulerAngles.y;
             float deltaHeading = Mathf.DeltaAngle(m_StepStartHeading, currentHeading);
             float distanceTraveled = Vector3.Distance(m_StepStartPosition, m_VehicleController.transform.position);
+            Vector3 carPos = m_VehicleController.transform.position;
 
             switch (step.requiredAction)
             {
                 case LessonActionType.CompleteTurnSignalRightIntro:
-                    // Paso 1: El auto arranca detenido cerca de la esquina.
-                    // Debe avanzar al menos 8m, haber accionado el guiño a la derecha y completado el giro de 90° (deltaHeading 75° a 110°)
-                    if (distanceTraveled >= 8.0f && deltaHeading >= 75f && deltaHeading <= 110f)
+                    // Paso 1: El auto arranca detenido cerca de la esquina (X=63.5, Z=110, rumbo Norte).
+                    // Debe avanzar, haber accionado el guiño a la derecha y completado el giro de 90° hacia el Este (+X)
+                    if (distanceTraveled >= 8.0f && deltaHeading >= 70f && deltaHeading <= 110f)
                     {
                         if (m_TurnSignalDetector == null || m_TurnSignalDetector.LastOutcome != TurnSignalOutcome.Fault)
                         {
@@ -495,11 +501,11 @@ namespace PrimerVolante.Lessons
                     break;
 
                 case LessonActionType.TurnSignalAnticipation20m:
-                    // Paso 2: Guiño antes de la línea/portal de 20m y completar giro a la derecha a 90°
+                    // Paso 2: Guiño antes de la línea/portal de 20m y completar giro a la derecha a 90° hacia el Sur (-Z)
                     if (m_WarningLine20m != null)
                     {
-                        // El auto viaja hacia el Este (+X) desde X=66 hacia la esquina X=110.5. La línea está en X=90.5.
-                        float distAlongX = m_WarningLine20m.position.x - m_VehicleController.transform.position.x;
+                        // Auto viaja hacia el Este (+X) desde X=66 hacia la esquina X=110.5. La línea está en X=90.5.
+                        float distAlongX = m_WarningLine20m.position.x - carPos.x;
                         if (distAlongX > 0f && m_VehicleController.CurrentTurnSignal == TurnSignalState.Right)
                         {
                             m_TurnSignalPlacedBefore20m = true;
@@ -507,7 +513,7 @@ namespace PrimerVolante.Lessons
                         else if (distAlongX <= -0.5f && !m_TurnSignalPlacedBefore20m && !m_IsRetrying)
                         {
                             // Si cruzó la línea o portal de 20m sin poner el guiño, se reinicia el paso
-                            TriggerTurnSignalRetry("Falta: Debes colocar el guiño ANTES de cruzar la franja de los 20 metros");
+                            TriggerTurnSignalRetry("Falta: Debes colocar el guiño ANTES de cruzar el portal de los 20 metros");
                             return;
                         }
                     }
@@ -530,11 +536,13 @@ namespace PrimerVolante.Lessons
                     break;
 
                 case LessonActionType.CrossTrafficLightIntersection:
-                    // Paso 3: Detenerse en rojo antes de la senda peatonal y cruzar en verde
+                    // Paso 3: Semáforo y Giro a la Derecha (90°)
+                    // Auto viaja hacia el Sur (-Z) desde Z=95 hacia la esquina Z=63.5.
+                    // Semáforo en (112.38, 0.20, 67.58) mirando al Norte. Senda en Z=71.5.
                     if (m_TrafficLight != null && m_TrafficLight.CurrentState == TrafficLightState.Red)
                     {
-                        // Verificar si está frenado ante el semáforo
-                        if (m_VehicleController.CurrentSpeedKmh < 0.5f && distanceTraveled >= 5.0f)
+                        // Verificar si está frenado reglamentariamente antes de la senda (Z entre 70.0 y 77.0)
+                        if (carPos.z <= 77.0f && carPos.z >= 70.0f && m_VehicleController.CurrentSpeedKmh < 0.5f)
                         {
                             m_StoppedAtRedLight = true;
                             m_RedLightStopTimer += Time.deltaTime;
@@ -545,26 +553,47 @@ namespace PrimerVolante.Lessons
                                 m_TrafficLight.SetState(TrafficLightState.Green);
                             }
                         }
+                        else if (carPos.z < 69.5f && !m_StoppedAtRedLight && !m_IsRetrying)
+                        {
+                            TriggerTurnSignalRetry("Falta: Cruzaste la senda peatonal con el semáforo en rojo");
+                            return;
+                        }
                     }
 
-                    // Una vez en verde, el auto avanza y cruza la intersección
+                    // Una vez en verde, el auto debe completar el giro a la derecha a 90° e incorporarse a la calle Z=63.5 (X <= 110m)
                     if (m_StoppedAtRedLight && m_TrafficLight != null && m_TrafficLight.CurrentState == TrafficLightState.Green)
                     {
-                        if (distanceTraveled >= 22f && m_VehicleController.CurrentSpeedKmh > 2f)
+                        if (deltaHeading >= 70f && deltaHeading <= 110f && carPos.x <= 110.0f)
                         {
-                            m_IsTrafficLightCrossCompleted = true;
+                            if (m_TurnSignalDetector == null || m_TurnSignalDetector.LastOutcome != TurnSignalOutcome.Fault)
+                            {
+                                m_IsTrafficLightCrossCompleted = true;
+                            }
                         }
                     }
                     break;
 
                 case LessonActionType.CompleteLeftTurnCrossing:
-                    // Paso 4: Giro 90° a la izquierda con más de 20 m de anticipación y sin contramano
-                    // Giro a la izquierda: deltaHeading negativo (-75° a -115°)
-                    if (distanceTraveled >= 12f && deltaHeading <= -75f && deltaHeading >= -115f)
+                    // Paso 4: Giro 90° a la IZQUIERDA en intersección con anticipación de 20 m y sin contramano
+                    // Auto viaja hacia el Oeste (-X) desde X=105 hacia la esquina X=60 en Z=63.5.
+                    float distToLeftTurnCorner = carPos.x - 60.0f;
+                    if (distToLeftTurnCorner > 18.0f && m_VehicleController.CurrentTurnSignal == TurnSignalState.Left)
+                    {
+                        m_TurnSignalPlacedBefore20m = true;
+                    }
+                    else if (distToLeftTurnCorner <= 1.0f && !m_TurnSignalPlacedBefore20m && !m_IsRetrying)
+                    {
+                        TriggerTurnSignalRetry("Falta: Debes colocar el guiño a la izquierda con más de 20 metros de anticipación");
+                        return;
+                    }
+
+                    // Giro a la izquierda completado: deltaHeading negativo (-70° a -115°)
+                    // e ingresado al carril correspondiente de la calle X=60 rumbo Sur (Z <= 54.0f)
+                    if (deltaHeading <= -70f && deltaHeading >= -115f && carPos.z <= 54.0f)
                     {
                         bool noWrongWay = (m_WrongWayDetector == null || !m_WrongWayDetector.IsWrongWay);
                         bool noTurnFault = (m_TurnSignalDetector == null || m_TurnSignalDetector.LastOutcome != TurnSignalOutcome.Fault);
-                        if (noWrongWay && noTurnFault)
+                        if (noWrongWay && noTurnFault && m_TurnSignalPlacedBefore20m)
                         {
                             m_IsLeftTurnCompleted = true;
                         }
@@ -572,11 +601,13 @@ namespace PrimerVolante.Lessons
                     break;
 
                 case LessonActionType.CurbsideStop:
-                    // Paso 5: Arrime a cordón, detenido, Parking (P) y freno de mano
+                    // Paso 5: Arrime a cordón derecho en calle X=60 rumbo Sur, detenido, Parking (P) y freno de mano
+                    // En calle X=60 rumbo Sur, el cordón derecho está en X <= 55.0f
+                    bool atRightCurb = carPos.x <= 55.0f;
                     bool stopped = m_VehicleController.CurrentSpeedKmh < 0.2f && distanceTraveled >= 4.0f;
                     bool park = (m_VehicleController.CurrentGear == GearState.Park || m_VehicleController.CurrentGear == GearState.P);
                     bool handbrake = m_VehicleController.HandbrakeEngagement >= 0.85f;
-                    if (stopped && park && handbrake)
+                    if (stopped && park && handbrake && atRightCurb)
                     {
                         m_IsCurbsideStopCompleted = true;
                     }

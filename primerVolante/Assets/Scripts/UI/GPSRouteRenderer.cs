@@ -58,6 +58,16 @@ namespace PrimerVolante.UI
         public string CurrentManeuver => m_CurrentManeuver;
         public LineRenderer RouteLineRenderer => m_LineRenderer;
 
+        public int SplineIndex
+        {
+            get => m_SplineIndex;
+            set
+            {
+                m_SplineIndex = value;
+                InitializeRoute();
+            }
+        }
+
         public SplineContainer RouteContainer
         {
             get => m_SplineContainer;

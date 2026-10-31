@@ -287,6 +287,15 @@ namespace PrimerVolante.Testing.Editor
 
             GameObject gpsRoute = GameObject.Find(GPSNavigationSceneSetup.ROUTE_OBJECT_NAME);
             Assert(gpsRoute != null, "GPS_Circuit_Route (SplineContainer) debe existir en la escena de Lección 5 para navegación GPS", ref total, ref passed);
+            if (gpsRoute != null)
+            {
+                var sc = gpsRoute.GetComponent<UnityEngine.Splines.SplineContainer>();
+                Assert(sc != null && sc.Splines != null && sc.Splines.Count == 5,
+                    $"GPS_Circuit_Route debe contener exactamente 5 splines (una por cada paso) (encontradas: {sc?.Splines?.Count ?? 0})", ref total, ref passed);
+            }
+
+            GameObject stopLine = GameObject.Find("StopLine_TrafficLight_Step03");
+            Assert(stopLine != null, "StopLine_TrafficLight_Step03 debe existir en la senda peatonal del semáforo para el Paso 3", ref total, ref passed);
 
             GameObject spawns = GameObject.Find("Lesson05_SpawnPoints");
             Assert(spawns != null && spawns.transform.childCount >= 5, "Lesson05_SpawnPoints debe contener al menos 5 puntos de spawn", ref total, ref passed);

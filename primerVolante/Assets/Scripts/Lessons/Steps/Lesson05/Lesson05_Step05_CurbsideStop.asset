@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Lesson05_Step05_CurbsideStop
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: "Detenci\xF3n en Cord\xF3n"
-  instructionText: "Arrimarse al cord\xF3n, frenar por completo, colocar Parking (P) y subir el freno de mano."
+  instructionText: "Arrimarse al cord\xF3n derecho, frenar por completo, colocar Parking (P) y subir el freno de mano."
   completionMode: 1
   requiredAction: 29
   actionNumericParameter: 0
