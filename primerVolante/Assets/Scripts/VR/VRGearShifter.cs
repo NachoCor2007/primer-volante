@@ -75,6 +75,14 @@ namespace PrimerVolante.VR
         [Tooltip("Controlador del vehículo, para consultar freno, velocidad y motor. Se autodetecta en los padres si se deja vacío.")]
         [SerializeField] private VehicleController m_VehicleController;
 
+        [Tooltip("Ignora las restricciones de conducción (motor encendido, freno a fondo y auto detenido): la palanca recorre " +
+                 "P/R/N/D libremente. Pensado para el menú principal en cabina, donde la palanca elige el menú sin motor. " +
+                 "Apagado por defecto: el comportamiento es el de siempre.")]
+        [SerializeField] private bool m_IgnoreDrivingRestrictions = false;
+
+        /// <summary>true si la palanca ignora las restricciones de motor/freno (menú principal en cabina).</summary>
+        public bool IgnoreDrivingRestrictions => m_IgnoreDrivingRestrictions;
+
         public GearState CurrentGear => currentGear;
         public GearState EstadoAnterior => estadoAnterior;
 
@@ -316,6 +324,8 @@ namespace PrimerVolante.VR
 
         private bool CanShiftTo(GearState targetGear)
         {
+            if (m_IgnoreDrivingRestrictions) return true;
+
             if (!IsEngineOn())
             {
                 if (m_EnableDebugLogs)
@@ -469,7 +479,7 @@ namespace PrimerVolante.VR
             float min = Mathf.Min(forwardLimit, backwardLimit);
             float max = Mathf.Max(forwardLimit, backwardLimit);
 
-            if (m_VehicleController == null) return (min, max);
+            if (m_IgnoreDrivingRestrictions || m_VehicleController == null) return (min, max);
 
             float angleP = GetAngleForGear(GearState.P);
 

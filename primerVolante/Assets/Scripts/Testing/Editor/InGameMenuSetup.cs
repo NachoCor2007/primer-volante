@@ -134,6 +134,7 @@ namespace PrimerVolante.Testing.Editor
             soMenu.FindProperty("m_CalibrationPanel").objectReferenceValue = calibrationPanel;
             soMenu.FindProperty("m_HeadTransform").objectReferenceValue = headTransform;
             soMenu.FindProperty("m_DriverSeatFollower").objectReferenceValue = follower;
+            soMenu.FindProperty("m_CalibrationBackButton").objectReferenceValue = backButton.gameObject;
 
             SerializedProperty farCastProp = soMenu.FindProperty("m_FarCastInteractors");
             farCastProp.arraySize = farCastInteractors.Length;
