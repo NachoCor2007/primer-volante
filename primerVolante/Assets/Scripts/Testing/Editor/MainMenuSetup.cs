@@ -70,7 +70,7 @@ namespace PrimerVolante.Testing.Editor
                 scene = EditorSceneManager.OpenScene(SCENE_PATH, OpenSceneMode.Single);
             }
 
-            BuildInActiveScene();
+            if (BuildInActiveScene() == null) return;
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
@@ -78,12 +78,28 @@ namespace PrimerVolante.Testing.Editor
             Debug.Log("[MainMenuSetup] Menú principal configurado y guardado.");
         }
 
-        /// <summary>Construye (o reconstruye) todo el menú en la escena activa, que debe ser MainMenu.</summary>
+        /// <summary>
+        /// Construye (o reconstruye) todo el menú en la escena activa. Solo actúa si la escena activa es
+        /// <see cref="SCENE_PATH"/>: borra objetos de lección, así que en cualquier otra escena no hace nada y loguea un error.
+        /// </summary>
         public static MainMenuController BuildInActiveScene()
         {
-            RemoveLessonObjects();
+            string activePath = EditorSceneManager.GetActiveScene().path;
+            if (activePath != SCENE_PATH)
+            {
+                Debug.LogError($"[MainMenuSetup] La escena activa es '{activePath}', no {SCENE_PATH}: no se modifica nada.");
+                return null;
+            }
 
             VehicleController car = Object.FindAnyObjectByType<VehicleController>(FindObjectsInactive.Include);
+            if (car == null)
+            {
+                Debug.LogError("[MainMenuSetup] No hay ningún VehicleController (Car09) en la escena: no se modifica nada.");
+                return null;
+            }
+
+            RemoveLessonObjects();
+
             VRGearShifter shifter = car.GetComponentInChildren<VRGearShifter>(true);
             VRSteeringWheel wheel = car.GetComponentInChildren<VRSteeringWheel>(true);
             StartButton startButton = car.GetComponentInChildren<StartButton>(true);
