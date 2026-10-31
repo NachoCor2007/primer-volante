@@ -31,6 +31,10 @@ namespace PrimerVolante.VR
         [Tooltip("Panel de calibración de la vista (sliders).")]
         [SerializeField] private GameObject m_CalibrationPanel;
 
+        [Tooltip("Botón Volver del panel de calibración. Se oculta cuando la calibración se abre standalone " +
+                 "(OpenCalibrationStandalone), porque no hay panel principal al que volver.")]
+        [SerializeField] private GameObject m_CalibrationBackButton;
+
         [Header("Posicionamiento")]
         [Tooltip("Transform de la cabeza del usuario (cámara del XR Origin). Si se deja vacío, se usa Camera.main.")]
         [SerializeField] private Transform m_HeadTransform;
@@ -38,7 +42,15 @@ namespace PrimerVolante.VR
         [Tooltip("Distancia a la que se ubica el menú frente a la cabeza al abrirse (metros).")]
         [SerializeField] private float m_DistanceFromHead = 0.8f;
 
+        [Tooltip("Ángulo horizontal, a la derecha del frente de la cabeza, al que se ubica el panel de calibración " +
+                 "abierto standalone (grados).")]
+        [SerializeField] private float m_StandaloneYawOffsetDegrees = 45f;
+
         [Header("Entrada (VR - Botón Menu físico)")]
+        [Tooltip("Si se apaga, se ignoran el botón Menu del control y la tecla de teclado (el menú de pausa no se puede abrir). " +
+                 "Se apaga en el menú principal en cabina, donde el menú de pausa no aplica.")]
+        [SerializeField] private bool m_MenuButtonEnabled = true;
+
         [Tooltip("Nodo XR del control cuyo botón Menu abre/cierra el menú (mano izquierda en Meta Quest).")]
         [SerializeField] private XRNode m_MenuButtonNode = XRNode.LeftHand;
 
@@ -72,6 +84,12 @@ namespace PrimerVolante.VR
         private bool m_AudioPauseBeforePause;
 
         public bool IsOpen => m_MenuRoot != null && m_MenuRoot.activeSelf;
+
+        /// <summary>true si el botón Menu del control y la tecla de teclado abren/cierran el menú.</summary>
+        public bool MenuButtonEnabled => m_MenuButtonEnabled;
+
+        /// <summary>Raíz del Canvas del menú (para ubicación en tests).</summary>
+        public GameObject MenuRoot => m_MenuRoot;
 
         /// <summary>Evento disparado cuando el menú in-game se abre.</summary>
         public event System.Action MenuOpened;
@@ -150,6 +168,8 @@ namespace PrimerVolante.VR
 
         private void Update()
         {
+            if (!m_MenuButtonEnabled) return;
+
             if (Keyboard.current != null && Keyboard.current[m_ToggleMenuKey].wasPressedThisFrame)
             {
                 ToggleMenu();
@@ -217,7 +237,27 @@ namespace PrimerVolante.VR
             m_MenuRoot.SetActive(false);
             SetFarCastingForMenu(false);
             SetSimulationPaused(false);
+            if (m_CalibrationBackButton != null) m_CalibrationBackButton.SetActive(true);
             MenuClosed?.Invoke();
+        }
+
+        /// <summary>
+        /// Abre solo el panel de calibración, sin pausar el tiempo ni el audio y sin botón Volver. Lo ubica a
+        /// <c>m_StandaloneYawOffsetDegrees</c> (45°) a la derecha del frente horizontal de la cabeza, a
+        /// <c>m_DistanceFromHead</c>, a la altura de los ojos y mirando a la cabeza. Acompaña al jugador al calibrar
+        /// (<see cref="DriverSeatFollower.CalibrationOffsetChanged"/>). Se cierra con <see cref="CloseMenu"/>.
+        /// Lo usa el menú principal en cabina (página Calibración).
+        /// </summary>
+        public void OpenCalibrationStandalone()
+        {
+            if (m_MenuRoot == null) return;
+
+            PositionInFrontOfHead(m_StandaloneYawOffsetDegrees);
+            m_MenuRoot.SetActive(true);
+            ShowCalibrationPanel();
+            if (m_CalibrationBackButton != null) m_CalibrationBackButton.SetActive(false);
+            SetFarCastingForMenu(true);
+            MenuOpened?.Invoke();
         }
 
         /// <summary>
@@ -287,7 +327,7 @@ namespace PrimerVolante.VR
             if (m_CalibrationPanel != null) m_CalibrationPanel.SetActive(true);
         }
 
-        private void PositionInFrontOfHead()
+        private void PositionInFrontOfHead(float yawOffsetDegrees = 0f)
         {
             if (m_HeadTransform == null)
             {
@@ -302,6 +342,7 @@ namespace PrimerVolante.VR
                 forward = m_HeadTransform.up;
             }
             forward.Normalize();
+            if (yawOffsetDegrees != 0f) forward = Quaternion.AngleAxis(yawOffsetDegrees, Vector3.up) * forward;
 
             Vector3 targetPosition = m_HeadTransform.position + forward * m_DistanceFromHead;
             m_MenuRoot.transform.position = targetPosition;
