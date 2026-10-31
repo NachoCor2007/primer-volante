@@ -94,11 +94,14 @@ namespace PrimerVolante.VR
 
         /// <summary>
         /// Hace lo mismo que una pulsación física: dispara <see cref="Pressed"/> y, si <c>m_TogglesEngine</c> está activo,
-        /// alterna el motor. Útil para tests y para la capa de pruebas con teclado/gamepad.
+        /// alterna el motor. Sin alternar el motor igual da el feedback de "aceptado" (clic y háptico) vía
+        /// <see cref="VehicleController.NotifyControlPressed"/>; con el motor, TryToggleEngine ya lo dispara (no se duplica).
+        /// Útil para tests y para la capa de pruebas con teclado/gamepad.
         /// </summary>
         public void Press()
         {
             if (m_TogglesEngine) ToggleEngine();
+            else if (m_VehicleController != null) m_VehicleController.NotifyControlPressed();
             Pressed?.Invoke();
         }
 
