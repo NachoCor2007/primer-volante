@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
   m_Name: Lesson05_Step04_LeftTurnCrossing
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
-  stepTitle: Giro a la Izquierda en Cruce
-  instructionText: "Baja la palanca de gui\xF1o para indicar giro a la izquierda con m\xE1s de 20 m de anticipaci\xF3n. Respeta la prioridad de frente y ejecuta un radio de giro amplio ingresando al carril derecho sin invadir la contramano."
+  stepTitle: Giro a la Izquierda
+  instructionText: "Coloca el gui\xF1o hacia abajo (izquierda) con anticipaci\xF3n y gira al carril derecho."
   completionMode: 1
   requiredAction: 28
   actionNumericParameter: 20

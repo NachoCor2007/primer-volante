@@ -237,7 +237,11 @@ namespace PrimerVolante.Testing.Editor
             Assert(File.Exists(Lesson05TurnIntersectionsSetup.TARGET_SCENE_PATH),
                 $"Archivo de escena {Lesson05TurnIntersectionsSetup.TARGET_SCENE_PATH} debe existir en el proyecto", ref total, ref passed);
 
-            Scene scene = EditorSceneManager.OpenScene(Lesson05TurnIntersectionsSetup.TARGET_SCENE_PATH, OpenSceneMode.Single);
+            Scene scene = SceneManager.GetActiveScene();
+            if (scene.path != Lesson05TurnIntersectionsSetup.TARGET_SCENE_PATH)
+            {
+                scene = EditorSceneManager.OpenScene(Lesson05TurnIntersectionsSetup.TARGET_SCENE_PATH, OpenSceneMode.Single);
+            }
             Assert(scene.IsValid() && scene.isLoaded, "Escena de Lección 5 debe abrir limpiamente", ref total, ref passed);
 
             VehicleController vehicle = UnityEngine.Object.FindAnyObjectByType<VehicleController>();
@@ -278,6 +282,12 @@ namespace PrimerVolante.Testing.Editor
             GameObject warningLine = GameObject.Find("WarningLine_20m_Asphalt");
             Assert(warningLine != null, "WarningLine_20m_Asphalt debe existir en la escena a 20m de la esquina", ref total, ref passed);
 
+            GameObject warningGate = GameObject.Find("WarningGate_20m_Hologram");
+            Assert(warningGate != null, "WarningGate_20m_Hologram debe existir como portal holográfico a 20m de la esquina", ref total, ref passed);
+
+            GameObject gpsRoute = GameObject.Find(GPSNavigationSceneSetup.ROUTE_OBJECT_NAME);
+            Assert(gpsRoute != null, "GPS_Circuit_Route (SplineContainer) debe existir en la escena de Lección 5 para navegación GPS", ref total, ref passed);
+
             GameObject spawns = GameObject.Find("Lesson05_SpawnPoints");
             Assert(spawns != null && spawns.transform.childCount >= 5, "Lesson05_SpawnPoints debe contener al menos 5 puntos de spawn", ref total, ref passed);
         }
@@ -293,7 +303,11 @@ namespace PrimerVolante.Testing.Editor
             Assert(File.Exists(Lesson06ParkingSetup.TARGET_SCENE_PATH),
                 $"Archivo de escena {Lesson06ParkingSetup.TARGET_SCENE_PATH} debe existir en el proyecto", ref total, ref passed);
 
-            Scene scene = EditorSceneManager.OpenScene(Lesson06ParkingSetup.TARGET_SCENE_PATH, OpenSceneMode.Single);
+            Scene scene = SceneManager.GetActiveScene();
+            if (scene.path != Lesson06ParkingSetup.TARGET_SCENE_PATH)
+            {
+                scene = EditorSceneManager.OpenScene(Lesson06ParkingSetup.TARGET_SCENE_PATH, OpenSceneMode.Single);
+            }
             Assert(scene.IsValid() && scene.isLoaded, "Escena de Lección 6 debe abrir limpiamente", ref total, ref passed);
 
             VehicleController vehicle = UnityEngine.Object.FindAnyObjectByType<VehicleController>();

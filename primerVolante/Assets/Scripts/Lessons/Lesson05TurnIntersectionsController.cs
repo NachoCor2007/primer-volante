@@ -3,6 +3,7 @@ using System.Collections;
 using UnityEngine;
 using PrimerVolante.Environment;
 using PrimerVolante.Evaluation;
+using PrimerVolante.UI;
 using PrimerVolante.VR;
 
 namespace PrimerVolante.Lessons
@@ -30,6 +31,7 @@ namespace PrimerVolante.Lessons
         [SerializeField] private DriverSeatFollower m_SeatFollower;
         [SerializeField] private TrafficLightController m_TrafficLight;
         [SerializeField] private InfractionManager m_InfractionManager;
+        [SerializeField] private GPSRouteRenderer m_RouteRenderer;
 
         [Header("Puntos de Partida de Cada Paso")]
         [Tooltip("Transform de spawn para cada uno de los 5 pasos de la Lección 5.")]
@@ -39,11 +41,14 @@ namespace PrimerVolante.Lessons
         [Tooltip("Marca visual o línea de advertencia en el asfalto (a 20m de la esquina).")]
         [SerializeField] private Transform m_WarningLine20m;
 
+        [Tooltip("Pórtico / Barrera translúcida holográfica flotante de advertencia (20 m).")]
+        [SerializeField] private GameObject m_WarningGateHologram;
+
         [Tooltip("Punto de detención antes de la senda peatonal para el semáforo.")]
         [SerializeField] private Transform m_StopLineTrafficLight;
 
         [Header("Tiempos de Transición")]
-        [SerializeField] private float m_FadeDuration = 0.4f;
+        [SerializeField] private float m_FadeDuration = 0.35f;
 
         // Métricas internas de seguimiento de pasos
         private Vector3 m_StepStartPosition;
@@ -145,6 +150,17 @@ namespace PrimerVolante.Lessons
             {
                 m_InfractionManager = UnityEngine.Object.FindAnyObjectByType<InfractionManager>();
             }
+
+            if (m_WarningGateHologram == null)
+            {
+                m_WarningGateHologram = GameObject.Find("WarningGate_20m_Hologram");
+            }
+
+            if (m_RouteRenderer == null && m_VehicleController != null)
+            {
+                m_RouteRenderer = m_VehicleController.GetComponent<GPSRouteRenderer>() ??
+                                  m_VehicleController.GetComponentInChildren<GPSRouteRenderer>(true);
+            }
         }
 
         private void SubscribeEvents(bool subscribe)
@@ -174,6 +190,7 @@ namespace PrimerVolante.Lessons
         {
             if (lesson == null || lesson.lessonId != "LESSON_05") return;
             ResetStepMetrics(0);
+            UpdateVisualIndicators(0);
         }
 
         private void OnStepChanged(LessonStepSO step, int stepIndex, int totalSteps)
@@ -181,7 +198,86 @@ namespace PrimerVolante.Lessons
             m_CurrentStepIndex = stepIndex;
             m_IsCompletingStep = false;
             m_IsRetrying = false;
+
+            // Si pasamos a un paso subsiguiente (stepIndex > 0), realizar una transición limpia
+            // con reposición automática en el SpawnPoint correspondiente para arrancar de cero de forma prolija.
+            if (stepIndex > 0 && gameObject.activeInHierarchy)
+            {
+                StartCoroutine(TransitionToStepRoutine(stepIndex));
+            }
+            else
+            {
+                ResetStepMetrics(stepIndex);
+                UpdateVisualIndicators(stepIndex);
+            }
+        }
+
+        private IEnumerator TransitionToStepRoutine(int stepIndex)
+        {
+            m_IsRetrying = true;
+
+            yield return new WaitForSeconds(0.2f);
+
+            // 1. Fade Out suave (0.35s)
+            if (m_ScreenFader != null)
+            {
+                yield return m_ScreenFader.FadeOutRoutine(m_FadeDuration);
+            }
+            else
+            {
+                yield return new WaitForSeconds(m_FadeDuration);
+            }
+
+            // 2. Reposicionar vehículo al spawn point del paso
+            RepositionVehicleToStepStart(stepIndex);
+
+            // 3. Reiniciar detector de guiños y posición de visor
+            if (m_TurnSignalDetector != null)
+            {
+                m_TurnSignalDetector.ResetTracking();
+            }
+
+            if (m_SeatFollower != null)
+            {
+                m_SeatFollower.SnapToSeat();
+            }
+
             ResetStepMetrics(stepIndex);
+            UpdateVisualIndicators(stepIndex);
+
+            if (m_HUDPanel != null && m_LessonManager != null && m_LessonManager.CurrentStep != null)
+            {
+                m_HUDPanel.DisplayStep(m_LessonManager.CurrentStep, stepIndex, m_LessonManager.ActiveLesson.steps.Count);
+            }
+
+            // 4. Fade In suave (0.35s)
+            if (m_ScreenFader != null)
+            {
+                yield return m_ScreenFader.FadeInRoutine(m_FadeDuration);
+            }
+            else
+            {
+                yield return new WaitForSeconds(m_FadeDuration);
+            }
+
+            m_IsRetrying = false;
+        }
+
+        /// <summary>
+        /// Activa u oculta indicadores visuales contextuales según el paso activo.
+        /// </summary>
+        public void UpdateVisualIndicators(int stepIndex)
+        {
+            // La franja en el asfalto y el pórtico holográfico de advertencia a 20m se activan en el Paso 2 (índice 1)
+            bool show20mWarning = (stepIndex == 1);
+            if (m_WarningLine20m != null)
+            {
+                m_WarningLine20m.gameObject.SetActive(show20mWarning);
+            }
+            if (m_WarningGateHologram != null)
+            {
+                m_WarningGateHologram.SetActive(show20mWarning);
+            }
         }
 
         private void ResetStepMetrics(int stepIndex)
@@ -334,6 +430,30 @@ namespace PrimerVolante.Lessons
             {
                 stalk.SetSignalAnimated(TurnSignalState.Off);
             }
+
+            // Asegurar motor en marcha y transmisión en Drive (salvo paso 5)
+            m_VehicleController.SetEngineRunning(true);
+            if (stepIndex < 4)
+            {
+                m_VehicleController.SetGear(GearState.Drive);
+                VRGearShifter shifter = m_VehicleController.GetComponentInChildren<VRGearShifter>(true);
+                if (shifter != null)
+                {
+                    shifter.SetRotationToGear(GearState.Drive);
+                }
+
+                VRHandbrake handbrake = m_VehicleController.GetComponentInChildren<VRHandbrake>(true);
+                if (handbrake != null)
+                {
+                    handbrake.SetEngagementImmediate(0f);
+                }
+            }
+
+            // Actualizar la ruta del GPS para que se sincronice con el nuevo spawn del paso
+            if (m_RouteRenderer != null)
+            {
+                m_RouteRenderer.InitializeRoute();
+            }
         }
 
         private void Update()
@@ -375,18 +495,19 @@ namespace PrimerVolante.Lessons
                     break;
 
                 case LessonActionType.TurnSignalAnticipation20m:
-                    // Paso 2: Guiño antes de la línea de 20m y completar giro a la derecha a 90°
+                    // Paso 2: Guiño antes de la línea/portal de 20m y completar giro a la derecha a 90°
                     if (m_WarningLine20m != null)
                     {
-                        float distToLine = Vector3.Dot(m_WarningLine20m.position - m_VehicleController.transform.position, m_WarningLine20m.forward);
-                        if (distToLine > 0f && m_VehicleController.CurrentTurnSignal == TurnSignalState.Right)
+                        // El auto viaja hacia el Este (+X) desde X=66 hacia la esquina X=110.5. La línea está en X=90.5.
+                        float distAlongX = m_WarningLine20m.position.x - m_VehicleController.transform.position.x;
+                        if (distAlongX > 0f && m_VehicleController.CurrentTurnSignal == TurnSignalState.Right)
                         {
                             m_TurnSignalPlacedBefore20m = true;
                         }
-                        else if (distToLine <= -1.0f && !m_TurnSignalPlacedBefore20m && !m_IsRetrying)
+                        else if (distAlongX <= -0.5f && !m_TurnSignalPlacedBefore20m && !m_IsRetrying)
                         {
-                            // Si cruzó la línea sin poner el guiño, se le avisa y reinicia
-                            TriggerTurnSignalRetry("Falta: Debes colocar el guiño ANTES de cruzar la franja en el asfalto");
+                            // Si cruzó la línea o portal de 20m sin poner el guiño, se reinicia el paso
+                            TriggerTurnSignalRetry("Falta: Debes colocar el guiño ANTES de cruzar la franja de los 20 metros");
                             return;
                         }
                     }
@@ -399,7 +520,7 @@ namespace PrimerVolante.Lessons
                     }
 
                     // Giro completado habiendo puesto el guiño previamente
-                    if (distanceTraveled >= 25f && deltaHeading >= 75f && deltaHeading <= 110f)
+                    if (distanceTraveled >= 22f && deltaHeading >= 70f && deltaHeading <= 110f)
                     {
                         if (m_TurnSignalPlacedBefore20m && (m_TurnSignalDetector == null || m_TurnSignalDetector.LastOutcome != TurnSignalOutcome.Fault))
                         {

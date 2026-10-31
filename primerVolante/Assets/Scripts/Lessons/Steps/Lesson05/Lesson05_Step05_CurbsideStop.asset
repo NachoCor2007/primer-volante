@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
   m_Name: Lesson05_Step05_CurbsideStop
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
-  stepTitle: "Detenci\xF3n y Estacionamiento en Cord\xF3n"
-  instructionText: "Se\xF1aliza el arrime hacia el cord\xF3n derecho, det\xE9nte por completo, coloca la palanca selectora en Parking (P) y acciona el freno de mano."
+  stepTitle: "Detenci\xF3n en Cord\xF3n"
+  instructionText: "Arrimarse al cord\xF3n, frenar por completo, colocar Parking (P) y subir el freno de mano."
   completionMode: 1
   requiredAction: 29
   actionNumericParameter: 0

@@ -128,22 +128,24 @@
 [Test #128] ✅ PASS: LessonManager debe tener asignada la Lección 5 como ActiveLesson
 [Test #129] ✅ PASS: Lesson05TurnIntersectionsController debe estar presente en la escena
 [Test #130] ✅ PASS: WarningLine_20m_Asphalt debe existir en la escena a 20m de la esquina
-[Test #131] ✅ PASS: Lesson05_SpawnPoints debe contener al menos 5 puntos de spawn
-[Test #132] ✅ PASS: Archivo de escena Assets/Scenes/Lessons/Lesson_06_ParkingManeuvers.unity debe existir en el proyecto
-[Test #133] ✅ PASS: Escena de Lección 6 debe abrir limpiamente
-[Test #134] ✅ PASS: VehicleController (Car09) debe existir en la escena de Lección 6
-[Test #135] ✅ PASS: TurnSignalExemptZone debe existir en el playón de dársenas de Lección 6
-[Test #136] ✅ PASS: TurnSignalExemptZone debe tener un BoxCollider como trigger
-[Test #137] ✅ PASS: TurnSignalExemptZone debe estar en la capa LaneZone (15)
-[Test #138] ✅ PASS: Deben existir al menos 3 ParkingZoneTriggers (encontrados: 3)
-[Test #139] ✅ PASS: Debe existir la estación de estacionamiento a 45°
-[Test #140] ✅ PASS: Debe existir la estación de estacionamiento a 90° de reversa
-[Test #141] ✅ PASS: Debe existir la estación de estacionamiento paralelo al cordón derecho
-[Test #142] ✅ PASS: Deben existir obstáculos (conos y autos estáticos) con ObstacleCollisionDetector (encontrados: 27)
-[Test #143] ✅ PASS: LessonManager debe estar presente en la escena de Lección 6
-[Test #144] ✅ PASS: LessonManager debe tener asignada la Lección 6 como ActiveLesson
-[Test #145] ✅ PASS: Lesson06ParkingController debe estar presente en la escena
-[Test #146] ✅ PASS: GroundVisual_YellowZone_45 debe existir en el piso de la dársena a 45°
-[Test #147] ✅ PASS: GroundVisual_YellowZone_90 debe existir en el piso de la dársena a 90°
-[Test #148] ✅ PASS: GroundVisual_YellowZone_Parallel debe existir en el piso de la dársena en paralelo
-[Test #149] ✅ PASS: No deben existir llamadas a APIs obsoletas ('FindFirstObjectByType' o 'FindObjectsSortMode') en el código (encontradas: 0). Usar 'FindAnyObjectByType' o 'FindObjectsByType(FindObjectsInactive.Exclude)'.
+[Test #131] ✅ PASS: WarningGate_20m_Hologram debe existir como portal holográfico a 20m de la esquina
+[Test #132] ✅ PASS: GPS_Circuit_Route (SplineContainer) debe existir en la escena de Lección 5 para navegación GPS
+[Test #133] ✅ PASS: Lesson05_SpawnPoints debe contener al menos 5 puntos de spawn
+[Test #134] ✅ PASS: Archivo de escena Assets/Scenes/Lessons/Lesson_06_ParkingManeuvers.unity debe existir en el proyecto
+[Test #135] ✅ PASS: Escena de Lección 6 debe abrir limpiamente
+[Test #136] ✅ PASS: VehicleController (Car09) debe existir en la escena de Lección 6
+[Test #137] ✅ PASS: TurnSignalExemptZone debe existir en el playón de dársenas de Lección 6
+[Test #138] ✅ PASS: TurnSignalExemptZone debe tener un BoxCollider como trigger
+[Test #139] ✅ PASS: TurnSignalExemptZone debe estar en la capa LaneZone (15)
+[Test #140] ✅ PASS: Deben existir al menos 3 ParkingZoneTriggers (encontrados: 3)
+[Test #141] ✅ PASS: Debe existir la estación de estacionamiento a 45°
+[Test #142] ✅ PASS: Debe existir la estación de estacionamiento a 90° de reversa
+[Test #143] ✅ PASS: Debe existir la estación de estacionamiento paralelo al cordón derecho
+[Test #144] ✅ PASS: Deben existir obstáculos (conos y autos estáticos) con ObstacleCollisionDetector (encontrados: 27)
+[Test #145] ✅ PASS: LessonManager debe estar presente en la escena de Lección 6
+[Test #146] ✅ PASS: LessonManager debe tener asignada la Lección 6 como ActiveLesson
+[Test #147] ✅ PASS: Lesson06ParkingController debe estar presente en la escena
+[Test #148] ✅ PASS: GroundVisual_YellowZone_45 debe existir en el piso de la dársena a 45°
+[Test #149] ✅ PASS: GroundVisual_YellowZone_90 debe existir en el piso de la dársena a 90°
+[Test #150] ✅ PASS: GroundVisual_YellowZone_Parallel debe existir en el piso de la dársena en paralelo
+[Test #151] ✅ PASS: No deben existir llamadas a APIs obsoletas ('FindFirstObjectByType' o 'FindObjectsSortMode') en el código (encontradas: 0). Usar 'FindAnyObjectByType' o 'FindObjectsByType(FindObjectsInactive.Exclude)'.

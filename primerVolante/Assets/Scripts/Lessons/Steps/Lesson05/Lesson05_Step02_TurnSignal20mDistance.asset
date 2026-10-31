@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
   m_Name: Lesson05_Step02_TurnSignal20mDistance
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
-  stepTitle: "Anticipaci\xF3n Reglamentaria (20 Metros)"
-  instructionText: "Acelera por la calzada y coloca el gui\xF1o de giro a la derecha antes de cruzar la l\xEDnea de advertencia en el asfalto (a 20 m de la esquina, asistido por el GPS). Completa el giro en el carril derecho."
+  stepTitle: "Anticipaci\xF3n 20 Metros"
+  instructionText: "Acelera y activa el gui\xF1o derecho ANTES de cruzar la franja en el asfalto. Completa el giro."
   completionMode: 1
   requiredAction: 26
   actionNumericParameter: 20

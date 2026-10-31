@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
   m_Name: Lesson05_Step01_TurnSignalIntro
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
-  stepTitle: Giro a la Derecha en Esquina
-  instructionText: "Acciona la palanca de gui\xF1o hacia arriba con tu mano virtual para indicar giro a la derecha, avanza y completa el giro de 90\xB0 a baja velocidad (la palanca se autocancelar\xE1 al regresar el volante)."
+  stepTitle: "Giro a la Derecha (90\xB0)"
+  instructionText: "1. Coloca el gui\xF1o hacia arriba (derecha).\n2. Avanza y dobla la esquina en tu carril."
   completionMode: 1
   requiredAction: 25
   actionNumericParameter: 0

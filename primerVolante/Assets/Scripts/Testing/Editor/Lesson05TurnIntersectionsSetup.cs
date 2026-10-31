@@ -5,9 +5,11 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.Splines;
 using PrimerVolante.Environment;
 using PrimerVolante.Evaluation;
 using PrimerVolante.Lessons;
+using PrimerVolante.UI;
 using PrimerVolante.VR;
 
 namespace PrimerVolante.Testing.Editor
@@ -30,6 +32,9 @@ namespace PrimerVolante.Testing.Editor
         public const string STEPS_DIR = "Assets/Scripts/Lessons/Steps/Lesson05";
         public const string LESSON_05_PATH = "Assets/Scripts/Lessons/Curriculum/LessonData_05.asset";
 
+        public const string WARNING_GATE_MAT_PATH = "Assets/Environment/Materials/M_WarningGate_Translucent.mat";
+        public const string YELLOW_ZONE_MAT_PATH = "Assets/Environment/Materials/M_Parking_YellowZone.mat";
+
         [MenuItem("Tools/Primer Volante/Lessons/Setup Lesson 5 Scene")]
         public static void SetupLesson05()
         {
@@ -45,8 +50,12 @@ namespace PrimerVolante.Testing.Editor
             // 2. Asegurar que la escena clonada exista
             EnsureClonedSceneExists();
 
-            // 3. Abrir la escena de la Lección 5
-            Scene scene = EditorSceneManager.OpenScene(TARGET_SCENE_PATH, OpenSceneMode.Single);
+            // 3. Abrir la escena de la Lección 5 si no está abierta
+            Scene scene = SceneManager.GetActiveScene();
+            if (scene.path != TARGET_SCENE_PATH)
+            {
+                scene = EditorSceneManager.OpenScene(TARGET_SCENE_PATH, OpenSceneMode.Single);
+            }
             if (!scene.IsValid() || !scene.isLoaded)
             {
                 Debug.LogError($"[Lesson05TurnIntersectionsSetup] ❌ No se pudo abrir la escena: {TARGET_SCENE_PATH}");
@@ -97,23 +106,25 @@ namespace PrimerVolante.Testing.Editor
                 }
             }
 
-            // 9. Crear la línea de advertencia en el asfalto (a 20m de la esquina) para el Paso 2
+            // 9. Crear la línea de advertencia en el asfalto y el pórtico holográfico (a 20m de la esquina) para el Paso 2
             Transform warningLine = EnsureWarningLine20m(scene);
 
             // 10. Configurar o encontrar el semáforo para el Paso 3
             TrafficLightController trafficLight = UnityEngine.Object.FindAnyObjectByType<TrafficLightController>();
 
-            // 11. Configurar LessonHUDPanel, LessonManager y Lesson05TurnIntersectionsController
-            SetupLessonControllers(scene, car09, lessonData, spawnPoints, warningLine, trafficLight, screenFader, turnDetector);
+            // 11. Configurar Pantalla Diegética de GPS y Trazado de Ruta Urbana en Car09
+            GPSRouteRenderer routeRenderer = SetupGPSCircuitInScene(scene, car09);
 
-            // 12. Asegurar zonas exentas en prefabs e infracciones en la escena
+            // 12. Configurar LessonHUDPanel, LessonManager y Lesson05TurnIntersectionsController
+            SetupLessonControllers(scene, car09, lessonData, spawnPoints, warningLine, trafficLight, screenFader, turnDetector, routeRenderer);
+
+            // 13. Asegurar zonas exentas en prefabs e infracciones en la escena
             TurnSignalSetup.EnsureAssets(out _, out _);
 
-            // 13. Guardar escena y assets
+            // 14. Guardar escena y assets
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
 
             Debug.Log("=================================================================");
             Debug.Log("✅ [Lesson05TurnIntersectionsSetup] ¡Lección 5 configurada exitosamente!");
@@ -310,6 +321,37 @@ namespace PrimerVolante.Testing.Editor
             return child;
         }
 
+        private static Material EnsureWarningGateMaterial()
+        {
+            Material mat = AssetDatabase.LoadAssetAtPath<Material>(WARNING_GATE_MAT_PATH);
+            if (mat == null)
+            {
+                Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+                mat = new Material(shader);
+                mat.name = "M_WarningGate_Translucent";
+
+                // Configurar como superficie transparente en URP
+                mat.SetFloat("_Surface", 1f); // Transparent
+                mat.SetFloat("_Blend", 0f);   // Alpha
+                mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                mat.SetInt("_ZWrite", 0);
+                mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+                mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+
+                Color yellowTrans = new Color(1.0f, 0.85f, 0.0f, 0.35f);
+                mat.color = yellowTrans;
+                if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", yellowTrans);
+                if (mat.HasProperty("_EmissionColor"))
+                {
+                    mat.EnableKeyword("_EMISSION");
+                    mat.SetColor("_EmissionColor", new Color(1.0f, 0.85f, 0.0f) * 0.5f);
+                }
+                AssetDatabase.CreateAsset(mat, WARNING_GATE_MAT_PATH);
+            }
+            return mat;
+        }
+
         private static Transform EnsureWarningLine20m(Scene scene)
         {
             GameObject lineObj = GameObject.Find("WarningLine_20m_Asphalt");
@@ -322,27 +364,82 @@ namespace PrimerVolante.Testing.Editor
                 if (col != null) UnityEngine.Object.DestroyImmediate(col);
             }
 
-            // Ubicada exactamente a 20 m antes de la esquina X=111 en la calzada de Z=116.5
-            lineObj.transform.position = new Vector3(91.0f, 0.03f, 116.5f);
+            // Ubicada transversalmente en el carril exactamente a 20 m antes de la esquina X=110.5
+            lineObj.transform.position = new Vector3(90.5f, 0.03f, 116.5f);
             lineObj.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
-            lineObj.transform.localScale = new Vector3(8f, 0.45f, 1f);
+            lineObj.transform.localScale = new Vector3(0.5f, 7.5f, 1f); // 0.5m de espesor, 7.5m ancho cruzando la calzada en Z
 
             MeshRenderer mr = lineObj.GetComponent<MeshRenderer>();
             if (mr != null)
             {
-                Material lineMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Environment/Materials/M_TrafficSign_Argentine_R14.mat");
-                if (lineMat != null)
+                Material yellowMat = AssetDatabase.LoadAssetAtPath<Material>(YELLOW_ZONE_MAT_PATH);
+                if (yellowMat != null)
                 {
-                    mr.sharedMaterial = lineMat;
+                    mr.sharedMaterial = yellowMat;
+                }
+            }
+
+            // Crear o actualizar la pared / portal translúcido holográfico flotante de advertencia
+            GameObject gateObj = GameObject.Find("WarningGate_20m_Hologram");
+            if (gateObj == null)
+            {
+                gateObj = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                gateObj.name = "WarningGate_20m_Hologram";
+                SceneManager.MoveGameObjectToScene(gateObj, scene);
+                Collider col = gateObj.GetComponent<Collider>();
+                if (col != null) UnityEngine.Object.DestroyImmediate(col);
+            }
+            gateObj.transform.position = new Vector3(90.5f, 2.0f, 116.5f);
+            gateObj.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
+            gateObj.transform.localScale = new Vector3(7.5f, 3.5f, 1f);
+
+            MeshRenderer gateMr = gateObj.GetComponent<MeshRenderer>();
+            if (gateMr != null)
+            {
+                Material holoMat = EnsureWarningGateMaterial();
+                if (holoMat != null)
+                {
+                    gateMr.sharedMaterial = holoMat;
                 }
             }
 
             return lineObj.transform;
         }
 
+        private static GPSRouteRenderer SetupGPSCircuitInScene(Scene scene, GameObject car09)
+        {
+            // Asegurar capas requeridas para la cámara del GPS
+            int routeLayer = GPSNavigationSceneSetup.EnsureLayer(GPSNavigationSceneSetup.ROUTE_LAYER_NAME);
+            int vehicleLayer = GPSNavigationSceneSetup.EnsureLayer(GPSNavigationSceneSetup.VEHICLE_LAYER_NAME);
+            int roadsLayer = GPSNavigationSceneSetup.EnsureLayer(GPSNavigationSceneSetup.ROADS_LAYER_NAME);
+            int buildingLayer = GPSNavigationSceneSetup.EnsureLayer(GPSNavigationSceneSetup.BUILDING_LAYER_NAME);
+
+            // Trazar el circuito urbano con SplineContainer en la escena
+            SplineContainer splineContainer = GPSNavigationSceneSetup.BuildUrbanCircuitSpline(scene);
+
+            // Cablear el SplineContainer a GPSRouteRenderer en Car09
+            GPSRouteRenderer routeRenderer = car09.GetComponent<GPSRouteRenderer>() ?? car09.GetComponentInChildren<GPSRouteRenderer>(true);
+            if (routeRenderer != null && splineContainer != null)
+            {
+                routeRenderer.RouteContainer = splineContainer;
+                routeRenderer.InitializeRoute();
+                EditorUtility.SetDirty(routeRenderer);
+            }
+
+            GPSController gpsCtrl = car09.GetComponent<GPSController>() ?? car09.GetComponentInChildren<GPSController>(true);
+            if (gpsCtrl != null)
+            {
+                gpsCtrl.ResolveVehicle();
+                gpsCtrl.ConfigureCameraTechnical();
+                EditorUtility.SetDirty(gpsCtrl);
+            }
+
+            return routeRenderer;
+        }
+
         private static void SetupLessonControllers(Scene scene, GameObject car09, LessonDefinitionSO lessonData,
             Transform[] spawnPoints, Transform warningLine, TrafficLightController trafficLight,
-            VRScreenFader screenFader, TurnSignalDetector turnDetector)
+            VRScreenFader screenFader, TurnSignalDetector turnDetector, GPSRouteRenderer routeRenderer)
         {
             GameObject managerObj = GameObject.Find("Lesson_Manager");
             if (managerObj == null)
@@ -407,6 +504,17 @@ namespace PrimerVolante.Testing.Editor
             soCtrl.FindProperty("m_TrafficLight").objectReferenceValue = trafficLight;
             soCtrl.FindProperty("m_InfractionManager").objectReferenceValue = infractionMgr;
             soCtrl.FindProperty("m_WarningLine20m").objectReferenceValue = warningLine;
+
+            GameObject warningGate = GameObject.Find("WarningGate_20m_Hologram");
+            if (warningGate != null && soCtrl.FindProperty("m_WarningGateHologram") != null)
+            {
+                soCtrl.FindProperty("m_WarningGateHologram").objectReferenceValue = warningGate;
+            }
+
+            if (routeRenderer != null && soCtrl.FindProperty("m_RouteRenderer") != null)
+            {
+                soCtrl.FindProperty("m_RouteRenderer").objectReferenceValue = routeRenderer;
+            }
 
             SerializedProperty spawnsProp = soCtrl.FindProperty("m_StepSpawnPoints");
             if (spawnsProp != null && spawnPoints != null)
