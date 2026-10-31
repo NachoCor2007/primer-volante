@@ -158,6 +158,12 @@ namespace PrimerVolante.UI
             m_RemainingDistance = 0f;
             m_TotalRouteLength = 0f;
 
+            GPSController gpsCtrl = GetComponent<GPSController>() ?? GetComponentInParent<GPSController>();
+            if (gpsCtrl != null)
+            {
+                gpsCtrl.ResetArrivalState();
+            }
+
             if (m_SplineContainer == null || m_SplineContainer.Splines == null || m_SplineIndex >= m_SplineContainer.Splines.Count)
             {
                 if (m_LineRenderer != null)

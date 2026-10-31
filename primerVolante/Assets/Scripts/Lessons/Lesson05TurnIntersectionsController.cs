@@ -55,6 +55,8 @@ namespace PrimerVolante.Lessons
         private Vector3 m_StepStartPosition;
         private Quaternion m_StepStartRotation;
         private float m_StepStartHeading;
+        private bool m_Step1RightSignalActivated = false;
+        private bool m_Step3RightSignalActivated = false;
         private bool m_TurnSignalPlacedBefore20m = false;
         private bool m_StoppedAtRedLight = false;
         private float m_RedLightStopTimer = 0f;
@@ -308,6 +310,8 @@ namespace PrimerVolante.Lessons
             m_IsLeftTurnCompleted = false;
             m_IsCurbsideStopCompleted = false;
 
+            m_Step1RightSignalActivated = false;
+            m_Step3RightSignalActivated = false;
             m_TurnSignalPlacedBefore20m = false;
             m_StoppedAtRedLight = false;
             m_RedLightStopTimer = 0f;
@@ -337,6 +341,12 @@ namespace PrimerVolante.Lessons
             if (m_RouteRenderer != null)
             {
                 m_RouteRenderer.SplineIndex = stepIndex;
+                GPSController gpsCtrl = m_RouteRenderer.GetComponent<GPSController>() ??
+                                        m_RouteRenderer.GetComponentInParent<GPSController>();
+                if (gpsCtrl != null)
+                {
+                    gpsCtrl.ResetArrivalState();
+                }
             }
         }
 
@@ -502,10 +512,16 @@ namespace PrimerVolante.Lessons
                 }
             }
 
-            // Actualizar la ruta del GPS para que se sincronice con el nuevo spawn del paso
+            // Actualizar la ruta del GPS para que se sincronice con el nuevo spawn del paso y ocultar llegada anterior
             if (m_RouteRenderer != null)
             {
                 m_RouteRenderer.SplineIndex = stepIndex;
+                GPSController gpsCtrl = m_RouteRenderer.GetComponent<GPSController>() ??
+                                        m_RouteRenderer.GetComponentInParent<GPSController>();
+                if (gpsCtrl != null)
+                {
+                    gpsCtrl.ResetArrivalState();
+                }
             }
         }
 
@@ -538,8 +554,37 @@ namespace PrimerVolante.Lessons
             {
                 case LessonActionType.CompleteTurnSignalRightIntro:
                     // Paso 1: El auto arranca detenido cerca de la esquina (X=63.5, Z=110, rumbo Norte).
-                    // Debe avanzar, haber accionado el guiño a la derecha y completado el giro de 90° hacia el Este (+X)
-                    if (distanceTraveled >= 8.0f && deltaHeading >= 70f && deltaHeading <= 110f)
+                    // Debe accionar el guiño a la derecha antes de iniciar el giro, avanzar y completar el giro de 90° hacia el Este (+X).
+                    
+                    // 1. Detectar si el conductor accionó el guiño a la derecha antes de girar (o mientras avanza recto hacia la esquina)
+                    if (m_VehicleController.CurrentTurnSignal == TurnSignalState.Right)
+                    {
+                        m_Step1RightSignalActivated = true;
+                    }
+
+                    // 2. Si el conductor colocó guiño izquierdo pero está doblando hacia la derecha:
+                    if (m_VehicleController.CurrentTurnSignal == TurnSignalState.Left && deltaHeading > 15f && !m_IsRetrying)
+                    {
+                        TriggerTurnSignalRetry("Falta: Colocaste el guiño hacia el lado contrario (izquierda)");
+                        return;
+                    }
+
+                    // 3. Si comenzó a doblar (deltaHeading > 18°) o avanzó más de 4.5m hacia la esquina sin haber accionado el guiño derecho:
+                    if (!m_Step1RightSignalActivated && !m_IsRetrying)
+                    {
+                        if (deltaHeading > 18f || (carPos.z > 114.5f && distanceTraveled > 4.5f))
+                        {
+                            TriggerTurnSignalRetry("Falta: Debes colocar el guiño a la derecha antes de iniciar el giro");
+                            return;
+                        }
+                    }
+
+                    // 4. Completar únicamente si:
+                    // - Se activó oportunamente el guiño derecho (m_Step1RightSignalActivated)
+                    // - Avanzó al menos 8 metros
+                    // - Completó el giro a 90° hacia el Este (deltaHeading entre 65° y 115°)
+                    // - El detector de guiños no registró una infracción posterior
+                    if (m_Step1RightSignalActivated && distanceTraveled >= 8.0f && deltaHeading >= 65f && deltaHeading <= 115f)
                     {
                         if (m_TurnSignalDetector == null || m_TurnSignalDetector.LastOutcome != TurnSignalOutcome.Fault)
                         {
@@ -588,6 +633,11 @@ namespace PrimerVolante.Lessons
                     // Auto viaja hacia el Sur (-Z) desde Z=95 hacia la esquina Z=63.5.
                     // Semáforo en (112.38, 0.20, 67.58) mirando al Norte. Senda en Z=71.5.
 
+                    if (m_VehicleController.CurrentTurnSignal == TurnSignalState.Right)
+                    {
+                        m_Step3RightSignalActivated = true;
+                    }
+
                     // Subfase A: Detención reglamentaria ante la luz roja antes de la senda
                     if (!m_StoppedAtRedLight)
                     {
@@ -625,6 +675,12 @@ namespace PrimerVolante.Lessons
                     {
                         if (deltaHeading >= 65f && deltaHeading <= 115f && carPos.x <= 110.0f)
                         {
+                            if (!m_Step3RightSignalActivated && !m_IsRetrying)
+                            {
+                                TriggerTurnSignalRetry("Falta: Debes colocar el guiño a la derecha para realizar el giro");
+                                return;
+                            }
+
                             if (m_TurnSignalDetector == null || m_TurnSignalDetector.LastOutcome != TurnSignalOutcome.Fault)
                             {
                                 m_IsTrafficLightCrossCompleted = true;
