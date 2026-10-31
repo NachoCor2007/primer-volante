@@ -74,6 +74,14 @@ namespace PrimerVolante.MainMenu
         [Tooltip("Ítems por segundo a ese ángulo.")]
         [SerializeField] private float m_MaxItemsPerSecond = MenuScrollMath.DefaultMaxItemsPerSecond;
 
+        [Tooltip("Histéresis: ya en movimiento, el cursor se detiene recién al bajar de este ángulo (grados). Debe ser menor a la zona muerta.")]
+        [SerializeField] private float m_ReleaseDegrees = MenuScrollMath.DefaultReleaseDegrees;
+
+        [Header("Palanca")]
+        [Tooltip("Segundos que una marcha debe estar estable para cambiar de página. Al sostener la palanca, el imán " +
+                 "dispara OnGearChanged en cada marcha que cruza (P a D pasa por R y N): así no se abren páginas de paso.")]
+        [SerializeField] private float m_GearSettleSeconds = 0.25f;
+
         [Header("Capa de pruebas (Editor)")]
         [Tooltip("Tecla que simula pulsar el botón de ignición. (South y la tecla E las usa VehicleController para el motor.)")]
         [SerializeField] private Key m_IgnitionKey = Key.Enter;
@@ -84,6 +92,19 @@ namespace PrimerVolante.MainMenu
         private bool m_Initialized;
         private bool m_CalibrationOpen;
         private UnityEngine.Events.UnityAction<GearState> m_GearListener;
+        private bool m_HasPendingGear;
+        private GearState m_PendingGear;
+        private float m_PendingGearTimer;
+
+        // Única fuente de verdad del mapeo página <-> marcha, indexada por MainMenuPage (Splash no tiene marcha propia).
+        private static readonly GearState[] s_GearByPage =
+        {
+            GearState.P, // Splash
+            GearState.P, // Lessons
+            GearState.R, // Controls
+            GearState.N, // Calibration
+            GearState.D  // Credits
+        };
 
         /// <summary>Página actual.</summary>
         public MainMenuPage CurrentPage => m_Page;
@@ -103,14 +124,21 @@ namespace PrimerVolante.MainMenu
         /// <summary>Mapeo marcha → página: P = Lecciones, R = Controles, N = Calibración, D = Créditos.</summary>
         public static MainMenuPage PageForGear(GearState gear)
         {
-            switch (gear)
+            for (int page = (int)MainMenuPage.Lessons; page < s_GearByPage.Length; page++)
             {
-                case GearState.R: return MainMenuPage.Controls;
-                case GearState.N: return MainMenuPage.Calibration;
-                case GearState.D: return MainMenuPage.Credits;
-                default: return MainMenuPage.Lessons;
+                if (s_GearByPage[page] == gear) return (MainMenuPage)page;
             }
+            return MainMenuPage.Lessons;
         }
+
+        /// <summary>Marcha que corresponde a una página (inversa de <see cref="PageForGear"/>; el Splash cuenta como P).</summary>
+        public static GearState GearForPage(MainMenuPage page)
+        {
+            return s_GearByPage[(int)page];
+        }
+
+        /// <summary>true mientras hay un cambio de marcha esperando estabilizarse (<c>m_GearSettleSeconds</c>).</summary>
+        public bool HasPendingGear => m_HasPendingGear;
 
         private void Start()
         {
@@ -157,6 +185,7 @@ namespace PrimerVolante.MainMenu
         public void Restart()
         {
             Unsubscribe();
+            m_HasPendingGear = false;
             m_Initialized = false;
             if (m_LessonList != null)
             {
@@ -184,12 +213,13 @@ namespace PrimerVolante.MainMenu
             if (m_LessonList == null) m_LessonList = Object.FindAnyObjectByType<LessonListPanel>(FindObjectsInactive.Include);
         }
 
-        /// <summary>Motor apagado, freno de mano puesto y Rigidbody congelado: el auto no se mueve ni hace ruido.</summary>
+        /// <summary>Motor apagado y bloqueado, freno de mano puesto y Rigidbody congelado: el auto no se mueve ni hace ruido.</summary>
         private void ImmobilizeVehicle()
         {
             if (m_Vehicle == null) return;
 
             m_Vehicle.SetEngineRunning(false);
+            m_Vehicle.SetEngineLocked(true);
             if (m_Handbrake != null) m_Handbrake.SetEngagementImmediate(1f);
 
             var body = m_Vehicle.GetComponent<Rigidbody>();
@@ -211,7 +241,6 @@ namespace PrimerVolante.MainMenu
                 m_GearShifter.OnGearChanged.AddListener(m_GearListener);
             }
             if (m_StartButton != null) m_StartButton.Pressed += HandleIgnitionPressed;
-            if (m_Vehicle != null) m_Vehicle.OnEngineStateChanged += HandleEngineStateChanged;
         }
 
         private void Unsubscribe()
@@ -219,21 +248,21 @@ namespace PrimerVolante.MainMenu
             if (m_GearShifter != null && m_GearListener != null) m_GearShifter.OnGearChanged.RemoveListener(m_GearListener);
             m_GearListener = null;
             if (m_StartButton != null) m_StartButton.Pressed -= HandleIgnitionPressed;
-            if (m_Vehicle != null) m_Vehicle.OnEngineStateChanged -= HandleEngineStateChanged;
         }
 
-        // Si el motor llegara a encenderse por otra vía (p. ej. la capa de pruebas de VehicleController), se apaga enseguida.
-        private void HandleEngineStateChanged(EngineState state)
-        {
-            if (state != EngineState.Off && m_Vehicle != null) m_Vehicle.SetEngineRunning(false);
-        }
-
-        /// <summary>Cambio de marcha: durante el Splash solo se registra; en el resto cambia la página.</summary>
+        /// <summary>
+        /// Cambio de marcha. Durante el Splash solo se registra. Fuera de él NO cambia de página directo: queda
+        /// pendiente y <see cref="Tick"/> lo aplica cuando lleva estable <c>m_GearSettleSeconds</c> (cada nueva
+        /// notificación reinicia la espera), para no abrir las páginas intermedias al barrer la palanca.
+        /// </summary>
         public void HandleGearChanged(GearState gear)
         {
             m_CurrentGear = gear;
             if (m_Page == MainMenuPage.Splash) return;
-            SetPage(PageForGear(gear));
+
+            m_PendingGear = gear;
+            m_PendingGearTimer = 0f;
+            m_HasPendingGear = true;
         }
 
         /// <summary>Pulsación de la ignición: sale del Splash, o selecciona la lección bajo el cursor en Lecciones.</summary>
@@ -242,6 +271,7 @@ namespace PrimerVolante.MainMenu
             switch (m_Page)
             {
                 case MainMenuPage.Splash:
+                    m_HasPendingGear = false;
                     SetPage(PageForGear(m_CurrentGear));
                     break;
                 case MainMenuPage.Lessons:
@@ -297,23 +327,12 @@ namespace PrimerVolante.MainMenu
             for (int i = 0; i < m_GearTabs.Length; i++)
             {
                 if (m_GearTabs[i] == null) continue;
-                bool active = !splash && i == (int)PageGear(m_Page);
+                bool active = !splash && i == (int)m_Page - (int)MainMenuPage.Lessons;
                 m_GearTabs[i].color = active ? m_ActiveTabColor : m_InactiveTabColor;
                 m_GearTabs[i].fontStyle = active ? FontStyles.Bold : FontStyles.Normal;
             }
 
             UpdateLegendAndHighlight();
-        }
-
-        private static GearState PageGear(MainMenuPage page)
-        {
-            switch (page)
-            {
-                case MainMenuPage.Controls: return GearState.R;
-                case MainMenuPage.Calibration: return GearState.N;
-                case MainMenuPage.Credits: return GearState.D;
-                default: return GearState.P;
-            }
         }
 
         private void UpdateLegendAndHighlight()
@@ -359,9 +378,28 @@ namespace PrimerVolante.MainMenu
         private void Update()
         {
             ReadIgnitionTestLayer();
+            Tick(Time.unscaledDeltaTime);
+        }
+
+        /// <summary>
+        /// Avanza el menú <paramref name="dt"/> segundos: aplica la marcha pendiente si lleva estable
+        /// <c>m_GearSettleSeconds</c> y, en la página Lecciones, mueve el cursor con el ángulo actual del volante.
+        /// La llama Update; los tests la llaman con dt inyectado.
+        /// </summary>
+        public void Tick(float dt)
+        {
+            if (m_HasPendingGear)
+            {
+                m_PendingGearTimer += dt;
+                if (m_PendingGearTimer >= m_GearSettleSeconds)
+                {
+                    m_HasPendingGear = false;
+                    SetPage(PageForGear(m_PendingGear));
+                }
+            }
 
             if (m_Page == MainMenuPage.Lessons && m_SteeringWheel != null)
-                ApplyScroll(m_SteeringWheel.CurrentAngle, Time.unscaledDeltaTime);
+                ApplyScroll(m_SteeringWheel.CurrentAngle, dt);
         }
 
         /// <summary>
@@ -372,8 +410,7 @@ namespace PrimerVolante.MainMenu
         {
             if (m_Page != MainMenuPage.Lessons || m_LessonList == null) return;
 
-            float rate = MenuScrollMath.ItemsPerSecond(wheelAngleDeg, m_DeadZoneDegrees, m_FullAngleDegrees, m_MaxItemsPerSecond);
-            int steps = m_Scroll.Step(rate, dt);
+            int steps = m_Scroll.StepAngle(wheelAngleDeg, dt, m_DeadZoneDegrees, m_ReleaseDegrees, m_FullAngleDegrees, m_MaxItemsPerSecond);
             if (steps != 0) m_LessonList.MoveCursor(steps);
         }
 
