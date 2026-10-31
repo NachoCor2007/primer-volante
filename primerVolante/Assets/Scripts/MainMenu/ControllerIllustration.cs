@@ -53,6 +53,7 @@ namespace PrimerVolante.MainMenu
         [SerializeField] private Color m_ButtonColor = new Color(0.85f, 0.15f, 0.15f, 1f);
 
         private Transform m_IllustrationRoot;
+        private bool m_ModelVisible = true;
         private Transform m_ControllerTransform;
         private Transform m_ButtonTransform;
         private Renderer m_HighlightedRenderer;
@@ -126,6 +127,33 @@ namespace PrimerVolante.MainMenu
             {
                 BuildButton();
                 EvaluateAt(0f);
+            }
+
+            ApplyModelVisibility();
+        }
+
+        /// <summary>false si los modelos 3D están ocultos (p. ej. bajo el overlay de salida).</summary>
+        public bool ModelVisible => m_ModelVisible;
+
+        /// <summary>
+        /// Muestra u oculta los modelos 3D (control y botón 3D) apagando sus renderers; el GameObject sigue activo. Los 3D de un
+        /// canvas se dibujan por encima de la UI, así que hay que ocultarlos cuando algo debe tapar la tarjeta. La animación
+        /// "Pulsar" sigue corriendo invisible (es función pura del tiempo): al volver a mostrarse no queda en un estado roto.
+        /// El valor se recuerda: una ilustración que arma su modelo después (página activada más tarde) lo respeta.
+        /// </summary>
+        public void SetModelVisible(bool visible)
+        {
+            m_ModelVisible = visible;
+            ApplyModelVisibility();
+        }
+
+        private void ApplyModelVisibility()
+        {
+            if (m_IllustrationRoot == null) return;
+
+            foreach (Renderer r in m_IllustrationRoot.GetComponentsInChildren<Renderer>(true))
+            {
+                r.enabled = m_ModelVisible;
             }
         }
 

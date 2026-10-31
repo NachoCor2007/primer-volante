@@ -207,6 +207,7 @@ namespace PrimerVolante.MainMenu
             m_Scroll.Reset();
             m_ExitOverlayVisible = false;
             if (m_ExitOverlay != null) m_ExitOverlay.SetActive(false);
+            ApplyIllustrationVisibility();
 
             Subscribe();
             m_Page = MainMenuPage.Splash;
@@ -363,7 +364,22 @@ namespace PrimerVolante.MainMenu
         {
             m_ExitOverlayVisible = visible;
             if (m_ExitOverlay != null) m_ExitOverlay.SetActive(visible);
+            ApplyIllustrationVisibility();
             UpdateLegendAndHighlight();
+        }
+
+        // Los modelos 3D de los mandos se dibujan sobre la UI del canvas: con el overlay de salida visible se ocultan todos
+        // (también los de las páginas que se activen mientras tanto); al cancelar vuelven, y las páginas inactivas siguen ocultas.
+        private void ApplyIllustrationVisibility()
+        {
+            for (int i = 0; i < m_PageRoots.Length; i++)
+            {
+                if (m_PageRoots[i] == null) continue;
+                foreach (ControllerIllustration illustration in m_PageRoots[i].GetComponentsInChildren<ControllerIllustration>(true))
+                {
+                    illustration.SetModelVisible(!m_ExitOverlayVisible);
+                }
+            }
         }
 
         private void SelectCurrentLesson()
