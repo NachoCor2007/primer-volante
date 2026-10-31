@@ -51,9 +51,17 @@ namespace PrimerVolante.Lessons
         private float m_StepStartHeading;
         private bool m_TurnSignalPlacedBefore20m = false;
         private bool m_StoppedAtRedLight = false;
+        private float m_RedLightStopTimer = 0f;
         private bool m_IsRetrying = false;
         private bool m_IsCompletingStep = false;
         private int m_CurrentStepIndex = -1;
+
+        // Estados booleanos de compleción real de maniobras
+        private bool m_IsTurnIntroCompleted = false;
+        private bool m_IsAnticipationTurnCompleted = false;
+        private bool m_IsTrafficLightCrossCompleted = false;
+        private bool m_IsLeftTurnCompleted = false;
+        private bool m_IsCurbsideStopCompleted = false;
 
         public static Lesson05TurnIntersectionsController Instance => s_Instance;
         public LessonManager LessonManager => m_LessonManager;
@@ -61,6 +69,13 @@ namespace PrimerVolante.Lessons
         public TurnSignalDetector TurnDetector => m_TurnSignalDetector;
         public VRScreenFader ScreenFader => m_ScreenFader;
         public bool IsRetrying => m_IsRetrying;
+
+        // Propiedades públicas para consulta desde LessonActionMonitor
+        public bool IsTurnIntroCompleted => m_IsTurnIntroCompleted;
+        public bool IsAnticipationTurnCompleted => m_IsAnticipationTurnCompleted;
+        public bool IsTrafficLightCrossCompleted => m_IsTrafficLightCrossCompleted;
+        public bool IsLeftTurnCompleted => m_IsLeftTurnCompleted;
+        public bool IsCurbsideStopCompleted => m_IsCurbsideStopCompleted;
 
         private void Awake()
         {
@@ -171,6 +186,16 @@ namespace PrimerVolante.Lessons
 
         private void ResetStepMetrics(int stepIndex)
         {
+            m_IsTurnIntroCompleted = false;
+            m_IsAnticipationTurnCompleted = false;
+            m_IsTrafficLightCrossCompleted = false;
+            m_IsLeftTurnCompleted = false;
+            m_IsCurbsideStopCompleted = false;
+
+            m_TurnSignalPlacedBefore20m = false;
+            m_StoppedAtRedLight = false;
+            m_RedLightStopTimer = 0f;
+
             if (m_VehicleController != null)
             {
                 m_StepStartPosition = m_VehicleController.transform.position;
@@ -178,10 +203,7 @@ namespace PrimerVolante.Lessons
                 m_StepStartHeading = m_VehicleController.transform.eulerAngles.y;
             }
 
-            m_TurnSignalPlacedBefore20m = false;
-            m_StoppedAtRedLight = false;
-
-            // Configurar el semáforo para el paso 3 (Cruce semaforizado)
+            // Configurar el semáforo para el paso 3 (Cruce semaforizado): arranca en Rojo
             if (stepIndex == 2 && m_TrafficLight != null)
             {
                 m_TrafficLight.SetState(TrafficLightState.Red);
@@ -336,22 +358,24 @@ namespace PrimerVolante.Lessons
 
             float currentHeading = m_VehicleController.transform.eulerAngles.y;
             float deltaHeading = Mathf.DeltaAngle(m_StepStartHeading, currentHeading);
+            float distanceTraveled = Vector3.Distance(m_StepStartPosition, m_VehicleController.transform.position);
 
             switch (step.requiredAction)
             {
                 case LessonActionType.CompleteTurnSignalRightIntro:
-                    // Paso 1: Giro a la derecha 90° con guiño a la derecha y sin falta
-                    if (deltaHeading >= 75f && deltaHeading <= 110f)
+                    // Paso 1: El auto arranca detenido cerca de la esquina.
+                    // Debe avanzar al menos 8m, haber accionado el guiño a la derecha y completado el giro de 90° (deltaHeading 75° a 110°)
+                    if (distanceTraveled >= 8.0f && deltaHeading >= 75f && deltaHeading <= 110f)
                     {
                         if (m_TurnSignalDetector == null || m_TurnSignalDetector.LastOutcome != TurnSignalOutcome.Fault)
                         {
-                            TriggerStepSuccess();
+                            m_IsTurnIntroCompleted = true;
                         }
                     }
                     break;
 
                 case LessonActionType.TurnSignalAnticipation20m:
-                    // Paso 2: Guiño antes de la línea de 20m y completar giro a la derecha
+                    // Paso 2: Guiño antes de la línea de 20m y completar giro a la derecha a 90°
                     if (m_WarningLine20m != null)
                     {
                         float distToLine = Vector3.Dot(m_WarningLine20m.position - m_VehicleController.transform.position, m_WarningLine20m.forward);
@@ -359,21 +383,27 @@ namespace PrimerVolante.Lessons
                         {
                             m_TurnSignalPlacedBefore20m = true;
                         }
+                        else if (distToLine <= -1.0f && !m_TurnSignalPlacedBefore20m && !m_IsRetrying)
+                        {
+                            // Si cruzó la línea sin poner el guiño, se le avisa y reinicia
+                            TriggerTurnSignalRetry("Falta: Debes colocar el guiño ANTES de cruzar la franja en el asfalto");
+                            return;
+                        }
                     }
                     else
                     {
-                        // Si no hay transform de referencia, se asume que si colocó el guiño en marcha cuenta
-                        if (m_VehicleController.CurrentTurnSignal == TurnSignalState.Right)
+                        if (distanceTraveled < 20f && m_VehicleController.CurrentTurnSignal == TurnSignalState.Right)
                         {
                             m_TurnSignalPlacedBefore20m = true;
                         }
                     }
 
-                    if (deltaHeading >= 75f && deltaHeading <= 110f)
+                    // Giro completado habiendo puesto el guiño previamente
+                    if (distanceTraveled >= 25f && deltaHeading >= 75f && deltaHeading <= 110f)
                     {
                         if (m_TurnSignalPlacedBefore20m && (m_TurnSignalDetector == null || m_TurnSignalDetector.LastOutcome != TurnSignalOutcome.Fault))
                         {
-                            TriggerStepSuccess();
+                            m_IsAnticipationTurnCompleted = true;
                         }
                     }
                     break;
@@ -382,94 +412,54 @@ namespace PrimerVolante.Lessons
                     // Paso 3: Detenerse en rojo antes de la senda peatonal y cruzar en verde
                     if (m_TrafficLight != null && m_TrafficLight.CurrentState == TrafficLightState.Red)
                     {
-                        if (m_VehicleController.CurrentSpeedKmh < 0.5f)
+                        // Verificar si está frenado ante el semáforo
+                        if (m_VehicleController.CurrentSpeedKmh < 0.5f && distanceTraveled >= 5.0f)
                         {
                             m_StoppedAtRedLight = true;
-                            // Pasar el semáforo a verde para permitir el avance
-                            m_TrafficLight.SetState(TrafficLightState.Green);
+                            m_RedLightStopTimer += Time.deltaTime;
+
+                            // Tras 2 segundos de detención reglamentaria, pasar a Verde
+                            if (m_RedLightStopTimer >= 2.0f)
+                            {
+                                m_TrafficLight.SetState(TrafficLightState.Green);
+                            }
                         }
                     }
 
+                    // Una vez en verde, el auto avanza y cruza la intersección
                     if (m_StoppedAtRedLight && m_TrafficLight != null && m_TrafficLight.CurrentState == TrafficLightState.Green)
                     {
-                        float distanceTraveled = Vector3.Distance(m_StepStartPosition, m_VehicleController.transform.position);
-                        if (distanceTraveled >= 15f && m_VehicleController.CurrentSpeedKmh > 3f)
+                        if (distanceTraveled >= 22f && m_VehicleController.CurrentSpeedKmh > 2f)
                         {
-                            TriggerStepSuccess();
+                            m_IsTrafficLightCrossCompleted = true;
                         }
                     }
                     break;
 
                 case LessonActionType.CompleteLeftTurnCrossing:
                     // Paso 4: Giro 90° a la izquierda con más de 20 m de anticipación y sin contramano
-                    // Giro a la izquierda: deltaHeading negativo (-75° a -110°)
-                    if (deltaHeading <= -75f && deltaHeading >= -115f)
+                    // Giro a la izquierda: deltaHeading negativo (-75° a -115°)
+                    if (distanceTraveled >= 12f && deltaHeading <= -75f && deltaHeading >= -115f)
                     {
                         bool noWrongWay = (m_WrongWayDetector == null || !m_WrongWayDetector.IsWrongWay);
                         bool noTurnFault = (m_TurnSignalDetector == null || m_TurnSignalDetector.LastOutcome != TurnSignalOutcome.Fault);
                         if (noWrongWay && noTurnFault)
                         {
-                            TriggerStepSuccess();
+                            m_IsLeftTurnCompleted = true;
                         }
                     }
                     break;
 
                 case LessonActionType.CurbsideStop:
                     // Paso 5: Arrime a cordón, detenido, Parking (P) y freno de mano
-                    bool stopped = m_VehicleController.CurrentSpeedKmh < 0.2f;
+                    bool stopped = m_VehicleController.CurrentSpeedKmh < 0.2f && distanceTraveled >= 4.0f;
                     bool park = (m_VehicleController.CurrentGear == GearState.Park || m_VehicleController.CurrentGear == GearState.P);
                     bool handbrake = m_VehicleController.HandbrakeEngagement >= 0.85f;
                     if (stopped && park && handbrake)
                     {
-                        TriggerStepSuccess();
+                        m_IsCurbsideStopCompleted = true;
                     }
                     break;
-            }
-        }
-
-        private void TriggerStepSuccess()
-        {
-            if (m_IsCompletingStep) return;
-            m_IsCompletingStep = true;
-
-            if (m_HUDPanel != null)
-            {
-                m_HUDPanel.PlayActionSuccessFeedback(() =>
-                {
-                    if (m_LessonManager != null && m_LessonManager.IsLessonActive)
-                    {
-                        m_LessonManager.CompleteCurrentStep();
-                    }
-                });
-            }
-            else if (m_LessonManager != null)
-            {
-                m_LessonManager.CompleteCurrentStep();
-            }
-        }
-
-        /// <summary>
-        /// Permite comprobar si la condición de un paso específico está cumplida (para suites de testing).
-        /// </summary>
-        public bool IsStepConditionMet(int stepIndex)
-        {
-            if (m_VehicleController == null) return false;
-
-            switch (stepIndex)
-            {
-                case 0:
-                    return m_VehicleController.CurrentTurnSignal == TurnSignalState.Right;
-                case 1:
-                    return m_TurnSignalPlacedBefore20m || m_VehicleController.CurrentTurnSignal == TurnSignalState.Right;
-                case 2:
-                    return m_StoppedAtRedLight || (m_TrafficLight != null && m_TrafficLight.CurrentState == TrafficLightState.Green);
-                case 3:
-                    return m_VehicleController.CurrentTurnSignal == TurnSignalState.Left;
-                case 4:
-                    return (m_VehicleController.CurrentGear == GearState.Park || m_VehicleController.CurrentGear == GearState.P) &&
-                           m_VehicleController.HandbrakeEngagement >= 0.85f;
-                default:
-                    return false;
             }
         }
     }

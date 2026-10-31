@@ -16,7 +16,8 @@ namespace PrimerVolante.Testing.Editor
     /// "Maniobras de Estacionamiento y Precisión" (TASK-301 / Issue #10 / PRI-46).
     /// Clona de forma segura Lesson_01_BasicDriving.unity a Assets/Scenes/Lessons/Lesson_06_ParkingManeuvers.unity,
     /// crea los ScriptableObjects correspondientes y construye el área de dársenas en el playón (X=120, Z=60 a 120)
-    /// con TurnSignalExemptZone, conos de tránsito y vehículos estáticos equipados con ObstacleCollisionDetector.
+    /// con TurnSignalExemptZone, recuadros amarillos demarcados en el asfalto, conos de tránsito y vehículos
+    /// estáticos equipados con ObstacleCollisionDetector, limpiando vehículos residuales de la calle.
     /// Cumple estrictamente la regla de cero APIs obsoletas (AGENTS.md).
     /// </summary>
     public static class Lesson06ParkingSetup
@@ -31,6 +32,7 @@ namespace PrimerVolante.Testing.Editor
 
         public const string CONE_PREFAB_PATH = "Assets/SimplePoly City - Low Poly Assets/Prefab/Props/Props_Traffic cone.prefab";
         public const string STATIC_CAR_PREFAB_PATH = "Assets/SimplePoly City - Low Poly Assets/Prefab/Vehicles/Vehicle with Static Wheels/Vehicle_Car_color01.prefab";
+        public const string YELLOW_MATERIAL_PATH = "Assets/Environment/Materials/M_Parking_YellowZone.mat";
 
         [MenuItem("Tools/Primer Volante/Lessons/Setup Lesson 6 Scene")]
         public static void SetupLesson06()
@@ -41,7 +43,7 @@ namespace PrimerVolante.Testing.Editor
 
             EnsureDirectories();
 
-            // 1. Crear o actualizar los ScriptableObjects de la Lección 6
+            // 1. Crear o actualizar los ScriptableObjects de la Lección 6 con textos claros y concisos
             LessonDefinitionSO lessonData = CreateOrUpdateLesson06Assets();
 
             // 2. Asegurar que la escena clonada exista
@@ -63,7 +65,10 @@ namespace PrimerVolante.Testing.Editor
                 return;
             }
 
-            // 5. Configurar detector de guiños en Car09
+            // 5. Limpiar vehículos decorativos residuales de la calle X=120 para despejar el área de maniobras
+            CleanResidualVehiclesInStreet(scene, car09);
+
+            // 6. Configurar detector de guiños en Car09
             TurnSignalDetector turnDetector = car09.GetComponent<TurnSignalDetector>();
             if (turnDetector == null)
             {
@@ -76,21 +81,22 @@ namespace PrimerVolante.Testing.Editor
             }
             EditorUtility.SetDirty(turnDetector);
 
-            // 6. Asegurar VRScreenFader en la escena
+            // 7. Asegurar VRScreenFader en la escena
             VRScreenFader screenFader = VRScreenFader.EnsureScreenFader();
             EditorUtility.SetDirty(screenFader);
 
-            // 7. Configurar la TurnSignalExemptZone en el playón (X=120, Z=60 a 120)
+            // 8. Configurar la TurnSignalExemptZone en el playón (X=120, Z=60 a 120)
             TurnSignalExemptZone exemptZone = SetupTurnSignalExemptZone(scene);
 
-            // 8. Construir las tres estaciones de estacionamiento con conos y autos estáticos
+            // 9. Construir las tres estaciones de estacionamiento con recuadros amarillos en el piso, conos y autos
             ParkingZoneTrigger trigger45, trigger90, triggerParallel;
-            BuildParkingStations(scene, out trigger45, out trigger90, out triggerParallel);
+            GameObject hl45, hl90, hlParallel;
+            BuildParkingStations(scene, out trigger45, out trigger90, out triggerParallel, out hl45, out hl90, out hlParallel);
 
-            // 9. Configurar puntos de spawn para cada paso
+            // 10. Configurar puntos de spawn para cada paso
             Transform[] spawnPoints = EnsureSpawnPoints(scene);
 
-            // 10. Posicionar Car09 inicialmente en la aproximación al área de maniobras
+            // 11. Posicionar Car09 inicialmente en la aproximación al área de maniobras
             if (spawnPoints != null && spawnPoints.Length > 0 && spawnPoints[0] != null)
             {
                 car09.transform.position = spawnPoints[0].position;
@@ -106,10 +112,11 @@ namespace PrimerVolante.Testing.Editor
                 }
             }
 
-            // 11. Configurar LessonManager, HUD y Lesson06ParkingController
-            SetupLessonControllers(scene, car09, lessonData, spawnPoints, exemptZone, trigger45, trigger90, triggerParallel, screenFader);
+            // 12. Configurar LessonManager, HUD y Lesson06ParkingController
+            SetupLessonControllers(scene, car09, lessonData, spawnPoints, exemptZone,
+                trigger45, trigger90, triggerParallel, hl45, hl90, hlParallel, screenFader);
 
-            // 12. Guardar escena y assets
+            // 13. Guardar escena y assets
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             AssetDatabase.SaveAssets();
@@ -155,8 +162,8 @@ namespace PrimerVolante.Testing.Editor
             EnsureDirectories();
 
             LessonStepSO step1 = CreateOrUpdateStep("Lesson06_Step01_HazardLightsApproach",
-                "Aproximación con Balizas de Emergencia",
-                "Pulsa con tu mano virtual el botón de balizas de emergencia en la consola central para advertir la maniobra a los vehículos traseros.",
+                "Luces de Emergencia",
+                "Presiona el botón rojo de balizas (triángulo) para advertir tu maniobra.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.ActivateHazardLights,
                 0f,
@@ -164,8 +171,8 @@ namespace PrimerVolante.Testing.Editor
                 "HazardButton");
 
             LessonStepSO step2 = CreateOrUpdateStep("Lesson06_Step02_DiagonalParking45",
-                "Estacionamiento a 45° (Espiga)",
-                "Modula los pedales a baja velocidad, encara la dársena a 45° de frente entre los conos y deténte antes del cordón. Coloca Parking (P) y freno de mano.",
+                "Estacionamiento a 45°",
+                "Avanza y entra de frente centrado en el recuadro amarillo. Coloca P y freno de mano.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.ParkDiagonal45,
                 0f,
@@ -173,8 +180,8 @@ namespace PrimerVolante.Testing.Editor
                 "VRGearShifter, VRHandbrake");
 
             LessonStepSO step3 = CreateOrUpdateStep("Lesson06_Step03_BayParking90Reverse",
-                "Estacionamiento a 90° de Culata",
-                "Sobrepasa la dársena a 90°, coloca Reversa (R) y maniobra hacia atrás utilizando los espejos retrovisores laterales para centrar el auto entre los conos delimitadores y frena.",
+                "Estacionamiento a 90°",
+                "Pasa la dársena, pon Reversa (R) y estaciona de culata dentro del recuadro amarillo.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.ParkBay90Reverse,
                 0f,
@@ -182,8 +189,8 @@ namespace PrimerVolante.Testing.Editor
                 "VRGearShifter");
 
             LessonStepSO step4 = CreateOrUpdateStep("Lesson06_Step04_ParallelParkingRight",
-                "Estacionamiento en Paralelo al Cordón",
-                "Alinea el auto paralelo al vehículo de referencia delantero, coloca Reversa (R) girando a 45° hacia la vereda, y quiebra la dirección al lado opuesto al tomar la referencia del espejo para acomodar el vehículo paralelo al cordón a menos de 30 cm sin golpear los obstáculos.",
+                "Estacionamiento en Paralelo",
+                "Maniobra marcha atrás entre los dos vehículos hasta quedar paralelo en el recuadro amarillo.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.ParkParallelRight,
                 0f,
@@ -191,8 +198,8 @@ namespace PrimerVolante.Testing.Editor
                 "VRGearShifter, SteeringWheel_Pivot");
 
             LessonStepSO step5 = CreateOrUpdateStep("Lesson06_Step05_SecurePark",
-                "Aseguramiento del Vehículo",
-                "Apaga las balizas de emergencia, coloca la palanca en Parking (P) y aplica firmemente el freno de mano.",
+                "Asegurar el Vehículo",
+                "Apaga las balizas, coloca Parking (P) y sube firmemente el freno de mano.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.SecureParkDeactivateHazards,
                 0f,
@@ -262,6 +269,50 @@ namespace PrimerVolante.Testing.Editor
             return UnityEngine.Object.FindAnyObjectByType<VehicleController>()?.gameObject;
         }
 
+        /// <summary>
+        /// Elimina vehículos decorativos residuales de la ciudad en la calle X=120 para despejar el área de maniobras.
+        /// </summary>
+        private static void CleanResidualVehiclesInStreet(Scene scene, GameObject car09)
+        {
+            var toDestroy = new List<GameObject>();
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                FindResidualVehiclesRecursive(root, car09, toDestroy);
+            }
+
+            int count = toDestroy.Count;
+            foreach (var go in toDestroy)
+            {
+                if (go != null) UnityEngine.Object.DestroyImmediate(go);
+            }
+
+            if (count > 0)
+            {
+                Debug.Log($"[Lesson06ParkingSetup] 🧹 Se eliminaron {count} vehículos residuales para despejar la calle X=120.");
+            }
+        }
+
+        private static void FindResidualVehiclesRecursive(GameObject obj, GameObject car09, List<GameObject> toDestroy)
+        {
+            if (obj == null || obj == car09) return;
+            if (obj.name == "Parking_Stations_Container" || obj.transform.IsChildOf(car09.transform)) return;
+
+            if (obj.name.StartsWith("Vehicle_") || obj.name.StartsWith("Vehicle") || obj.name.Contains("Car08") || obj.name.Contains("Car07"))
+            {
+                Vector3 pos = obj.transform.position;
+                if (pos.x >= 110f && pos.x <= 130f && pos.z >= 45f && pos.z <= 130f)
+                {
+                    toDestroy.Add(obj);
+                    return;
+                }
+            }
+
+            foreach (Transform child in obj.transform)
+            {
+                FindResidualVehiclesRecursive(child.gameObject, car09, toDestroy);
+            }
+        }
+
         private static TurnSignalExemptZone SetupTurnSignalExemptZone(Scene scene)
         {
             GameObject exemptObj = GameObject.Find("TurnSignalExempt_ParkingZone");
@@ -293,8 +344,29 @@ namespace PrimerVolante.Testing.Editor
             return zone;
         }
 
+        private static Material EnsureYellowZoneMaterial()
+        {
+            Material mat = AssetDatabase.LoadAssetAtPath<Material>(YELLOW_MATERIAL_PATH);
+            if (mat == null)
+            {
+                Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+                mat = new Material(shader);
+                mat.name = "M_Parking_YellowZone";
+                mat.color = new Color(1.0f, 0.82f, 0.0f, 0.75f);
+                if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", new Color(1.0f, 0.82f, 0.0f, 0.75f));
+                if (mat.HasProperty("_EmissionColor"))
+                {
+                    mat.EnableKeyword("_EMISSION");
+                    mat.SetColor("_EmissionColor", new Color(1.0f, 0.82f, 0.0f) * 0.4f);
+                }
+                AssetDatabase.CreateAsset(mat, YELLOW_MATERIAL_PATH);
+            }
+            return mat;
+        }
+
         private static void BuildParkingStations(Scene scene,
-            out ParkingZoneTrigger trigger45, out ParkingZoneTrigger trigger90, out ParkingZoneTrigger triggerParallel)
+            out ParkingZoneTrigger trigger45, out ParkingZoneTrigger trigger90, out ParkingZoneTrigger triggerParallel,
+            out GameObject hl45, out GameObject hl90, out GameObject hlParallel)
         {
             GameObject stationsContainer = GameObject.Find("Parking_Stations_Container");
             if (stationsContainer == null)
@@ -305,6 +377,7 @@ namespace PrimerVolante.Testing.Editor
 
             GameObject conePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(CONE_PREFAB_PATH);
             GameObject carPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(STATIC_CAR_PREFAB_PATH);
+            Material yellowMat = EnsureYellowZoneMaterial();
 
             // -------------------------------------------------------------
             // Estación 1: Dársena a 45° (Espiga)
@@ -318,6 +391,7 @@ namespace PrimerVolante.Testing.Editor
             col45.center = new Vector3(0f, 1f, 0f);
             col45.size = new Vector3(3.2f, 2.5f, 6.0f);
 
+            hl45 = EnsureGroundQuad(station45Obj.transform, "GroundVisual_YellowZone_45", new Vector2(3.0f, 5.5f), yellowMat);
             SpawnConesAround(station45Obj.transform, conePrefab, new Vector2(3.2f, 6.0f));
             SpawnStaticCar(station45Obj.transform, carPrefab, new Vector3(-3.2f, 0f, 0f), Quaternion.identity);
             SpawnStaticCar(station45Obj.transform, carPrefab, new Vector3(3.2f, 0f, 0f), Quaternion.identity);
@@ -334,6 +408,7 @@ namespace PrimerVolante.Testing.Editor
             col90.center = new Vector3(0f, 1f, 0f);
             col90.size = new Vector3(3.2f, 2.5f, 6.0f);
 
+            hl90 = EnsureGroundQuad(station90Obj.transform, "GroundVisual_YellowZone_90", new Vector2(3.0f, 5.5f), yellowMat);
             SpawnConesAround(station90Obj.transform, conePrefab, new Vector2(3.2f, 6.0f));
             SpawnStaticCar(station90Obj.transform, carPrefab, new Vector3(-3.2f, 0f, 0f), Quaternion.identity);
             SpawnStaticCar(station90Obj.transform, carPrefab, new Vector3(3.2f, 0f, 0f), Quaternion.identity);
@@ -350,10 +425,41 @@ namespace PrimerVolante.Testing.Editor
             colParallel.center = new Vector3(0f, 1f, 0f);
             colParallel.size = new Vector3(3.0f, 2.5f, 7.5f);
 
+            hlParallel = EnsureGroundQuad(stationParallelObj.transform, "GroundVisual_YellowZone_Parallel", new Vector2(2.8f, 6.5f), yellowMat);
             // Autos estáticos delimitando el cajón paralelo: delantero y trasero
             SpawnStaticCar(stationParallelObj.transform, carPrefab, new Vector3(0f, 0f, 6.5f), Quaternion.identity);
             SpawnStaticCar(stationParallelObj.transform, carPrefab, new Vector3(0f, 0f, -6.5f), Quaternion.identity);
             SpawnConesAlongLine(stationParallelObj.transform, conePrefab, new Vector3(1.6f, 0f, -4.5f), new Vector3(1.6f, 0f, 4.5f), 3);
+        }
+
+        private static GameObject EnsureGroundQuad(Transform parent, string name, Vector2 size, Material mat)
+        {
+            Transform existing = parent.Find(name);
+            GameObject quad;
+            if (existing != null)
+            {
+                quad = existing.gameObject;
+            }
+            else
+            {
+                quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                quad.name = name;
+                quad.transform.SetParent(parent, false);
+
+                Collider col = quad.GetComponent<Collider>();
+                if (col != null) UnityEngine.Object.DestroyImmediate(col);
+            }
+
+            quad.transform.localPosition = new Vector3(0f, 0.03f, 0f);
+            quad.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            quad.transform.localScale = new Vector3(size.x, size.y, 1f);
+
+            MeshRenderer mr = quad.GetComponent<MeshRenderer>();
+            if (mr != null && mat != null)
+            {
+                mr.sharedMaterial = mat;
+            }
+            return quad;
         }
 
         private static void SpawnConesAround(Transform parent, GameObject conePrefab, Vector2 size)
@@ -469,7 +575,7 @@ namespace PrimerVolante.Testing.Editor
 
             // Paso 2: Entrada a dársena de 45°
             spawns[1] = EnsureChildTransform(container.transform, "SpawnPoint_02_Diagonal45",
-                new Vector3(120.0f, 0.02f, 110.0f), Quaternion.Euler(0f, 180f, 0f));
+                new Vector3(120.0f, 0.02f, 112.0f), Quaternion.Euler(0f, 180f, 0f));
 
             // Paso 3: Posición adelantada para maniobra de culata a 90°
             spawns[2] = EnsureChildTransform(container.transform, "SpawnPoint_03_Bay90Reverse",
@@ -503,6 +609,7 @@ namespace PrimerVolante.Testing.Editor
         private static void SetupLessonControllers(Scene scene, GameObject car09, LessonDefinitionSO lessonData,
             Transform[] spawnPoints, TurnSignalExemptZone exemptZone,
             ParkingZoneTrigger trigger45, ParkingZoneTrigger trigger90, ParkingZoneTrigger triggerParallel,
+            GameObject hl45, GameObject hl90, GameObject hlParallel,
             VRScreenFader screenFader)
         {
             GameObject managerObj = GameObject.Find("Lesson_Manager");
@@ -565,6 +672,9 @@ namespace PrimerVolante.Testing.Editor
             soCtrl.FindProperty("m_Diagonal45Zone").objectReferenceValue = trigger45;
             soCtrl.FindProperty("m_Bay90Zone").objectReferenceValue = trigger90;
             soCtrl.FindProperty("m_ParallelZone").objectReferenceValue = triggerParallel;
+            soCtrl.FindProperty("m_GroundHighlight45").objectReferenceValue = hl45;
+            soCtrl.FindProperty("m_GroundHighlight90").objectReferenceValue = hl90;
+            soCtrl.FindProperty("m_GroundHighlightParallel").objectReferenceValue = hlParallel;
 
             SerializedProperty spawnsProp = soCtrl.FindProperty("m_StepSpawnPoints");
             if (spawnsProp != null && spawnPoints != null)

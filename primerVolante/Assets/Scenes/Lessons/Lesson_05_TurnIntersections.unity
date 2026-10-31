@@ -3734,6 +3734,17 @@ MonoBehaviour:
   m_ShadowLayerMask: 1
   m_RenderingLayers: 1
   m_ShadowRenderingLayers: 1
+--- !u!114 &130744255 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 158871419052704418, guid: 2857b989c828950448ead142ca28e4a3, type: 3}
+  m_PrefabInstance: {fileID: 130744251}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1da8189e2fe4a54d9feea23baa45b5b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.TrafficLightController
 --- !u!1001 &134877300
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -55748,17 +55759,6 @@ MonoBehaviour:
   m_ShadowLayerMask: 1
   m_RenderingLayers: 1
   m_ShadowRenderingLayers: 1
---- !u!114 &1925123197 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 158871419052704418, guid: 2857b989c828950448ead142ca28e4a3, type: 3}
-  m_PrefabInstance: {fileID: 1925123194}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f1da8189e2fe4a54d9feea23baa45b5b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.TrafficLightController
 --- !u!1001 &1926654378
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -60364,7 +60364,7 @@ MonoBehaviour:
   m_WrongWayDetector: {fileID: 716330887}
   m_ScreenFader: {fileID: 197610203}
   m_SeatFollower: {fileID: 686530656}
-  m_TrafficLight: {fileID: 1925123197}
+  m_TrafficLight: {fileID: 130744255}
   m_InfractionManager: {fileID: 0}
   m_StepSpawnPoints:
   - {fileID: 2083132716}

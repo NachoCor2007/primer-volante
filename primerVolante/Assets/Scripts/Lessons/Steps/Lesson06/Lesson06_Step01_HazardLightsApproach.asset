@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
   m_Name: Lesson06_Step01_HazardLightsApproach
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
-  stepTitle: "Aproximaci\xF3n con Balizas de Emergencia"
-  instructionText: "Pulsa con tu mano virtual el bot\xF3n de balizas de emergencia en la consola central para advertir la maniobra a los veh\xEDculos traseros."
+  stepTitle: Luces de Emergencia
+  instructionText: "Presiona el bot\xF3n rojo de balizas (tri\xE1ngulo) para advertir tu maniobra."
   completionMode: 1
   requiredAction: 17
   actionNumericParameter: 0

@@ -12,7 +12,8 @@ namespace PrimerVolante.Lessons
     /// 1. Dársena a 45° (en espiga / diagonal).
     /// 2. Dársena a 90° (en batería perpendicular de reversa).
     /// 3. Dársena en paralelo (cordón derecho entre dos vehículos).
-    /// Asegura el uso de balizas y el aseguramiento del vehículo (P y freno de mano).
+    /// Asegura el uso de balizas, la orientación dentro del recuadro amarillo en el asfalto
+    /// y el aseguramiento del vehículo (P y freno de mano).
     /// Cumple estrictamente la regla de cero APIs obsoletas (AGENTS.md).
     /// </summary>
     [DisallowMultipleComponent]
@@ -38,12 +39,21 @@ namespace PrimerVolante.Lessons
         [Tooltip("Trigger de detección para la dársena en paralelo al cordón derecho.")]
         [SerializeField] private ParkingZoneTrigger m_ParallelZone;
 
+        [Header("Demarcación Visual en Asfalto (Recuadros Amarillos)")]
+        [Tooltip("Recuadro amarillo en el piso de la dársena a 45°.")]
+        [SerializeField] private GameObject m_GroundHighlight45;
+
+        [Tooltip("Recuadro amarillo en el piso de la dársena a 90°.")]
+        [SerializeField] private GameObject m_GroundHighlight90;
+
+        [Tooltip("Recuadro amarillo en el piso de la dársena en paralelo.")]
+        [SerializeField] private GameObject m_GroundHighlightParallel;
+
         [Header("Puntos de Partida de Cada Maniobra")]
         [Tooltip("Puntos de partida inicial para cada uno de los 5 pasos.")]
         [SerializeField] private Transform[] m_StepSpawnPoints = new Transform[5];
 
         private int m_CurrentStepIndex = -1;
-        private bool m_IsCompletingStep = false;
 
         public static Lesson06ParkingController Instance => s_Instance;
         public LessonManager LessonManager => m_LessonManager;
@@ -53,12 +63,18 @@ namespace PrimerVolante.Lessons
         public ParkingZoneTrigger ParallelZone => m_ParallelZone;
         public TurnSignalExemptZone ExemptZone => m_ExemptZone;
 
+        public GameObject GroundHighlight45 { get => m_GroundHighlight45; set => m_GroundHighlight45 = value; }
+        public GameObject GroundHighlight90 { get => m_GroundHighlight90; set => m_GroundHighlight90 = value; }
+        public GameObject GroundHighlightParallel { get => m_GroundHighlightParallel; set => m_GroundHighlightParallel = value; }
+
         public bool IsDiagonalParked => m_Diagonal45Zone != null && m_Diagonal45Zone.IsVehicleParkedProperly;
         public bool IsBay90Parked => m_Bay90Zone != null && m_Bay90Zone.IsVehicleParkedProperly;
         public bool IsParallelParked => m_ParallelZone != null && m_ParallelZone.IsVehicleParkedProperly;
-        public bool IsVehicleSecured => m_VehicleController != null && !m_VehicleController.IsHazardActive &&
+        public bool IsVehicleSecured => m_VehicleController != null &&
+                                        !m_VehicleController.IsHazardActive &&
                                         (m_VehicleController.CurrentGear == GearState.Park || m_VehicleController.CurrentGear == GearState.P) &&
-                                        m_VehicleController.HandbrakeEngagement >= 0.85f;
+                                        m_VehicleController.HandbrakeEngagement >= 0.85f &&
+                                        m_VehicleController.CurrentSpeedKmh < 0.2f;
 
         private void Awake()
         {
@@ -125,6 +141,11 @@ namespace PrimerVolante.Lessons
                         m_ParallelZone = trig;
                 }
             }
+
+            // Buscar recuadros amarillos en la escena si no están asignados
+            if (m_GroundHighlight45 == null) m_GroundHighlight45 = GameObject.Find("GroundVisual_YellowZone_45");
+            if (m_GroundHighlight90 == null) m_GroundHighlight90 = GameObject.Find("GroundVisual_YellowZone_90");
+            if (m_GroundHighlightParallel == null) m_GroundHighlightParallel = GameObject.Find("GroundVisual_YellowZone_Parallel");
         }
 
         private void SubscribeEvents(bool subscribe)
@@ -139,91 +160,32 @@ namespace PrimerVolante.Lessons
         private void OnStepChanged(LessonStepSO step, int stepIndex, int totalSteps)
         {
             m_CurrentStepIndex = stepIndex;
-            m_IsCompletingStep = false;
+            UpdateGroundHighlights(stepIndex);
         }
 
-        private void Update()
+        /// <summary>
+        /// Resalta el recuadro amarillo en el asfalto correspondiente al objetivo activo.
+        /// </summary>
+        public void UpdateGroundHighlights(int stepIndex)
         {
-            if (m_IsCompletingStep || m_LessonManager == null || !m_LessonManager.IsLessonActive)
+            // Paso 0: Balizas en aproximación -> recuadros visibles de forma neutra
+            // Paso 1: Dársena 45° activo
+            // Paso 2: Dársena 90° activo
+            // Paso 3: Dársena Paralelo activo
+            // Paso 4: Asegurar vehículo
+            if (m_GroundHighlight45 != null)
             {
-                return;
+                m_GroundHighlight45.SetActive(stepIndex <= 1);
             }
 
-            LessonStepSO step = m_LessonManager.CurrentStep;
-            if (step == null || step.completionMode != LessonStepCompletionMode.ActionRequired)
+            if (m_GroundHighlight90 != null)
             {
-                return;
+                m_GroundHighlight90.SetActive(stepIndex == 0 || stepIndex == 2);
             }
 
-            EvaluateStepProgress(m_CurrentStepIndex, step);
-        }
-
-        private void EvaluateStepProgress(int stepIndex, LessonStepSO step)
-        {
-            if (m_VehicleController == null) return;
-
-            switch (step.requiredAction)
+            if (m_GroundHighlightParallel != null)
             {
-                case LessonActionType.ActivateHazardLights:
-                    // Paso 1: Pulsar botón de balizas de emergencia
-                    if (m_VehicleController.IsHazardActive)
-                    {
-                        TriggerStepSuccess();
-                    }
-                    break;
-
-                case LessonActionType.ParkDiagonal45:
-                    // Paso 2: Entrada a 45°, detenido, Parking (P) y freno de mano
-                    if (m_Diagonal45Zone != null && m_Diagonal45Zone.IsVehicleParkedProperly)
-                    {
-                        TriggerStepSuccess();
-                    }
-                    break;
-
-                case LessonActionType.ParkBay90Reverse:
-                    // Paso 3: Estacionamiento a 90° marcha atrás y frenar
-                    if (m_Bay90Zone != null && m_Bay90Zone.IsVehicleParkedProperly)
-                    {
-                        TriggerStepSuccess();
-                    }
-                    break;
-
-                case LessonActionType.ParkParallelRight:
-                    // Paso 4: Estacionamiento en paralelo alineado al cordón derecho
-                    if (m_ParallelZone != null && m_ParallelZone.IsVehicleParkedProperly)
-                    {
-                        TriggerStepSuccess();
-                    }
-                    break;
-
-                case LessonActionType.SecureParkDeactivateHazards:
-                    // Paso 5: Apagar balizas, colocar Parking y aplicar freno de mano
-                    if (IsVehicleSecured)
-                    {
-                        TriggerStepSuccess();
-                    }
-                    break;
-            }
-        }
-
-        private void TriggerStepSuccess()
-        {
-            if (m_IsCompletingStep) return;
-            m_IsCompletingStep = true;
-
-            if (m_HUDPanel != null)
-            {
-                m_HUDPanel.PlayActionSuccessFeedback(() =>
-                {
-                    if (m_LessonManager != null && m_LessonManager.IsLessonActive)
-                    {
-                        m_LessonManager.CompleteCurrentStep();
-                    }
-                });
-            }
-            else if (m_LessonManager != null)
-            {
-                m_LessonManager.CompleteCurrentStep();
+                m_GroundHighlightParallel.SetActive(stepIndex == 0 || stepIndex == 3);
             }
         }
 

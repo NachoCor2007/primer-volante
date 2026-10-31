@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
   m_Name: Lesson06_Step03_BayParking90Reverse
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
-  stepTitle: "Estacionamiento a 90\xB0 de Culata"
-  instructionText: "Sobrepasa la d\xE1rsena a 90\xB0, coloca Reversa (R) y maniobra hacia atr\xE1s utilizando los espejos retrovisores laterales para centrar el auto entre los conos delimitadores y frena."
+  stepTitle: "Estacionamiento a 90\xB0"
+  instructionText: "Pasa la d\xE1rsena, pon Reversa (R) y estaciona de culata dentro del recuadro amarillo."
   completionMode: 1
   requiredAction: 31
   actionNumericParameter: 0

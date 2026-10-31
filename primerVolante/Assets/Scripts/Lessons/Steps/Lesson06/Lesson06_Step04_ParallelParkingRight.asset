@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
   m_Name: Lesson06_Step04_ParallelParkingRight
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
-  stepTitle: "Estacionamiento en Paralelo al Cord\xF3n"
-  instructionText: "Alinea el auto paralelo al veh\xEDculo de referencia delantero, coloca Reversa (R) girando a 45\xB0 hacia la vereda, y quiebra la direcci\xF3n al lado opuesto al tomar la referencia del espejo para acomodar el veh\xEDculo paralelo al cord\xF3n a menos de 30 cm sin golpear los obst\xE1culos."
+  stepTitle: Estacionamiento en Paralelo
+  instructionText: "Maniobra marcha atr\xE1s entre los dos veh\xEDculos hasta quedar paralelo en el recuadro amarillo."
   completionMode: 1
   requiredAction: 32
   actionNumericParameter: 0

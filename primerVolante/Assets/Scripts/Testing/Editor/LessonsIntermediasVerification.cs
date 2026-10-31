@@ -89,6 +89,38 @@ namespace PrimerVolante.Testing.Editor
             return allPassed;
         }
 
+        public static bool RunVerificationQuickAssets()
+        {
+            LastFailures.Clear();
+            LogLines.Clear();
+            int totalTests = 0;
+            int passedTests = 0;
+            VerifyLesson05Assets(ref totalTests, ref passedTests);
+            VerifyLesson06Assets(ref totalTests, ref passedTests);
+            VerifyNoObsoleteAPIs(ref totalTests, ref passedTests);
+            return totalTests > 0 && passedTests == totalTests;
+        }
+
+        public static bool RunVerificationLesson05Scene()
+        {
+            LastFailures.Clear();
+            LogLines.Clear();
+            int totalTests = 0;
+            int passedTests = 0;
+            VerifyLesson05Scene(ref totalTests, ref passedTests);
+            return totalTests > 0 && passedTests == totalTests;
+        }
+
+        public static bool RunVerificationLesson06Scene()
+        {
+            LastFailures.Clear();
+            LogLines.Clear();
+            int totalTests = 0;
+            int passedTests = 0;
+            VerifyLesson06Scene(ref totalTests, ref passedTests);
+            return totalTests > 0 && passedTests == totalTests;
+        }
+
         public static void RunVerificationBatch()
         {
             // Ejecutar setups idempotentes previos
@@ -310,6 +342,14 @@ namespace PrimerVolante.Testing.Editor
 
             Lesson06ParkingController ctrl = UnityEngine.Object.FindAnyObjectByType<Lesson06ParkingController>();
             Assert(ctrl != null, "Lesson06ParkingController debe estar presente en la escena", ref total, ref passed);
+
+            // Validar recuadros amarillos demarcados en el asfalto para guiar visualmente al alumno
+            GameObject hl45 = GameObject.Find("GroundVisual_YellowZone_45");
+            GameObject hl90 = GameObject.Find("GroundVisual_YellowZone_90");
+            GameObject hlParallel = GameObject.Find("GroundVisual_YellowZone_Parallel");
+            Assert(hl45 != null, "GroundVisual_YellowZone_45 debe existir en el piso de la dársena a 45°", ref total, ref passed);
+            Assert(hl90 != null, "GroundVisual_YellowZone_90 debe existir en el piso de la dársena a 90°", ref total, ref passed);
+            Assert(hlParallel != null, "GroundVisual_YellowZone_Parallel debe existir en el piso de la dársena en paralelo", ref total, ref passed);
         }
 
         // =========================================================================

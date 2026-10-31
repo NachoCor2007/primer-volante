@@ -155,8 +155,8 @@ namespace PrimerVolante.Testing.Editor
             EnsureDirectories();
 
             LessonStepSO step1 = CreateOrUpdateStep("Lesson05_Step01_TurnSignalIntro",
-                "Giro a la Derecha en Esquina",
-                "Acciona la palanca de guiño hacia arriba con tu mano virtual para indicar giro a la derecha, avanza y completa el giro de 90° a baja velocidad (la palanca se autocancelará al regresar el volante).",
+                "Giro a la Derecha (90°)",
+                "1. Coloca el guiño hacia arriba (derecha).\n2. Avanza y dobla la esquina en tu carril.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.CompleteTurnSignalRightIntro,
                 0f,
@@ -164,8 +164,8 @@ namespace PrimerVolante.Testing.Editor
                 "VRTurnSignal");
 
             LessonStepSO step2 = CreateOrUpdateStep("Lesson05_Step02_TurnSignal20mDistance",
-                "Anticipación Reglamentaria (20 Metros)",
-                "Acelera por la calzada y coloca el guiño de giro a la derecha antes de cruzar la línea de advertencia en el asfalto (a 20 m de la esquina, asistido por el GPS). Completa el giro en el carril derecho.",
+                "Anticipación 20 Metros",
+                "Acelera y activa el guiño derecho ANTES de cruzar la franja en el asfalto. Completa el giro.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.TurnSignalAnticipation20m,
                 20f,
@@ -173,8 +173,8 @@ namespace PrimerVolante.Testing.Editor
                 "VRTurnSignal");
 
             LessonStepSO step3 = CreateOrUpdateStep("Lesson05_Step03_TrafficLightIntersection",
-                "Intersección Semaforizada",
-                "Aproxímate a la intersección; si el semáforo está en rojo o amarillo, deténte por completo antes de la senda peatonal. Reanuda la marcha y cruza al recibir la luz verde.",
+                "Cruce con Semáforo",
+                "1. Detén el auto antes de la senda ante la luz roja.\n2. Espera la luz verde y cruza.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.CrossTrafficLightIntersection,
                 0f,
@@ -182,8 +182,8 @@ namespace PrimerVolante.Testing.Editor
                 "");
 
             LessonStepSO step4 = CreateOrUpdateStep("Lesson05_Step04_LeftTurnCrossing",
-                "Giro a la Izquierda en Cruce",
-                "Baja la palanca de guiño para indicar giro a la izquierda con más de 20 m de anticipación. Respeta la prioridad de frente y ejecuta un radio de giro amplio ingresando al carril derecho sin invadir la contramano.",
+                "Giro a la Izquierda",
+                "Coloca el guiño hacia abajo (izquierda) con anticipación y gira al carril derecho.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.CompleteLeftTurnCrossing,
                 20f,
@@ -191,8 +191,8 @@ namespace PrimerVolante.Testing.Editor
                 "VRTurnSignal");
 
             LessonStepSO step5 = CreateOrUpdateStep("Lesson05_Step05_CurbsideStop",
-                "Detención y Estacionamiento en Cordón",
-                "Señaliza el arrime hacia el cordón derecho, deténte por completo, coloca la palanca selectora en Parking (P) y acciona el freno de mano.",
+                "Detención en Cordón",
+                "Arrimarse al cordón, frenar por completo, colocar Parking (P) y subir el freno de mano.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.CurbsideStop,
                 0f,
