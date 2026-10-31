@@ -51,7 +51,7 @@ namespace PrimerVolante.Lessons
         CompleteLeftTurnCrossing,       // Paso 4: Guiño izquierdo >20m, giro amplio sin invadir contramano
         CurbsideStop,                   // Paso 5: Detención en cordón derecho, Parking y freno de mano
 
-        // Lección 6: Maniobras de Estacionamiento y Precisión
+        // Lección 6: Maniobras de Estacionamiento
         // (Paso 1 utiliza ActivateHazardLights)
         ParkDiagonal45,                 // Paso 2: Entrada y detención en dársena de 45°
         SecureDiagonal45,               // Paso 3: Asegurar en dársena 45° (P y freno de mano)

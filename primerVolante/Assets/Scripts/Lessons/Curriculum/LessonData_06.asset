@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: LessonData_06
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonDefinitionSO
   lessonId: LESSON_06
-  lessonTitle: "Lecci\xF3n 6: Maniobras de Estacionamiento y Precisi\xF3n"
+  lessonTitle: "Lecci\xF3n 6: Maniobras de Estacionamiento"
   steps:
   - {fileID: 11400000, guid: 923493342c5670b40b94580551d033ab, type: 2}
   - {fileID: 11400000, guid: f46737f7d85e69347a620aacf190674f, type: 2}

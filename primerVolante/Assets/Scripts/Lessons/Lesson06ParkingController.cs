@@ -7,7 +7,7 @@ using PrimerVolante.VR;
 namespace PrimerVolante.Lessons
 {
     /// <summary>
-    /// Controlador integral de la Lección 6: Maniobras de Estacionamiento y Precisión.
+    /// Controlador integral de la Lección 6: Maniobras de Estacionamiento.
     /// Supervisa las maniobras en las tres dársenas reglamentarias:
     /// 1. Dársena a 45° (en espiga / diagonal).
     /// 2. Dársena a 90° (en batería perpendicular de reversa).
@@ -280,6 +280,46 @@ namespace PrimerVolante.Lessons
                         child.gameObject.SetActive(active);
                     }
                 }
+            }
+        }
+
+        private static readonly int s_EmissionColorId = Shader.PropertyToID("_EmissionColor");
+        private MaterialPropertyBlock m_PropBlock;
+
+        private void Update()
+        {
+            UpdatePulsingHighlights();
+        }
+
+        private void UpdatePulsingHighlights()
+        {
+            if (m_PropBlock == null) m_PropBlock = new MaterialPropertyBlock();
+
+            // Pulso suave y llamativo (oscila entre 0.8x y 2.4x de intensidad de emisión)
+            float pulse = (Mathf.Sin(Time.time * 3.5f) + 1f) * 0.5f;
+            Color pulseEmission = Color.Lerp(new Color(1.0f, 0.75f, 0.0f) * 0.8f, new Color(1.0f, 0.88f, 0.15f) * 2.4f, pulse);
+
+            ApplyPulsingToZone(m_GroundHighlight45, pulseEmission, pulse);
+            ApplyPulsingToZone(m_GroundHighlight90, pulseEmission, pulse);
+            ApplyPulsingToZone(m_GroundHighlightParallel, pulseEmission, pulse);
+        }
+
+        private void ApplyPulsingToZone(GameObject zoneObj, Color emission, float pulse)
+        {
+            if (zoneObj == null || !zoneObj.activeInHierarchy) return;
+
+            MeshRenderer mr = zoneObj.GetComponent<MeshRenderer>();
+            if (mr != null)
+            {
+                mr.GetPropertyBlock(m_PropBlock);
+                m_PropBlock.SetColor(s_EmissionColorId, emission);
+                mr.SetPropertyBlock(m_PropBlock);
+            }
+
+            Light l = zoneObj.GetComponentInChildren<Light>();
+            if (l != null)
+            {
+                l.intensity = Mathf.Lerp(1.5f, 2.8f, pulse);
             }
         }
 

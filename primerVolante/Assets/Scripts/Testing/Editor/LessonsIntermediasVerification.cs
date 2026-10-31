@@ -15,7 +15,7 @@ namespace PrimerVolante.Testing.Editor
 {
     /// <summary>
     /// Suite de verificación automatizada para la Lección 5 (Giros e Intersecciones)
-    /// y Lección 6 (Maniobras de Estacionamiento y Precisión) del simulador "Primer Volante" (TASK-301 / PRI-46).
+    /// y Lección 6 (Maniobras de Estacionamiento) del simulador "Primer Volante" (TASK-301 / PRI-46).
     /// Valida:
     /// 1. Integridad de ScriptableObjects y pasos de currículum (Lecciones 5 y 6).
     /// 2. Textos de instrucciones 100% Realidad Virtual (cero menciones a teclado, mouse o mandos estándar).

@@ -542,7 +542,7 @@ namespace PrimerVolante.Lessons
                     return Lesson05TurnIntersectionsController.Instance != null &&
                            Lesson05TurnIntersectionsController.Instance.IsCurbsideStopCompleted;
 
-                // Lección 6: Maniobras de Estacionamiento y Precisión (Delegación en dársenas y físicas)
+                // Lección 6: Maniobras de Estacionamiento (Delegación en dársenas y físicas)
                 case LessonActionType.ParkDiagonal45:
                     return Lesson06ParkingController.Instance != null &&
                            Lesson06ParkingController.Instance.IsDiagonalPositioned;

@@ -13,7 +13,7 @@ namespace PrimerVolante.Testing.Editor
 {
     /// <summary>
     /// Herramienta de Editor idempotente para configurar y ensamblar la Lección 6:
-    /// "Maniobras de Estacionamiento y Precisión" (TASK-301 / Issue #10 / PRI-46).
+    /// "Maniobras de Estacionamiento" (TASK-301 / Issue #10 / PRI-46).
     /// Clona de forma segura Lesson_01_BasicDriving.unity a Assets/Scenes/Lessons/Lesson_06_ParkingManeuvers.unity,
     /// crea los ScriptableObjects correspondientes y construye el área de dársenas en el playón (X=120, Z=60 a 120)
     /// con TurnSignalExemptZone, recuadros amarillos demarcados en el asfalto, conos de tránsito y vehículos
@@ -235,7 +235,7 @@ namespace PrimerVolante.Testing.Editor
             }
 
             lesson.lessonId = "LESSON_06";
-            lesson.lessonTitle = "Lección 6: Maniobras de Estacionamiento y Precisión";
+            lesson.lessonTitle = "Lección 6: Maniobras de Estacionamiento";
             lesson.steps = new List<LessonStepSO> { step1, step2, step3, step4, step5, step6, step7 };
 
             EditorUtility.SetDirty(lesson);
@@ -373,15 +373,18 @@ namespace PrimerVolante.Testing.Editor
                 Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
                 mat = new Material(shader);
                 mat.name = "M_Parking_YellowZone";
-                mat.color = new Color(1.0f, 0.82f, 0.0f, 0.75f);
-                if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", new Color(1.0f, 0.82f, 0.0f, 0.75f));
-                if (mat.HasProperty("_EmissionColor"))
-                {
-                    mat.EnableKeyword("_EMISSION");
-                    mat.SetColor("_EmissionColor", new Color(1.0f, 0.82f, 0.0f) * 0.4f);
-                }
                 AssetDatabase.CreateAsset(mat, YELLOW_MATERIAL_PATH);
             }
+
+            Color baseCol = new Color(1.0f, 0.85f, 0.0f, 0.82f);
+            mat.color = baseCol;
+            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", baseCol);
+            if (mat.HasProperty("_EmissionColor"))
+            {
+                mat.EnableKeyword("_EMISSION");
+                mat.SetColor("_EmissionColor", new Color(1.0f, 0.85f, 0.1f) * 1.8f);
+            }
+            EditorUtility.SetDirty(mat);
             return mat;
         }
 
@@ -483,7 +486,39 @@ namespace PrimerVolante.Testing.Editor
             {
                 mr.sharedMaterial = mat;
             }
+
+            // Luz suave para emitir iluminación visible sobre el asfalto en VR
+            EnsureGroundZoneLight(quad.transform);
+
+            EditorUtility.SetDirty(quad);
             return quad;
+        }
+
+        private static void EnsureGroundZoneLight(Transform quadTransform)
+        {
+            Transform lightTr = quadTransform.Find("GroundVisual_Light");
+            GameObject lightObj;
+            if (lightTr == null)
+            {
+                lightObj = new GameObject("GroundVisual_Light");
+                lightObj.transform.SetParent(quadTransform, false);
+            }
+            else
+            {
+                lightObj = lightTr.gameObject;
+            }
+
+            // En un Quad rotado a 90° en X, -Z local apunta hacia arriba (+Y en espacio mundial)
+            lightObj.transform.localPosition = new Vector3(0f, 0f, -0.5f);
+            lightObj.transform.localRotation = Quaternion.identity;
+
+            Light l = lightObj.GetComponent<Light>();
+            if (l == null) l = lightObj.AddComponent<Light>();
+            l.type = LightType.Point;
+            l.range = 7.0f;
+            l.color = new Color(1.0f, 0.85f, 0.2f);
+            l.intensity = 2.0f;
+            l.shadows = LightShadows.None;
         }
 
         private static Material EnsureArrowMaterial()
