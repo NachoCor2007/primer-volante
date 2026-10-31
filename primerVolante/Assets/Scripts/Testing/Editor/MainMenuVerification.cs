@@ -4,6 +4,7 @@ using PrimerVolante.Lessons;
 using PrimerVolante.MainMenu;
 using PrimerVolante.VR;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -34,14 +35,29 @@ namespace PrimerVolante.Testing.Editor
             s_Total = 0;
             s_Passed = 0;
 
-            VerifyScrollMath();
-            VerifyAccumulator();
-            VerifyLessonList();
-            VerifyPageMapping();
-            VerifyIllustration();
-            VerifyCarPrefabFlags();
-            VerifyCarInstanceFlags();
-            VerificationSceneUtil.WithScene(MainMenuSetup.SCENE_PATH, VerifyScene);
+            // Los objetos temporales de las pruebas se crean en una escena de trabajo aditiva y vacía (activa mientras
+            // corre la verificación): así no se ensucia la escena que tenga abierta el usuario, p. ej. MainMenu.
+            Scene previousActive = SceneManager.GetActiveScene();
+            Scene scratch = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
+            SceneManager.SetActiveScene(scratch);
+            try
+            {
+                VerifyScrollMath();
+                VerifyAccumulator();
+                VerifyLessonList();
+                VerifyPageMapping();
+                VerifyIllustration();
+                VerifyCarPrefabFlags();
+                VerifyCarInstanceFlags();
+                // Solo lectura: puede usar la escena abierta. Lo que muta objetos corre sobre una copia temporal.
+                VerificationSceneUtil.WithScene(MainMenuSetup.SCENE_PATH, VerifyScene);
+                VerificationSceneUtil.WithSceneCopy(MainMenuSetup.SCENE_PATH, VerifyMutatingScene);
+            }
+            finally
+            {
+                if (previousActive.IsValid() && previousActive.isLoaded) SceneManager.SetActiveScene(previousActive);
+                if (scratch.IsValid()) EditorSceneManager.CloseScene(scratch, true);
+            }
 
             Debug.Log("=========================================================");
             Debug.Log($"RESULTADO FINAL: {s_Passed}/{s_Total} pruebas pasadas con exito!");
@@ -71,7 +87,8 @@ namespace PrimerVolante.Testing.Editor
         private static void VerifyAccumulator()
         {
             var acc = new MenuScrollAccumulator();
-            Check(acc.Step(0f, 0.1f) == 0, "Acumulador: en la zona muerta no da pasos");
+            Check(!acc.Armed && acc.Step(4f, 0.1f) == 0, "Acumulador: recién creado está desarmado y no da pasos fuera de la zona muerta");
+            Check(acc.Step(0f, 0.1f) == 0 && acc.Armed, "Acumulador: en la zona muerta no da pasos y queda armado");
 
             Check(acc.Step(4f, 0.125f) == 1, "Acumulador: paso inmediato al salir de la zona muerta (derecha)");
             Check(Approx(acc.Remainder, 0f), "Acumulador: el dt del frame inicial no se acumula");
@@ -94,8 +111,49 @@ namespace PrimerVolante.Testing.Editor
 
             // Rate fraccionario: 2 ítems/s con dt 0,25 → 0,5 por frame: un paso cada dos frames.
             var frac = new MenuScrollAccumulator();
+            frac.Step(0f, 0.25f);
             frac.Step(2f, 0.25f);
             Check(frac.Step(2f, 0.25f) == 0 && frac.Step(2f, 0.25f) == 1, "Acumulador: rate fraccionario conserva el resto entre frames");
+
+            const float DEAD = MenuScrollMath.DefaultDeadZoneDegrees;
+            const float REL = MenuScrollMath.DefaultReleaseDegrees;
+            const float FULL = MenuScrollMath.DefaultFullAngleDegrees;
+            const float MAX = MenuScrollMath.DefaultMaxItemsPerSecond;
+            Check(Approx(REL, 7f), "Histéresis: el ángulo de liberación por defecto es 7°");
+
+            // Histéresis: un temblor 9,5° <-> 10,5° da un solo paso.
+            var jitter = new MenuScrollAccumulator();
+            int jitterSteps = jitter.StepAngle(0f, 0.016f, DEAD, REL, FULL, MAX);
+            for (int i = 0; i < 40; i++)
+            {
+                jitterSteps += jitter.StepAngle(i % 2 == 0 ? 10.5f : 9.5f, 0.016f, DEAD, REL, FULL, MAX);
+            }
+            Check(jitterSteps == 1, $"Histéresis: temblor 9,5°<->10,5° da un solo paso (dio {jitterSteps})");
+
+            // Entre 7° y 10° ya activo: ni avanza ni reinicia. Bajo 7° libera y el siguiente cruce vuelve a dar el paso inmediato.
+            var hyst = new MenuScrollAccumulator();
+            hyst.StepAngle(0f, 0.016f, DEAD, REL, FULL, MAX);
+            Check(hyst.StepAngle(12f, 0.016f, DEAD, REL, FULL, MAX) == 1, "Histéresis: al superar 10° da el paso inmediato");
+            Check(hyst.StepAngle(8f, 0.016f, DEAD, REL, FULL, MAX) == 0 && hyst.Sign == 1, "Histéresis: entre 7° y 10° ya activo se mantiene sin reiniciar");
+            Check(hyst.StepAngle(12f, 0.016f, DEAD, REL, FULL, MAX) == 0, "Histéresis: volver a >10° sin haber bajado de 7° no repite el paso inmediato");
+            hyst.StepAngle(6f, 0.016f, DEAD, REL, FULL, MAX);
+            Check(hyst.Sign == 0, "Histéresis: bajo 7° vuelve a la zona muerta");
+            Check(hyst.StepAngle(12f, 0.016f, DEAD, REL, FULL, MAX) == 1, "Histéresis: tras liberar, el siguiente cruce de 10° da un paso inmediato");
+
+            // Inactivo, entre 7° y 10° es zona muerta (no hay pasos): la histéresis solo aplica una vez activo.
+            var inactive = new MenuScrollAccumulator();
+            inactive.StepAngle(0f, 0.016f, DEAD, REL, FULL, MAX);
+            Check(inactive.StepAngle(8.5f, 0.016f, DEAD, REL, FULL, MAX) == 0 && inactive.Sign == 0, "Histéresis: sin estar activo, 8,5° no da pasos");
+
+            // Rearme: entrar con el volante en 30° da 0 pasos hasta volver al centro.
+            var rearm = new MenuScrollAccumulator();
+            int rearmSteps = 0;
+            for (int i = 0; i < 10; i++) rearmSteps += rearm.StepAngle(30f, 0.1f, DEAD, REL, FULL, MAX);
+            Check(rearmSteps == 0 && !rearm.Armed, "Rearme: con el volante ya en 30° no da ningún paso");
+            rearm.StepAngle(0f, 0.016f, DEAD, REL, FULL, MAX);
+            Check(rearm.Armed && rearm.StepAngle(30f, 0.1f, DEAD, REL, FULL, MAX) == 1, "Rearme: tras pasar por el centro vuelve a dar pasos");
+            rearm.Reset();
+            Check(!rearm.Armed && rearm.StepAngle(30f, 0.1f, DEAD, REL, FULL, MAX) == 0, "Rearme: Reset (cambio de página) desarma de nuevo");
         }
 
         // ------------------------------------------------------------------ 3. LessonListPanel
@@ -135,9 +193,7 @@ namespace PrimerVolante.Testing.Editor
                     "LessonListPanel: MarkSelected(2) marca solo el ítem 2");
 
                 // Ventana: si la lista no entra, el cursor se mantiene visible.
-                var so = new SerializedObject(panel);
-                so.FindProperty("m_MaxVisibleItems").intValue = 2;
-                so.ApplyModifiedProperties();
+                SetField(panel, "m_MaxVisibleItems", 2);
                 panel.Rebuild();
                 panel.SetCursor(3);
                 Check(panel.IsItemVisible(3) && !panel.IsItemVisible(0) && panel.FirstVisibleIndex == 2,
@@ -162,6 +218,21 @@ namespace PrimerVolante.Testing.Editor
             Check(MainMenuController.PageForGear(GearState.R) == MainMenuPage.Controls, "Mapeo: R -> Controles");
             Check(MainMenuController.PageForGear(GearState.N) == MainMenuPage.Calibration, "Mapeo: N -> Calibración");
             Check(MainMenuController.PageForGear(GearState.D) == MainMenuPage.Credits, "Mapeo: D -> Créditos");
+
+            // Una sola tabla para los dos sentidos: ida y vuelta.
+            bool roundTrip = true;
+            foreach (GearState gear in new[] { GearState.P, GearState.R, GearState.N, GearState.D })
+            {
+                roundTrip &= MainMenuController.GearForPage(MainMenuController.PageForGear(gear)) == gear;
+            }
+            Check(roundTrip, "Mapeo ida y vuelta: GearForPage(PageForGear(g)) == g para P, R, N y D");
+            bool roundTripPages = true;
+            foreach (MainMenuPage page in new[] { MainMenuPage.Lessons, MainMenuPage.Controls, MainMenuPage.Calibration, MainMenuPage.Credits })
+            {
+                roundTripPages &= MainMenuController.PageForGear(MainMenuController.GearForPage(page)) == page;
+            }
+            Check(roundTripPages, "Mapeo ida y vuelta: PageForGear(GearForPage(p)) == p para las 4 páginas");
+            Check(MainMenuController.GearForPage(MainMenuPage.Splash) == GearState.P, "Mapeo: el Splash cuenta como P");
         }
 
         // ------------------------------------------------------------------ ControllerIllustration
@@ -187,10 +258,8 @@ namespace PrimerVolante.Testing.Editor
                 try
                 {
                     var ill = go.AddComponent<ControllerIllustration>();
-                    var so = new SerializedObject(ill);
-                    so.FindProperty("m_ControllerModel").objectReferenceValue = model;
-                    so.FindProperty("m_PieceName").stringValue = piece;
-                    so.ApplyModifiedProperties();
+                    SetField(ill, "m_ControllerModel", model);
+                    SetField(ill, "m_PieceName", piece);
                     ill.Build();
 
                     Check(ill.ControllerTransform != null, $"Ilustración {piece}: instancia el modelo del control");
@@ -215,12 +284,10 @@ namespace PrimerVolante.Testing.Editor
             try
             {
                 var ill = pressGo.AddComponent<ControllerIllustration>();
-                var so = new SerializedObject(ill);
-                so.FindProperty("m_ControllerModel").objectReferenceValue = model;
-                so.FindProperty("m_PieceName").stringValue = string.Empty;
-                so.FindProperty("m_PressAnimation").boolValue = true;
-                so.FindProperty("m_CycleSeconds").floatValue = 4f;
-                so.ApplyModifiedProperties();
+                SetField(ill, "m_ControllerModel", model);
+                SetField(ill, "m_PieceName", string.Empty);
+                SetField(ill, "m_PressAnimation", true);
+                SetField(ill, "m_CycleSeconds", 4f);
                 ill.Build();
 
                 Check(ill.ButtonTransform != null && ill.ControllerTransform != null, "Pulsar: hay control y botón 3D (cilindro)");
@@ -303,18 +370,52 @@ namespace PrimerVolante.Testing.Editor
                 // --- StartButton
                 int toggleRequests = 0;
                 int pressedEvents = 0;
+                int rejectedEvents = 0;
+                int engineEvents = 0;
                 vehicle.OnEngineToggleRequested += () => toggleRequests++;
+                vehicle.OnEngineStartRejected += reason => rejectedEvents++;
+                vehicle.OnEngineStateChanged += state => engineEvents++;
                 button.Pressed += () => pressedEvents++;
 
+                // m_TogglesEngine=false: no toca el motor, pero da el feedback de "aceptado" (OnEngineToggleRequested: clic + háptico), sin rechazo.
                 SetBoolField(button, "m_TogglesEngine", false);
                 button.Press();
                 Check(pressedEvents == 1, "StartButton (m_TogglesEngine=false): Press() dispara Pressed");
-                Check(toggleRequests == 0 && !vehicle.IsEngineRunning, "StartButton (m_TogglesEngine=false): el motor no se toca");
+                Check(!vehicle.IsEngineRunning && engineEvents == 0, "StartButton (m_TogglesEngine=false): el motor no se toca");
+                Check(toggleRequests == 1 && rejectedEvents == 0, "StartButton (m_TogglesEngine=false): da el feedback de aceptado una vez y nunca el de rechazado");
 
+                // m_TogglesEngine=true: TryToggleEngine ya dispara el feedback; no se duplica. Sin freno lo rechaza (regresión).
+                toggleRequests = 0;
                 SetBoolField(button, "m_TogglesEngine", true);
                 button.Press();
-                Check(toggleRequests == 1, "StartButton (m_TogglesEngine=true): Press() sigue llamando a TryToggleEngine (regresión)");
+                Check(toggleRequests == 1, "StartButton (m_TogglesEngine=true): Press() llama a TryToggleEngine y el feedback suena una sola vez (regresión)");
                 Check(pressedEvents == 2, "StartButton (m_TogglesEngine=true): Pressed también se dispara");
+                Check(rejectedEvents == 1, "StartButton (m_TogglesEngine=true): sin freno a fondo el arranque se rechaza como siempre");
+
+                // --- Bloqueo del motor (VehicleController)
+                Check(!vehicle.IsEngineLocked, "VehicleController: el motor no está bloqueado por defecto");
+                var states = new List<EngineState>();
+                vehicle.OnEngineStateChanged += s => states.Add(s);
+                states.Clear();
+                vehicle.SetEngineRunning(true);
+                Check(vehicle.IsEngineRunning && states.Count == 1 && states[0] == EngineState.Running, "VehicleController sin bloqueo: SetEngineRunning(true) enciende (regresión)");
+
+                states.Clear();
+                vehicle.SetEngineLocked(true);
+                Check(vehicle.IsEngineLocked && !vehicle.IsEngineRunning && states.Count == 1 && states[0] == EngineState.Off,
+                    "VehicleController: bloquear con el motor encendido lo apaga una sola vez, de forma normal");
+
+                states.Clear();
+                rejectedEvents = 0;
+                vehicle.SetEngineRunning(true);
+                bool toggled = vehicle.TryToggleEngine();
+                Check(!vehicle.IsEngineRunning && !toggled && states.Count == 0, "VehicleController bloqueado: SetEngineRunning(true) y TryToggleEngine no encienden ni emiten OnEngineStateChanged");
+                Check(rejectedEvents == 1, "VehicleController bloqueado: TryToggleEngine rechaza con OnEngineStartRejected");
+
+                vehicle.SetEngineLocked(false);
+                vehicle.SetEngineRunning(true);
+                Check(vehicle.IsEngineRunning, "VehicleController: al desbloquear vuelve a poder encenderse");
+                vehicle.SetEngineRunning(false);
             }
             finally
             {
@@ -388,15 +489,83 @@ namespace PrimerVolante.Testing.Editor
             var soMenu = new SerializedObject(menu);
             Check(soMenu.FindProperty("m_CalibrationBackButton").objectReferenceValue != null, "Escena: InGameMenuController.m_CalibrationBackButton asignado");
 
-            // Controlador (solo cambios en memoria: la escena se cierra sin guardar)
+        }
+
+        // Todo lo que modifica objetos (Initialize/Restart, Rigidbody, menús, motor) corre sobre una copia temporal de la escena.
+        private static void VerifyMutatingScene(Scene scene)
+        {
+            var controller = FindFirst<MainMenuController>(scene);
+            var car = FindFirst<VehicleController>(scene);
+            var menu = FindFirst<InGameMenuController>(scene);
+            var shifter = FindFirst<VRGearShifter>(scene);
+            var startButton = FindFirst<StartButton>(scene);
+            Check(controller != null && car != null && menu != null && shifter != null && startButton != null,
+                "Copia de MainMenu.unity: controlador, auto, menú, palanca y botón presentes");
+            if (controller == null || car == null || menu == null || shifter == null || startButton == null) return;
+
             try
             {
                 VerifyMenuController(scene, controller, car, menu, shifter, startButton);
+                VerifyGearSettle(controller, menu);
                 VerifyInGameMenu(scene, menu);
             }
             finally
             {
                 InteractableHighlighter.RestoreForcedEmissionKeywords();
+            }
+        }
+
+        // La palanca sostenida dispara OnGearChanged en cada marcha que cruza: no se deben abrir las páginas intermedias.
+        private static void VerifyGearSettle(MainMenuController controller, InGameMenuController menu)
+        {
+            int opened = 0;
+            System.Action onOpened = () => opened++;
+            menu.MenuOpened += onOpened;
+            try
+            {
+                controller.Restart();
+                controller.HandleGearChanged(GearState.R);
+                Check(controller.CurrentPage == MainMenuPage.Splash, "Palanca: en el Splash no queda ningún cambio pendiente");
+                Check(!controller.HasPendingGear, "Splash: HandleGearChanged no deja marcha pendiente");
+                controller.HandleGearChanged(GearState.P);
+                controller.HandleIgnitionPressed();
+
+                // Barrido P -> R -> N -> D en menos de 0,25 s: solo termina en Créditos, sin abrir la calibración.
+                opened = 0;
+                controller.HandleGearChanged(GearState.R);
+                controller.Tick(0.05f);
+                controller.HandleGearChanged(GearState.N);
+                controller.Tick(0.05f);
+                controller.HandleGearChanged(GearState.D);
+                controller.Tick(0.10f);
+                Check(controller.CurrentPage == MainMenuPage.Lessons && controller.HasPendingGear,
+                    "Barrido P->R->N->D rápido: mientras no se estabiliza no cambia de página");
+                controller.Tick(0.20f);
+                Check(controller.CurrentPage == MainMenuPage.Credits && !controller.HasPendingGear, "Barrido P->R->N->D rápido: termina solo en Créditos");
+                Check(opened == 0 && !menu.IsOpen, $"Barrido P->R->N->D rápido: la calibración nunca se abre (MenuOpened = {opened})");
+
+                // Una marcha estable más de 0,25 s sí cambia de página.
+                controller.HandleGearChanged(GearState.N);
+                controller.Tick(0.20f);
+                Check(controller.CurrentPage == MainMenuPage.Credits, "Marcha estable 0,20 s (< 0,25 s): todavía no cambia de página");
+                controller.Tick(0.10f);
+                Check(controller.CurrentPage == MainMenuPage.Calibration && menu.IsOpen && opened == 1, "Marcha N estable 0,30 s: cambia a Calibración y abre la calibración una vez");
+
+                // Un rebote N -> D -> N dentro de la espera no cierra ni reabre la calibración.
+                opened = 0;
+                controller.HandleGearChanged(GearState.D);
+                controller.Tick(0.10f);
+                controller.HandleGearChanged(GearState.N);
+                controller.Tick(0.40f);
+                Check(controller.CurrentPage == MainMenuPage.Calibration && menu.IsOpen && opened == 0, "Rebote N->D->N rápido: la calibración sigue abierta sin reabrirse");
+                controller.HandleGearChanged(GearState.P);
+                controller.Tick(0.30f);
+                Check(controller.CurrentPage == MainMenuPage.Lessons && !menu.IsOpen, "Volver a P estable cierra la calibración");
+            }
+            finally
+            {
+                menu.MenuOpened -= onOpened;
+                if (menu.IsOpen) menu.CloseMenu();
             }
         }
 
@@ -452,24 +621,46 @@ namespace PrimerVolante.Testing.Editor
 
                 // Controles: la ignición no hace nada
                 controller.HandleGearChanged(GearState.R);
-                Check(controller.CurrentPage == MainMenuPage.Controls, "Palanca en R -> página Controles");
+                controller.Tick(0.3f);
+                Check(controller.CurrentPage == MainMenuPage.Controls, "Palanca en R (estable) -> página Controles");
                 logs.Clear();
                 startButton.Press();
                 Check(!logs.Exists(l => l.Contains("Lección seleccionada")) && controller.CurrentPage == MainMenuPage.Controls, "Press() en Controles no hace nada");
 
                 // Calibración
                 controller.HandleGearChanged(GearState.N);
-                Check(controller.CurrentPage == MainMenuPage.Calibration && menu.IsOpen, "Palanca en N -> Calibración abre la calibración standalone");
+                controller.Tick(0.3f);
+                Check(controller.CurrentPage == MainMenuPage.Calibration && menu.IsOpen, "Palanca en N (estable) -> Calibración abre la calibración standalone");
                 Check(Time.timeScale == timeScaleBefore && AudioListener.pause == audioPauseBefore, "Calibración standalone no pausa el tiempo ni el audio");
                 controller.HandleGearChanged(GearState.D);
+                controller.Tick(0.3f);
                 Check(controller.CurrentPage == MainMenuPage.Credits && !menu.IsOpen, "Salir de N -> Créditos cierra la calibración");
                 controller.HandleGearChanged(GearState.N);
+                controller.Tick(0.3f);
                 controller.HandleGearChanged(GearState.P);
+                controller.Tick(0.3f);
                 Check(controller.CurrentPage == MainMenuPage.Lessons && !menu.IsOpen, "Volver a P cierra la calibración y muestra Lecciones");
 
-                // Motor encendido por otra vía → se vuelve a apagar enseguida
-                car.SetEngineRunning(true);
-                Check(!car.IsEngineRunning, "Si el motor llega a encenderse por otra vía, se vuelve a apagar");
+                // Motor bloqueado: no se enciende por ninguna vía (sin apagarlo desde adentro de OnEngineStateChanged).
+                Check(car.IsEngineLocked, "MainMenuController: el motor queda bloqueado");
+                int nonOffEvents = 0;
+                int rejected = 0;
+                System.Action<EngineState> onState = s => { if (s != EngineState.Off) nonOffEvents++; };
+                System.Action<string> onRejected = r => rejected++;
+                car.OnEngineStateChanged += onState;
+                car.OnEngineStartRejected += onRejected;
+                try
+                {
+                    car.SetEngineRunning(true);
+                    bool accepted = car.TryToggleEngine();
+                    Check(!car.IsEngineRunning && !accepted && nonOffEvents == 0, "Motor bloqueado en la escena: SetEngineRunning(true) y TryToggleEngine no lo encienden");
+                    Check(rejected == 1, "Motor bloqueado en la escena: TryToggleEngine emite el rechazo");
+                }
+                finally
+                {
+                    car.OnEngineStateChanged -= onState;
+                    car.OnEngineStartRejected -= onRejected;
+                }
             }
             finally
             {
@@ -542,27 +733,35 @@ namespace PrimerVolante.Testing.Editor
             return list;
         }
 
+        // Los objetos temporales se configuran por reflexión: SerializedObject.ApplyModifiedProperties sobre objetos de la
+        // escena de trabajo ensucia (marca dirty) la escena que el usuario tenga abierta, p. ej. MainMenu.
+        private static void SetField(object target, string field, object value)
+        {
+            for (System.Type type = target.GetType(); type != null; type = type.BaseType)
+            {
+                FieldInfo info = type.GetField(field, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+                if (info != null)
+                {
+                    info.SetValue(target, value);
+                    return;
+                }
+            }
+            throw new System.MissingFieldException(target.GetType().Name, field);
+        }
+
         private static void SetLessons(LessonListPanel panel, List<LessonDefinitionSO> lessons)
         {
-            var so = new SerializedObject(panel);
-            SerializedProperty prop = so.FindProperty("m_Lessons");
-            prop.arraySize = lessons.Count;
-            for (int i = 0; i < lessons.Count; i++) prop.GetArrayElementAtIndex(i).objectReferenceValue = lessons[i];
-            so.ApplyModifiedProperties();
+            SetField(panel, "m_Lessons", lessons);
         }
 
         private static void SetObjectField(Object target, string field, Object value)
         {
-            var so = new SerializedObject(target);
-            so.FindProperty(field).objectReferenceValue = value;
-            so.ApplyModifiedProperties();
+            SetField(target, field, value);
         }
 
         private static void SetBoolField(Object target, string field, bool value)
         {
-            var so = new SerializedObject(target);
-            so.FindProperty(field).boolValue = value;
-            so.ApplyModifiedProperties();
+            SetField(target, field, value);
         }
 
         private static (float min, float max) InvokeAllowedRange(VRGearShifter shifter)
