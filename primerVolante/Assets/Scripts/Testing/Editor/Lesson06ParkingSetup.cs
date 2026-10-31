@@ -49,8 +49,12 @@ namespace PrimerVolante.Testing.Editor
             // 2. Asegurar que la escena clonada exista
             EnsureClonedSceneExists();
 
-            // 3. Abrir la escena de la Lección 6
-            Scene scene = EditorSceneManager.OpenScene(TARGET_SCENE_PATH, OpenSceneMode.Single);
+            // 3. Abrir la escena de la Lección 6 si no está abierta
+            Scene scene = SceneManager.GetActiveScene();
+            if (scene.path != TARGET_SCENE_PATH)
+            {
+                scene = EditorSceneManager.OpenScene(TARGET_SCENE_PATH, OpenSceneMode.Single);
+            }
             if (!scene.IsValid() || !scene.isLoaded)
             {
                 Debug.LogError($"[Lesson06ParkingSetup] ❌ No se pudo abrir la escena: {TARGET_SCENE_PATH}");
@@ -120,7 +124,6 @@ namespace PrimerVolante.Testing.Editor
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
 
             Debug.Log("=================================================================");
             Debug.Log("✅ [Lesson06ParkingSetup] ¡Lección 6 configurada exitosamente!");
@@ -392,6 +395,7 @@ namespace PrimerVolante.Testing.Editor
             col45.size = new Vector3(3.2f, 2.5f, 6.0f);
 
             hl45 = EnsureGroundQuad(station45Obj.transform, "GroundVisual_YellowZone_45", new Vector2(3.0f, 5.5f), yellowMat);
+            EnsureDirectionArrowOnGround(station45Obj.transform, "GroundVisual_Arrow_45", ParkingStationType.Diagonal45);
             SpawnConesAround(station45Obj.transform, conePrefab, new Vector2(3.2f, 6.0f));
             SpawnStaticCar(station45Obj.transform, carPrefab, new Vector3(-3.2f, 0f, 0f), Quaternion.identity);
             SpawnStaticCar(station45Obj.transform, carPrefab, new Vector3(3.2f, 0f, 0f), Quaternion.identity);
@@ -409,6 +413,7 @@ namespace PrimerVolante.Testing.Editor
             col90.size = new Vector3(3.2f, 2.5f, 6.0f);
 
             hl90 = EnsureGroundQuad(station90Obj.transform, "GroundVisual_YellowZone_90", new Vector2(3.0f, 5.5f), yellowMat);
+            EnsureDirectionArrowOnGround(station90Obj.transform, "GroundVisual_Arrow_90", ParkingStationType.Bay90Reverse);
             SpawnConesAround(station90Obj.transform, conePrefab, new Vector2(3.2f, 6.0f));
             SpawnStaticCar(station90Obj.transform, carPrefab, new Vector3(-3.2f, 0f, 0f), Quaternion.identity);
             SpawnStaticCar(station90Obj.transform, carPrefab, new Vector3(3.2f, 0f, 0f), Quaternion.identity);
@@ -426,6 +431,7 @@ namespace PrimerVolante.Testing.Editor
             colParallel.size = new Vector3(3.0f, 2.5f, 7.5f);
 
             hlParallel = EnsureGroundQuad(stationParallelObj.transform, "GroundVisual_YellowZone_Parallel", new Vector2(2.8f, 6.5f), yellowMat);
+            EnsureDirectionArrowOnGround(stationParallelObj.transform, "GroundVisual_Arrow_Parallel", ParkingStationType.ParallelRight);
             // Autos estáticos delimitando el cajón paralelo: delantero y trasero
             SpawnStaticCar(stationParallelObj.transform, carPrefab, new Vector3(0f, 0f, 6.5f), Quaternion.identity);
             SpawnStaticCar(stationParallelObj.transform, carPrefab, new Vector3(0f, 0f, -6.5f), Quaternion.identity);
@@ -460,6 +466,110 @@ namespace PrimerVolante.Testing.Editor
                 mr.sharedMaterial = mat;
             }
             return quad;
+        }
+
+        private static Material EnsureArrowMaterial()
+        {
+            const string matPath = "Assets/Environment/Materials/M_Parking_ArrowBlack.mat";
+            Material mat = AssetDatabase.LoadAssetAtPath<Material>(matPath);
+            if (mat == null)
+            {
+                Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+                mat = new Material(shader);
+                mat.name = "M_Parking_ArrowBlack";
+                // Color carbón vial oscuro para máximo contraste sobre el asfalto y el cuadro amarillo
+                Color darkColor = new Color(0.12f, 0.12f, 0.12f, 0.95f);
+                mat.color = darkColor;
+                if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", darkColor);
+                if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 0.2f);
+                AssetDatabase.CreateAsset(mat, matPath);
+                AssetDatabase.SaveAssets();
+            }
+            return mat;
+        }
+
+        private static GameObject EnsureDirectionArrowOnGround(Transform parent, string name, ParkingStationType stationType)
+        {
+            Transform existing = parent.Find(name);
+            GameObject arrowObj;
+            if (existing != null)
+            {
+                arrowObj = existing.gameObject;
+            }
+            else
+            {
+                arrowObj = new GameObject(name);
+                arrowObj.transform.SetParent(parent, false);
+            }
+
+            // Ubicado a 1 cm sobre el cuadro amarillo (Y=0.04)
+            arrowObj.transform.localPosition = new Vector3(0f, 0.04f, 0f);
+
+            // Para Bay90Reverse la flecha apunta hacia la calle (-Z local, hacia la salida del cajón)
+            arrowObj.transform.localRotation = (stationType == ParkingStationType.Bay90Reverse)
+                ? Quaternion.Euler(0f, 180f, 0f)
+                : Quaternion.identity;
+            arrowObj.transform.localScale = Vector3.one;
+
+            MeshFilter mf = arrowObj.GetComponent<MeshFilter>();
+            if (mf == null) mf = arrowObj.AddComponent<MeshFilter>();
+
+            MeshRenderer mr = arrowObj.GetComponent<MeshRenderer>();
+            if (mr == null) mr = arrowObj.AddComponent<MeshRenderer>();
+
+            Mesh mesh = new Mesh();
+            mesh.name = "M_ParkingArrowMesh";
+
+            float shaftW = 0.38f;
+            float shaftL = 1.4f;
+            float headW = 1.0f;
+            float headL = 0.9f;
+            float totalL = shaftL + headL;
+            float zStart = -totalL * 0.5f;
+            float zJoint = zStart + shaftL;
+            float zTip = zStart + totalL;
+
+            Vector3[] vertices = new Vector3[]
+            {
+                new Vector3(-shaftW * 0.5f, 0f, zStart),
+                new Vector3(shaftW * 0.5f, 0f, zStart),
+                new Vector3(-shaftW * 0.5f, 0f, zJoint),
+                new Vector3(shaftW * 0.5f, 0f, zJoint),
+                new Vector3(-headW * 0.5f, 0f, zJoint),
+                new Vector3(headW * 0.5f, 0f, zJoint),
+                new Vector3(0f, 0f, zTip)
+            };
+
+            int[] triangles = new int[]
+            {
+                0, 2, 1,
+                1, 2, 3,
+                4, 6, 2,
+                2, 6, 3,
+                3, 6, 5
+            };
+
+            Vector2[] uvs = new Vector2[7];
+            for (int i = 0; i < 7; i++)
+            {
+                uvs[i] = new Vector2(vertices[i].x, vertices[i].z);
+            }
+
+            mesh.vertices = vertices;
+            mesh.triangles = triangles;
+            mesh.uv = uvs;
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+
+            mf.sharedMesh = mesh;
+
+            Material arrowMat = EnsureArrowMaterial();
+            if (arrowMat != null)
+            {
+                mr.sharedMaterial = arrowMat;
+            }
+
+            return arrowObj;
         }
 
         private static void SpawnConesAround(Transform parent, GameObject conePrefab, Vector2 size)

@@ -164,7 +164,7 @@ namespace PrimerVolante.Lessons
         }
 
         /// <summary>
-        /// Resalta el recuadro amarillo en el asfalto correspondiente al objetivo activo.
+        /// Resalta el recuadro amarillo en el asfalto y su flecha indicadora correspondiente al objetivo activo.
         /// </summary>
         public void UpdateGroundHighlights(int stepIndex)
         {
@@ -173,19 +173,24 @@ namespace PrimerVolante.Lessons
             // Paso 2: Dársena 90° activo
             // Paso 3: Dársena Paralelo activo
             // Paso 4: Asegurar vehículo
-            if (m_GroundHighlight45 != null)
-            {
-                m_GroundHighlight45.SetActive(stepIndex <= 1);
-            }
+            SetStationVisualActive(m_GroundHighlight45, stepIndex <= 1);
+            SetStationVisualActive(m_GroundHighlight90, stepIndex == 0 || stepIndex == 2);
+            SetStationVisualActive(m_GroundHighlightParallel, stepIndex == 0 || stepIndex == 3);
+        }
 
-            if (m_GroundHighlight90 != null)
+        private void SetStationVisualActive(GameObject highlight, bool active)
+        {
+            if (highlight == null) return;
+            highlight.SetActive(active);
+            if (highlight.transform.parent != null)
             {
-                m_GroundHighlight90.SetActive(stepIndex == 0 || stepIndex == 2);
-            }
-
-            if (m_GroundHighlightParallel != null)
-            {
-                m_GroundHighlightParallel.SetActive(stepIndex == 0 || stepIndex == 3);
+                foreach (Transform child in highlight.transform.parent)
+                {
+                    if (child.name.StartsWith("GroundVisual_Arrow"))
+                    {
+                        child.gameObject.SetActive(active);
+                    }
+                }
             }
         }
 

@@ -364,6 +364,14 @@ namespace PrimerVolante.Testing.Editor
             Assert(hl45 != null, "GroundVisual_YellowZone_45 debe existir en el piso de la dársena a 45°", ref total, ref passed);
             Assert(hl90 != null, "GroundVisual_YellowZone_90 debe existir en el piso de la dársena a 90°", ref total, ref passed);
             Assert(hlParallel != null, "GroundVisual_YellowZone_Parallel debe existir en el piso de la dársena en paralelo", ref total, ref passed);
+
+            // Validar flechas direccionales sobre el asfalto indicando el frente requerido del auto
+            GameObject arrow45 = GameObject.Find("GroundVisual_Arrow_45");
+            GameObject arrow90 = GameObject.Find("GroundVisual_Arrow_90");
+            GameObject arrowParallel = GameObject.Find("GroundVisual_Arrow_Parallel");
+            Assert(arrow45 != null, "GroundVisual_Arrow_45 debe existir marcando la dirección del auto en dársena 45°", ref total, ref passed);
+            Assert(arrow90 != null, "GroundVisual_Arrow_90 debe existir marcando la dirección de culata hacia la calle en dársena 90°", ref total, ref passed);
+            Assert(arrowParallel != null, "GroundVisual_Arrow_Parallel debe existir marcando la dirección de circulación en dársena paralelo", ref total, ref passed);
         }
 
         // =========================================================================

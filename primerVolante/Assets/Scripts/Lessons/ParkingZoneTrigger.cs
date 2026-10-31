@@ -99,6 +99,25 @@ namespace PrimerVolante.Lessons
         }
 
         /// <summary>
+        /// Devuelve el vector unitario mundial hacia donde debe apuntar el frente (morro) del vehículo.
+        /// - 90° de culata: el frente apunta hacia la calle (-transform.forward).
+        /// - 45° diagonal y Paralelo: el frente apunta hacia adelante (transform.forward).
+        /// </summary>
+        public Vector3 GetTargetForwardDirection()
+        {
+            switch (m_StationType)
+            {
+                case ParkingStationType.Bay90Reverse:
+                    // En 90° de culata, la parte trasera entra a la dársena y el frente queda hacia la calle
+                    return -transform.forward;
+                case ParkingStationType.Diagonal45:
+                case ParkingStationType.ParallelRight:
+                default:
+                    return transform.forward;
+            }
+        }
+
+        /// <summary>
         /// Evalúa si el vehículo cumple todas las condiciones de estacionamiento de la dársena.
         /// </summary>
         public bool EvaluateParkingCondition(VehicleController vehicle)
@@ -111,13 +130,9 @@ namespace PrimerVolante.Lessons
                 return false;
             }
 
-            // 2. Condición de alineación angular
-            float headingAngle = Vector3.Angle(vehicle.transform.forward, transform.forward);
-            // Para estacionamiento a 90 de reversa, el vehículo apunta en sentido opuesto (-transform.forward)
-            if (m_StationType == ParkingStationType.Bay90Reverse)
-            {
-                headingAngle = Mathf.Min(headingAngle, Vector3.Angle(-vehicle.transform.forward, transform.forward));
-            }
+            // 2. Condición de alineación angular respecto a la dirección obligatoria
+            Vector3 targetHeading = GetTargetForwardDirection();
+            float headingAngle = Vector3.Angle(vehicle.transform.forward, targetHeading);
 
             if (headingAngle > m_MaxAlignmentAngleDeg)
             {
@@ -174,6 +189,56 @@ namespace PrimerVolante.Lessons
             Gizmos.DrawWireCube(box.center, box.size);
 
             Gizmos.matrix = prev;
+
+            // Dibujar la flecha indicadora del sentido obligatorio del frente del auto
+            DrawDirectionArrowGizmo(box);
+        }
+
+        private void DrawDirectionArrowGizmo(BoxCollider box)
+        {
+            Vector3 worldCenter = transform.TransformPoint(box.center);
+            worldCenter.y = transform.position.y + 0.08f;
+
+            Vector3 targetDir = GetTargetForwardDirection();
+            float arrowLength = Mathf.Max(2.2f, box.size.z * 0.45f);
+            Vector3 startPos = worldCenter - targetDir * (arrowLength * 0.5f);
+            Vector3 endPos = worldCenter + targetDir * (arrowLength * 0.5f);
+
+            // Color amarillo vial brillante con punta de flecha
+            Gizmos.color = new Color(1.0f, 0.85f, 0.0f, 1.0f);
+            Gizmos.DrawLine(startPos, endPos);
+
+            Vector3 right = Vector3.Cross(Vector3.up, targetDir).normalized;
+            float tipSize = 0.65f;
+            Vector3 leftBarb = endPos - targetDir * tipSize - right * (tipSize * 0.5f);
+            Vector3 rightBarb = endPos - targetDir * tipSize + right * (tipSize * 0.5f);
+
+            Gizmos.DrawLine(endPos, leftBarb);
+            Gizmos.DrawLine(endPos, rightBarb);
+            Gizmos.DrawLine(leftBarb, rightBarb);
+
+            // Handles para grosor y etiqueta visible en la Scene View de Unity Editor
+            UnityEditor.Handles.color = new Color(1.0f, 0.85f, 0.0f, 0.95f);
+            UnityEditor.Handles.DrawAAPolyLine(6f, startPos, endPos);
+            UnityEditor.Handles.DrawAAPolyLine(6f, endPos, leftBarb);
+            UnityEditor.Handles.DrawAAPolyLine(6f, endPos, rightBarb);
+            UnityEditor.Handles.DrawAAPolyLine(4f, leftBarb, rightBarb);
+
+            string labelText = m_StationType switch
+            {
+                ParkingStationType.Bay90Reverse => "➔ Frente del auto (De culata hacia la calle)",
+                ParkingStationType.Diagonal45 => "➔ Frente del auto (De frente a 45°)",
+                ParkingStationType.ParallelRight => "➔ Frente del auto (Sentido del cordón)",
+                _ => "➔ Frente del auto"
+            };
+
+            GUIStyle style = new GUIStyle();
+            style.normal.textColor = Color.yellow;
+            style.fontStyle = FontStyle.Bold;
+            style.fontSize = 12;
+            style.alignment = TextAnchor.MiddleCenter;
+
+            UnityEditor.Handles.Label(endPos + Vector3.up * 0.25f, labelText, style);
         }
 #endif
     }
