@@ -30,6 +30,7 @@ namespace PrimerVolante.Lessons
         [SerializeField] private VRScreenFader m_ScreenFader;
         [SerializeField] private DriverSeatFollower m_SeatFollower;
         [SerializeField] private TrafficLightController m_TrafficLight;
+        [SerializeField] private TrafficLightController m_SecondaryTrafficLight;
         [SerializeField] private InfractionManager m_InfractionManager;
         [SerializeField] private GPSRouteRenderer m_RouteRenderer;
 
@@ -81,6 +82,8 @@ namespace PrimerVolante.Lessons
         public bool IsTrafficLightCrossCompleted => m_IsTrafficLightCrossCompleted;
         public bool IsLeftTurnCompleted => m_IsLeftTurnCompleted;
         public bool IsCurbsideStopCompleted => m_IsCurbsideStopCompleted;
+        public TrafficLightController TrafficLight => m_TrafficLight;
+        public TrafficLightController SecondaryTrafficLight => m_SecondaryTrafficLight;
 
         private void Awake()
         {
@@ -143,7 +146,24 @@ namespace PrimerVolante.Lessons
 
             if (m_TrafficLight == null)
             {
-                m_TrafficLight = UnityEngine.Object.FindAnyObjectByType<TrafficLightController>();
+                GameObject light10 = GameObject.Find("Props_Traffic Signal_big (10)");
+                if (light10 != null)
+                {
+                    m_TrafficLight = light10.GetComponent<TrafficLightController>();
+                }
+                if (m_TrafficLight == null)
+                {
+                    m_TrafficLight = UnityEngine.Object.FindAnyObjectByType<TrafficLightController>();
+                }
+            }
+
+            if (m_SecondaryTrafficLight == null)
+            {
+                GameObject smallLight = GameObject.Find("TrafficSignal_Step03_Small");
+                if (smallLight != null)
+                {
+                    m_SecondaryTrafficLight = smallLight.GetComponent<TrafficLightController>();
+                }
             }
 
             if (m_InfractionManager == null)
@@ -299,10 +319,19 @@ namespace PrimerVolante.Lessons
                 m_StepStartHeading = m_VehicleController.transform.eulerAngles.y;
             }
 
-            // Configurar el semáforo para el paso 3 (Cruce semaforizado): arranca en Rojo
-            if (stepIndex == 2 && m_TrafficLight != null)
+            // Configurar el semáforo para el paso 3 (Cruce semaforizado): arranca en Rojo y con ciclo pausado
+            if (stepIndex == 2)
             {
-                m_TrafficLight.SetState(TrafficLightState.Red);
+                if (m_TrafficLight != null)
+                {
+                    m_TrafficLight.PauseCycle();
+                    m_TrafficLight.SetState(TrafficLightState.Red);
+                }
+                if (m_SecondaryTrafficLight != null)
+                {
+                    m_SecondaryTrafficLight.PauseCycle();
+                    m_SecondaryTrafficLight.SetState(TrafficLightState.Red);
+                }
             }
 
             if (m_RouteRenderer != null)
@@ -326,7 +355,11 @@ namespace PrimerVolante.Lessons
             }
             else if (record.Definition != null && record.Definition.Id == InfractionIds.RedLight && m_CurrentStepIndex == 2)
             {
-                TriggerTurnSignalRetry("Falta: Cruce con semáforo en rojo");
+                // Solo sancionar si no se había completado la detención reglamentaria ante la senda
+                if (!m_StoppedAtRedLight)
+                {
+                    TriggerTurnSignalRetry("Falta: Cruce con semáforo en rojo");
+                }
             }
         }
 
@@ -454,6 +487,21 @@ namespace PrimerVolante.Lessons
                 }
             }
 
+            // Para el Paso 3 (Cruce con semáforo), asegurar semáforos en Rojo y ciclo pausado al posicionar
+            if (stepIndex == 2)
+            {
+                if (m_TrafficLight != null)
+                {
+                    m_TrafficLight.PauseCycle();
+                    m_TrafficLight.SetState(TrafficLightState.Red);
+                }
+                if (m_SecondaryTrafficLight != null)
+                {
+                    m_SecondaryTrafficLight.PauseCycle();
+                    m_SecondaryTrafficLight.SetState(TrafficLightState.Red);
+                }
+            }
+
             // Actualizar la ruta del GPS para que se sincronice con el nuevo spawn del paso
             if (m_RouteRenderer != null)
             {
@@ -539,35 +587,55 @@ namespace PrimerVolante.Lessons
                     // Paso 3: Semáforo y Giro a la Derecha (90°)
                     // Auto viaja hacia el Sur (-Z) desde Z=95 hacia la esquina Z=63.5.
                     // Semáforo en (112.38, 0.20, 67.58) mirando al Norte. Senda en Z=71.5.
-                    if (m_TrafficLight != null && m_TrafficLight.CurrentState == TrafficLightState.Red)
+
+                    // Subfase A: Detención reglamentaria ante la luz roja antes de la senda
+                    if (!m_StoppedAtRedLight)
                     {
-                        // Verificar si está frenado reglamentariamente antes de la senda (Z entre 70.0 y 77.0)
-                        if (carPos.z <= 77.0f && carPos.z >= 70.0f && m_VehicleController.CurrentSpeedKmh < 0.5f)
+                        // Rango de detención generoso antes de la senda (Z entre 68.0 y 86.0 m) a velocidad de frenado (< 0.8 km/h)
+                        if (carPos.z <= 86.0f && carPos.z >= 68.0f && m_VehicleController.CurrentSpeedKmh < 0.8f)
                         {
-                            m_StoppedAtRedLight = true;
                             m_RedLightStopTimer += Time.deltaTime;
 
-                            // Tras 2 segundos de detención reglamentaria, pasar a Verde
+                            // Tras 2 segundos de detención reglamentaria, pasar el semáforo a Verde y pausar el ciclo
                             if (m_RedLightStopTimer >= 2.0f)
                             {
-                                m_TrafficLight.SetState(TrafficLightState.Green);
+                                m_StoppedAtRedLight = true;
+                                if (m_TrafficLight != null)
+                                {
+                                    m_TrafficLight.SetState(TrafficLightState.Green);
+                                    m_TrafficLight.PauseCycle();
+                                }
+                                if (m_SecondaryTrafficLight != null)
+                                {
+                                    m_SecondaryTrafficLight.SetState(TrafficLightState.Green);
+                                    m_SecondaryTrafficLight.PauseCycle();
+                                }
                             }
                         }
-                        else if (carPos.z < 69.5f && !m_StoppedAtRedLight && !m_IsRetrying)
+                        else if (carPos.z < 68.0f && !m_IsRetrying)
                         {
+                            // Infracción: avanzó y cruzó la senda (Z < 68m) sin haberse detenido reglamentariamente
                             TriggerTurnSignalRetry("Falta: Cruzaste la senda peatonal con el semáforo en rojo");
                             return;
                         }
                     }
 
-                    // Una vez en verde, el auto debe completar el giro a la derecha a 90° e incorporarse a la calle Z=63.5 (X <= 110m)
-                    if (m_StoppedAtRedLight && m_TrafficLight != null && m_TrafficLight.CurrentState == TrafficLightState.Green)
+                    // Subfase B: Tras ponerse en verde, completar el giro a la derecha a 90° e incorporarse a la calle Z=63.5 (X <= 110m)
+                    if (m_StoppedAtRedLight)
                     {
-                        if (deltaHeading >= 70f && deltaHeading <= 110f && carPos.x <= 110.0f)
+                        if (deltaHeading >= 65f && deltaHeading <= 115f && carPos.x <= 110.0f)
                         {
                             if (m_TurnSignalDetector == null || m_TurnSignalDetector.LastOutcome != TurnSignalOutcome.Fault)
                             {
                                 m_IsTrafficLightCrossCompleted = true;
+                                if (m_TrafficLight != null)
+                                {
+                                    m_TrafficLight.ResumeCycle();
+                                }
+                                if (m_SecondaryTrafficLight != null)
+                                {
+                                    m_SecondaryTrafficLight.ResumeCycle();
+                                }
                             }
                         }
                     }

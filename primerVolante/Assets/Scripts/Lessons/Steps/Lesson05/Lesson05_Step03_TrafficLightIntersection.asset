@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Lesson05_Step03_TrafficLightIntersection
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: "Sem\xE1foro y Giro a la Derecha"
-  instructionText: "Det\xE9n el auto en la senda ante la luz roja con el gui\xF1o derecho. Al pasar a verde, dobla a la derecha."
+  instructionText: "Frena ante la l\xEDnea amarilla y el sem\xE1foro en rojo con gui\xF1o derecho. Al cambiar a verde, dobla a la derecha."
   completionMode: 1
   requiredAction: 27
   actionNumericParameter: 0

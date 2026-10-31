@@ -109,7 +109,10 @@ namespace PrimerVolante.Testing.Editor
             // 9. Crear la línea de advertencia en el asfalto y el pórtico holográfico (a 20m de la esquina) para el Paso 2
             Transform warningLine = EnsureWarningLine20m(scene);
 
-            // 10. Configurar o encontrar el semáforo para el Paso 3
+            // 10. Limpiar vehículos y peatones residuales que obstruyen el circuito en la Lección 5
+            CleanResidualObstacles(scene);
+
+            // 11. Configurar o encontrar el semáforo para el Paso 3 (Props_Traffic Signal_big 10)
             TrafficLightController trafficLight = null;
             GameObject light10 = GameObject.Find("Props_Traffic Signal_big (10)");
             if (light10 != null)
@@ -121,18 +124,30 @@ namespace PrimerVolante.Testing.Editor
                 trafficLight = UnityEngine.Object.FindAnyObjectByType<TrafficLightController>();
             }
 
+            if (trafficLight != null)
+            {
+                trafficLight.AutoStart = false;
+                trafficLight.InitialState = TrafficLightState.Red;
+                trafficLight.SetState(TrafficLightState.Red);
+                trafficLight.PauseCycle();
+                EditorUtility.SetDirty(trafficLight);
+            }
+
+            // Semáforo secundario a la altura de los ojos en la vereda derecha junto a la senda peatonal
+            TrafficLightController secondaryTrafficLight = EnsureSmallTrafficLight(scene);
+
             Transform stopLine = EnsureStopLineTrafficLight(scene);
 
-            // 11. Configurar Pantalla Diegética de GPS y Trazado de Ruta Urbana en Car09
+            // 12. Configurar Pantalla Diegética de GPS y Trazado de Ruta Urbana en Car09
             GPSRouteRenderer routeRenderer = SetupGPSCircuitInScene(scene, car09);
 
-            // 12. Configurar LessonHUDPanel, LessonManager y Lesson05TurnIntersectionsController
-            SetupLessonControllers(scene, car09, lessonData, spawnPoints, warningLine, stopLine, trafficLight, screenFader, turnDetector, routeRenderer);
+            // 13. Configurar LessonHUDPanel, LessonManager y Lesson05TurnIntersectionsController
+            SetupLessonControllers(scene, car09, lessonData, spawnPoints, warningLine, stopLine, trafficLight, secondaryTrafficLight, screenFader, turnDetector, routeRenderer);
 
-            // 13. Asegurar zonas exentas en prefabs e infracciones en la escena
+            // 14. Asegurar zonas exentas en prefabs e infracciones en la escena
             TurnSignalSetup.EnsureAssets(out _, out _);
 
-            // 14. Guardar escena y assets
+            // 15. Guardar escena y assets
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             AssetDatabase.SaveAssets();
@@ -196,7 +211,7 @@ namespace PrimerVolante.Testing.Editor
 
             LessonStepSO step3 = CreateOrUpdateStep("Lesson05_Step03_TrafficLightIntersection",
                 "Semáforo y Giro a la Derecha",
-                "Detén el auto en la senda ante la luz roja con el guiño derecho. Al pasar a verde, dobla a la derecha.",
+                "Frena ante la línea amarilla y el semáforo en rojo con guiño derecho. Al cambiar a verde, dobla a la derecha.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.CrossTrafficLightIntersection,
                 0f,
@@ -205,7 +220,7 @@ namespace PrimerVolante.Testing.Editor
 
             LessonStepSO step4 = CreateOrUpdateStep("Lesson05_Step04_LeftTurnCrossing",
                 "Giro a la Izquierda",
-                "Coloca el guiño hacia abajo (izquierda) con anticipación y gira 90° a la izquierda en la bocacalle sin invadir la contramano.",
+                "Coloca el guiño hacia abajo (izquierda) con anticipación y gira 90° a la izquierda sin invadir contramano.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.CompleteLeftTurnCrossing,
                 20f,
@@ -478,6 +493,75 @@ namespace PrimerVolante.Testing.Editor
             return lineObj.transform;
         }
 
+        private static TrafficLightController EnsureSmallTrafficLight(Scene scene)
+        {
+            GameObject smallObj = GameObject.Find("TrafficSignal_Step03_Small");
+            if (smallObj == null)
+            {
+                string prefabPath = "Assets/SimplePoly City - Low Poly Assets/Prefab/Props/Props_Traffic Signal_small.prefab";
+                GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+                if (prefab != null)
+                {
+                    smallObj = (GameObject)PrefabUtility.InstantiatePrefab(prefab, scene);
+                    smallObj.name = "TrafficSignal_Step03_Small";
+                }
+                else
+                {
+                    smallObj = new GameObject("TrafficSignal_Step03_Small");
+                    SceneManager.MoveGameObjectToScene(smallObj, scene);
+                }
+            }
+
+            // Ubicado en la vereda derecha a la altura de los ojos en la senda peatonal Z=71.5
+            smallObj.transform.position = new Vector3(112.38f, 0.20f, 71.50f);
+            smallObj.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+
+            TrafficLightController ctrl = smallObj.GetComponent<TrafficLightController>();
+            if (ctrl == null)
+            {
+                ctrl = smallObj.AddComponent<TrafficLightController>();
+            }
+            ctrl.AutoStart = false;
+            ctrl.InitialState = TrafficLightState.Red;
+            ctrl.SetState(TrafficLightState.Red);
+            ctrl.PauseCycle();
+            EditorUtility.SetDirty(ctrl);
+            return ctrl;
+        }
+
+        private static void CleanResidualObstacles(Scene scene)
+        {
+            string[] obstaclesToDisable = new[]
+            {
+                "Vehicle_SUV_color01 (4)",
+                "Vehicle_Car_color01",
+                "Vehicle_SUV_color03 (1)",
+                "Vehicle_Police Car (2)",
+                "NPC_Pedestrian_CrosswalkSurprise"
+            };
+
+            foreach (string name in obstaclesToDisable)
+            {
+                GameObject obj = GameObject.Find(name);
+                if (obj != null)
+                {
+                    obj.SetActive(false);
+                    Debug.Log($"[Lesson05TurnIntersectionsSetup] 🧹 Objeto residual desactivado: {name}");
+                }
+            }
+
+            // Desactivar detector viejo en StopLine_Trigger para evitar faltas de semáforo espurias
+            GameObject oldStopLine = GameObject.Find("StopLine_Trigger");
+            if (oldStopLine != null)
+            {
+                var detector = oldStopLine.GetComponent<RedLightViolationDetector>();
+                if (detector != null)
+                {
+                    detector.enabled = false;
+                }
+            }
+        }
+
         public static SplineContainer BuildLesson05Splines(Scene scene)
         {
             GameObject routeRoot = GameObject.Find(GPSNavigationSceneSetup.ROUTE_OBJECT_NAME);
@@ -545,7 +629,8 @@ namespace PrimerVolante.Testing.Editor
 
         private static void SetupLessonControllers(Scene scene, GameObject car09, LessonDefinitionSO lessonData,
             Transform[] spawnPoints, Transform warningLine, Transform stopLine, TrafficLightController trafficLight,
-            VRScreenFader screenFader, TurnSignalDetector turnDetector, GPSRouteRenderer routeRenderer)
+            TrafficLightController secondaryTrafficLight, VRScreenFader screenFader, TurnSignalDetector turnDetector,
+            GPSRouteRenderer routeRenderer)
         {
             GameObject managerObj = GameObject.Find("Lesson_Manager");
             if (managerObj == null)
@@ -608,6 +693,10 @@ namespace PrimerVolante.Testing.Editor
             soCtrl.FindProperty("m_ScreenFader").objectReferenceValue = screenFader;
             soCtrl.FindProperty("m_SeatFollower").objectReferenceValue = seatFollower;
             soCtrl.FindProperty("m_TrafficLight").objectReferenceValue = trafficLight;
+            if (secondaryTrafficLight != null && soCtrl.FindProperty("m_SecondaryTrafficLight") != null)
+            {
+                soCtrl.FindProperty("m_SecondaryTrafficLight").objectReferenceValue = secondaryTrafficLight;
+            }
             soCtrl.FindProperty("m_InfractionManager").objectReferenceValue = infractionMgr;
             soCtrl.FindProperty("m_WarningLine20m").objectReferenceValue = warningLine;
             if (stopLine != null && soCtrl.FindProperty("m_StopLineTrafficLight") != null)

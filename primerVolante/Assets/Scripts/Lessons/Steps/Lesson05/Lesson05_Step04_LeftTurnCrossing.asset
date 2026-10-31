@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Lesson05_Step04_LeftTurnCrossing
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: Giro a la Izquierda
-  instructionText: "Coloca el gui\xF1o hacia abajo (izquierda) con anticipaci\xF3n y gira 90\xB0 a la izquierda en la bocacalle sin invadir la contramano."
+  instructionText: "Coloca el gui\xF1o hacia abajo (izquierda) con anticipaci\xF3n y gira 90\xB0 a la izquierda sin invadir contramano."
   completionMode: 1
   requiredAction: 28
   actionNumericParameter: 20

@@ -297,6 +297,14 @@ namespace PrimerVolante.Testing.Editor
             GameObject stopLine = GameObject.Find("StopLine_TrafficLight_Step03");
             Assert(stopLine != null, "StopLine_TrafficLight_Step03 debe existir en la senda peatonal del semáforo para el Paso 3", ref total, ref passed);
 
+            GameObject smallSignal = GameObject.Find("TrafficSignal_Step03_Small");
+            Assert(smallSignal != null, "TrafficSignal_Step03_Small debe existir a la altura de los ojos en la senda para el Paso 3", ref total, ref passed);
+            if (ctrl != null)
+            {
+                Assert(ctrl.TrafficLight != null, "Lesson05TurnIntersectionsController debe tener asignado TrafficLight", ref total, ref passed);
+                Assert(ctrl.SecondaryTrafficLight != null, "Lesson05TurnIntersectionsController debe tener asignado SecondaryTrafficLight", ref total, ref passed);
+            }
+
             GameObject spawns = GameObject.Find("Lesson05_SpawnPoints");
             Assert(spawns != null && spawns.transform.childCount >= 5, "Lesson05_SpawnPoints debe contener al menos 5 puntos de spawn", ref total, ref passed);
         }
