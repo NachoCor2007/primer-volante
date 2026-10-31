@@ -149,15 +149,14 @@ namespace PrimerVolante.Testing.Editor
             {
                 Assert(l5.lessonId == "LESSON_05", $"LessonData_05 debe tener lessonId 'LESSON_05' (actual: '{l5.lessonId}')", ref total, ref passed);
                 Assert(!string.IsNullOrEmpty(l5.lessonTitle), "LessonData_05 debe tener lessonTitle no vacío", ref total, ref passed);
-                Assert(l5.steps != null && l5.steps.Count == 5, $"LessonData_05 debe contener exactamente 5 pasos (encontrados: {l5.steps?.Count ?? 0})", ref total, ref passed);
+                Assert(l5.steps != null && l5.steps.Count == 4, $"LessonData_05 debe contener exactamente 4 pasos (encontrados: {l5.steps?.Count ?? 0})", ref total, ref passed);
 
                 LessonActionType[] expectedActions = new[]
                 {
                     LessonActionType.CompleteTurnSignalRightIntro,
                     LessonActionType.TurnSignalAnticipation20m,
                     LessonActionType.CrossTrafficLightIntersection,
-                    LessonActionType.CompleteLeftTurnCrossing,
-                    LessonActionType.CurbsideStop
+                    LessonActionType.CompleteLeftTurnCrossing
                 };
 
                 for (int s = 0; s < (l5.steps != null ? l5.steps.Count : 0); s++)
@@ -290,8 +289,8 @@ namespace PrimerVolante.Testing.Editor
             if (gpsRoute != null)
             {
                 var sc = gpsRoute.GetComponent<UnityEngine.Splines.SplineContainer>();
-                Assert(sc != null && sc.Splines != null && sc.Splines.Count == 5,
-                    $"GPS_Circuit_Route debe contener exactamente 5 splines (una por cada paso) (encontradas: {sc?.Splines?.Count ?? 0})", ref total, ref passed);
+                Assert(sc != null && sc.Splines != null && sc.Splines.Count == 4,
+                    $"GPS_Circuit_Route debe contener exactamente 4 splines (una por cada paso) (encontradas: {sc?.Splines?.Count ?? 0})", ref total, ref passed);
             }
 
             GameObject stopLine = GameObject.Find("StopLine_TrafficLight_Step03");
@@ -306,7 +305,7 @@ namespace PrimerVolante.Testing.Editor
             }
 
             GameObject spawns = GameObject.Find("Lesson05_SpawnPoints");
-            Assert(spawns != null && spawns.transform.childCount >= 5, "Lesson05_SpawnPoints debe contener al menos 5 puntos de spawn", ref total, ref passed);
+            Assert(spawns != null && spawns.transform.childCount >= 4, "Lesson05_SpawnPoints debe contener al menos 4 puntos de spawn", ref total, ref passed);
         }
 
         // =========================================================================

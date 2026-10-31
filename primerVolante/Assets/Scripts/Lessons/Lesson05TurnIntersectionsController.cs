@@ -35,8 +35,8 @@ namespace PrimerVolante.Lessons
         [SerializeField] private GPSRouteRenderer m_RouteRenderer;
 
         [Header("Puntos de Partida de Cada Paso")]
-        [Tooltip("Transform de spawn para cada uno de los 5 pasos de la Lección 5.")]
-        [SerializeField] private Transform[] m_StepSpawnPoints = new Transform[5];
+        [Tooltip("Transform de spawn para cada uno de los 4 pasos de la Lección 5.")]
+        [SerializeField] private Transform[] m_StepSpawnPoints = new Transform[4];
 
         [Header("Referencias Geométricas de Paso")]
         [Tooltip("Marca visual o línea de advertencia en el asfalto (a 20m de la esquina).")]
@@ -479,22 +479,19 @@ namespace PrimerVolante.Lessons
                 stalk.SetSignalAnimated(TurnSignalState.Off);
             }
 
-            // Asegurar motor en marcha y transmisión en Drive (salvo paso 5)
+            // Asegurar motor en marcha, transmisión en Drive y freno de mano liberado
             m_VehicleController.SetEngineRunning(true);
-            if (stepIndex < 4)
+            m_VehicleController.SetGear(GearState.Drive);
+            VRGearShifter shifter = m_VehicleController.GetComponentInChildren<VRGearShifter>(true);
+            if (shifter != null)
             {
-                m_VehicleController.SetGear(GearState.Drive);
-                VRGearShifter shifter = m_VehicleController.GetComponentInChildren<VRGearShifter>(true);
-                if (shifter != null)
-                {
-                    shifter.SetRotationToGear(GearState.Drive);
-                }
+                shifter.SetRotationToGear(GearState.Drive);
+            }
 
-                VRHandbrake handbrake = m_VehicleController.GetComponentInChildren<VRHandbrake>(true);
-                if (handbrake != null)
-                {
-                    handbrake.SetEngagementImmediate(0f);
-                }
+            VRHandbrake handbrake = m_VehicleController.GetComponentInChildren<VRHandbrake>(true);
+            if (handbrake != null)
+            {
+                handbrake.SetEngagementImmediate(0f);
             }
 
             // Para el Paso 3 (Cruce con semáforo), asegurar semáforos en Rojo y ciclo pausado al posicionar

@@ -227,15 +227,6 @@ namespace PrimerVolante.Testing.Editor
                 CockpitControlFlags.All,
                 "VRTurnSignal");
 
-            LessonStepSO step5 = CreateOrUpdateStep("Lesson05_Step05_CurbsideStop",
-                "Detención en Cordón",
-                "Arrimarse al cordón derecho, frenar por completo, colocar Parking (P) y subir el freno de mano.",
-                LessonStepCompletionMode.ActionRequired,
-                LessonActionType.CurbsideStop,
-                0f,
-                CockpitControlFlags.All,
-                "VRHandbrake, VRGearShifter");
-
             LessonDefinitionSO lesson = AssetDatabase.LoadAssetAtPath<LessonDefinitionSO>(LESSON_05_PATH);
             if (lesson == null)
             {
@@ -245,7 +236,7 @@ namespace PrimerVolante.Testing.Editor
 
             lesson.lessonId = "LESSON_05";
             lesson.lessonTitle = "Lección 5: Giros e Intersecciones";
-            lesson.steps = new List<LessonStepSO> { step1, step2, step3, step4, step5 };
+            lesson.steps = new List<LessonStepSO> { step1, step2, step3, step4 };
 
             EditorUtility.SetDirty(lesson);
             AssetDatabase.SaveAssets();
@@ -308,7 +299,7 @@ namespace PrimerVolante.Testing.Editor
                 SceneManager.MoveGameObjectToScene(container, scene);
             }
 
-            Transform[] spawns = new Transform[5];
+            Transform[] spawns = new Transform[4];
 
             // Paso 1: Auto detenido a 5 m de la esquina norte (X=63.5, Z=110, rumbo Norte +Z)
             spawns[0] = EnsureChildTransform(container.transform, "SpawnPoint_01_TurnIntro",
@@ -326,9 +317,11 @@ namespace PrimerVolante.Testing.Editor
             spawns[3] = EnsureChildTransform(container.transform, "SpawnPoint_04_LeftTurn",
                 new Vector3(105.0f, 0.02f, 63.5f), Quaternion.Euler(0f, 270f, 0f));
 
-            // Paso 5: Arrime y detención en cordón derecho (calle X=60 rumbo Sur, carril X=56.5, Z=45.0)
-            spawns[4] = EnsureChildTransform(container.transform, "SpawnPoint_05_CurbsideStop",
-                new Vector3(56.5f, 0.02f, 45.0f), Quaternion.Euler(0f, 180f, 0f));
+            Transform oldSpawn5 = container.transform.Find("SpawnPoint_05_CurbsideStop");
+            if (oldSpawn5 != null)
+            {
+                UnityEngine.Object.DestroyImmediate(oldSpawn5.gameObject);
+            }
 
             return spawns;
         }
@@ -613,14 +606,6 @@ namespace PrimerVolante.Testing.Editor
             s3.Add(new BezierKnot(new Unity.Mathematics.float3(56.5f, Y, 55.0f), new Unity.Mathematics.float3(2f, 0f, 3f), new Unity.Mathematics.float3(0f, 0f, -4f)), TangentMode.Broken);
             s3.Add(new BezierKnot(new Unity.Mathematics.float3(56.5f, Y, 45.0f), new Unity.Mathematics.float3(0f, 0f, 4f), Unity.Mathematics.float3.zero), TangentMode.Broken);
             list.Add(s3);
-
-            // Spline 4: Paso 5 - Detención en cordón derecho (calle X=60 rumbo Sur)
-            var s4 = new Spline { Closed = false };
-            s4.Add(new BezierKnot(new Unity.Mathematics.float3(56.5f, Y, 45.0f), Unity.Mathematics.float3.zero, new Unity.Mathematics.float3(0f, 0f, -4f)), TangentMode.Broken);
-            s4.Add(new BezierKnot(new Unity.Mathematics.float3(56.5f, Y, 35.0f), new Unity.Mathematics.float3(0f, 0f, 3f), new Unity.Mathematics.float3(-0.8f, 0f, -3f)), TangentMode.Broken);
-            s4.Add(new BezierKnot(new Unity.Mathematics.float3(54.0f, Y, 25.0f), new Unity.Mathematics.float3(0.5f, 0f, 2f), new Unity.Mathematics.float3(-0.3f, 0f, -2f)), TangentMode.Broken);
-            s4.Add(new BezierKnot(new Unity.Mathematics.float3(53.5f, Y, 20.0f), new Unity.Mathematics.float3(0f, 0f, 2f), Unity.Mathematics.float3.zero), TangentMode.Broken);
-            list.Add(s4);
 
             container.Splines = list;
             EditorUtility.SetDirty(container);
