@@ -9,13 +9,14 @@ namespace PrimerVolante.MainMenu
     /// <summary>
     /// Lista de lecciones (uGUI, World Space) del menú principal. Arma un ítem por cada <see cref="LessonDefinitionSO"/>
     /// mostrando su <c>lessonTitle</c>, con un cursor discreto resaltado que se frena en los extremos (no da la vuelta).
-    /// Si la lista no entra en <c>m_MaxVisibleItems</c> filas, desplaza la ventana para mantener el cursor visible.
+    /// Si la lista no entra en el contenedor, el contenido se desliza (suavizado) para mantener visible la fila del cursor;
+    /// un <see cref="RectMask2D"/> en el contenedor recorta lo que queda afuera, así asoma el borde de la fila siguiente.
     /// <see cref="MarkSelected"/> muestra la marca "Seleccionada" en un ítem.
     /// </summary>
     public class LessonListPanel : MonoBehaviour
     {
         [Header("Contenido")]
-        [Tooltip("Lecciones a listar, en orden (LessonData_01..04).")]
+        [Tooltip("Lecciones a listar, en orden (LessonData_01..06).")]
         [SerializeField] private List<LessonDefinitionSO> m_Lessons = new List<LessonDefinitionSO>();
 
         [Tooltip("Contenedor de los ítems (con VerticalLayoutGroup). Si se deja vacío se usa este mismo transform.")]
@@ -33,8 +34,9 @@ namespace PrimerVolante.MainMenu
         [SerializeField] private Color m_TextColor = Color.white;
         [SerializeField] private Color m_SelectedMarkColor = new Color(0.5f, 1f, 0.6f, 1f);
 
-        [Tooltip("Máximo de filas visibles a la vez. Si hay más lecciones, la ventana sigue al cursor.")]
-        [SerializeField] private int m_MaxVisibleItems = 6;
+        [Header("Desplazamiento")]
+        [Tooltip("Tiempo de suavizado (s) del deslizamiento hacia la fila del cursor. 0 = salto inmediato.")]
+        [SerializeField] private float m_ScrollSmoothTime = 0.12f;
 
         private class Item
         {
@@ -47,8 +49,12 @@ namespace PrimerVolante.MainMenu
         private readonly List<Item> m_Items = new List<Item>();
         private int m_CursorIndex;
         private int m_SelectedIndex = -1;
-        private int m_FirstVisible;
         private bool m_Built;
+        private float m_ScrollOffset;       // desplazamiento aplicado (px, 0 = arriba)
+        private float m_TargetScrollOffset; // desplazamiento al que se desliza
+        private float m_ScrollVelocity;
+        private int m_BasePaddingTop;
+        private bool m_BasePaddingCached;
 
         /// <summary>Cantidad de ítems armados.</summary>
         public int Count { get { EnsureBuilt(); return m_Items.Count; } }
@@ -59,15 +65,59 @@ namespace PrimerVolante.MainMenu
         /// <summary>Índice marcado como "Seleccionada", o -1 si ninguno.</summary>
         public int SelectedIndex => m_SelectedIndex;
 
-        /// <summary>Índice del primer ítem visible de la ventana.</summary>
-        public int FirstVisibleIndex { get { EnsureBuilt(); return m_FirstVisible; } }
+        /// <summary>Índice del primer ítem completamente visible (con el desplazamiento de destino).</summary>
+        public int FirstVisibleIndex
+        {
+            get
+            {
+                EnsureBuilt();
+                for (int i = 0; i < m_Items.Count; i++)
+                {
+                    if (IsItemVisible(i)) return i;
+                }
+                return 0;
+            }
+        }
+
+        /// <summary>Desplazamiento de destino del contenido (px desde arriba).</summary>
+        public float TargetScrollOffset { get { EnsureBuilt(); return m_TargetScrollOffset; } }
+
+        /// <summary>Desplazamiento aplicado ahora (px desde arriba); se acerca a <see cref="TargetScrollOffset"/> en Play Mode.</summary>
+        public float ScrollOffset => m_ScrollOffset;
 
         public IReadOnlyList<LessonDefinitionSO> Lessons => m_Lessons;
 
         private void Awake()
         {
+            // En Play Mode se asegura el recorte; en Edit Mode no se agrega nada para no ensuciar la escena.
+            if (Application.isPlaying && Container.GetComponent<RectMask2D>() == null)
+            {
+                Container.gameObject.AddComponent<RectMask2D>();
+            }
             EnsureBuilt();
         }
+
+        private void Update()
+        {
+            if (Mathf.Approximately(m_ScrollOffset, m_TargetScrollOffset)) return;
+
+            if (m_ScrollSmoothTime <= 0f)
+            {
+                ApplyScroll(m_TargetScrollOffset);
+                return;
+            }
+
+            float next = Mathf.SmoothDamp(m_ScrollOffset, m_TargetScrollOffset, ref m_ScrollVelocity, m_ScrollSmoothTime,
+                Mathf.Infinity, Time.unscaledDeltaTime);
+            if (Mathf.Abs(next - m_TargetScrollOffset) < 0.5f)
+            {
+                next = m_TargetScrollOffset;
+                m_ScrollVelocity = 0f;
+            }
+            ApplyScroll(next);
+        }
+
+        private RectTransform Container => m_Container != null ? m_Container : (RectTransform)transform;
 
         /// <summary>Lección del índice dado, o null.</summary>
         public LessonDefinitionSO GetLesson(int index)
@@ -82,11 +132,24 @@ namespace PrimerVolante.MainMenu
             return index >= 0 && index < m_Items.Count ? m_Items[index].title.text : string.Empty;
         }
 
-        /// <summary>true si el ítem está dentro de la ventana visible.</summary>
+        /// <summary>true si el ítem queda completamente dentro del contenedor con el desplazamiento de destino.</summary>
         public bool IsItemVisible(int index)
         {
             EnsureBuilt();
-            return index >= 0 && index < m_Items.Count && m_Items[index].root.activeSelf;
+            if (index < 0 || index >= m_Items.Count) return false;
+
+            float view = ViewHeight();
+            if (view <= 0f) return true; // sin tamaño conocido: no hay recorte
+            float top = ItemTop(index) - m_TargetScrollOffset;
+            return top >= -0.5f && top + m_ItemHeight <= view + 0.5f;
+        }
+
+        /// <summary>Lleva el desplazamiento aplicado directo al de destino (sin animación).</summary>
+        public void SnapScroll()
+        {
+            EnsureBuilt();
+            m_ScrollVelocity = 0f;
+            ApplyScroll(m_TargetScrollOffset);
         }
 
         /// <summary>true si el ítem muestra la marca "Seleccionada".</summary>
@@ -130,7 +193,7 @@ namespace PrimerVolante.MainMenu
         /// <summary>(Re)arma los ítems a partir de <c>m_Lessons</c>. Idempotente.</summary>
         public void Rebuild()
         {
-            Transform container = m_Container != null ? m_Container : transform;
+            Transform container = Container;
             for (int i = 0; i < m_Items.Count; i++)
             {
                 if (m_Items[i].root != null) DestroyUnityObject(m_Items[i].root);
@@ -153,6 +216,8 @@ namespace PrimerVolante.MainMenu
             m_CursorIndex = Mathf.Clamp(m_CursorIndex, 0, Mathf.Max(0, m_Items.Count - 1));
             if (m_SelectedIndex >= m_Items.Count) m_SelectedIndex = -1;
             Refresh();
+            m_ScrollVelocity = 0f;
+            ApplyScroll(m_TargetScrollOffset);
         }
 
         private void EnsureBuilt()
@@ -226,18 +291,93 @@ namespace PrimerVolante.MainMenu
 
         private void Refresh()
         {
-            int visible = Mathf.Max(1, m_MaxVisibleItems);
-            if (m_CursorIndex < m_FirstVisible) m_FirstVisible = m_CursorIndex;
-            else if (m_CursorIndex >= m_FirstVisible + visible) m_FirstVisible = m_CursorIndex - visible + 1;
-            m_FirstVisible = Mathf.Clamp(m_FirstVisible, 0, Mathf.Max(0, m_Items.Count - visible));
-
             for (int i = 0; i < m_Items.Count; i++)
             {
                 Item item = m_Items[i];
-                item.root.SetActive(i >= m_FirstVisible && i < m_FirstVisible + visible);
                 item.background.color = i == m_CursorIndex ? m_CursorColor : m_NormalColor;
                 item.selectedMark.gameObject.SetActive(i == m_SelectedIndex);
             }
+
+            UpdateScrollTarget();
+            // Fuera de Play Mode no corre Update: se aplica directo.
+            if (!Application.isPlaying)
+            {
+                m_ScrollVelocity = 0f;
+                ApplyScroll(m_TargetScrollOffset);
+            }
+        }
+
+        // ------------------------------------------------------------------ desplazamiento
+
+        private VerticalLayoutGroup Layout => Container.GetComponent<VerticalLayoutGroup>();
+
+        private float Spacing
+        {
+            get
+            {
+                VerticalLayoutGroup layout = Layout;
+                return layout != null ? layout.spacing : 0f;
+            }
+        }
+
+        private float ItemTop(int index)
+        {
+            return index * (m_ItemHeight + Spacing);
+        }
+
+        private float ContentHeight()
+        {
+            int n = m_Items.Count;
+            return n == 0 ? 0f : n * m_ItemHeight + (n - 1) * Spacing;
+        }
+
+        private float ViewHeight()
+        {
+            CacheBasePadding();
+            VerticalLayoutGroup layout = Layout;
+            float padding = layout != null ? m_BasePaddingTop + layout.padding.bottom : 0f;
+            return Container.rect.height - padding;
+        }
+
+        private void CacheBasePadding()
+        {
+            if (m_BasePaddingCached) return;
+            VerticalLayoutGroup layout = Layout;
+            m_BasePaddingTop = layout != null ? layout.padding.top : 0;
+            m_BasePaddingCached = true;
+        }
+
+        // Mínimo desplazamiento que deja la fila del cursor entera a la vista, acotado al contenido.
+        private void UpdateScrollTarget()
+        {
+            float view = ViewHeight();
+            if (view <= 0f || m_Items.Count == 0)
+            {
+                m_TargetScrollOffset = 0f;
+                return;
+            }
+
+            float top = ItemTop(m_CursorIndex);
+            float bottom = top + m_ItemHeight;
+            float target = m_TargetScrollOffset;
+            if (top < target) target = top;
+            else if (bottom > target + view) target = bottom - view;
+
+            m_TargetScrollOffset = Mathf.Clamp(target, 0f, Mathf.Max(0f, ContentHeight() - view));
+        }
+
+        // El VerticalLayoutGroup acomoda las filas; el desplazamiento se aplica corriendo su padding superior.
+        private void ApplyScroll(float offset)
+        {
+            m_ScrollOffset = offset;
+            VerticalLayoutGroup layout = Layout;
+            if (layout == null) return;
+
+            CacheBasePadding();
+            int padTop = m_BasePaddingTop - Mathf.RoundToInt(offset);
+            if (layout.padding.top == padTop) return;
+            layout.padding.top = padTop;
+            LayoutRebuilder.MarkLayoutForRebuild(Container);
         }
     }
 }

@@ -8,6 +8,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 namespace PrimerVolante.Testing.Editor
 {
@@ -21,6 +22,7 @@ namespace PrimerVolante.Testing.Editor
         private const string CAR_PREFAB = "Assets/MadTroll_Studio/Low Poly 1970s Family Sedan 3D Model Free Download Car02/Prefabs/Car09.prefab";
         private const string CONTROLLER_MODEL = "Assets/Samples/XR Interaction Toolkit/3.5.1/Starter Assets/Models/UniversalController.fbx";
         private const string CURRICULUM_FOLDER = "Assets/Scripts/Lessons/Curriculum";
+        private const int LESSON_COUNT = 6; // LessonData_01..06 (lecciones del menú)
         private const float EPS = 0.0001f;
 
         private static int s_Total;
@@ -162,7 +164,7 @@ namespace PrimerVolante.Testing.Editor
         private static void VerifyLessonList()
         {
             var lessons = LoadLessons();
-            Check(lessons.Count == 4, $"Existen LessonData_01..04 (hay {lessons.Count})");
+            Check(lessons.Count == LESSON_COUNT, $"Existen LessonData_01..06 (hay {lessons.Count})");
 
             var canvasGo = new GameObject("TMP_MainMenuVerification_Canvas", typeof(RectTransform), typeof(Canvas));
             try
@@ -172,19 +174,19 @@ namespace PrimerVolante.Testing.Editor
                 var panel = listGo.AddComponent<LessonListPanel>();
                 SetLessons(panel, lessons);
 
-                Check(panel.Count == 4, "LessonListPanel: arma 4 ítems");
+                Check(panel.Count == LESSON_COUNT, "LessonListPanel: arma 6 ítems");
                 bool titlesOk = true;
                 for (int i = 0; i < lessons.Count; i++)
                 {
                     titlesOk &= panel.GetItemTitle(i) == lessons[i].lessonTitle;
                 }
-                Check(titlesOk, "LessonListPanel: cada ítem muestra el lessonTitle de LessonData_01..04 en orden");
+                Check(titlesOk, "LessonListPanel: cada ítem muestra el lessonTitle de LessonData_01..06 en orden");
                 Check(panel.CursorIndex == 0, "LessonListPanel: el cursor empieza en 0");
 
                 Check(panel.MoveCursor(1) && panel.CursorIndex == 1, "LessonListPanel: MoveCursor(+1) baja");
                 panel.MoveCursor(10);
-                Check(panel.CursorIndex == 3, "LessonListPanel: se frena en Count-1 (no da la vuelta)");
-                Check(!panel.MoveCursor(1) && panel.CursorIndex == 3, "LessonListPanel: MoveCursor(+1) en el último no se mueve");
+                Check(panel.CursorIndex == LESSON_COUNT - 1, "LessonListPanel: se frena en Count-1 (no da la vuelta)");
+                Check(!panel.MoveCursor(1) && panel.CursorIndex == LESSON_COUNT - 1, "LessonListPanel: MoveCursor(+1) en el último no se mueve");
                 panel.MoveCursor(-10);
                 Check(panel.CursorIndex == 0, "LessonListPanel: se frena en 0 (no da la vuelta)");
                 Check(!panel.MoveCursor(-1) && panel.CursorIndex == 0, "LessonListPanel: MoveCursor(-1) en el primero no se mueve");
@@ -193,22 +195,73 @@ namespace PrimerVolante.Testing.Editor
                 Check(panel.IsItemMarked(2) && !panel.IsItemMarked(0) && !panel.IsItemMarked(1) && !panel.IsItemMarked(3) && panel.SelectedIndex == 2,
                     "LessonListPanel: MarkSelected(2) marca solo el ítem 2");
 
-                // Ventana: si la lista no entra, el cursor se mantiene visible.
-                SetField(panel, "m_MaxVisibleItems", 2);
+                // Deslizamiento: si la lista no entra en el contenedor, el contenido se corre para mantener visible el cursor.
+                // Contenedor de 340 px con filas de 150 y espacio 24: entran 2 filas enteras y asoman 16 px de la tercera.
+                var layout = listGo.AddComponent<UnityEngine.UI.VerticalLayoutGroup>();
+                layout.spacing = 24f;
+                layout.childControlHeight = true;
+                layout.childForceExpandHeight = false;
+                ((RectTransform)listGo.transform).sizeDelta = new Vector2(800f, 340f);
                 panel.Rebuild();
+                Check(Approx(panel.TargetScrollOffset, 0f) && panel.IsItemVisible(0) && panel.IsItemVisible(1) && !panel.IsItemVisible(2),
+                    "LessonListPanel: en un contenedor de 2 filas, arriba se ven enteras la 0 y la 1 (la 2 asoma)");
                 panel.SetCursor(3);
                 Check(panel.IsItemVisible(3) && !panel.IsItemVisible(0) && panel.FirstVisibleIndex == 2,
-                    "LessonListPanel: con 2 filas visibles, el cursor en 3 desplaza la ventana y queda visible");
+                    "LessonListPanel: el cursor en 3 desliza el contenido y queda visible (primera entera: 2)");
+                Check(Approx(panel.TargetScrollOffset, 3 * 174f + 150f - 340f) && layout.padding.top == -Mathf.RoundToInt(panel.TargetScrollOffset),
+                    $"LessonListPanel: desplazamiento mínimo para ver el cursor (padding.top = {layout.padding.top})");
+                panel.SetCursor(LESSON_COUNT - 1);
+                float maxOffset = LESSON_COUNT * 150f + (LESSON_COUNT - 1) * 24f - 340f;
+                Check(Approx(panel.TargetScrollOffset, maxOffset) && panel.IsItemVisible(LESSON_COUNT - 1),
+                    "LessonListPanel: en la última lección el desplazamiento se frena al final del contenido");
                 panel.SetCursor(0);
-                Check(panel.IsItemVisible(0) && !panel.IsItemVisible(3), "LessonListPanel: al volver al 0 la ventana sube");
+                Check(panel.IsItemVisible(0) && !panel.IsItemVisible(3) && Approx(panel.TargetScrollOffset, 0f) && layout.padding.top == 0,
+                    "LessonListPanel: al volver al 0 el contenido sube hasta arriba");
 
                 panel.Rebuild();
-                Check(panel.Count == 4 && listGo.transform.childCount == 4, "LessonListPanel: Rebuild es idempotente (no duplica ítems)");
+                Check(panel.Count == LESSON_COUNT && listGo.transform.childCount == LESSON_COUNT, "LessonListPanel: Rebuild es idempotente (no duplica ítems)");
             }
             finally
             {
                 Object.DestroyImmediate(canvasGo);
             }
+        }
+
+        // La lista de la escena: las 6 lecciones, cada una con escena en el build, y todas las filas dentro del contenedor.
+        private static void VerifySceneLessonList(Scene scene)
+        {
+            var panel = FindFirst<LessonListPanel>(scene);
+            Check(panel != null, "MainMenu.unity: hay un LessonListPanel");
+            if (panel == null) return;
+
+            var expected = LoadLessons();
+            bool sameLessons = panel.Lessons.Count == expected.Count;
+            for (int i = 0; sameLessons && i < expected.Count; i++) sameLessons = panel.Lessons[i] == expected[i];
+            Check(sameLessons, $"MainMenu.unity: la lista tiene LessonData_01..06 en orden (hay {panel.Lessons.Count})");
+
+            var buildScenes = new HashSet<string>();
+            foreach (EditorBuildSettingsScene s in EditorBuildSettings.scenes)
+            {
+                if (s.enabled) buildScenes.Add(System.IO.Path.GetFileNameWithoutExtension(s.path));
+            }
+            bool allMapped = true;
+            string missing = string.Empty;
+            foreach (LessonDefinitionSO lesson in panel.Lessons)
+            {
+                bool ok = lesson != null && LessonSceneFlowManager.LessonScenes.TryGetValue(lesson.lessonId, out string sceneName) && buildScenes.Contains(sceneName);
+                if (!ok) { allMapped = false; missing += (lesson != null ? lesson.lessonId : "null") + " "; }
+            }
+            Check(allMapped, $"Cada lección de la lista tiene escena mapeada y habilitada en Build Settings {missing}");
+
+            var so = new SerializedObject(panel);
+            float itemHeight = so.FindProperty("m_ItemHeight").floatValue;
+            var container = so.FindProperty("m_Container").objectReferenceValue as RectTransform;
+            if (container == null) container = (RectTransform)panel.transform;
+            Check(Approx(itemHeight, 170f), $"Lista: las filas mantienen su alto de 170 px (hay {itemHeight:F0})");
+            Check(container.GetComponent<VerticalLayoutGroup>() != null, "Lista: el contenedor tiene VerticalLayoutGroup (el deslizamiento corre su padding)");
+            Check(container.GetComponent<RectMask2D>() != null, "Lista: el contenedor tiene RectMask2D (recorta las filas fuera de la vista)");
+            Canvas.ForceUpdateCanvases();
+            Check(container.rect.height >= itemHeight, $"Lista: entra al menos una fila entera ({container.rect.height:F0} >= {itemHeight:F0} px)");
         }
 
         // ------------------------------------------------------------------ 4. Mapeo marcha → página
@@ -444,6 +497,8 @@ namespace PrimerVolante.Testing.Editor
                 "MainMenu.unity: MainMenuController, Car09, InGameMenuController, VRGearShifter y StartButton presentes");
             Check(highlighter != null, "MainMenu.unity: hay un InteractableHighlighter");
             if (controller == null || car == null || menu == null || shifter == null || startButton == null) return;
+
+            VerifySceneLessonList(scene);
 
             // Referencias del MainMenuController
             var so = new SerializedObject(controller);
@@ -1041,7 +1096,7 @@ namespace PrimerVolante.Testing.Editor
         private static List<LessonDefinitionSO> LoadLessons()
         {
             var list = new List<LessonDefinitionSO>();
-            for (int i = 1; i <= 4; i++)
+            for (int i = 1; i <= LESSON_COUNT; i++)
             {
                 var lesson = AssetDatabase.LoadAssetAtPath<LessonDefinitionSO>($"{CURRICULUM_FOLDER}/LessonData_{i:00}.asset");
                 if (lesson != null) list.Add(lesson);
