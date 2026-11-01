@@ -274,8 +274,10 @@ namespace PrimerVolante.Lessons
                 SceneManager.SetActiveScene(newScene);
             }
 
-            // 5. Pequeño frame de asentamiento de físicas y tracking
-            yield return new WaitForEndOfFrame();
+            // 5. Pequeño frame de asentamiento de físicas y tracking. Se espera un frame con null y no con WaitForEndOfFrame:
+            // en el Editor, WaitForEndOfFrame no se reanuda mientras la Game view no se dibuja y la transición quedaba
+            // colgada (IsTransitioning = true para siempre, ignorando reinicios, siguiente lección y vuelta al menú).
+            yield return null;
 
             // 6. Fade In en VR
             fader = VRScreenFader.Instance ?? UnityEngine.Object.FindAnyObjectByType<VRScreenFader>();
