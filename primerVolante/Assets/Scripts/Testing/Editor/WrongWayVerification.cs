@@ -29,7 +29,8 @@ namespace PrimerVolante.Testing.Editor
             "Assets/Scenes/car09/CityMerged3.unity",
             "Assets/Scenes/car09/CityWithInfractions.unity",
             "Assets/Scenes/car09/Lesson_01_BasicDriving2.unity",
-            "Assets/Scenes/Lessons/Lesson_01_BasicDriving.unity",
+            // Las lecciones son escenas overlay sin calles: la ciudad compartida (con las zonas) vive en City_Master.
+            "Assets/Scenes/City_Master.unity",
             WrongWaySetup.SCENE_PATH,
             GPSNavigationSceneSetup.WRONG_WAY_DEMO_SCENE_PATH,
         };

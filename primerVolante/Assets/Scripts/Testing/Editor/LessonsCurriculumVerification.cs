@@ -344,8 +344,15 @@ namespace PrimerVolante.Testing.Editor
             Assert(hud.RestartButton != null, "HUD debe tener asignado RestartButton", ref total, ref passed);
             Assert(hud.NextLessonButton != null, "HUD debe tener asignado NextLessonButton", ref total, ref passed);
 
-            Assert(manager.Curriculum != null && manager.Curriculum.Count == 4,
-                $"LessonManager debe tener el currículum de 4 lecciones cargado (actual: {manager.Curriculum?.Count ?? 0})", ref total, ref passed);
+            // El currículum son las lecciones con escena propia en el flujo (LESSON_01..06), en orden.
+            int expectedLessons = LessonSceneFlowManager.LessonScenes.Count;
+            bool curriculumInOrder = manager.Curriculum != null && manager.Curriculum.Count == expectedLessons;
+            for (int i = 0; curriculumInOrder && i < expectedLessons; i++)
+            {
+                curriculumInOrder = manager.Curriculum[i] != null && manager.Curriculum[i].lessonId == $"LESSON_{i + 1:00}";
+            }
+            Assert(curriculumInOrder,
+                $"LessonManager debe tener el currículum de {expectedLessons} lecciones (LESSON_01..{expectedLessons:00}) en orden (actual: {manager.Curriculum?.Count ?? 0})", ref total, ref passed);
 
             // Iniciar Lección 1
             LessonDefinitionSO l1 = AssetDatabase.LoadAssetAtPath<LessonDefinitionSO>(LessonsCurriculumSetup.LESSON_01_PATH);
