@@ -54,6 +54,13 @@ namespace PrimerVolante.Testing.Editor
                 lesson4
             };
 
+            // Lecciones 5 y 6: sus activos los crean sus propios setups; si existen, completan el currículum (LESSON_01..06).
+            foreach (string extraPath in new[] { $"{CURRICULUM_DIR}/LessonData_05.asset", $"{CURRICULUM_DIR}/LessonData_06.asset" })
+            {
+                LessonDefinitionSO extra = AssetDatabase.LoadAssetAtPath<LessonDefinitionSO>(extraPath);
+                if (extra != null) curriculum.Add(extra);
+            }
+
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 

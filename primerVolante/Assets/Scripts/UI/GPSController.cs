@@ -318,6 +318,12 @@ namespace PrimerVolante.UI
                 return;
             }
 
+            // Ocultar el panel de llegada si la navegación vuelve a estar activa (nuevo tramo o reintento)
+            if (m_ArrivalPanel != null && m_ArrivalPanel.activeSelf)
+            {
+                m_ArrivalPanel.SetActive(false);
+            }
+
             if (m_DistanceValueText != null)
             {
                 if (remainingDist >= 1000f)
@@ -333,6 +339,17 @@ namespace PrimerVolante.UI
             if (m_ManeuverText != null)
             {
                 m_ManeuverText.text = maneuver;
+            }
+        }
+
+        /// <summary>
+        /// Oculta el panel emergente de llegada a destino y reactiva la interfaz de navegación estándar.
+        /// </summary>
+        public void ResetArrivalState()
+        {
+            if (m_ArrivalPanel != null && m_ArrivalPanel.activeSelf)
+            {
+                m_ArrivalPanel.SetActive(false);
             }
         }
 

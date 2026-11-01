@@ -521,6 +521,52 @@ namespace PrimerVolante.Lessons
                     }
                     return false;
 
+                // Lección 5: Giros e Intersecciones (Delegación en validación física real)
+                case LessonActionType.CompleteTurnSignalRightIntro:
+                    return Lesson05TurnIntersectionsController.Instance != null &&
+                           Lesson05TurnIntersectionsController.Instance.IsTurnIntroCompleted;
+
+                case LessonActionType.TurnSignalAnticipation20m:
+                    return Lesson05TurnIntersectionsController.Instance != null &&
+                           Lesson05TurnIntersectionsController.Instance.IsAnticipationTurnCompleted;
+
+                case LessonActionType.CrossTrafficLightIntersection:
+                    return Lesson05TurnIntersectionsController.Instance != null &&
+                           Lesson05TurnIntersectionsController.Instance.IsTrafficLightCrossCompleted;
+
+                case LessonActionType.CompleteLeftTurnCrossing:
+                    return Lesson05TurnIntersectionsController.Instance != null &&
+                           Lesson05TurnIntersectionsController.Instance.IsLeftTurnCompleted;
+
+                case LessonActionType.CurbsideStop:
+                    return Lesson05TurnIntersectionsController.Instance != null &&
+                           Lesson05TurnIntersectionsController.Instance.IsCurbsideStopCompleted;
+
+                // Lección 6: Maniobras de Estacionamiento (Delegación en dársenas y físicas)
+                case LessonActionType.ParkDiagonal45:
+                    return Lesson06ParkingController.Instance != null &&
+                           Lesson06ParkingController.Instance.IsDiagonalPositioned;
+
+                case LessonActionType.SecureDiagonal45:
+                    return Lesson06ParkingController.Instance != null &&
+                           Lesson06ParkingController.Instance.IsDiagonalSecured;
+
+                case LessonActionType.ParkBay90Reverse:
+                    return Lesson06ParkingController.Instance != null &&
+                           Lesson06ParkingController.Instance.IsBay90Positioned;
+
+                case LessonActionType.SecureBay90:
+                    return Lesson06ParkingController.Instance != null &&
+                           Lesson06ParkingController.Instance.IsBay90Secured;
+
+                case LessonActionType.ParkParallelRight:
+                    return Lesson06ParkingController.Instance != null &&
+                           Lesson06ParkingController.Instance.IsParallelPositioned;
+
+                case LessonActionType.SecureParkDeactivateHazards:
+                    return Lesson06ParkingController.Instance != null &&
+                           Lesson06ParkingController.Instance.IsVehicleSecured;
+
                 default:
                     return false;
             }

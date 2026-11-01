@@ -29,6 +29,7 @@ namespace PrimerVolante.Testing.Editor
         private const string FONT_PATH = "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset";
         private const string CONTROLLER_MODEL_PATH = "Assets/Samples/XR Interaction Toolkit/3.5.1/Starter Assets/Models/UniversalController.fbx";
         private const string CURRICULUM_FOLDER = "Assets/Scripts/Lessons/Curriculum";
+        private const int LESSON_COUNT = 6; // LessonData_01..06 (lecciones del menú)
 
         private static readonly string[] s_LessonRootsToRemove =
         {
@@ -196,7 +197,7 @@ namespace PrimerVolante.Testing.Editor
         private static List<LessonDefinitionSO> LoadLessons()
         {
             var list = new List<LessonDefinitionSO>();
-            for (int i = 1; i <= 4; i++)
+            for (int i = 1; i <= LESSON_COUNT; i++)
             {
                 var lesson = AssetDatabase.LoadAssetAtPath<LessonDefinitionSO>($"{CURRICULUM_FOLDER}/LessonData_{i:00}.asset");
                 if (lesson != null) list.Add(lesson);
@@ -325,7 +326,7 @@ namespace PrimerVolante.Testing.Editor
             AnchorTop(title.rectTransform, 70f, 170f);
 
             TextMeshProUGUI body = AddText(box, "Body", font,
-                "Pulsá el botón de encendido para confirmar · Bajá el freno de mano para cancelar", 76f,
+                "Pulsá el botón de balizas para confirmar · Bajá el freno de mano para cancelar", 76f,
                 new Color(1f, 0.9f, 0.7f), TextAlignmentOptions.Center);
             body.textWrappingMode = TextWrappingModes.Normal;
             body.rectTransform.anchorMin = new Vector2(0.05f, 0f);
@@ -359,7 +360,7 @@ namespace PrimerVolante.Testing.Editor
             BuildCard(cards, font, controllerModel, "Card_Grab", "Agarrar", "Bumper", false, string.Empty, 3600f, new Vector3(20f, -40f, 0f));
             BuildCard(cards, font, controllerModel, "Card_Press", "Pulsar", string.Empty, true, string.Empty, 2600f, new Vector3(15f, -50f, 0f));
 
-            TextMeshProUGUI footer = AddText(page, "Footer", font, "Pulsá el botón de encendido para comenzar", 60f, new Color(1f, 0.85f, 0.2f), TextAlignmentOptions.Center);
+            TextMeshProUGUI footer = AddText(page, "Footer", font, "Pulsá el botón de balizas para comenzar", 60f, new Color(1f, 0.85f, 0.2f), TextAlignmentOptions.Center);
             var footerRect = footer.rectTransform;
             footerRect.anchorMin = new Vector2(0f, 0f);
             footerRect.anchorMax = new Vector2(1f, 0f);
@@ -389,13 +390,14 @@ namespace PrimerVolante.Testing.Editor
             layout.childControlHeight = true;
             layout.childForceExpandWidth = true;
             layout.childForceExpandHeight = false;
+            list.gameObject.AddComponent<RectMask2D>();
 
             panel = list.gameObject.AddComponent<LessonListPanel>();
             var so = new SerializedObject(panel);
             so.Update();
             so.FindProperty("m_Container").objectReferenceValue = list;
             so.FindProperty("m_Font").objectReferenceValue = font;
-            so.FindProperty("m_ItemHeight").floatValue = 170f;
+            so.FindProperty("m_ItemHeight").floatValue = 170f; // si no entran todas, la lista se desliza (RectMask2D recorta)
             SerializedProperty lessonsProp = so.FindProperty("m_Lessons");
             lessonsProp.arraySize = lessons.Count;
             for (int i = 0; i < lessons.Count; i++)

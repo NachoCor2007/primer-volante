@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
+  m_Name: Lesson05_Step02_TurnSignal20mDistance
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
+  stepTitle: "Anticipaci\xF3n 20 Metros"
+  instructionText: "Acelera y activa el gui\xF1o derecho ANTES de cruzar el portal de 20m. Luego completa el giro."
+  completionMode: 1
+  requiredAction: 26
+  actionNumericParameter: 20
+  allowedControls: -1
+  highlightTargetName: VRTurnSignal
+  ambienceIntensity: 0

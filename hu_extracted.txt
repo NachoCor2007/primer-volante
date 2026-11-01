@@ -1,0 +1,296 @@
+Backlog Completo de Historias de Usuario (V3) - Tesis Simulador VR
+Este documento contiene el listado exhaustivo de todas las historias de usuario discutidas para el simulador, asegurando el formato estricto: Siendo... Quiero... Para...
+1. Navegación y Menú Principal
+US01: Selección de Lecciones
+Siendo jugador
+Quiero ver un menú principal con las categorías de lecciones disponibles (básicas e integradoras)
+Para elegir qué habilidad específica quiero practicar o evaluar.
+Criterios de Aceptación:
+El menú debe mostrar claramente la diferencia entre lecciones modulares e integradoras.
+El jugador debe poder seleccionar una lección usando los controles de VR (puntero o mirada + botón).
+Al seleccionar una lección, se debe mostrar una breve descripción de los objetivos antes de iniciar.
+2. Interacción Física en Cabina (VR)
+US02: Control de Dirección (Volante)
+Siendo jugador
+Quiero agarrar y rotar el volante con mis manos virtuales para cambiar la dirección del vehículo
+Para que la experiencia de conducción se sienta realista y pueda aplicar la memoria muscular.
+Criterios de Aceptación:
+El usuario debe poder iniciar el agarre (grab) al posicionar las manos virtuales sobre el aro del volante y presionar el botón correspondiente.
+La rotación del volante virtual debe tener un tope máximo realista (ej. 900 grados de tope a tope).
+La rotación debe trasladarse en tiempo real al ángulo de giro de las ruedas delanteras.
+US03: Transmisión y Caja de Cambios
+Siendo jugador
+Quiero agarrar y mover la palanca de cambios
+Para seleccionar la marcha adecuada.
+Criterios de Aceptación:
+La palanca debe contar con posiciones espaciales predefinidas para cada marcha (1ra, 2da, reversa, neutro).
+Al soltar la palanca cerca de una marcha válida, esta debe acoplarse (snap) automáticamente a esa posición.
+El vehículo solo debe avanzar/retroceder si la marcha correcta está engranada.
+US04: Arranque del motor
+Siendo jugador
+Quiero interactuar con la llave de contacto usando mi mano virtual
+Para que el vehículo pase a estar encendido y listo para moverse.
+Criterios de Aceptación:
+El usuario debe poder agarrar y girar la llave virtual.
+Debe reproducirse un efecto de sonido de arranque de motor.
+El vehículo no debe responder al pedal del acelerador hasta que este paso se haya completado.
+US05: Freno de mano virtual
+Siendo jugador
+Quiero accionar la palanca del freno de mano con mi mano virtual
+Para inmovilizar el auto al estacionar o liberarlo al arrancar.
+Criterios de Aceptación:
+La palanca debe manipularse de arriba hacia abajo usando la mecánica de agarre del mando VR.
+El vehículo no debe poder avanzar si el freno de mano se encuentra elevado, sin importar la aceleración aplicada en los pedales.
+US06: Palanca de luces frontales
+Siendo jugador
+Quiero encender las luces bajas interactuando con los controles de la columna de dirección
+Para iluminar el entorno y cumplir normas de circulación.
+Criterios de Aceptación:
+Accionar el control virtual debe activar dinámicamente las luces direccionales frontales del modelo 3D del auto.
+El testigo de luces bajas en el tablero funcional debe iluminarse simultáneamente.
+US07: Uso de luces de giro (Guiños)
+Siendo jugador
+Quiero accionar la palanca de luces de giro con mi mano virtual
+Para señalizar mis intenciones de doblar.
+Criterios de Aceptación:
+Mover la palanca virtual hacia arriba/abajo debe activar el parpadeo de la luz de giro correspondiente.
+El sistema debe emitir el sonido característico de "tic-tac" rítmico.
+3. Interacción Física: Pedales (Hardware Externo)
+US08: Detección y mapeo de pedales físicos
+Siendo jugador
+Quiero que el simulador reconozca los pedales conectados a mi PC
+Para que pueda utilizarlos inmediatamente como controladores del vehículo.
+Criterios de Aceptación:
+El sistema debe leer correctamente los ejes independientes provenientes de un periférico USB estándar.
+US09: Aceleración con pedal físico
+Siendo jugador
+Quiero pisar el pedal de acelerador físico
+Para que el motor gane RPM y el vehículo avance.
+Criterios de Aceptación:
+El input debe procesarse como un valor continuo (0.0 a 1.0).
+La aceleración del vehículo debe escalar de manera fluida y proporcional al recorrido del pedal.
+US10: Frenado con pedal físico
+Siendo jugador
+Quiero pisar el pedal de freno físico
+Para que el vehículo reduzca su velocidad hasta detenerse.
+Criterios de Aceptación:
+La fuerza de frenado aplicada a las ruedas debe ser directamente proporcional al porcentaje de presión física del pedal.
+US11: Uso del embrague físico
+Siendo jugador
+Quiero pisar el pedal de embrague físico
+Para que la transmisión se desacople del motor y me permita cambiar de marcha.
+Criterios de Aceptación:
+La palanca de cambios virtual solo debe engranar una nueva marcha si el embrague físico está presionado más allá de un umbral específico.
+Soltar el embrague de golpe estando en primera marcha y sin acelerar debe provocar que el motor se apague.
+4. Tablero de Instrumentos, GPS y Espejos
+US12: Lectura de velocidad (Velocímetro)
+Siendo jugador
+Quiero visualizar un velocímetro dinámico en el tablero de instrumentos
+Para controlar a qué velocidad circulo.
+Criterios de Aceptación:
+El velocímetro debe actualizarse en cada frame reflejando la velocidad real del vehículo en km/h.
+US13: Visualización del tacómetro (RPM)
+Siendo jugador
+Quiero ver una aguja de revoluciones por minuto funcional en el tablero
+Para monitorear el esfuerzo del motor.
+Criterios de Aceptación:
+La aguja debe actualizarse en cada frame basándose en las RPM reales calculadas por el sistema de físicas.
+US14: Indicadores luminosos de estado (Testigos)
+Siendo jugador
+Quiero ver iconos luminosos en el tablero que se enciendan según el estado del vehículo
+Para confirmar visualmente que mis comandos fueron registrados.
+Criterios de Aceptación:
+Si se accionan las luces bajas/altas, el icono correspondiente debe iluminarse.
+Si el freno de mano virtual está accionado, debe encenderse el icono de advertencia de frenos.
+US15: Visibilidad en el espejo retrovisor central
+Siendo jugador
+Quiero ver el reflejo del entorno detrás de mi vehículo en el espejo retrovisor central
+Para monitorear el tráfico trasero y tomar decisiones seguras.
+Criterios de Aceptación:
+El espejo debe mostrar un renderizado en tiempo real de lo que ocurre detrás del auto con un FOV realista.
+US16: Visibilidad en los espejos laterales
+Siendo jugador
+Quiero ver el reflejo de los carriles adyacentes en los espejos laterales
+Para evaluar la distancia de otros vehículos antes de cambiar de carril o doblar.
+Criterios de Aceptación:
+Ambos espejos deben actualizar su reflejo en tiempo real orientados a los puntos ciegos laterales.
+US17: Visualización del mapa en pantalla (GPS)
+Siendo jugador
+Quiero ver un mapa cenital en la pantalla del GPS ubicada en el panel central
+Para comprender la disposición de las calles y cruces del escenario.
+Criterios de Aceptación:
+El GPS debe renderizar un minimapa correspondiente al escenario de la lección actual.
+US18: Indicador de posición y orientación GPS
+Siendo jugador
+Quiero ver un icono de flecha en el mapa del GPS que represente mi vehículo
+Para identificar mi ubicación exacta y orientación.
+Criterios de Aceptación:
+La posición de la flecha en el mapa debe actualizarse en tiempo real, sincronizada con la posición y rotación del auto en el entorno 3D.
+US19: Ruta de la lección trazada
+Siendo jugador
+Quiero ver el camino que debo seguir resaltado con una línea de color sobre el mapa del GPS
+Para saber con exactitud qué recorrido espera la lección que realice.
+Criterios de Aceptación:
+El mapa debe dibujar una ruta estática predefinida desde el punto de inicio hasta el punto de finalización.
+5. Sistema de Audio Espacial
+US20: Sonidos espaciales 3D del entorno
+Siendo jugador
+Quiero escuchar los sonidos externos en audio espacial 3D
+Para identificar la dirección de un peligro potencial instintivamente.
+Criterios de Aceptación:
+Las fuentes de audio deben estar atadas a los objetos del mundo y paneadas según la posición del casco VR.
+US21: Retroalimentación sonora del motor
+Siendo jugador
+Quiero escuchar el sonido del motor variando su tono según las revoluciones (RPM)
+Para percibir el momento ideal para cambiar de marcha sin mirar el tablero.
+Criterios de Aceptación:
+El tono (pitch) del archivo de audio debe escalar dinámicamente en función del valor de las RPM actuales.
+6. Sistema de Faltas, Evaluación y Reportes
+US22: Registro interno de infracciones
+Siendo jugador
+Quiero que el sistema detecte y contabilice automáticamente mis errores durante el escenario
+Para que mi desempeño pueda ser evaluado de manera objetiva al final de la sesión.
+Criterios de Aceptación:
+El gestor de la lección debe mantener un contador independiente para faltas leves y graves y actualizarlos sin interrumpir la simulación.
+US23: Feedback visual en cámara VR (Filtros)
+Siendo jugador
+Quiero ver un destello de color en mi campo de visión cuando cometo una infracción
+Para percatarme del error de manera instintiva sin desviar la mirada del camino.
+Criterios de Aceptación:
+Una falta leve activa un filtro amarillo translúcido en los bordes de la visión; una falta grave activa un filtro rojo, ambos con fade out suave.
+US24: Panel de advertencias con nombre corto
+Siendo jugador
+Quiero leer únicamente el nombre descriptivo de mi error en la pantalla del panel central
+Para saber qué norma infringí de forma rápida y clara.
+Criterios de Aceptación:
+La interfaz de texto debe actualizarse solo con el título (ej. "Exceso de velocidad") y desaparecer tras unos segundos.
+US25: Disparador de finalización de nivel
+Siendo jugador
+Quiero que el escenario detecte cuando he atravesado el punto final
+Para que la simulación concluya y registre mis resultados.
+Criterios de Aceptación:
+El sistema cambia el estado a completado y desactiva los inputs al cruzar el trigger final.
+US26: Pantalla de Resultados y Nivel de Éxito
+Siendo jugador
+Quiero ver un reporte al finalizar la lección que indique mi nivel de éxito y faltas
+Para analizar en profundidad qué errores cometí y cómo solucionarlos.
+Criterios de Aceptación:
+El panel flotante debe evaluar los contadores y mostrar el estado correspondiente.
+Debe listar cada falta con su descripción expandida (ej. "Excediste el límite de 40 km/h en una avenida").
+US27: Acción post-lección: Reintentar
+Siendo jugador
+Quiero interactuar con un botón de "Reintentar" en la pantalla de resultados
+Para reiniciar la lección actual inmediatamente y aplicar lo aprendido.
+Criterios de Aceptación:
+Recarga la escena actual limpiando contadores de faltas y tiempo.
+US28: Acción post-lección: Volver a Selección de Escenario
+Siendo jugador
+Quiero interactuar con un botón de "Cambiar Escenario" en la pantalla de resultados
+Para ser redirigido directamente al menú de la categoría actual.
+Criterios de Aceptación:
+Carga la interfaz de menú posicionada en la categoría que se estaba jugando.
+US29: Acción post-lección: Volver al Menú Principal
+Siendo jugador
+Quiero interactuar con un botón de "Menú Principal" en la pantalla de resultados
+Para salir completamente del flujo de la lección y volver al inicio.
+Criterios de Aceptación:
+Carga la escena principal del simulador.
+7. Entorno y Escenarios Controlados
+US30: Límites físicos del área de la lección
+Siendo jugador
+Quiero que el espacio donde transcurre la lección esté claramente delimitado
+Para saber exactamente cuál es el área de mi ejercicio y no desviarme.
+Criterios de Aceptación:
+Deben existir barreras. Si se intenta forzar la salida, se registra una falta o se reinicia la prueba.
+US31: Vehículos de tráfico guionados (Eventos)
+Siendo jugador
+Quiero que los autos del entorno reaccionen en momentos específicos de mi recorrido
+Para practicar mi capacidad de reacción en situaciones predecibles.
+Criterios de Aceptación:
+El movimiento NPC se activa por triggers.
+Los NPCs deben frenar si detectan colisión inminente; si el jugador causó el riesgo, recibe penalización.
+US32: Intersecciones controladas por semáforo
+Siendo jugador
+Quiero acercarme a un semáforo cuyo cambio de luces esté sincronizado con mi ejercicio
+Para que el escenario evalúe mi capacidad de acatar las señales lumínicas.
+Criterios de Aceptación:
+Cruzar la línea de detención en rojo dispara inmediatamente la falta grave correspondiente.
+US33: Obstáculos fijos para maniobras
+Siendo jugador
+Quiero encontrar vehículos estacionados u obstáculos dispuestos de forma específica
+Para practicar maniobras de precisión.
+Criterios de Aceptación:
+Rozar o chocar obstáculos a baja velocidad registra falta y reproduce sonido de impacto.
+US34: Señalización
+Siendo jugador
+Quiero visualizar señales en la vía pública
+Para comprender qué reglas aplican y/o qué acciones puedo hacer en el trayecto actual.
+Criterios de Aceptación:
+Las señales son visibles y comprensibles.
+Son basadas en las señales que suelen encontrarse en la calle.
+Las reglas que aplican son coherentes en el tramo actual.
+No respetarlas conlleva infracciones pertinentes a la altura de la regla rota.
+8. Pausa y Calibración VR
+US35: Ajuste de altura de la cámara VR
+Siendo jugador
+Quiero poder regular la altura de mi visión dentro de la cabina
+Para compensar mi estatura física real y tener una visibilidad cómoda.
+Criterios de Aceptación:
+Un input debe desplazar la cámara en el eje Y y guardar esta configuración para la sesión.
+US36: Activar el Menú de Pausa
+Siendo jugador
+Quiero presionar un botón en mi mando VR para pausar el simulador
+Para detener el ejercicio temporalmente si necesito descansar.
+Criterios de Aceptación:
+El tiempo físico debe detenerse (TimeScale=0) y mostrar un panel de opciones.
+US37: Reanudar desde la pausa
+Siendo jugador
+Quiero interactuar con un botón de "Reanudar" dentro del menú de pausa
+Para que la simulación continúe exactamente en el mismo estado en que estaba.
+Criterios de Aceptación:
+El panel se oculta y el tiempo físico se restablece de inmediato.
+9. Persistencia de Datos y Progreso
+US38: Guardado de estado de las lecciones
+Siendo jugador
+Quiero que el simulador guarde localmente mi resultado al finalizar cada lección
+Para que mi progreso quede registrado y no se pierda al cerrar la aplicación.
+Criterios de Aceptación:
+El sistema debe serializar y guardar el estado, faltas y mejor resultado en almacenamiento local (JSON/PlayerPrefs).
+US39: Visualización de progreso en el Menú Principal
+Siendo jugador
+Quiero ver indicadores visuales en el panel de selección de lecciones
+Para identificar rápidamente qué escenarios completé con éxito.
+Criterios de Aceptación:
+Las lecciones con estado "Exitoso" muestran un ícono verde/medalla; las de "Cosas por corregir" un indicador de advertencia.
+10. Manejo de Hardware (Edge Cases)
+US40: Pausa de emergencia por desconexión de hardware
+Siendo jugador
+Quiero que el simulador detecte si los pedales físicos se desconectan y pause la simulación automáticamente
+Para que el vehículo no quede descontrolado por falta de input.
+Criterios de Aceptación:
+El tiempo físico se detiene y se instancia un panel de advertencia "Pedales desconectados".
+US41: Recuperación tras reconexión de hardware
+Siendo jugador
+Quiero poder reanudar mi partida desde el panel de advertencia una vez reconectados los pedales
+Para no perder mi progreso en el nivel por un accidente con los cables.
+Criterios de Aceptación:
+El panel actualiza su estado al detectar el hardware y habilita el botón "Reanudar".
+11. Tutoriales (Submenú)
+US42: Acceso al submenú "Cómo jugar"
+Siendo jugador
+Quiero interactuar con un botón en el menú principal para acceder a las instrucciones
+Para conocer los controles del simulador antes de iniciar.
+Criterios de Aceptación:
+Despliega una interfaz estática con un botón para retornar al menú principal.
+US43: Visualización de controles VR
+Siendo jugador
+Quiero ver un diagrama explicativo sobre cómo usar los mandos de realidad virtual
+Para saber qué botones presionar para interactuar con la cabina.
+Criterios de Aceptación:
+El panel utiliza gráficos estáticos indicando los botones de agarre (grab) e interacción.
+US44: Explicación de pedales físicos
+Siendo jugador
+Quiero leer una sección explicativa dedicada al uso de pedales físicos
+Para comprender cómo la presión afecta la aceleración y frenado del vehículo.
+Criterios de Aceptación:
+El panel explica textualmente la naturaleza analógica de los pedales y sus efectos en la física del vehículo.

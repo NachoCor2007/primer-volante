@@ -8,6 +8,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 namespace PrimerVolante.Testing.Editor
 {
@@ -21,6 +22,7 @@ namespace PrimerVolante.Testing.Editor
         private const string CAR_PREFAB = "Assets/MadTroll_Studio/Low Poly 1970s Family Sedan 3D Model Free Download Car02/Prefabs/Car09.prefab";
         private const string CONTROLLER_MODEL = "Assets/Samples/XR Interaction Toolkit/3.5.1/Starter Assets/Models/UniversalController.fbx";
         private const string CURRICULUM_FOLDER = "Assets/Scripts/Lessons/Curriculum";
+        private const int LESSON_COUNT = 6; // LessonData_01..06 (lecciones del menú)
         private const float EPS = 0.0001f;
 
         private static int s_Total;
@@ -41,6 +43,9 @@ namespace PrimerVolante.Testing.Editor
             Scene previousActive = SceneManager.GetActiveScene();
             Scene scratch = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
             SceneManager.SetActiveScene(scratch);
+            // Estado de sesión: las pruebas parten de "ninguna lección activada" (el Splash aparece) y lo restauran al final.
+            bool lessonActivatedBefore = LessonSceneFlowManager.HasActivatedLesson;
+            LessonSceneFlowManager.HasActivatedLesson = false;
             try
             {
                 VerifyScrollMath();
@@ -56,6 +61,7 @@ namespace PrimerVolante.Testing.Editor
             }
             finally
             {
+                LessonSceneFlowManager.HasActivatedLesson = lessonActivatedBefore;
                 if (previousActive.IsValid() && previousActive.isLoaded) SceneManager.SetActiveScene(previousActive);
                 if (scratch.IsValid()) EditorSceneManager.CloseScene(scratch, true);
             }
@@ -162,7 +168,7 @@ namespace PrimerVolante.Testing.Editor
         private static void VerifyLessonList()
         {
             var lessons = LoadLessons();
-            Check(lessons.Count == 4, $"Existen LessonData_01..04 (hay {lessons.Count})");
+            Check(lessons.Count == LESSON_COUNT, $"Existen LessonData_01..06 (hay {lessons.Count})");
 
             var canvasGo = new GameObject("TMP_MainMenuVerification_Canvas", typeof(RectTransform), typeof(Canvas));
             try
@@ -172,19 +178,19 @@ namespace PrimerVolante.Testing.Editor
                 var panel = listGo.AddComponent<LessonListPanel>();
                 SetLessons(panel, lessons);
 
-                Check(panel.Count == 4, "LessonListPanel: arma 4 ítems");
+                Check(panel.Count == LESSON_COUNT, "LessonListPanel: arma 6 ítems");
                 bool titlesOk = true;
                 for (int i = 0; i < lessons.Count; i++)
                 {
                     titlesOk &= panel.GetItemTitle(i) == lessons[i].lessonTitle;
                 }
-                Check(titlesOk, "LessonListPanel: cada ítem muestra el lessonTitle de LessonData_01..04 en orden");
+                Check(titlesOk, "LessonListPanel: cada ítem muestra el lessonTitle de LessonData_01..06 en orden");
                 Check(panel.CursorIndex == 0, "LessonListPanel: el cursor empieza en 0");
 
                 Check(panel.MoveCursor(1) && panel.CursorIndex == 1, "LessonListPanel: MoveCursor(+1) baja");
                 panel.MoveCursor(10);
-                Check(panel.CursorIndex == 3, "LessonListPanel: se frena en Count-1 (no da la vuelta)");
-                Check(!panel.MoveCursor(1) && panel.CursorIndex == 3, "LessonListPanel: MoveCursor(+1) en el último no se mueve");
+                Check(panel.CursorIndex == LESSON_COUNT - 1, "LessonListPanel: se frena en Count-1 (no da la vuelta)");
+                Check(!panel.MoveCursor(1) && panel.CursorIndex == LESSON_COUNT - 1, "LessonListPanel: MoveCursor(+1) en el último no se mueve");
                 panel.MoveCursor(-10);
                 Check(panel.CursorIndex == 0, "LessonListPanel: se frena en 0 (no da la vuelta)");
                 Check(!panel.MoveCursor(-1) && panel.CursorIndex == 0, "LessonListPanel: MoveCursor(-1) en el primero no se mueve");
@@ -193,22 +199,73 @@ namespace PrimerVolante.Testing.Editor
                 Check(panel.IsItemMarked(2) && !panel.IsItemMarked(0) && !panel.IsItemMarked(1) && !panel.IsItemMarked(3) && panel.SelectedIndex == 2,
                     "LessonListPanel: MarkSelected(2) marca solo el ítem 2");
 
-                // Ventana: si la lista no entra, el cursor se mantiene visible.
-                SetField(panel, "m_MaxVisibleItems", 2);
+                // Deslizamiento: si la lista no entra en el contenedor, el contenido se corre para mantener visible el cursor.
+                // Contenedor de 340 px con filas de 150 y espacio 24: entran 2 filas enteras y asoman 16 px de la tercera.
+                var layout = listGo.AddComponent<UnityEngine.UI.VerticalLayoutGroup>();
+                layout.spacing = 24f;
+                layout.childControlHeight = true;
+                layout.childForceExpandHeight = false;
+                ((RectTransform)listGo.transform).sizeDelta = new Vector2(800f, 340f);
                 panel.Rebuild();
+                Check(Approx(panel.TargetScrollOffset, 0f) && panel.IsItemVisible(0) && panel.IsItemVisible(1) && !panel.IsItemVisible(2),
+                    "LessonListPanel: en un contenedor de 2 filas, arriba se ven enteras la 0 y la 1 (la 2 asoma)");
                 panel.SetCursor(3);
                 Check(panel.IsItemVisible(3) && !panel.IsItemVisible(0) && panel.FirstVisibleIndex == 2,
-                    "LessonListPanel: con 2 filas visibles, el cursor en 3 desplaza la ventana y queda visible");
+                    "LessonListPanel: el cursor en 3 desliza el contenido y queda visible (primera entera: 2)");
+                Check(Approx(panel.TargetScrollOffset, 3 * 174f + 150f - 340f) && layout.padding.top == -Mathf.RoundToInt(panel.TargetScrollOffset),
+                    $"LessonListPanel: desplazamiento mínimo para ver el cursor (padding.top = {layout.padding.top})");
+                panel.SetCursor(LESSON_COUNT - 1);
+                float maxOffset = LESSON_COUNT * 150f + (LESSON_COUNT - 1) * 24f - 340f;
+                Check(Approx(panel.TargetScrollOffset, maxOffset) && panel.IsItemVisible(LESSON_COUNT - 1),
+                    "LessonListPanel: en la última lección el desplazamiento se frena al final del contenido");
                 panel.SetCursor(0);
-                Check(panel.IsItemVisible(0) && !panel.IsItemVisible(3), "LessonListPanel: al volver al 0 la ventana sube");
+                Check(panel.IsItemVisible(0) && !panel.IsItemVisible(3) && Approx(panel.TargetScrollOffset, 0f) && layout.padding.top == 0,
+                    "LessonListPanel: al volver al 0 el contenido sube hasta arriba");
 
                 panel.Rebuild();
-                Check(panel.Count == 4 && listGo.transform.childCount == 4, "LessonListPanel: Rebuild es idempotente (no duplica ítems)");
+                Check(panel.Count == LESSON_COUNT && listGo.transform.childCount == LESSON_COUNT, "LessonListPanel: Rebuild es idempotente (no duplica ítems)");
             }
             finally
             {
                 Object.DestroyImmediate(canvasGo);
             }
+        }
+
+        // La lista de la escena: las 6 lecciones, cada una con escena en el build, y todas las filas dentro del contenedor.
+        private static void VerifySceneLessonList(Scene scene)
+        {
+            var panel = FindFirst<LessonListPanel>(scene);
+            Check(panel != null, "MainMenu.unity: hay un LessonListPanel");
+            if (panel == null) return;
+
+            var expected = LoadLessons();
+            bool sameLessons = panel.Lessons.Count == expected.Count;
+            for (int i = 0; sameLessons && i < expected.Count; i++) sameLessons = panel.Lessons[i] == expected[i];
+            Check(sameLessons, $"MainMenu.unity: la lista tiene LessonData_01..06 en orden (hay {panel.Lessons.Count})");
+
+            var buildScenes = new HashSet<string>();
+            foreach (EditorBuildSettingsScene s in EditorBuildSettings.scenes)
+            {
+                if (s.enabled) buildScenes.Add(System.IO.Path.GetFileNameWithoutExtension(s.path));
+            }
+            bool allMapped = true;
+            string missing = string.Empty;
+            foreach (LessonDefinitionSO lesson in panel.Lessons)
+            {
+                bool ok = lesson != null && LessonSceneFlowManager.LessonScenes.TryGetValue(lesson.lessonId, out string sceneName) && buildScenes.Contains(sceneName);
+                if (!ok) { allMapped = false; missing += (lesson != null ? lesson.lessonId : "null") + " "; }
+            }
+            Check(allMapped, $"Cada lección de la lista tiene escena mapeada y habilitada en Build Settings {missing}");
+
+            var so = new SerializedObject(panel);
+            float itemHeight = so.FindProperty("m_ItemHeight").floatValue;
+            var container = so.FindProperty("m_Container").objectReferenceValue as RectTransform;
+            if (container == null) container = (RectTransform)panel.transform;
+            Check(Approx(itemHeight, 170f), $"Lista: las filas mantienen su alto de 170 px (hay {itemHeight:F0})");
+            Check(container.GetComponent<VerticalLayoutGroup>() != null, "Lista: el contenedor tiene VerticalLayoutGroup (el deslizamiento corre su padding)");
+            Check(container.GetComponent<RectMask2D>() != null, "Lista: el contenedor tiene RectMask2D (recorta las filas fuera de la vista)");
+            Canvas.ForceUpdateCanvases();
+            Check(container.rect.height >= itemHeight, $"Lista: entra al menos una fila entera ({container.rect.height:F0} >= {itemHeight:F0} px)");
         }
 
         // ------------------------------------------------------------------ 4. Mapeo marcha → página
@@ -445,6 +502,8 @@ namespace PrimerVolante.Testing.Editor
             Check(highlighter != null, "MainMenu.unity: hay un InteractableHighlighter");
             if (controller == null || car == null || menu == null || shifter == null || startButton == null) return;
 
+            VerifySceneLessonList(scene);
+
             // Referencias del MainMenuController
             var so = new SerializedObject(controller);
             var missing = new List<string>();
@@ -510,6 +569,7 @@ namespace PrimerVolante.Testing.Editor
                 VerifyGearSettle(controller, menu);
                 VerifyExitOverlay(scene, controller, menu, startButton);
                 VerifyExitOverlayModels(scene, controller, startButton);
+                VerifySplashOncePerSession(controller, car, shifter);
                 VerifyInGameMenu(scene, menu);
             }
             finally
@@ -533,7 +593,7 @@ namespace PrimerVolante.Testing.Editor
                 Check(!controller.HasPendingGear, "Splash: HandleGearChanged no deja marcha pendiente");
                 Check(!StripVisible(controller), "Splash: mover la palanca no muestra la tira");
                 controller.HandleGearChanged(GearState.P);
-                controller.HandleIgnitionPressed();
+                controller.HandleHazardChanged(true);
                 Check(StripVisible(controller) && ActiveTab(controller) == 0 && controller.CurrentPage == MainMenuPage.Lessons,
                     "Al salir del Splash la tira y la página quedan en la marcha actual (P)");
 
@@ -592,6 +652,13 @@ namespace PrimerVolante.Testing.Editor
             Check(handbrake != null, "Escena: hay un VRHandbrake");
             if (handbrake == null) return;
 
+            var car = FindFirst<VehicleController>(scene);
+            GameObject hazardButton = car != null
+                ? car.GetComponentsInChildren<VRToggleButton>(true).Where(t => t.gameObject.name.Contains("Hazard")).Select(t => t.gameObject).FirstOrDefault()
+                : null;
+            Check(car != null && hazardButton != null, "Escena: Car09 tiene el botón de balizas (VRToggleButton 'Hazard')");
+            if (car == null) return;
+
             var logs = new List<string>();
             Application.LogCallback capture = (msg, stack, type) => { if (type == LogType.Log) logs.Add(msg); };
             Application.logMessageReceived += capture;
@@ -601,6 +668,7 @@ namespace PrimerVolante.Testing.Editor
             controller.SetPerformQuit(false); // los tests solo verifican el evento: nunca cierran nada
             try
             {
+                LessonSceneFlowManager.HasActivatedLesson = false;
                 controller.Restart();
                 Check(Approx(handbrake.Engagement, 0f), $"Freno de mano: arranca abajo (Engagement = {handbrake.Engagement:F2})");
                 Check(!controller.ExitOverlayVisible && !OverlayActive(controller), "Arranque: el overlay de salida está oculto");
@@ -612,9 +680,9 @@ namespace PrimerVolante.Testing.Editor
                 controller.Tick(0.016f);
                 Check(controller.ExitOverlayVisible && OverlayActive(controller), "Freno 0,96: se muestra el overlay de salida");
                 Check(logs.Contains("[MainMenu] Salida solicitada"), "Freno 0,96: loguea 'Salida solicitada'");
-                Check(controller.LegendString.Contains("Botón de encendido: confirmar salida") && controller.LegendString.Contains("Freno de mano: bajar para cancelar")
-                    && !controller.LegendString.Contains("tirar para salir"), "Overlay: la leyenda pasa a confirmar salida / bajar para cancelar");
-                Check(highlighter == null || (highlighter.CurrentTargets.Count == 1 && highlighter.CurrentTargets[0] == startButton.gameObject), "Overlay: solo se resalta la ignición");
+                Check(controller.LegendString.Contains("Botón de balizas: confirmar salida") && controller.LegendString.Contains("Freno de mano: bajar para cancelar")
+                    && !controller.LegendString.Contains("tirar para salir"), "Overlay: la leyenda pasa a 'Botón de balizas: confirmar salida' / bajar para cancelar");
+                Check(highlighter == null || (highlighter.CurrentTargets.Count == 1 && highlighter.CurrentTargets[0] == hazardButton), "Overlay: solo se resaltan las balizas");
                 handbrake.SetEngagementImmediate(0.9f);
                 controller.Tick(0.016f);
                 Check(controller.ExitOverlayVisible, "Freno 0,9: el overlay sigue visible (histéresis)");
@@ -624,29 +692,44 @@ namespace PrimerVolante.Testing.Editor
                 Check(logs.Contains("[MainMenu] Salida cancelada"), "Freno 0,8: loguea 'Salida cancelada'");
                 Check(controller.LegendString.Contains("comenzar") && controller.LegendString.Contains("Freno de mano: tirar para salir"),
                     "Cancelar: la leyenda vuelve a la del Splash");
-                Check(highlighter == null || highlighter.CurrentTargets.Contains(startButton.gameObject), "Cancelar: vuelve el resaltado anterior");
+                Check(highlighter == null || (highlighter.CurrentTargets.Count > 0 && !highlighter.CurrentTargets.Contains(startButton.gameObject)),
+                    "Cancelar: vuelve el resaltado del Splash (balizas, no la ignición)");
 
-                // Splash: la ignición confirma la salida y NO sale del Splash.
+                // Splash + overlay: la ignición ya no confirma; las balizas confirman, no salen del Splash y quedan apagadas.
                 handbrake.SetEngagementImmediate(1f);
                 controller.Tick(0.016f);
                 logs.Clear();
                 startButton.Press();
-                Check(exits == 1 && controller.CurrentPage == MainMenuPage.Splash, "Splash + overlay: Press() dispara ExitRequested y no sale del Splash");
+                Check(exits == 0 && controller.CurrentPage == MainMenuPage.Splash, "Splash + overlay: Press() (ignición) no confirma la salida");
+                car.SetHazardActive(true);
+                Check(exits == 1 && controller.CurrentPage == MainMenuPage.Splash, "Splash + overlay: las balizas disparan ExitRequested y no salen del Splash");
                 Check(logs.Contains("[MainMenu] Saliendo del simulador"), "Confirmar: loguea 'Saliendo del simulador'");
+                Check(!car.IsHazardActive, "Confirmar con balizas: las balizas quedan apagadas");
+                car.SetHazardActive(true);
+                car.SetHazardActive(false);
+                Check(exits == 1, "Confirmar: con el overlay todavía visible, otra pulsación de balizas no repite la salida");
 
-                // Sin overlay, la ignición sale del Splash como siempre.
+                // Sin overlay, la ignición no sale del Splash: se sale con las balizas.
                 handbrake.SetEngagementImmediate(0f);
                 controller.Tick(0.016f);
                 startButton.Press();
-                Check(exits == 1 && controller.CurrentPage == MainMenuPage.Lessons, "Sin overlay: Press() sale del Splash y no dispara ExitRequested");
+                Check(exits == 1 && controller.CurrentPage == MainMenuPage.Splash, "Sin overlay: Press() en el Splash no sale ni dispara ExitRequested");
+                controller.HandleHazardChanged(true);
+                Check(exits == 1 && controller.CurrentPage == MainMenuPage.Lessons, "Sin overlay: las balizas salen del Splash y no disparan ExitRequested");
 
-                // Lecciones: con overlay no selecciona; sin overlay sí.
+                // Lecciones: con overlay ni la ignición selecciona ni confirma; las balizas confirman. Sin overlay la ignición selecciona.
                 handbrake.SetEngagementImmediate(0.97f);
                 controller.Tick(0.016f);
                 startButton.Press();
-                Check(exits == 2 && controller.SelectedLessonIndex == -1, "Lecciones + overlay: Press() dispara ExitRequested y no selecciona lección");
+                Check(exits == 1 && controller.SelectedLessonIndex == -1, "Lecciones + overlay: Press() no selecciona lección ni confirma la salida");
+                car.SetHazardActive(true);
+                Check(exits == 2 && controller.SelectedLessonIndex == -1 && controller.CurrentPage == MainMenuPage.Lessons && !car.IsHazardActive,
+                    "Lecciones + overlay: las balizas confirman la salida sin seleccionar lección");
                 handbrake.SetEngagementImmediate(0f);
                 controller.Tick(0.016f);
+                car.SetHazardActive(true);
+                Check(exits == 2 && controller.CurrentPage == MainMenuPage.Lessons, "Lecciones sin overlay: las balizas no hacen nada en el menú");
+                car.SetHazardActive(false);
                 startButton.Press();
                 Check(exits == 2 && controller.SelectedLessonIndex == controller.CursorIndex, "Lecciones sin overlay: Press() selecciona la lección como antes");
 
@@ -668,8 +751,8 @@ namespace PrimerVolante.Testing.Editor
                 handbrake.SetEngagementImmediate(1f);
                 controller.Tick(0.016f);
                 Check(controller.ExitOverlayVisible && menu.IsOpen, "Calibración + freno a fondo: el overlay aparece y la calibración sigue abierta");
-                startButton.Press();
-                Check(exits == 3 && menu.IsOpen && controller.CurrentPage == MainMenuPage.Calibration, "Calibración + overlay: Press() dispara ExitRequested sin cerrar la calibración");
+                car.SetHazardActive(true);
+                Check(exits == 3 && menu.IsOpen && controller.CurrentPage == MainMenuPage.Calibration, "Calibración + overlay: las balizas disparan ExitRequested sin cerrar la calibración");
                 handbrake.SetEngagementImmediate(0f);
                 controller.Tick(0.016f);
                 Check(!controller.ExitOverlayVisible && menu.IsOpen, "Calibración: al cancelar el overlay, la calibración sigue abierta");
@@ -682,7 +765,34 @@ namespace PrimerVolante.Testing.Editor
                 controller.ExitRequested -= onExit;
                 controller.SetPerformQuit(true);
                 handbrake.SetEngagementImmediate(0f);
+                car.SetHazardActive(false);
                 if (menu.IsOpen) menu.CloseMenu();
+            }
+        }
+
+        // El Splash es la introducción al prender el simulador: tras activar una lección, el menú arranca en la página de la marcha.
+        private static void VerifySplashOncePerSession(MainMenuController controller, VehicleController car, VRGearShifter shifter)
+        {
+            bool before = LessonSceneFlowManager.HasActivatedLesson;
+            try
+            {
+                LessonSceneFlowManager.HasActivatedLesson = false;
+                controller.Restart();
+                Check(controller.CurrentPage == MainMenuPage.Splash, "Sesión sin lecciones activadas: el menú arranca en el Splash");
+
+                LessonSceneFlowManager.HasActivatedLesson = true;
+                controller.Restart();
+                Check(controller.CurrentPage == MainMenuPage.Lessons && controller.ActiveGearTabIndex == 0,
+                    "Tras activar una lección: el menú arranca en Lecciones (marcha P) con la tira de marchas visible");
+                Check(!controller.LegendString.Contains("comenzar"), "Tras activar una lección: la leyenda no es la del Splash");
+                car.SetHazardActive(true);
+                Check(controller.CurrentPage == MainMenuPage.Lessons && car.IsHazardActive, "Tras activar una lección: las balizas no hacen nada (no hay Splash)");
+                car.SetHazardActive(false);
+            }
+            finally
+            {
+                LessonSceneFlowManager.HasActivatedLesson = before;
+                controller.Restart();
             }
         }
 
@@ -729,7 +839,7 @@ namespace PrimerVolante.Testing.Editor
                 Check(Mathf.Abs(press.ButtonTransform.localPosition.z - restZ) < 0.0001f, "Pulsar tras volver a mostrarse: el botón vuelve al reposo (no queda hundido)");
 
                 // Controles + overlay.
-                startButton.Press();
+                controller.HandleHazardChanged(true);
                 controller.HandleGearChanged(GearState.R);
                 controller.Tick(0.3f);
                 Check(controller.CurrentPage == MainMenuPage.Controls && VisibleModelRenderers(controller, MainMenuPage.Controls) > 0 && VisibleModelRenderers(controller, MainMenuPage.Splash) == 0,
@@ -851,9 +961,20 @@ namespace PrimerVolante.Testing.Editor
                 controller.HandleGearChanged(GearState.P);
                 Check(controller.CurrentPage == MainMenuPage.Splash, "Splash: volver a P tampoco cambia de página");
 
-                // La ignición (Press) sale del Splash hacia la marcha actual.
+                // La ignición ya no sale del Splash (evita elegir una lección con la misma pulsación repetida).
                 startButton.Press();
-                Check(controller.CurrentPage == MainMenuPage.Lessons, "Press() en Splash -> página Lecciones (marcha P)");
+                Check(controller.CurrentPage == MainMenuPage.Splash && controller.SelectedLessonIndex == -1, "Press() en Splash: no sale del Splash ni marca lección");
+
+                // Las balizas salen del Splash hacia la marcha actual y se vuelven a apagar.
+                car.SetHazardActive(true);
+                Check(controller.CurrentPage == MainMenuPage.Lessons, "Balizas en Splash -> página Lecciones (marcha P)");
+                Check(!car.IsHazardActive, "Balizas en Splash: quedan apagadas al salir");
+                Check(controller.SelectedLessonIndex == -1, "Balizas en Splash: no marcan ninguna lección");
+
+                // Fuera del Splash las balizas no cambian de página.
+                car.SetHazardActive(true);
+                Check(controller.CurrentPage == MainMenuPage.Lessons && car.IsHazardActive, "Balizas en Lecciones: no cambian de página");
+                car.SetHazardActive(false);
 
                 // Scroll con el volante
                 controller.ApplyScroll(0f, 0.016f);
@@ -1023,7 +1144,7 @@ namespace PrimerVolante.Testing.Editor
         private static List<LessonDefinitionSO> LoadLessons()
         {
             var list = new List<LessonDefinitionSO>();
-            for (int i = 1; i <= 4; i++)
+            for (int i = 1; i <= LESSON_COUNT; i++)
             {
                 var lesson = AssetDatabase.LoadAssetAtPath<LessonDefinitionSO>($"{CURRICULUM_FOLDER}/LessonData_{i:00}.asset");
                 if (lesson != null) list.Add(lesson);

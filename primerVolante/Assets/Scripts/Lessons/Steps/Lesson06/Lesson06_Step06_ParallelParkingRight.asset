@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
+  m_Name: Lesson06_Step06_ParallelParkingRight
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
+  stepTitle: Maniobra en Paralelo
+  instructionText: "Avanza por la calle, alin\xE9ate al auto delantero y maniobra marcha atr\xE1s hasta el recuadro amarillo."
+  completionMode: 1
+  requiredAction: 34
+  actionNumericParameter: 0
+  allowedControls: -1
+  highlightTargetName: 
+  ambienceIntensity: 0

@@ -1,0 +1,170 @@
+[Test #01] ✅ PASS: Asset LessonData_05.asset debe existir en Assets/Scripts/Lessons/Curriculum/LessonData_05.asset
+[Test #02] ✅ PASS: LessonData_05 debe tener lessonId 'LESSON_05' (actual: 'LESSON_05')
+[Test #03] ✅ PASS: LessonData_05 debe tener lessonTitle no vacío
+[Test #04] ✅ PASS: LessonData_05 debe contener exactamente 4 pasos (encontrados: 4)
+[Test #05] ✅ PASS: Paso 1 de Lección 5 no debe ser nulo
+[Test #06] ✅ PASS: Paso 1 de Lección 5 debe tener stepTitle
+[Test #07] ✅ PASS: Paso 1 de Lección 5 debe tener instructionText
+[Test #08] ✅ PASS: Paso 1 de Lección 5 debe ser ActionRequired
+[Test #09] ✅ PASS: Paso 1 de Lección 5 debe tener requiredAction = CompleteTurnSignalRightIntro (actual: CompleteTurnSignalRightIntro)
+[Test #10] ✅ PASS: Paso 1 de Lección 5 debe permitir CockpitControlFlags.All
+[Test #11] ✅ PASS: Lección 5 Paso 1: No debe mencionar 'teclado' (100% VR)
+[Test #12] ✅ PASS: Lección 5 Paso 1: No debe mencionar 'mouse' o 'ratón' (100% VR)
+[Test #13] ✅ PASS: Lección 5 Paso 1: No debe mencionar 'gamepad' o 'joystick' estándar (100% VR)
+[Test #14] ✅ PASS: Lección 5 Paso 1: No debe instruir a presionar 'Continuar' (Action-Driven)
+[Test #15] ✅ PASS: Lección 5 Paso 1: No debe instruir a 'hacer clic'
+[Test #16] ✅ PASS: Paso 2 de Lección 5 no debe ser nulo
+[Test #17] ✅ PASS: Paso 2 de Lección 5 debe tener stepTitle
+[Test #18] ✅ PASS: Paso 2 de Lección 5 debe tener instructionText
+[Test #19] ✅ PASS: Paso 2 de Lección 5 debe ser ActionRequired
+[Test #20] ✅ PASS: Paso 2 de Lección 5 debe tener requiredAction = TurnSignalAnticipation20m (actual: TurnSignalAnticipation20m)
+[Test #21] ✅ PASS: Paso 2 de Lección 5 debe permitir CockpitControlFlags.All
+[Test #22] ✅ PASS: Lección 5 Paso 2: No debe mencionar 'teclado' (100% VR)
+[Test #23] ✅ PASS: Lección 5 Paso 2: No debe mencionar 'mouse' o 'ratón' (100% VR)
+[Test #24] ✅ PASS: Lección 5 Paso 2: No debe mencionar 'gamepad' o 'joystick' estándar (100% VR)
+[Test #25] ✅ PASS: Lección 5 Paso 2: No debe instruir a presionar 'Continuar' (Action-Driven)
+[Test #26] ✅ PASS: Lección 5 Paso 2: No debe instruir a 'hacer clic'
+[Test #27] ✅ PASS: Paso 3 de Lección 5 no debe ser nulo
+[Test #28] ✅ PASS: Paso 3 de Lección 5 debe tener stepTitle
+[Test #29] ✅ PASS: Paso 3 de Lección 5 debe tener instructionText
+[Test #30] ✅ PASS: Paso 3 de Lección 5 debe ser ActionRequired
+[Test #31] ✅ PASS: Paso 3 de Lección 5 debe tener requiredAction = CrossTrafficLightIntersection (actual: CrossTrafficLightIntersection)
+[Test #32] ✅ PASS: Paso 3 de Lección 5 debe permitir CockpitControlFlags.All
+[Test #33] ✅ PASS: Lección 5 Paso 3: No debe mencionar 'teclado' (100% VR)
+[Test #34] ✅ PASS: Lección 5 Paso 3: No debe mencionar 'mouse' o 'ratón' (100% VR)
+[Test #35] ✅ PASS: Lección 5 Paso 3: No debe mencionar 'gamepad' o 'joystick' estándar (100% VR)
+[Test #36] ✅ PASS: Lección 5 Paso 3: No debe instruir a presionar 'Continuar' (Action-Driven)
+[Test #37] ✅ PASS: Lección 5 Paso 3: No debe instruir a 'hacer clic'
+[Test #38] ✅ PASS: Paso 4 de Lección 5 no debe ser nulo
+[Test #39] ✅ PASS: Paso 4 de Lección 5 debe tener stepTitle
+[Test #40] ✅ PASS: Paso 4 de Lección 5 debe tener instructionText
+[Test #41] ✅ PASS: Paso 4 de Lección 5 debe ser ActionRequired
+[Test #42] ✅ PASS: Paso 4 de Lección 5 debe tener requiredAction = CompleteLeftTurnCrossing (actual: CompleteLeftTurnCrossing)
+[Test #43] ✅ PASS: Paso 4 de Lección 5 debe permitir CockpitControlFlags.All
+[Test #44] ✅ PASS: Lección 5 Paso 4: No debe mencionar 'teclado' (100% VR)
+[Test #45] ✅ PASS: Lección 5 Paso 4: No debe mencionar 'mouse' o 'ratón' (100% VR)
+[Test #46] ✅ PASS: Lección 5 Paso 4: No debe mencionar 'gamepad' o 'joystick' estándar (100% VR)
+[Test #47] ✅ PASS: Lección 5 Paso 4: No debe instruir a presionar 'Continuar' (Action-Driven)
+[Test #48] ✅ PASS: Lección 5 Paso 4: No debe instruir a 'hacer clic'
+[Test #49] ✅ PASS: Asset LessonData_06.asset debe existir en Assets/Scripts/Lessons/Curriculum/LessonData_06.asset
+[Test #50] ✅ PASS: LessonData_06 debe tener lessonId 'LESSON_06' (actual: 'LESSON_06')
+[Test #51] ✅ PASS: LessonData_06 debe tener lessonTitle no vacío
+[Test #52] ✅ PASS: LessonData_06 debe contener exactamente 7 pasos (encontrados: 7)
+[Test #53] ✅ PASS: Paso 1 de Lección 6 no debe ser nulo
+[Test #54] ✅ PASS: Paso 1 de Lección 6 debe tener stepTitle
+[Test #55] ✅ PASS: Paso 1 de Lección 6 debe tener instructionText
+[Test #56] ✅ PASS: Paso 1 de Lección 6 debe ser ActionRequired
+[Test #57] ✅ PASS: Paso 1 de Lección 6 debe tener requiredAction = ActivateHazardLights (actual: ActivateHazardLights)
+[Test #58] ✅ PASS: Paso 1 de Lección 6 debe permitir CockpitControlFlags.All
+[Test #59] ✅ PASS: Lección 6 Paso 1: No debe mencionar 'teclado' (100% VR)
+[Test #60] ✅ PASS: Lección 6 Paso 1: No debe mencionar 'mouse' o 'ratón' (100% VR)
+[Test #61] ✅ PASS: Lección 6 Paso 1: No debe mencionar 'gamepad' o 'joystick' estándar (100% VR)
+[Test #62] ✅ PASS: Lección 6 Paso 1: No debe instruir a presionar 'Continuar' (Action-Driven)
+[Test #63] ✅ PASS: Lección 6 Paso 1: No debe instruir a 'hacer clic'
+[Test #64] ✅ PASS: Paso 2 de Lección 6 no debe ser nulo
+[Test #65] ✅ PASS: Paso 2 de Lección 6 debe tener stepTitle
+[Test #66] ✅ PASS: Paso 2 de Lección 6 debe tener instructionText
+[Test #67] ✅ PASS: Paso 2 de Lección 6 debe ser ActionRequired
+[Test #68] ✅ PASS: Paso 2 de Lección 6 debe tener requiredAction = ParkDiagonal45 (actual: ParkDiagonal45)
+[Test #69] ✅ PASS: Paso 2 de Lección 6 debe permitir CockpitControlFlags.All
+[Test #70] ✅ PASS: Lección 6 Paso 2: No debe mencionar 'teclado' (100% VR)
+[Test #71] ✅ PASS: Lección 6 Paso 2: No debe mencionar 'mouse' o 'ratón' (100% VR)
+[Test #72] ✅ PASS: Lección 6 Paso 2: No debe mencionar 'gamepad' o 'joystick' estándar (100% VR)
+[Test #73] ✅ PASS: Lección 6 Paso 2: No debe instruir a presionar 'Continuar' (Action-Driven)
+[Test #74] ✅ PASS: Lección 6 Paso 2: No debe instruir a 'hacer clic'
+[Test #75] ✅ PASS: Paso 3 de Lección 6 no debe ser nulo
+[Test #76] ✅ PASS: Paso 3 de Lección 6 debe tener stepTitle
+[Test #77] ✅ PASS: Paso 3 de Lección 6 debe tener instructionText
+[Test #78] ✅ PASS: Paso 3 de Lección 6 debe ser ActionRequired
+[Test #79] ✅ PASS: Paso 3 de Lección 6 debe tener requiredAction = SecureDiagonal45 (actual: SecureDiagonal45)
+[Test #80] ✅ PASS: Paso 3 de Lección 6 debe permitir CockpitControlFlags.All
+[Test #81] ✅ PASS: Lección 6 Paso 3: No debe mencionar 'teclado' (100% VR)
+[Test #82] ✅ PASS: Lección 6 Paso 3: No debe mencionar 'mouse' o 'ratón' (100% VR)
+[Test #83] ✅ PASS: Lección 6 Paso 3: No debe mencionar 'gamepad' o 'joystick' estándar (100% VR)
+[Test #84] ✅ PASS: Lección 6 Paso 3: No debe instruir a presionar 'Continuar' (Action-Driven)
+[Test #85] ✅ PASS: Lección 6 Paso 3: No debe instruir a 'hacer clic'
+[Test #86] ✅ PASS: Paso 4 de Lección 6 no debe ser nulo
+[Test #87] ✅ PASS: Paso 4 de Lección 6 debe tener stepTitle
+[Test #88] ✅ PASS: Paso 4 de Lección 6 debe tener instructionText
+[Test #89] ✅ PASS: Paso 4 de Lección 6 debe ser ActionRequired
+[Test #90] ✅ PASS: Paso 4 de Lección 6 debe tener requiredAction = ParkBay90Reverse (actual: ParkBay90Reverse)
+[Test #91] ✅ PASS: Paso 4 de Lección 6 debe permitir CockpitControlFlags.All
+[Test #92] ✅ PASS: Lección 6 Paso 4: No debe mencionar 'teclado' (100% VR)
+[Test #93] ✅ PASS: Lección 6 Paso 4: No debe mencionar 'mouse' o 'ratón' (100% VR)
+[Test #94] ✅ PASS: Lección 6 Paso 4: No debe mencionar 'gamepad' o 'joystick' estándar (100% VR)
+[Test #95] ✅ PASS: Lección 6 Paso 4: No debe instruir a presionar 'Continuar' (Action-Driven)
+[Test #96] ✅ PASS: Lección 6 Paso 4: No debe instruir a 'hacer clic'
+[Test #97] ✅ PASS: Paso 5 de Lección 6 no debe ser nulo
+[Test #98] ✅ PASS: Paso 5 de Lección 6 debe tener stepTitle
+[Test #99] ✅ PASS: Paso 5 de Lección 6 debe tener instructionText
+[Test #100] ✅ PASS: Paso 5 de Lección 6 debe ser ActionRequired
+[Test #101] ✅ PASS: Paso 5 de Lección 6 debe tener requiredAction = SecureBay90 (actual: SecureBay90)
+[Test #102] ✅ PASS: Paso 5 de Lección 6 debe permitir CockpitControlFlags.All
+[Test #103] ✅ PASS: Lección 6 Paso 5: No debe mencionar 'teclado' (100% VR)
+[Test #104] ✅ PASS: Lección 6 Paso 5: No debe mencionar 'mouse' o 'ratón' (100% VR)
+[Test #105] ✅ PASS: Lección 6 Paso 5: No debe mencionar 'gamepad' o 'joystick' estándar (100% VR)
+[Test #106] ✅ PASS: Lección 6 Paso 5: No debe instruir a presionar 'Continuar' (Action-Driven)
+[Test #107] ✅ PASS: Lección 6 Paso 5: No debe instruir a 'hacer clic'
+[Test #108] ✅ PASS: Paso 6 de Lección 6 no debe ser nulo
+[Test #109] ✅ PASS: Paso 6 de Lección 6 debe tener stepTitle
+[Test #110] ✅ PASS: Paso 6 de Lección 6 debe tener instructionText
+[Test #111] ✅ PASS: Paso 6 de Lección 6 debe ser ActionRequired
+[Test #112] ✅ PASS: Paso 6 de Lección 6 debe tener requiredAction = ParkParallelRight (actual: ParkParallelRight)
+[Test #113] ✅ PASS: Paso 6 de Lección 6 debe permitir CockpitControlFlags.All
+[Test #114] ✅ PASS: Lección 6 Paso 6: No debe mencionar 'teclado' (100% VR)
+[Test #115] ✅ PASS: Lección 6 Paso 6: No debe mencionar 'mouse' o 'ratón' (100% VR)
+[Test #116] ✅ PASS: Lección 6 Paso 6: No debe mencionar 'gamepad' o 'joystick' estándar (100% VR)
+[Test #117] ✅ PASS: Lección 6 Paso 6: No debe instruir a presionar 'Continuar' (Action-Driven)
+[Test #118] ✅ PASS: Lección 6 Paso 6: No debe instruir a 'hacer clic'
+[Test #119] ✅ PASS: Paso 7 de Lección 6 no debe ser nulo
+[Test #120] ✅ PASS: Paso 7 de Lección 6 debe tener stepTitle
+[Test #121] ✅ PASS: Paso 7 de Lección 6 debe tener instructionText
+[Test #122] ✅ PASS: Paso 7 de Lección 6 debe ser ActionRequired
+[Test #123] ✅ PASS: Paso 7 de Lección 6 debe tener requiredAction = SecureParkDeactivateHazards (actual: SecureParkDeactivateHazards)
+[Test #124] ✅ PASS: Paso 7 de Lección 6 debe permitir CockpitControlFlags.All
+[Test #125] ✅ PASS: Lección 6 Paso 7: No debe mencionar 'teclado' (100% VR)
+[Test #126] ✅ PASS: Lección 6 Paso 7: No debe mencionar 'mouse' o 'ratón' (100% VR)
+[Test #127] ✅ PASS: Lección 6 Paso 7: No debe mencionar 'gamepad' o 'joystick' estándar (100% VR)
+[Test #128] ✅ PASS: Lección 6 Paso 7: No debe instruir a presionar 'Continuar' (Action-Driven)
+[Test #129] ✅ PASS: Lección 6 Paso 7: No debe instruir a 'hacer clic'
+[Test #130] ✅ PASS: Archivo de escena Assets/Scenes/Lessons/Lesson_05_TurnIntersections.unity debe existir en el proyecto
+[Test #131] ✅ PASS: Escena de Lección 5 debe abrir limpiamente
+[Test #132] ✅ PASS: VehicleController (Car09) debe existir en la escena de Lección 5
+[Test #133] ✅ PASS: TurnSignalDetector debe estar presente en Car09
+[Test #134] ✅ PASS: TurnSignalDetector.ZoneMask debe contener la capa LaneZone
+[Test #135] ✅ PASS: CockpitControlLockManager debe estar presente en Car09
+[Test #136] ✅ PASS: LessonHUDPanel debe estar presente en la escena de Lección 5
+[Test #137] ✅ PASS: VRScreenFader debe estar presente en la escena de Lección 5
+[Test #138] ✅ PASS: LessonManager debe estar presente en la escena de Lección 5
+[Test #139] ✅ PASS: LessonManager debe tener asignada la Lección 5 como ActiveLesson
+[Test #140] ✅ PASS: Lesson05TurnIntersectionsController debe estar presente en la escena
+[Test #141] ✅ PASS: WarningLine_20m_Asphalt debe existir en la escena a 20m de la esquina
+[Test #142] ✅ PASS: WarningGate_20m_Hologram debe existir como portal holográfico a 20m de la esquina
+[Test #143] ✅ PASS: GPS_Circuit_Route (SplineContainer) debe existir en la escena de Lección 5 para navegación GPS
+[Test #144] ✅ PASS: GPS_Circuit_Route debe contener exactamente 4 splines (una por cada paso) (encontradas: 4)
+[Test #145] ✅ PASS: StopLine_TrafficLight_Step03 debe existir en la senda peatonal del semáforo para el Paso 3
+[Test #146] ✅ PASS: TrafficSignal_Step03_Small debe existir a la altura de los ojos en la senda para el Paso 3
+[Test #147] ✅ PASS: Lesson05TurnIntersectionsController debe tener asignado TrafficLight
+[Test #148] ✅ PASS: Lesson05TurnIntersectionsController debe tener asignado SecondaryTrafficLight
+[Test #149] ✅ PASS: Lesson05_SpawnPoints debe contener al menos 4 puntos de spawn
+[Test #150] ✅ PASS: Archivo de escena Assets/Scenes/Lessons/Lesson_06_ParkingManeuvers.unity debe existir en el proyecto
+[Test #151] ✅ PASS: Escena de Lección 6 debe abrir limpiamente
+[Test #152] ✅ PASS: VehicleController (Car09) debe existir en la escena de Lección 6
+[Test #153] ✅ PASS: TurnSignalExemptZone debe existir en el playón de dársenas de Lección 6
+[Test #154] ✅ PASS: TurnSignalExemptZone debe tener un BoxCollider como trigger
+[Test #155] ✅ PASS: TurnSignalExemptZone debe estar en la capa LaneZone (15)
+[Test #156] ✅ PASS: Deben existir al menos 3 ParkingZoneTriggers (encontrados: 3)
+[Test #157] ✅ PASS: Debe existir la estación de estacionamiento a 45°
+[Test #158] ✅ PASS: Debe existir la estación de estacionamiento a 90° de reversa
+[Test #159] ✅ PASS: Debe existir la estación de estacionamiento paralelo al cordón derecho
+[Test #160] ✅ PASS: Deben existir obstáculos (conos y autos estáticos) con ObstacleCollisionDetector (encontrados: 11)
+[Test #161] ✅ PASS: LessonManager debe estar presente en la escena de Lección 6
+[Test #162] ✅ PASS: LessonManager debe tener asignada la Lección 6 como ActiveLesson
+[Test #163] ✅ PASS: Lesson06ParkingController debe estar presente en la escena
+[Test #164] ✅ PASS: GroundVisual_YellowZone_45 debe existir en el piso de la dársena a 45°
+[Test #165] ✅ PASS: GroundVisual_YellowZone_90 debe existir en el piso de la dársena a 90°
+[Test #166] ✅ PASS: GroundVisual_YellowZone_Parallel debe existir en el piso de la dársena en paralelo
+[Test #167] ✅ PASS: GroundVisual_Arrow_45 debe existir marcando la dirección del auto en dársena 45°
+[Test #168] ✅ PASS: GroundVisual_Arrow_90 debe existir marcando la dirección de culata hacia la calle en dársena 90°
+[Test #169] ✅ PASS: GroundVisual_Arrow_Parallel debe existir marcando la dirección de circulación en dársena paralelo
+[Test #170] ✅ PASS: No deben existir llamadas a APIs obsoletas ('FindFirstObjectByType' o 'FindObjectsSortMode') en el código (encontradas: 0). Usar 'FindAnyObjectByType' o 'FindObjectsByType(FindObjectsInactive.Exclude)'.

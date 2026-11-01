@@ -42,7 +42,23 @@ namespace PrimerVolante.Lessons
         SetHeadlightsHighBeam,  // Modo Altas de ruta (tercer punto de perilla)
         SecureStopAndPark,      // Palanca en Parking y freno de mano accionado
         DriveForward,           // Avanzar en D al menos X metros
-        DriveReverse            // Retroceder en R al menos X metros
+        DriveReverse,           // Retroceder en R al menos X metros
+
+        // Lección 5: Giros e Intersecciones
+        CompleteTurnSignalRightIntro,   // Paso 1: Guiño derecho y completar giro 90°
+        TurnSignalAnticipation20m,      // Paso 2: Guiño derecho antes de línea 20m y completar giro
+        CrossTrafficLightIntersection,  // Paso 3: Detenerse en rojo/amarillo y cruzar en verde
+        CompleteLeftTurnCrossing,       // Paso 4: Guiño izquierdo >20m, giro amplio sin invadir contramano
+        CurbsideStop,                   // Paso 5: Detención en cordón derecho, Parking y freno de mano
+
+        // Lección 6: Maniobras de Estacionamiento
+        // (Paso 1 utiliza ActivateHazardLights)
+        ParkDiagonal45,                 // Paso 2: Entrada y detención en dársena de 45°
+        SecureDiagonal45,               // Paso 3: Asegurar en dársena 45° (P y freno de mano)
+        ParkBay90Reverse,               // Paso 4: Entrada y detención a 90° de culata
+        SecureBay90,                   // Paso 5: Asegurar en batería 90° (P y freno de mano)
+        ParkParallelRight,              // Paso 6: Estacionamiento y detención en paralelo
+        SecureParkDeactivateHazards     // Paso 7: Finalizar, apagar balizas, Parking y freno de mano
     }
 
     /// <summary>
