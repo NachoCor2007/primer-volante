@@ -533,7 +533,7 @@ namespace PrimerVolante.Testing.Editor
                 Check(!controller.HasPendingGear, "Splash: HandleGearChanged no deja marcha pendiente");
                 Check(!StripVisible(controller), "Splash: mover la palanca no muestra la tira");
                 controller.HandleGearChanged(GearState.P);
-                controller.HandleIgnitionPressed();
+                controller.HandleHazardChanged(true);
                 Check(StripVisible(controller) && ActiveTab(controller) == 0 && controller.CurrentPage == MainMenuPage.Lessons,
                     "Al salir del Splash la tira y la página quedan en la marcha actual (P)");
 
@@ -624,7 +624,8 @@ namespace PrimerVolante.Testing.Editor
                 Check(logs.Contains("[MainMenu] Salida cancelada"), "Freno 0,8: loguea 'Salida cancelada'");
                 Check(controller.LegendString.Contains("comenzar") && controller.LegendString.Contains("Freno de mano: tirar para salir"),
                     "Cancelar: la leyenda vuelve a la del Splash");
-                Check(highlighter == null || highlighter.CurrentTargets.Contains(startButton.gameObject), "Cancelar: vuelve el resaltado anterior");
+                Check(highlighter == null || (highlighter.CurrentTargets.Count > 0 && !highlighter.CurrentTargets.Contains(startButton.gameObject)),
+                    "Cancelar: vuelve el resaltado del Splash (balizas, no la ignición)");
 
                 // Splash: la ignición confirma la salida y NO sale del Splash.
                 handbrake.SetEngagementImmediate(1f);
@@ -634,11 +635,17 @@ namespace PrimerVolante.Testing.Editor
                 Check(exits == 1 && controller.CurrentPage == MainMenuPage.Splash, "Splash + overlay: Press() dispara ExitRequested y no sale del Splash");
                 Check(logs.Contains("[MainMenu] Saliendo del simulador"), "Confirmar: loguea 'Saliendo del simulador'");
 
-                // Sin overlay, la ignición sale del Splash como siempre.
+                // Splash + overlay: las balizas tampoco salen del Splash.
+                controller.HandleHazardChanged(true);
+                Check(controller.CurrentPage == MainMenuPage.Splash, "Splash + overlay: las balizas no salen del Splash");
+
+                // Sin overlay, la ignición ya no sale del Splash: se sale con las balizas.
                 handbrake.SetEngagementImmediate(0f);
                 controller.Tick(0.016f);
                 startButton.Press();
-                Check(exits == 1 && controller.CurrentPage == MainMenuPage.Lessons, "Sin overlay: Press() sale del Splash y no dispara ExitRequested");
+                Check(exits == 1 && controller.CurrentPage == MainMenuPage.Splash, "Sin overlay: Press() en el Splash no sale ni dispara ExitRequested");
+                controller.HandleHazardChanged(true);
+                Check(exits == 1 && controller.CurrentPage == MainMenuPage.Lessons, "Sin overlay: las balizas salen del Splash y no disparan ExitRequested");
 
                 // Lecciones: con overlay no selecciona; sin overlay sí.
                 handbrake.SetEngagementImmediate(0.97f);
@@ -729,7 +736,7 @@ namespace PrimerVolante.Testing.Editor
                 Check(Mathf.Abs(press.ButtonTransform.localPosition.z - restZ) < 0.0001f, "Pulsar tras volver a mostrarse: el botón vuelve al reposo (no queda hundido)");
 
                 // Controles + overlay.
-                startButton.Press();
+                controller.HandleHazardChanged(true);
                 controller.HandleGearChanged(GearState.R);
                 controller.Tick(0.3f);
                 Check(controller.CurrentPage == MainMenuPage.Controls && VisibleModelRenderers(controller, MainMenuPage.Controls) > 0 && VisibleModelRenderers(controller, MainMenuPage.Splash) == 0,
@@ -851,9 +858,20 @@ namespace PrimerVolante.Testing.Editor
                 controller.HandleGearChanged(GearState.P);
                 Check(controller.CurrentPage == MainMenuPage.Splash, "Splash: volver a P tampoco cambia de página");
 
-                // La ignición (Press) sale del Splash hacia la marcha actual.
+                // La ignición ya no sale del Splash (evita elegir una lección con la misma pulsación repetida).
                 startButton.Press();
-                Check(controller.CurrentPage == MainMenuPage.Lessons, "Press() en Splash -> página Lecciones (marcha P)");
+                Check(controller.CurrentPage == MainMenuPage.Splash && controller.SelectedLessonIndex == -1, "Press() en Splash: no sale del Splash ni marca lección");
+
+                // Las balizas salen del Splash hacia la marcha actual y se vuelven a apagar.
+                car.SetHazardActive(true);
+                Check(controller.CurrentPage == MainMenuPage.Lessons, "Balizas en Splash -> página Lecciones (marcha P)");
+                Check(!car.IsHazardActive, "Balizas en Splash: quedan apagadas al salir");
+                Check(controller.SelectedLessonIndex == -1, "Balizas en Splash: no marcan ninguna lección");
+
+                // Fuera del Splash las balizas no cambian de página.
+                car.SetHazardActive(true);
+                Check(controller.CurrentPage == MainMenuPage.Lessons && car.IsHazardActive, "Balizas en Lecciones: no cambian de página");
+                car.SetHazardActive(false);
 
                 // Scroll con el volante
                 controller.ApplyScroll(0f, 0.016f);

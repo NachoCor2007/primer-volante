@@ -21,7 +21,8 @@ namespace PrimerVolante.MainMenu
     /// Menú principal en cabina (issue #7). Se maneja con los mandos del propio vehículo:
     /// la palanca elige la página (P = Lecciones, R = Controles, N = Calibración, D = Créditos), el volante desplaza el
     /// cursor de la lista de lecciones (<see cref="MenuScrollMath"/>) y el botón de ignición confirma.
-    /// Empieza en una pantalla de bienvenida (Splash) que termina al pulsar la ignición. El auto queda inmovilizado
+    /// Empieza en una pantalla de bienvenida (Splash) que termina al pulsar el botón de balizas (no la ignición: así
+    /// salir del Splash no deja la ignición "a mano" y una segunda pulsación no elige una lección sin querer). El auto queda inmovilizado
     /// (motor apagado, freno de mano puesto, Rigidbody congelado) para que interactuar no genere ruido.
     /// La selección de lección es un placeholder: loguea y marca el ítem, no carga ninguna escena.
     /// Para que la palanca y el botón funcionen sin motor, la escena debe tener <c>m_IgnoreDrivingRestrictions</c> en el
@@ -110,6 +111,7 @@ namespace PrimerVolante.MainMenu
         private GearState m_PendingGear;
         private float m_PendingGearTimer;
         private bool m_ExitOverlayVisible;
+        private VRToggleButton m_HazardButton;
 
         /// <summary>Se dispara al confirmar la salida con la ignición (antes de cerrar la aplicación si <c>m_PerformQuit</c>).</summary>
         public event System.Action ExitRequested;
@@ -192,7 +194,7 @@ namespace PrimerVolante.MainMenu
         }
 
         /// <summary>
-        /// Autodetecta referencias vacías, inmoviliza el auto, se suscribe a los mandos y muestra el Splash.
+        /// Autodetecta referencias vacías, inmoviliza el auto (balizas apagadas), se suscribe a los mandos y muestra el Splash.
         /// Idempotente; la llama Start y los tests.
         /// </summary>
         public void Initialize()
@@ -258,6 +260,7 @@ namespace PrimerVolante.MainMenu
             m_Vehicle.SetEngineRunning(false);
             m_Vehicle.SetEngineLocked(true);
             if (m_Handbrake != null) m_Handbrake.SetEngagementImmediate(0f);
+            m_Vehicle.SetHazardActive(false);
 
             var body = m_Vehicle.GetComponent<Rigidbody>();
             if (body != null)
@@ -278,6 +281,7 @@ namespace PrimerVolante.MainMenu
                 m_GearShifter.OnGearChanged.AddListener(m_GearListener);
             }
             if (m_StartButton != null) m_StartButton.Pressed += HandleIgnitionPressed;
+            if (m_Vehicle != null) m_Vehicle.OnHazardChanged += HandleHazardChanged;
         }
 
         private void Unsubscribe()
@@ -285,6 +289,7 @@ namespace PrimerVolante.MainMenu
             if (m_GearShifter != null && m_GearListener != null) m_GearShifter.OnGearChanged.RemoveListener(m_GearListener);
             m_GearListener = null;
             if (m_StartButton != null) m_StartButton.Pressed -= HandleIgnitionPressed;
+            if (m_Vehicle != null) m_Vehicle.OnHazardChanged -= HandleHazardChanged;
         }
 
         /// <summary>
@@ -307,7 +312,7 @@ namespace PrimerVolante.MainMenu
 
         /// <summary>
         /// Pulsación de la ignición. Con el overlay de salida visible confirma la salida (tiene prioridad sobre la página).
-        /// Si no: sale del Splash, o selecciona la lección bajo el cursor en Lecciones.
+        /// Si no: en Lecciones selecciona la lección bajo el cursor. En el Splash no hace nada (se sale con las balizas).
         /// </summary>
         public void HandleIgnitionPressed()
         {
@@ -319,14 +324,26 @@ namespace PrimerVolante.MainMenu
 
             switch (m_Page)
             {
-                case MainMenuPage.Splash:
-                    m_HasPendingGear = false;
-                    SetPage(PageForGear(m_CurrentGear));
-                    break;
                 case MainMenuPage.Lessons:
                     SelectCurrentLesson();
                     break;
             }
+        }
+
+        /// <summary>
+        /// Pulsación del botón de balizas (cualquier cambio de estado). En el Splash, y sin overlay de salida, sale hacia la
+        /// página de la marcha actual y vuelve a apagar las balizas para que no queden titilando en el menú.
+        /// Fuera del Splash no hace nada.
+        /// </summary>
+        public void HandleHazardChanged(bool active)
+        {
+            if (m_Page != MainMenuPage.Splash || m_ExitOverlayVisible) return;
+
+            m_HasPendingGear = false;
+            SetPage(PageForGear(m_CurrentGear));
+
+            // Ya fuera del Splash: el OnHazardChanged(false) que dispara esto vuelve a entrar y se ignora.
+            if (active && m_Vehicle != null) m_Vehicle.SetHazardActive(false);
         }
 
         private void ConfirmExit()
@@ -467,8 +484,8 @@ namespace PrimerVolante.MainMenu
             switch (m_Page)
             {
                 case MainMenuPage.Splash:
-                    lines.Add("Botón de encendido: comenzar");
-                    AddTarget(targets, m_StartButton != null ? m_StartButton.gameObject : null);
+                    lines.Add("Botón de balizas: comenzar");
+                    AddTarget(targets, HazardButtonObject());
                     break;
                 case MainMenuPage.Lessons:
                     lines.Add("Volante: ← subir / → bajar (más giro, más rápido)");
@@ -499,6 +516,23 @@ namespace PrimerVolante.MainMenu
             if (m_LegendText != null) m_LegendText.text = string.Join("\n\n", lines);
             if (m_LegendRoot != null) m_LegendRoot.SetActive(lines.Count > 0);
             if (m_Highlighter != null) m_Highlighter.HighlightTargets(targets);
+        }
+
+        // El botón de balizas no tiene referencia pública en VehicleController: se busca por nombre como hace él mismo.
+        private GameObject HazardButtonObject()
+        {
+            if (m_HazardButton == null && m_Vehicle != null)
+            {
+                foreach (VRToggleButton toggle in m_Vehicle.GetComponentsInChildren<VRToggleButton>(true))
+                {
+                    if (toggle.gameObject.name.Contains("Hazard"))
+                    {
+                        m_HazardButton = toggle;
+                        break;
+                    }
+                }
+            }
+            return m_HazardButton != null ? m_HazardButton.gameObject : null;
         }
 
         private static void AddTarget(List<GameObject> list, GameObject go)

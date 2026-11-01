@@ -359,7 +359,7 @@ namespace PrimerVolante.Testing.Editor
             BuildCard(cards, font, controllerModel, "Card_Grab", "Agarrar", "Bumper", false, string.Empty, 3600f, new Vector3(20f, -40f, 0f));
             BuildCard(cards, font, controllerModel, "Card_Press", "Pulsar", string.Empty, true, string.Empty, 2600f, new Vector3(15f, -50f, 0f));
 
-            TextMeshProUGUI footer = AddText(page, "Footer", font, "Pulsá el botón de encendido para comenzar", 60f, new Color(1f, 0.85f, 0.2f), TextAlignmentOptions.Center);
+            TextMeshProUGUI footer = AddText(page, "Footer", font, "Pulsá el botón de balizas para comenzar", 60f, new Color(1f, 0.85f, 0.2f), TextAlignmentOptions.Center);
             var footerRect = footer.rectTransform;
             footerRect.anchorMin = new Vector2(0f, 0f);
             footerRect.anchorMax = new Vector2(1f, 0f);
