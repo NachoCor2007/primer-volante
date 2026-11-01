@@ -43,6 +43,9 @@ namespace PrimerVolante.Testing.Editor
             Scene previousActive = SceneManager.GetActiveScene();
             Scene scratch = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
             SceneManager.SetActiveScene(scratch);
+            // Estado de sesión: las pruebas parten de "ninguna lección activada" (el Splash aparece) y lo restauran al final.
+            bool lessonActivatedBefore = LessonSceneFlowManager.HasActivatedLesson;
+            LessonSceneFlowManager.HasActivatedLesson = false;
             try
             {
                 VerifyScrollMath();
@@ -58,6 +61,7 @@ namespace PrimerVolante.Testing.Editor
             }
             finally
             {
+                LessonSceneFlowManager.HasActivatedLesson = lessonActivatedBefore;
                 if (previousActive.IsValid() && previousActive.isLoaded) SceneManager.SetActiveScene(previousActive);
                 if (scratch.IsValid()) EditorSceneManager.CloseScene(scratch, true);
             }
@@ -565,6 +569,7 @@ namespace PrimerVolante.Testing.Editor
                 VerifyGearSettle(controller, menu);
                 VerifyExitOverlay(scene, controller, menu, startButton);
                 VerifyExitOverlayModels(scene, controller, startButton);
+                VerifySplashOncePerSession(controller, car, shifter);
                 VerifyInGameMenu(scene, menu);
             }
             finally
@@ -647,6 +652,13 @@ namespace PrimerVolante.Testing.Editor
             Check(handbrake != null, "Escena: hay un VRHandbrake");
             if (handbrake == null) return;
 
+            var car = FindFirst<VehicleController>(scene);
+            GameObject hazardButton = car != null
+                ? car.GetComponentsInChildren<VRToggleButton>(true).Where(t => t.gameObject.name.Contains("Hazard")).Select(t => t.gameObject).FirstOrDefault()
+                : null;
+            Check(car != null && hazardButton != null, "Escena: Car09 tiene el botón de balizas (VRToggleButton 'Hazard')");
+            if (car == null) return;
+
             var logs = new List<string>();
             Application.LogCallback capture = (msg, stack, type) => { if (type == LogType.Log) logs.Add(msg); };
             Application.logMessageReceived += capture;
@@ -656,6 +668,7 @@ namespace PrimerVolante.Testing.Editor
             controller.SetPerformQuit(false); // los tests solo verifican el evento: nunca cierran nada
             try
             {
+                LessonSceneFlowManager.HasActivatedLesson = false;
                 controller.Restart();
                 Check(Approx(handbrake.Engagement, 0f), $"Freno de mano: arranca abajo (Engagement = {handbrake.Engagement:F2})");
                 Check(!controller.ExitOverlayVisible && !OverlayActive(controller), "Arranque: el overlay de salida está oculto");
@@ -667,9 +680,9 @@ namespace PrimerVolante.Testing.Editor
                 controller.Tick(0.016f);
                 Check(controller.ExitOverlayVisible && OverlayActive(controller), "Freno 0,96: se muestra el overlay de salida");
                 Check(logs.Contains("[MainMenu] Salida solicitada"), "Freno 0,96: loguea 'Salida solicitada'");
-                Check(controller.LegendString.Contains("Botón de encendido: confirmar salida") && controller.LegendString.Contains("Freno de mano: bajar para cancelar")
-                    && !controller.LegendString.Contains("tirar para salir"), "Overlay: la leyenda pasa a confirmar salida / bajar para cancelar");
-                Check(highlighter == null || (highlighter.CurrentTargets.Count == 1 && highlighter.CurrentTargets[0] == startButton.gameObject), "Overlay: solo se resalta la ignición");
+                Check(controller.LegendString.Contains("Botón de balizas: confirmar salida") && controller.LegendString.Contains("Freno de mano: bajar para cancelar")
+                    && !controller.LegendString.Contains("tirar para salir"), "Overlay: la leyenda pasa a 'Botón de balizas: confirmar salida' / bajar para cancelar");
+                Check(highlighter == null || (highlighter.CurrentTargets.Count == 1 && highlighter.CurrentTargets[0] == hazardButton), "Overlay: solo se resaltan las balizas");
                 handbrake.SetEngagementImmediate(0.9f);
                 controller.Tick(0.016f);
                 Check(controller.ExitOverlayVisible, "Freno 0,9: el overlay sigue visible (histéresis)");
@@ -682,19 +695,21 @@ namespace PrimerVolante.Testing.Editor
                 Check(highlighter == null || (highlighter.CurrentTargets.Count > 0 && !highlighter.CurrentTargets.Contains(startButton.gameObject)),
                     "Cancelar: vuelve el resaltado del Splash (balizas, no la ignición)");
 
-                // Splash: la ignición confirma la salida y NO sale del Splash.
+                // Splash + overlay: la ignición ya no confirma; las balizas confirman, no salen del Splash y quedan apagadas.
                 handbrake.SetEngagementImmediate(1f);
                 controller.Tick(0.016f);
                 logs.Clear();
                 startButton.Press();
-                Check(exits == 1 && controller.CurrentPage == MainMenuPage.Splash, "Splash + overlay: Press() dispara ExitRequested y no sale del Splash");
+                Check(exits == 0 && controller.CurrentPage == MainMenuPage.Splash, "Splash + overlay: Press() (ignición) no confirma la salida");
+                car.SetHazardActive(true);
+                Check(exits == 1 && controller.CurrentPage == MainMenuPage.Splash, "Splash + overlay: las balizas disparan ExitRequested y no salen del Splash");
                 Check(logs.Contains("[MainMenu] Saliendo del simulador"), "Confirmar: loguea 'Saliendo del simulador'");
+                Check(!car.IsHazardActive, "Confirmar con balizas: las balizas quedan apagadas");
+                car.SetHazardActive(true);
+                car.SetHazardActive(false);
+                Check(exits == 1, "Confirmar: con el overlay todavía visible, otra pulsación de balizas no repite la salida");
 
-                // Splash + overlay: las balizas tampoco salen del Splash.
-                controller.HandleHazardChanged(true);
-                Check(controller.CurrentPage == MainMenuPage.Splash, "Splash + overlay: las balizas no salen del Splash");
-
-                // Sin overlay, la ignición ya no sale del Splash: se sale con las balizas.
+                // Sin overlay, la ignición no sale del Splash: se sale con las balizas.
                 handbrake.SetEngagementImmediate(0f);
                 controller.Tick(0.016f);
                 startButton.Press();
@@ -702,13 +717,19 @@ namespace PrimerVolante.Testing.Editor
                 controller.HandleHazardChanged(true);
                 Check(exits == 1 && controller.CurrentPage == MainMenuPage.Lessons, "Sin overlay: las balizas salen del Splash y no disparan ExitRequested");
 
-                // Lecciones: con overlay no selecciona; sin overlay sí.
+                // Lecciones: con overlay ni la ignición selecciona ni confirma; las balizas confirman. Sin overlay la ignición selecciona.
                 handbrake.SetEngagementImmediate(0.97f);
                 controller.Tick(0.016f);
                 startButton.Press();
-                Check(exits == 2 && controller.SelectedLessonIndex == -1, "Lecciones + overlay: Press() dispara ExitRequested y no selecciona lección");
+                Check(exits == 1 && controller.SelectedLessonIndex == -1, "Lecciones + overlay: Press() no selecciona lección ni confirma la salida");
+                car.SetHazardActive(true);
+                Check(exits == 2 && controller.SelectedLessonIndex == -1 && controller.CurrentPage == MainMenuPage.Lessons && !car.IsHazardActive,
+                    "Lecciones + overlay: las balizas confirman la salida sin seleccionar lección");
                 handbrake.SetEngagementImmediate(0f);
                 controller.Tick(0.016f);
+                car.SetHazardActive(true);
+                Check(exits == 2 && controller.CurrentPage == MainMenuPage.Lessons, "Lecciones sin overlay: las balizas no hacen nada en el menú");
+                car.SetHazardActive(false);
                 startButton.Press();
                 Check(exits == 2 && controller.SelectedLessonIndex == controller.CursorIndex, "Lecciones sin overlay: Press() selecciona la lección como antes");
 
@@ -730,8 +751,8 @@ namespace PrimerVolante.Testing.Editor
                 handbrake.SetEngagementImmediate(1f);
                 controller.Tick(0.016f);
                 Check(controller.ExitOverlayVisible && menu.IsOpen, "Calibración + freno a fondo: el overlay aparece y la calibración sigue abierta");
-                startButton.Press();
-                Check(exits == 3 && menu.IsOpen && controller.CurrentPage == MainMenuPage.Calibration, "Calibración + overlay: Press() dispara ExitRequested sin cerrar la calibración");
+                car.SetHazardActive(true);
+                Check(exits == 3 && menu.IsOpen && controller.CurrentPage == MainMenuPage.Calibration, "Calibración + overlay: las balizas disparan ExitRequested sin cerrar la calibración");
                 handbrake.SetEngagementImmediate(0f);
                 controller.Tick(0.016f);
                 Check(!controller.ExitOverlayVisible && menu.IsOpen, "Calibración: al cancelar el overlay, la calibración sigue abierta");
@@ -744,7 +765,34 @@ namespace PrimerVolante.Testing.Editor
                 controller.ExitRequested -= onExit;
                 controller.SetPerformQuit(true);
                 handbrake.SetEngagementImmediate(0f);
+                car.SetHazardActive(false);
                 if (menu.IsOpen) menu.CloseMenu();
+            }
+        }
+
+        // El Splash es la introducción al prender el simulador: tras activar una lección, el menú arranca en la página de la marcha.
+        private static void VerifySplashOncePerSession(MainMenuController controller, VehicleController car, VRGearShifter shifter)
+        {
+            bool before = LessonSceneFlowManager.HasActivatedLesson;
+            try
+            {
+                LessonSceneFlowManager.HasActivatedLesson = false;
+                controller.Restart();
+                Check(controller.CurrentPage == MainMenuPage.Splash, "Sesión sin lecciones activadas: el menú arranca en el Splash");
+
+                LessonSceneFlowManager.HasActivatedLesson = true;
+                controller.Restart();
+                Check(controller.CurrentPage == MainMenuPage.Lessons && controller.ActiveGearTabIndex == 0,
+                    "Tras activar una lección: el menú arranca en Lecciones (marcha P) con la tira de marchas visible");
+                Check(!controller.LegendString.Contains("comenzar"), "Tras activar una lección: la leyenda no es la del Splash");
+                car.SetHazardActive(true);
+                Check(controller.CurrentPage == MainMenuPage.Lessons && car.IsHazardActive, "Tras activar una lección: las balizas no hacen nada (no hay Splash)");
+                car.SetHazardActive(false);
+            }
+            finally
+            {
+                LessonSceneFlowManager.HasActivatedLesson = before;
+                controller.Restart();
             }
         }
 

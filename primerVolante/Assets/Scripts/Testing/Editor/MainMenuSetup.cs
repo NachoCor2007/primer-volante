@@ -326,7 +326,7 @@ namespace PrimerVolante.Testing.Editor
             AnchorTop(title.rectTransform, 70f, 170f);
 
             TextMeshProUGUI body = AddText(box, "Body", font,
-                "Pulsá el botón de encendido para confirmar · Bajá el freno de mano para cancelar", 76f,
+                "Pulsá el botón de balizas para confirmar · Bajá el freno de mano para cancelar", 76f,
                 new Color(1f, 0.9f, 0.7f), TextAlignmentOptions.Center);
             body.textWrappingMode = TextWrappingModes.Normal;
             body.rectTransform.anchorMin = new Vector2(0.05f, 0f);

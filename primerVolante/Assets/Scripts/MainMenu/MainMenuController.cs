@@ -21,8 +21,10 @@ namespace PrimerVolante.MainMenu
     /// Menú principal en cabina (issue #7). Se maneja con los mandos del propio vehículo:
     /// la palanca elige la página (P = Lecciones, R = Controles, N = Calibración, D = Créditos), el volante desplaza el
     /// cursor de la lista de lecciones (<see cref="MenuScrollMath"/>) y el botón de ignición confirma.
-    /// Empieza en una pantalla de bienvenida (Splash) que termina al pulsar el botón de balizas (no la ignición: así
-    /// salir del Splash no deja la ignición "a mano" y una segunda pulsación no elige una lección sin querer). El auto queda inmovilizado
+    /// Al prender el simulador empieza en una pantalla de bienvenida (Splash) que termina al pulsar el botón de balizas (no
+    /// la ignición: así una segunda pulsación no elige una lección sin querer). Una vez que se activó una lección en la
+    /// sesión (<see cref="LessonSceneFlowManager.HasActivatedLesson"/>), al volver al menú ya no se muestra el Splash.
+    /// Tirar del freno de mano pide salir del simulador; las balizas confirman y bajar el freno cancela. El auto queda inmovilizado
     /// (motor apagado, freno de mano puesto, Rigidbody congelado) para que interactuar no genere ruido.
     /// La selección de lección es un placeholder: loguea y marca el ítem, no carga ninguna escena.
     /// Para que la palanca y el botón funcionen sin motor, la escena debe tener <c>m_IgnoreDrivingRestrictions</c> en el
@@ -111,6 +113,7 @@ namespace PrimerVolante.MainMenu
         private GearState m_PendingGear;
         private float m_PendingGearTimer;
         private bool m_ExitOverlayVisible;
+        private bool m_ExitConfirmed;
         private VRToggleButton m_HazardButton;
 
         /// <summary>Se dispara al confirmar la salida con la ignición (antes de cerrar la aplicación si <c>m_PerformQuit</c>).</summary>
@@ -208,15 +211,21 @@ namespace PrimerVolante.MainMenu
             if (m_GearShifter != null) m_CurrentGear = m_GearShifter.CurrentGear;
             m_Scroll.Reset();
             m_ExitOverlayVisible = false;
+            m_ExitConfirmed = false;
             if (m_ExitOverlay != null) m_ExitOverlay.SetActive(false);
             ApplyIllustrationVisibility();
 
             Subscribe();
-            m_Page = MainMenuPage.Splash;
+            // El Splash es la introducción al prender el simulador: tras haber activado una lección se va directo a la
+            // página de la marcha actual.
+            m_Page = LessonSceneFlowManager.HasActivatedLesson ? PageForGear(m_CurrentGear) : MainMenuPage.Splash;
             ApplyPage();
         }
 
-        /// <summary>Reinicia el menú: vuelve al Splash con el cursor en 0 y sin lección marcada. Útil para tests.</summary>
+        /// <summary>
+        /// Reinicia el menú con el cursor en 0 y sin lección marcada: vuelve al Splash, o a la página de la marcha si ya se
+        /// activó una lección en la sesión. Útil para tests.
+        /// </summary>
         public void Restart()
         {
             Unsubscribe();
@@ -311,43 +320,48 @@ namespace PrimerVolante.MainMenu
         }
 
         /// <summary>
-        /// Pulsación de la ignición. Con el overlay de salida visible confirma la salida (tiene prioridad sobre la página).
-        /// Si no: en Lecciones selecciona la lección bajo el cursor. En el Splash no hace nada (se sale con las balizas).
+        /// Pulsación de la ignición: en Lecciones selecciona la lección bajo el cursor. No hace nada en el Splash (se sale
+        /// con las balizas) ni con el overlay de salida visible (se confirma con las balizas).
         /// </summary>
         public void HandleIgnitionPressed()
         {
+            if (m_ExitOverlayVisible) return;
+
+            if (m_Page == MainMenuPage.Lessons) SelectCurrentLesson();
+        }
+
+        /// <summary>
+        /// Pulsación del botón de balizas (cualquier cambio de estado). Con el overlay de salida visible confirma la salida
+        /// (en cualquier página). Si no, en el Splash sale hacia la página de la marcha actual. En ambos casos vuelve a
+        /// apagar las balizas para que no queden titilando en el menú. En el resto de las páginas no hace nada.
+        /// </summary>
+        public void HandleHazardChanged(bool active)
+        {
             if (m_ExitOverlayVisible)
             {
+                TurnHazardsOff(active);
                 ConfirmExit();
                 return;
             }
 
-            switch (m_Page)
-            {
-                case MainMenuPage.Lessons:
-                    SelectCurrentLesson();
-                    break;
-            }
-        }
-
-        /// <summary>
-        /// Pulsación del botón de balizas (cualquier cambio de estado). En el Splash, y sin overlay de salida, sale hacia la
-        /// página de la marcha actual y vuelve a apagar las balizas para que no queden titilando en el menú.
-        /// Fuera del Splash no hace nada.
-        /// </summary>
-        public void HandleHazardChanged(bool active)
-        {
-            if (m_Page != MainMenuPage.Splash || m_ExitOverlayVisible) return;
+            if (m_Page != MainMenuPage.Splash) return;
 
             m_HasPendingGear = false;
             SetPage(PageForGear(m_CurrentGear));
+            TurnHazardsOff(active);
+        }
 
-            // Ya fuera del Splash: el OnHazardChanged(false) que dispara esto vuelve a entrar y se ignora.
+        // Apaga las balizas que encendió la pulsación. El OnHazardChanged(false) que dispara vuelve a entrar a
+        // HandleHazardChanged: ya fuera del Splash (o con la salida confirmada) no hace nada.
+        private void TurnHazardsOff(bool active)
+        {
             if (active && m_Vehicle != null) m_Vehicle.SetHazardActive(false);
         }
 
         private void ConfirmExit()
         {
+            if (m_ExitConfirmed) return;
+            m_ExitConfirmed = true;
             Debug.Log("[MainMenu] Saliendo del simulador");
             ExitRequested?.Invoke();
 
@@ -380,6 +394,7 @@ namespace PrimerVolante.MainMenu
         private void SetExitOverlay(bool visible)
         {
             m_ExitOverlayVisible = visible;
+            m_ExitConfirmed = false;
             if (m_ExitOverlay != null) m_ExitOverlay.SetActive(visible);
             ApplyIllustrationVisibility();
             UpdateLegendAndHighlight();
@@ -473,10 +488,10 @@ namespace PrimerVolante.MainMenu
 
             if (m_ExitOverlayVisible)
             {
-                // Con el overlay de salida: solo se confirma o se cancela; se resalta la ignición.
-                lines.Add("Botón de encendido: confirmar salida");
+                // Con el overlay de salida: solo se confirma o se cancela; se resaltan las balizas.
+                lines.Add("Botón de balizas: confirmar salida");
                 lines.Add("Freno de mano: bajar para cancelar");
-                AddTarget(targets, m_StartButton != null ? m_StartButton.gameObject : null);
+                AddTarget(targets, HazardButtonObject());
                 ApplyLegend(lines, targets);
                 return;
             }

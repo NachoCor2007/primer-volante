@@ -54,6 +54,19 @@ namespace PrimerVolante.Lessons
         }
 
         public bool IsTransitioning => m_IsTransitioning;
+
+        /// <summary>
+        /// true si en esta sesión del simulador ya se activó (cargó) alguna lección. El menú principal lo usa para no
+        /// volver a mostrar el Splash de bienvenida. Es estático (no crea la instancia) y se reinicia al arrancar el juego.
+        /// </summary>
+        public static bool HasActivatedLesson { get; set; }
+
+        // Con "Enter Play Mode Options" sin recarga de dominio los estáticos sobreviven entre Play: se reinician aquí.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetSessionState()
+        {
+            HasActivatedLesson = false;
+        }
         public string CurrentOverlayScene => m_CurrentOverlayScene;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -145,6 +158,7 @@ namespace PrimerVolante.Lessons
 
             if (LessonScenes.TryGetValue(lessonId, out string targetScene))
             {
+                HasActivatedLesson = true;
                 StartCoroutine(TransitionToSceneRoutine(targetScene));
             }
             else
