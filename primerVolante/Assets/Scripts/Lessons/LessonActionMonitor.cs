@@ -559,6 +559,10 @@ namespace PrimerVolante.Lessons
                     return Lesson06ParkingController.Instance != null &&
                            Lesson06ParkingController.Instance.IsBay90Secured;
 
+                case LessonActionType.ParkParallelAngle45:
+                    return Lesson06ParkingController.Instance != null &&
+                           Lesson06ParkingController.Instance.IsParallelAngle45Positioned;
+
                 case LessonActionType.ParkParallelRight:
                     return Lesson06ParkingController.Instance != null &&
                            Lesson06ParkingController.Instance.IsParallelPositioned;

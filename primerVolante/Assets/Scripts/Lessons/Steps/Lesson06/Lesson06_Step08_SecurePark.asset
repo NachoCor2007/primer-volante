@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
-  m_Name: Lesson06_Step07_SecurePark
+  m_Name: Lesson06_Step08_SecurePark
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: Asegurar y Finalizar
-  instructionText: Apaga las balizas, coloca Parking (P) y sube firmemente el freno de mano.
+  instructionText: "\xA1Maniobra completada! Endereza el volante al centro. Coloca Parking (P), sube firmemente el freno de mano y apaga las balizas para finalizar."
   completionMode: 1
-  requiredAction: 35
+  requiredAction: 36
   actionNumericParameter: 0
   allowedControls: -1
-  highlightTargetName: HazardButton, VRGearShifter, VRHandbrake
+  highlightTargetName: HazardButton, VRGearShifter, VRHandbrake, VRSteeringWheel
   ambienceIntensity: 0

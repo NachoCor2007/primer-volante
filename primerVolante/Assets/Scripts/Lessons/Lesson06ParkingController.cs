@@ -78,6 +78,33 @@ namespace PrimerVolante.Lessons
         public bool IsBay90Positioned => m_Bay90Zone != null && m_Bay90Zone.IsVehiclePositionedProperly;
         public bool IsBay90Secured => m_Bay90Zone != null && m_Bay90Zone.IsVehicleSecuredProperly;
 
+        public bool IsParallelAngle45Positioned
+        {
+            get
+            {
+                if (m_VehicleController == null) return false;
+
+                // 1. Debe haber colocado Reversa
+                if (m_VehicleController.CurrentGear != GearState.Reverse) return false;
+
+                // 2. Debe estar detenido o frenando (velocidad < 1.5 km/h)
+                if (m_VehicleController.CurrentSpeedKmh > 1.5f) return false;
+
+                // 3. Debe haber retrocedido al menos 1.0m desde la posición inicial
+                Transform spawn = GetSpawnForStep(5);
+                if (spawn != null && m_VehicleController.transform.position.z > (spawn.position.z - 1.0f))
+                {
+                    return false;
+                }
+
+                // 4. Ángulo de inclinación respecto a la calle (orientación objetivo 35° a 52°)
+                Vector3 streetForward = (m_ParallelZone != null) ? m_ParallelZone.GetTargetForwardDirection() : Vector3.forward;
+                float angle = Vector3.Angle(m_VehicleController.transform.forward, streetForward);
+
+                return angle >= 35f && angle <= 52f;
+            }
+        }
+
         public bool IsParallelPositioned => m_ParallelZone != null && m_ParallelZone.IsVehiclePositionedProperly;
 
         public bool IsVehicleSecured => m_VehicleController != null &&
@@ -227,8 +254,14 @@ namespace PrimerVolante.Lessons
                 yield break;
             }
 
-            // - Paso 6: Acaba de frenar en paralelo, debe apagar balizas, poner P y freno de mano.
-            if (stepIndex == 6 && m_ParallelZone != null && m_ParallelZone.IsVehicleFullyInside(m_VehicleController))
+            // - Paso 6: Acaba de frenar a 45° en la maniobra en paralelo, debe quebrar a la izquierda en ese mismo sitio.
+            if (stepIndex == 6 && m_VehicleController != null)
+            {
+                yield break;
+            }
+
+            // - Paso 7: Acaba de frenar en paralelo, debe apagar balizas, poner P y freno de mano.
+            if (stepIndex == 7 && m_ParallelZone != null && m_ParallelZone.IsVehicleFullyInside(m_VehicleController))
             {
                 yield break;
             }
@@ -264,7 +297,7 @@ namespace PrimerVolante.Lessons
             // Pasos 5 y 6: Dársena Paralelo visible (maniobra y aseguramiento)
             SetStationVisualActive(m_GroundHighlight45, stepIndex == 1 || stepIndex == 2);
             SetStationVisualActive(m_GroundHighlight90, stepIndex == 3 || stepIndex == 4);
-            SetStationVisualActive(m_GroundHighlightParallel, stepIndex == 5 || stepIndex == 6);
+            SetStationVisualActive(m_GroundHighlightParallel, stepIndex >= 5);
         }
 
         private void SetStationVisualActive(GameObject highlight, bool active)
@@ -340,11 +373,12 @@ namespace PrimerVolante.Lessons
                 case 3: // Maniobra 90°
                 case 4: // Asegurar 90°
                     return m_StepSpawnPoints.Length > 2 ? m_StepSpawnPoints[2] : null;
-                case 5: // Maniobra Paralelo
+                case 5: // Maniobra Paralelo (Inclinación a 45°)
+                case 6: // Maniobra Paralelo (Quiebre y Entrada)
                     return m_StepSpawnPoints.Length > 3 ? m_StepSpawnPoints[3] : null;
-                case 6: // Asegurar final
+                case 7: // Asegurar final
                 default:
-                    return m_StepSpawnPoints.Length > 4 ? m_StepSpawnPoints[4] : null;
+                    return m_StepSpawnPoints.Length > 4 ? m_StepSpawnPoints[4] : (m_StepSpawnPoints.Length > 3 ? m_StepSpawnPoints[3] : null);
             }
         }
 
@@ -392,17 +426,20 @@ namespace PrimerVolante.Lessons
                 }
                 m_VehicleController.SetHazardActive(false);
             }
-            else if (stepIndex == 1 || stepIndex == 3 || stepIndex == 5)
+            else if (stepIndex == 1 || stepIndex == 3 || stepIndex == 5 || stepIndex == 6)
             {
                 // Para las maniobras 45°, 90° y Paralelo:
-                // Motor encendido, balizas activadas, transmisión en Drive (D) y freno de mano abajo
+                // Motor encendido, balizas activadas, transmisión según corresponda y freno de mano abajo
                 m_VehicleController.SetEngineRunning(true);
                 m_VehicleController.SetHazardActive(true);
-                m_VehicleController.SetGear(GearState.Drive);
+
+                // En estacionamiento en paralelo (pasos 5 y 6), iniciamos directamente en Reversa (R)
+                GearState initialGear = (stepIndex == 5 || stepIndex == 6) ? GearState.Reverse : GearState.Drive;
+                m_VehicleController.SetGear(initialGear);
 
                 if (shifter != null)
                 {
-                    shifter.SetRotationToGear(GearState.Drive);
+                    shifter.SetRotationToGear(initialGear);
                 }
 
                 if (handbrake != null)
@@ -410,7 +447,7 @@ namespace PrimerVolante.Lessons
                     handbrake.SetEngagementImmediate(0f);
                 }
             }
-            else if (stepIndex == 2 || stepIndex == 4 || stepIndex == 6)
+            else if (stepIndex == 2 || stepIndex == 4 || stepIndex == 7)
             {
                 // Para los pasos de aseguramiento en dársena: motor en marcha y balizas activadas
                 m_VehicleController.SetEngineRunning(true);

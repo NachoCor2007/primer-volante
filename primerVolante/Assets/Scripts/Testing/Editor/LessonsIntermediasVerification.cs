@@ -194,7 +194,7 @@ namespace PrimerVolante.Testing.Editor
             {
                 Assert(l6.lessonId == "LESSON_06", $"LessonData_06 debe tener lessonId 'LESSON_06' (actual: '{l6.lessonId}')", ref total, ref passed);
                 Assert(!string.IsNullOrEmpty(l6.lessonTitle), "LessonData_06 debe tener lessonTitle no vacío", ref total, ref passed);
-                Assert(l6.steps != null && l6.steps.Count == 7, $"LessonData_06 debe contener exactamente 7 pasos (encontrados: {l6.steps?.Count ?? 0})", ref total, ref passed);
+                Assert(l6.steps != null && l6.steps.Count == 8, $"LessonData_06 debe contener exactamente 8 pasos (encontrados: {l6.steps?.Count ?? 0})", ref total, ref passed);
 
                 LessonActionType[] expectedActions = new[]
                 {
@@ -203,6 +203,7 @@ namespace PrimerVolante.Testing.Editor
                     LessonActionType.SecureDiagonal45,
                     LessonActionType.ParkBay90Reverse,
                     LessonActionType.SecureBay90,
+                    LessonActionType.ParkParallelAngle45,
                     LessonActionType.ParkParallelRight,
                     LessonActionType.SecureParkDeactivateHazards
                 };
@@ -398,6 +399,17 @@ namespace PrimerVolante.Testing.Editor
             Assert(aura45 != null, "GroundVisual_Aura_45 debe existir proyectando el aura 3D en dársena 45°", ref total, ref passed);
             Assert(aura90 != null, "GroundVisual_Aura_90 debe existir proyectando el aura 3D en dársena 90°", ref total, ref passed);
             Assert(auraParallel != null, "GroundVisual_Aura_Parallel debe existir proyectando el aura 3D en dársena paralelo", ref total, ref passed);
+
+            // Validar que el shader y material del aura posean una cola de renderizado previa a Canvas UI (renderQueue < 3000)
+            // para que el panel de instrucciones HUD en cabina atenúe adecuadamente el brillo y no encandile en VR.
+            Shader auraShader = Shader.Find("Custom/ParkingAura");
+            Assert(auraShader != null, "Shader Custom/ParkingAura debe encontrarse cargado", ref total, ref passed);
+            if (auraShader != null)
+            {
+                Material auraMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Environment/Materials/M_Parking_AuraPerimeter.mat");
+                Assert(auraMat != null && auraMat.renderQueue < 3000,
+                    $"Material de aura debe renderizar antes que la UI WorldSpace (renderQueue < 3000, actual: {auraMat?.renderQueue})", ref total, ref passed);
+            }
         }
 
         // =========================================================================

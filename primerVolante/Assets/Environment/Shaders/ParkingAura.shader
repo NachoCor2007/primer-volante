@@ -15,7 +15,7 @@ Shader "Custom/ParkingAura"
         Tags
         {
             "RenderType" = "Transparent"
-            "Queue" = "Transparent+10"
+            "Queue" = "Transparent-50"
             "RenderPipeline" = "UniversalPipeline"
             "IgnoreProjector" = "True"
         }

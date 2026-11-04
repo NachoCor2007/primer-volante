@@ -57,8 +57,9 @@ namespace PrimerVolante.Lessons
         SecureDiagonal45,               // Paso 3: Asegurar en dársena 45° (P y freno de mano)
         ParkBay90Reverse,               // Paso 4: Entrada y detención a 90° de culata
         SecureBay90,                   // Paso 5: Asegurar en batería 90° (P y freno de mano)
-        ParkParallelRight,              // Paso 6: Estacionamiento y detención en paralelo
-        SecureParkDeactivateHazards     // Paso 7: Finalizar, apagar balizas, Parking y freno de mano
+        ParkParallelAngle45,            // Paso 6: Inclinación a 45° en reversa con volante a la derecha
+        ParkParallelRight,              // Paso 7: Quiebre a la izquierda y alineación en recuadro paralelo
+        SecureParkDeactivateHazards     // Paso 8: Finalizar, apagar balizas, Parking y freno de mano
     }
 
     /// <summary>
