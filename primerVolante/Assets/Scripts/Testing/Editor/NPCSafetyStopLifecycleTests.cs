@@ -34,6 +34,7 @@ namespace PrimerVolante.Testing.Editor
             TestParkedAndDecorativeVehicles(ref total, ref passed);
             TestMutualDetectionUnderSharedParent(ref total, ref passed);
             TestCurveSensorAdaptation(ref total, ref passed);
+            TestCurveSensorSmoothing(ref total, ref passed);
 
             Debug.Log("=========================================================");
             Debug.Log($"🏁 RESULTADO FINAL: {passed}/{total} pruebas de NPCSafetyStop pasadas con éxito!");
@@ -410,6 +411,145 @@ namespace PrimerVolante.Testing.Editor
                 Object.DestroyImmediate(splineObj);
                 Object.DestroyImmediate(npcObj);
             }
+        }
+
+        // ---------------------------------------------------------------- 9. Suavizado del sensor en curvas
+        private const float k_SmoothStep = 0.02f;
+
+        private static void TestCurveSensorSmoothing(ref int total, ref int passed)
+        {
+            GameObject splineObj = new GameObject("TestSpline_CurveSmoothing");
+            GameObject npcObj = new GameObject("TestNPC_CurveSmoothing");
+            try
+            {
+                SplineContainer splineContainer = splineObj.AddComponent<SplineContainer>();
+                Spline spline = new Spline();
+                // Misma spline que el test 8: recta de 10m y curva de 90° a la derecha
+                spline.Add(new BezierKnot(new float3(0f, 0f, 0f), new float3(0f, 0f, -3f), new float3(0f, 0f, 3f)));
+                spline.Add(new BezierKnot(new float3(0f, 0f, 10f), new float3(0f, 0f, -3f), new float3(0f, 0f, 3f)));
+                spline.Add(new BezierKnot(new float3(15f, 0f, 25f), new float3(-3f, 0f, 0f), new float3(3f, 0f, 0f)));
+                splineContainer.Spline = spline;
+
+                var follower = npcObj.AddComponent<NPCPathFollower>();
+                var safety = npcObj.AddComponent<NPCSafetyStop>();
+                safety.DetectionDistance = 8.0f;
+                safety.MinCurveDetectionDistance = 3.5f;
+                safety.CurveAngleThreshold = 8.0f;
+                safety.MaxCurveAngle = 45.0f;
+                safety.AdaptSensorInCurves = true;
+                safety.SensorSmoothingTime = 0.15f;
+
+                follower.SetPath(splineContainer, 0);
+                follower.Play();
+
+                // 9.1 / 9.2: recorrido recta + curva
+                SensorTrace trace = RecordSensorTrace(follower, safety, npcObj.transform);
+                Assert(trace.Steps > 100, $"[9.0] El recorrido de prueba avanza lo suficiente ({trace.Steps} pasos)", ref total, ref passed);
+                Assert(trace.MaxInstantYawStep < 3.0f,
+                    $"[9.1] Sin salto en el umbral: |Δyaw| instantáneo máx por paso < 3° (medido {trace.MaxInstantYawStep:F2}°)", ref total, ref passed);
+                Assert(trace.MaxSmoothYawStep < trace.MaxInstantYawStep,
+                    $"[9.2a] El yaw suavizado cambia menos por paso que el instantáneo ({trace.MaxSmoothYawStep:F3}° < {trace.MaxInstantYawStep:F3}°)", ref total, ref passed);
+                Assert(trace.MaxSmoothDistStep < trace.MaxInstantDistStep,
+                    $"[9.2b] La distancia suavizada cambia menos por paso que la instantánea ({trace.MaxSmoothDistStep:F4}m < {trace.MaxInstantDistStep:F4}m)", ref total, ref passed);
+                Assert(trace.MinInstantDist < 8.0f - 1.0f,
+                    $"[9.2c] La adaptación en curva se mantiene: el alcance baja en la curva (mín {trace.MinInstantDist:F2}m)", ref total, ref passed);
+
+                // 9.3 Convergencia con la pose fija (a mitad de ruta, ya en curva): 1 s de Tick
+                follower.TeleportToDistance(follower.PathLength * 0.55f);
+                safety.GetSensorParameters(out _, out Vector3 dirInstant, out _, out float distInstant);
+                for (int i = 0; i < 50; i++) safety.Tick(k_SmoothStep);
+                safety.GetSmoothedSensorParameters(out _, out Vector3 dirSmooth, out _, out float distSmooth);
+                float convAngle = Vector3.Angle(dirInstant, dirSmooth);
+                float convDist = Mathf.Abs(distInstant - distSmooth);
+                Assert(convAngle < 0.5f && convDist < 0.05f,
+                    $"[9.3] Con la pose fija, tras 1 s el suavizado converge al instantáneo (Δ{convAngle:F3}° / Δ{convDist:F4}m)", ref total, ref passed);
+
+                // 9.4 Snap inicial tras ResetSafetyState
+                safety.ResetSafetyState();
+                safety.Tick(k_SmoothStep);
+                safety.GetSensorParameters(out _, out Vector3 dirI4, out _, out float distI4);
+                safety.GetSmoothedSensorParameters(out _, out Vector3 dirS4, out _, out float distS4);
+                Assert(Vector3.Angle(dirI4, dirS4) < 0.01f && Mathf.Abs(distI4 - distS4) < 0.001f,
+                    "[9.4] Tras ResetSafetyState el primer Tick deja el suavizado igual al instantáneo", ref total, ref passed);
+
+                // 9.5 SensorSmoothingTime = 0: suavizado == instantáneo en cada paso
+                safety.SensorSmoothingTime = 0f;
+                SensorTrace noSmooth = RecordSensorTrace(follower, safety, npcObj.transform);
+                Assert(noSmooth.MaxYawDiff < 0.01f && noSmooth.MaxDistDiff < 0.001f,
+                    $"[9.5] Con SensorSmoothingTime=0 el suavizado coincide con el instantáneo en cada paso (Δ{noSmooth.MaxYawDiff:F4}° / Δ{noSmooth.MaxDistDiff:F5}m)", ref total, ref passed);
+                safety.SensorSmoothingTime = 0.15f;
+
+                // 9.6 En recta: sensor alineado con el frente y distancia completa
+                follower.TeleportToDistance(0f);
+                safety.ResetSafetyState();
+                for (int i = 0; i < 10; i++) safety.Tick(k_SmoothStep);
+                safety.GetSmoothedSensorParameters(out _, out Vector3 dirStraight, out _, out float distStraight);
+                Assert(Vector3.Angle(dirStraight, npcObj.transform.forward) < 1.0f && Mathf.Abs(distStraight - 8.0f) < 0.1f,
+                    $"[9.6] En recta el sensor suavizado queda alineado con transform.forward y con la distancia completa ({Vector3.Angle(dirStraight, npcObj.transform.forward):F3}° / {distStraight:F2}m)", ref total, ref passed);
+            }
+            finally
+            {
+                Object.DestroyImmediate(splineObj);
+                Object.DestroyImmediate(npcObj);
+            }
+        }
+
+        private struct SensorTrace
+        {
+            public int Steps;
+            public float MaxInstantYawStep;
+            public float MaxSmoothYawStep;
+            public float MaxInstantDistStep;
+            public float MaxSmoothDistStep;
+            public float MinInstantDist;
+            public float MaxYawDiff;
+            public float MaxDistDiff;
+        }
+
+        /// <summary>
+        /// Recorre la ruta desde el inicio a velocidad fija llamando a Tick de a pasos y mide los cambios por paso del
+        /// yaw de mundo y de la distancia del sensor, instantáneo vs suavizado. Termina antes del final de la ruta.
+        /// </summary>
+        private static SensorTrace RecordSensorTrace(NPCPathFollower follower, NPCSafetyStop safety, Transform npc)
+        {
+            follower.TeleportToDistance(0f);
+            follower.Play();
+            safety.ResetSafetyState();
+
+            SensorTrace trace = default;
+            trace.MinInstantDist = float.MaxValue;
+            bool hasPrev = false;
+            float prevInstYaw = 0f, prevSmoothYaw = 0f, prevInstDist = 0f, prevSmoothDist = 0f;
+
+            for (int step = 0; step < 2000 && follower.DistanceTravelled < follower.PathLength - 1f; step++)
+            {
+                follower.SetSpeedForTesting(6f);
+                follower.Tick(k_SmoothStep);
+                safety.Tick(k_SmoothStep);
+
+                safety.GetSensorParameters(out _, out Vector3 dirI, out _, out float distI);
+                safety.GetSmoothedSensorParameters(out _, out Vector3 dirS, out _, out float distS);
+                float yawI = Mathf.Atan2(dirI.x, dirI.z) * Mathf.Rad2Deg;
+                float yawS = Mathf.Atan2(dirS.x, dirS.z) * Mathf.Rad2Deg;
+
+                trace.MinInstantDist = Mathf.Min(trace.MinInstantDist, distI);
+                trace.MaxYawDiff = Mathf.Max(trace.MaxYawDiff, Mathf.Abs(Mathf.DeltaAngle(yawI, yawS)));
+                trace.MaxDistDiff = Mathf.Max(trace.MaxDistDiff, Mathf.Abs(distI - distS));
+
+                if (hasPrev)
+                {
+                    trace.MaxInstantYawStep = Mathf.Max(trace.MaxInstantYawStep, Mathf.Abs(Mathf.DeltaAngle(prevInstYaw, yawI)));
+                    trace.MaxSmoothYawStep = Mathf.Max(trace.MaxSmoothYawStep, Mathf.Abs(Mathf.DeltaAngle(prevSmoothYaw, yawS)));
+                    trace.MaxInstantDistStep = Mathf.Max(trace.MaxInstantDistStep, Mathf.Abs(distI - prevInstDist));
+                    trace.MaxSmoothDistStep = Mathf.Max(trace.MaxSmoothDistStep, Mathf.Abs(distS - prevSmoothDist));
+                }
+
+                prevInstYaw = yawI; prevSmoothYaw = yawS; prevInstDist = distI; prevSmoothDist = distS;
+                hasPrev = true;
+                trace.Steps++;
+            }
+
+            return trace;
         }
 
         private static void Assert(bool condition, string testName, ref int total, ref int passed)
