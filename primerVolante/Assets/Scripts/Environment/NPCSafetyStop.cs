@@ -39,6 +39,19 @@ namespace PrimerVolante.Environment
         [Tooltip("Interacción con triggers. Por defecto se ignoran para no frenar ante zonas de eventos.")]
         [SerializeField] private QueryTriggerInteraction m_QueryTriggerInteraction = QueryTriggerInteraction.Ignore;
 
+        [Header("Adaptación en Curvas")]
+        [Tooltip("Si es true, orienta y reduce dinámicamente el sensor frontal en curvas según la trayectoria de la ruta.")]
+        [SerializeField] private bool m_AdaptSensorInCurves = true;
+
+        [Tooltip("Distancia mínima de detección frontal durante curvas cerradas (metros). Evita barrer edificios, esquinas y carriles contrarios.")]
+        [SerializeField] private float m_MinCurveDetectionDistance = 3.5f;
+
+        [Tooltip("Ángulo mínimo de desvío (grados) en la ruta por delante para comenzar a reducir y orientar el sensor.")]
+        [SerializeField] private float m_CurveAngleThreshold = 8.0f;
+
+        [Tooltip("Ángulo de desvío (grados) a partir del cual se alcanza la máxima reducción de distancia en curva.")]
+        [SerializeField] private float m_MaxCurveAngle = 45.0f;
+
         [Header("Respuesta de Frenado y Reanudación")]
         [Tooltip("Tiempo de seguridad en segundos con la vía completamente despejada antes de reanudar la marcha.")]
         [SerializeField] private float m_ResumeDelay = 0.5f;
@@ -77,6 +90,7 @@ namespace PrimerVolante.Environment
         private bool m_WasMovingBeforeEmergencyBrake = false;
         private float m_ClearTimer = 0f;
         private float m_BrakingDetectionDistance = 0f;
+        private float m_LastEffectiveDetectionDistance = 0f;
         private RaycastHit m_LastObstacleHit;
         private Collider m_LastObstacleCollider;
 
@@ -155,6 +169,34 @@ namespace PrimerVolante.Environment
         {
             get => m_SpeedLookaheadFactor;
             set => m_SpeedLookaheadFactor = Mathf.Max(0f, value);
+        }
+
+        /// <summary>Si es true, adapta el sensor frontal (orientación y distancia) según la curvatura de la ruta.</summary>
+        public bool AdaptSensorInCurves
+        {
+            get => m_AdaptSensorInCurves;
+            set => m_AdaptSensorInCurves = value;
+        }
+
+        /// <summary>Distancia mínima de detección en curvas cerradas en metros.</summary>
+        public float MinCurveDetectionDistance
+        {
+            get => m_MinCurveDetectionDistance;
+            set => m_MinCurveDetectionDistance = Mathf.Max(0.5f, value);
+        }
+
+        /// <summary>Ángulo de giro en grados para iniciar la reducción de distancia en curva.</summary>
+        public float CurveAngleThreshold
+        {
+            get => m_CurveAngleThreshold;
+            set => m_CurveAngleThreshold = Mathf.Max(0f, value);
+        }
+
+        /// <summary>Ángulo de giro en grados para máxima reducción en curva.</summary>
+        public float MaxCurveAngle
+        {
+            get => m_MaxCurveAngle;
+            set => m_MaxCurveAngle = Mathf.Max(m_CurveAngleThreshold + 1f, value);
         }
 
         /// <summary>Tiempo transcurrido desde que la vía quedó despejada.</summary>
@@ -244,6 +286,9 @@ namespace PrimerVolante.Environment
         private void OnValidate()
         {
             m_DetectionDistance = Mathf.Max(0.1f, m_DetectionDistance);
+            m_MinCurveDetectionDistance = Mathf.Max(0.5f, m_MinCurveDetectionDistance);
+            m_CurveAngleThreshold = Mathf.Max(0f, m_CurveAngleThreshold);
+            m_MaxCurveAngle = Mathf.Max(m_CurveAngleThreshold + 1f, m_MaxCurveAngle);
             m_ResumeDelay = Mathf.Max(0f, m_ResumeDelay);
             m_ResumeHysteresisDistance = Mathf.Max(0f, m_ResumeHysteresisDistance);
             m_SpeedLookaheadFactor = Mathf.Max(0f, m_SpeedLookaheadFactor);
@@ -298,7 +343,7 @@ namespace PrimerVolante.Environment
                 if (!m_IsEmergencyBraking)
                 {
                     // Entrar en frenado de emergencia inmediato
-                    m_BrakingDetectionDistance = GetEffectiveDetectionDistance();
+                    m_BrakingDetectionDistance = m_LastEffectiveDetectionDistance > 0f ? m_LastEffectiveDetectionDistance : GetEffectiveDetectionDistance();
                     m_IsEmergencyBraking = true;
                     m_WasMovingBeforeEmergencyBrake = m_PathFollower.IsPlaying && !m_PathFollower.IsStopRequested;
 
@@ -332,6 +377,7 @@ namespace PrimerVolante.Environment
                         // Se cumplió el tiempo de seguridad con la vía despejada
                         m_IsEmergencyBraking = false;
                         m_BrakingDetectionDistance = 0f;
+                        m_LastEffectiveDetectionDistance = 0f;
                         m_ClearTimer = 0f;
 
                         if (m_WasMovingBeforeEmergencyBrake)
@@ -374,15 +420,14 @@ namespace PrimerVolante.Environment
                 return m_SimulatedHasObstacle;
             }
 
-            Vector3 origin = GetSensorOrigin();
-            Vector3 direction = transform.forward;
-            float maxDistance = GetEffectiveDetectionDistance();
+            GetSensorParameters(out Vector3 origin, out Vector3 direction, out Quaternion rotation, out float maxDistance);
+            m_LastEffectiveDetectionDistance = maxDistance;
 
             // 1. Detección inmediata por solapamiento (OverlapBox)
             Collider[] overlaps = Physics.OverlapBox(
                 origin,
                 m_BoxHalfExtents,
-                transform.rotation,
+                rotation,
                 m_ObstacleLayers,
                 m_QueryTriggerInteraction);
 
@@ -402,7 +447,7 @@ namespace PrimerVolante.Environment
                 origin,
                 m_BoxHalfExtents,
                 direction,
-                transform.rotation,
+                rotation,
                 maxDistance,
                 m_ObstacleLayers,
                 m_QueryTriggerInteraction);
@@ -487,6 +532,74 @@ namespace PrimerVolante.Environment
             }
 
             return Mathf.Max(0.2f, distance);
+        }
+
+        /// <summary>
+        /// Obtiene los parámetros del sensor frontal (origen, dirección, rotación y distancia máxima),
+        /// adaptándolos dinámicamente a la curvatura de la ruta si el NPC sigue una spline.
+        /// En rectas mantiene el sensor alargado y recto; en curvas orienta el sensor hacia la trayectoria
+        /// y reduce su alcance para evitar detectar edificios, veredas o tráfico en otros carriles.
+        /// </summary>
+        public void GetSensorParameters(out Vector3 origin, out Vector3 direction, out Quaternion rotation, out float maxDistance)
+        {
+            origin = GetSensorOrigin();
+            direction = transform.forward;
+            rotation = transform.rotation;
+            maxDistance = GetEffectiveDetectionDistance();
+
+            if (!m_AdaptSensorInCurves) return;
+            if (m_PathFollower == null) m_PathFollower = GetComponent<NPCPathFollower>();
+            if (m_PathFollower == null || !m_PathFollower.HasPath) return;
+
+            float pathLength = m_PathFollower.PathLength;
+            if (pathLength <= 0f) return;
+
+            float currentDist = m_PathFollower.DistanceTravelled;
+            bool isLoop = m_PathFollower.EndBehavior == NPCPathEndBehavior.Loop;
+
+            // Muestreamos la ruta por delante (anticipación entre 4m y maxDistance)
+            float lookahead = Mathf.Clamp(maxDistance * 0.75f, 4.0f, 10.0f);
+            float targetDist = currentDist + lookahead;
+            targetDist = isLoop ? Mathf.Repeat(targetDist, pathLength) : Mathf.Clamp(targetDist, 0f, pathLength);
+
+            if (!m_PathFollower.EvaluatePose(targetDist, out Vector3 futurePos, out Quaternion futureRot))
+            {
+                return;
+            }
+
+            // Calculamos el ángulo entre la orientación actual del NPC y la tangente futura de la spline
+            float angleDelta = Quaternion.Angle(transform.rotation, futureRot);
+
+            if (angleDelta > m_CurveAngleThreshold)
+            {
+                float t = Mathf.Clamp01((angleDelta - m_CurveAngleThreshold) / Mathf.Max(1f, m_MaxCurveAngle - m_CurveAngleThreshold));
+
+                // 1. Reducción proporcional del alcance de detección en curva
+                float minCurveDist = m_MinCurveDetectionDistance;
+                if (m_IsEmergencyBraking && m_BrakingDetectionDistance > 0f)
+                {
+                    minCurveDist = Mathf.Max(minCurveDist, m_BrakingDetectionDistance + m_ResumeHysteresisDistance);
+                }
+
+                maxDistance = Mathf.Lerp(maxDistance, Mathf.Min(maxDistance, minCurveDist), t);
+
+                // 2. Orientación de la caja de detección hacia la curva (punto futuro de la ruta a la distancia adaptada)
+                float chordDist = currentDist + maxDistance;
+                chordDist = isLoop ? Mathf.Repeat(chordDist, pathLength) : Mathf.Clamp(chordDist, 0f, pathLength);
+
+                if (m_PathFollower.EvaluatePose(chordDist, out Vector3 chordPos, out Quaternion chordRot))
+                {
+                    Vector3 targetSensorPoint = chordPos + chordRot * m_SensorOffset;
+                    Vector3 chordVector = targetSensorPoint - origin;
+                    Vector3 flatChord = new Vector3(chordVector.x, 0f, chordVector.z);
+
+                    if (flatChord.sqrMagnitude > 1e-4f)
+                    {
+                        direction = flatChord.normalized;
+                        rotation = Quaternion.LookRotation(direction, Vector3.up);
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -629,6 +742,7 @@ namespace PrimerVolante.Environment
             m_WasMovingBeforeEmergencyBrake = false;
             m_ClearTimer = 0f;
             m_BrakingDetectionDistance = 0f;
+            m_LastEffectiveDetectionDistance = 0f;
             m_LastObstacleHit = default;
             m_LastObstacleCollider = null;
         }
@@ -756,9 +870,7 @@ namespace PrimerVolante.Environment
 
         private void DrawSafetyGizmos(bool isSelected)
         {
-            Vector3 origin = GetSensorOrigin();
-            Vector3 direction = transform.forward;
-            float maxDistance = GetEffectiveDetectionDistance();
+            GetSensorParameters(out Vector3 origin, out Vector3 direction, out Quaternion rotation, out float maxDistance);
             Vector3 endPoint = origin + direction * maxDistance;
 
             Color sensorColor = m_IsEmergencyBraking
@@ -768,10 +880,10 @@ namespace PrimerVolante.Environment
             Gizmos.color = sensorColor;
 
             Matrix4x4 oldMatrix = Gizmos.matrix;
-            Gizmos.matrix = Matrix4x4.TRS(origin, transform.rotation, Vector3.one);
+            Gizmos.matrix = Matrix4x4.TRS(origin, rotation, Vector3.one);
             Gizmos.DrawWireCube(Vector3.zero, m_BoxHalfExtents * 2f);
 
-            Gizmos.matrix = Matrix4x4.TRS(endPoint, transform.rotation, Vector3.one);
+            Gizmos.matrix = Matrix4x4.TRS(endPoint, rotation, Vector3.one);
             Gizmos.DrawWireCube(Vector3.zero, m_BoxHalfExtents * 2f);
 
             Gizmos.matrix = oldMatrix;
@@ -781,8 +893,8 @@ namespace PrimerVolante.Environment
             Gizmos.DrawLine(origin, endPoint);
 
             // Esquinas conectadas para formar el volumen proyectado del sensor
-            Vector3 right = transform.right * m_BoxHalfExtents.x;
-            Vector3 up = transform.up * m_BoxHalfExtents.y;
+            Vector3 right = rotation * Vector3.right * m_BoxHalfExtents.x;
+            Vector3 up = rotation * Vector3.up * m_BoxHalfExtents.y;
             Vector3 fwdOffset = direction * maxDistance;
 
             Vector3 c1 = origin + right + up;

@@ -33,7 +33,7 @@ namespace PrimerVolante.Testing.Editor
             TestLoopRouteStaysEnabled(ref total, ref passed);
             TestParkedAndDecorativeVehicles(ref total, ref passed);
             TestMutualDetectionUnderSharedParent(ref total, ref passed);
-            TestMutualDetectionUnderSharedParent(ref total, ref passed);
+            TestCurveSensorAdaptation(ref total, ref passed);
 
             Debug.Log("=========================================================");
             Debug.Log($"🏁 RESULTADO FINAL: {passed}/{total} pruebas de NPCSafetyStop pasadas con éxito!");
@@ -359,6 +359,56 @@ namespace PrimerVolante.Testing.Editor
             finally
             {
                 Object.DestroyImmediate(parentGroup);
+            }
+        }
+
+        // ---------------------------------------------------------------- 8. Adaptación en curvas
+        private static void TestCurveSensorAdaptation(ref int total, ref int passed)
+        {
+            GameObject splineObj = new GameObject("TestSpline_Curve");
+            GameObject npcObj = new GameObject("TestNPC_Curve");
+            try
+            {
+                SplineContainer splineContainer = splineObj.AddComponent<SplineContainer>();
+                Spline spline = new Spline();
+                // Recta inicial de 10m y luego curva cerrada de 90° hacia la derecha
+                spline.Add(new BezierKnot(new float3(0f, 0f, 0f), new float3(0f, 0f, -3f), new float3(0f, 0f, 3f)));
+                spline.Add(new BezierKnot(new float3(0f, 0f, 10f), new float3(0f, 0f, -3f), new float3(0f, 0f, 3f)));
+                spline.Add(new BezierKnot(new float3(15f, 0f, 25f), new float3(-3f, 0f, 0f), new float3(3f, 0f, 0f)));
+                splineContainer.Spline = spline;
+
+                var follower = npcObj.AddComponent<NPCPathFollower>();
+                var safety = npcObj.AddComponent<NPCSafetyStop>();
+                safety.DetectionDistance = 8.0f;
+                safety.MinCurveDetectionDistance = 3.5f;
+                safety.CurveAngleThreshold = 8.0f;
+                safety.MaxCurveAngle = 45.0f;
+                safety.AdaptSensorInCurves = true;
+
+                follower.SetPath(splineContainer, 0);
+
+                // 8.1 En recta: sensor recto y distancia base completa
+                follower.TeleportToDistance(0f);
+                safety.GetSensorParameters(out Vector3 originStraight, out Vector3 dirStraight, out Quaternion rotStraight, out float distStraight);
+                Assert(Mathf.Abs(distStraight - 8.0f) < 0.1f, "En tramo recto la distancia del sensor se mantiene completa (~8.0m)", ref total, ref passed);
+                Assert(Vector3.Angle(dirStraight, npcObj.transform.forward) < 1.0f, "En tramo recto la dirección del sensor coincide con transform.forward", ref total, ref passed);
+
+                // 8.2 Acercándose / entrando a la curva (10m): la distancia se reduce y la dirección gira hacia X positivo
+                follower.TeleportToDistance(9.0f);
+                safety.GetSensorParameters(out Vector3 originCurve, out Vector3 dirCurve, out Quaternion rotCurve, out float distCurve);
+                Assert(distCurve < distStraight - 1.0f, "Al entrar en curva la distancia del sensor se reduce significativamente", ref total, ref passed);
+                Assert(dirCurve.x > 0.1f, "La dirección del sensor gira hacia la curva (X > 0)", ref total, ref passed);
+
+                // 8.3 Con AdaptSensorInCurves = false: no reduce ni orienta
+                safety.AdaptSensorInCurves = false;
+                safety.GetSensorParameters(out Vector3 originOff, out Vector3 dirOff, out Quaternion rotOff, out float distOff);
+                Assert(Mathf.Abs(distOff - 8.0f) < 0.1f, "Con AdaptSensorInCurves=false la distancia permanece en el valor base", ref total, ref passed);
+                Assert(Vector3.Angle(dirOff, npcObj.transform.forward) < 1.0f, "Con AdaptSensorInCurves=false la dirección sigue en transform.forward", ref total, ref passed);
+            }
+            finally
+            {
+                Object.DestroyImmediate(splineObj);
+                Object.DestroyImmediate(npcObj);
             }
         }
 
