@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
-  m_Name: Lesson06_Step06_ParallelParkingRight
+  m_Name: Lesson06_Step07_ParallelAlign
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
-  stepTitle: Maniobra en Paralelo
-  instructionText: "Avanza por la calle, alin\xE9ate al auto delantero y maniobra marcha atr\xE1s hasta el recuadro amarillo."
+  stepTitle: 'Paralelo: Quiebre y Entrada'
+  instructionText: "Con el auto a 45\xB0, gira TODO el volante a la IZQUIERDA. Contin\xFAa retrocediendo despacio marcha atr\xE1s hasta que el veh\xEDculo entre y quede paralelo dentro del recuadro amarillo."
   completionMode: 1
-  requiredAction: 34
+  requiredAction: 35
   actionNumericParameter: 0
   allowedControls: -1
-  highlightTargetName: 
+  highlightTargetName: VRSteeringWheel
   ambienceIntensity: 0

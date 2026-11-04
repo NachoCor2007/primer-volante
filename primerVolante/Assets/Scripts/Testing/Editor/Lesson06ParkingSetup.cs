@@ -209,23 +209,32 @@ namespace PrimerVolante.Testing.Editor
                 CockpitControlFlags.All,
                 "VRGearShifter, VRHandbrake");
 
-            LessonStepSO step6 = CreateOrUpdateStep("Lesson06_Step06_ParallelParkingRight",
-                "Maniobra en Paralelo",
-                "Avanza por la calle, alinéate al auto delantero y maniobra marcha atrás hasta el recuadro amarillo.",
+            LessonStepSO step6 = CreateOrUpdateStep("Lesson06_Step06_ParallelApproach45",
+                "Paralelo: Giro a 45°",
+                "Observa a tu derecha: estás paralelo a 1 m del vehículo (espejo con espejo). Detrás a la derecha está el espacio libre. Gira TODO el volante a la DERECHA, pon Marcha Atrás (R) y retrocede despacio hasta inclinarte a 45°.",
+                LessonStepCompletionMode.ActionRequired,
+                LessonActionType.ParkParallelAngle45,
+                0f,
+                CockpitControlFlags.All,
+                "VRSteeringWheel, VRGearShifter, SideMirror_Right");
+
+            LessonStepSO step7 = CreateOrUpdateStep("Lesson06_Step07_ParallelAlign",
+                "Paralelo: Quiebre y Entrada",
+                "Con el auto a 45°, gira TODO el volante a la IZQUIERDA. Continúa retrocediendo despacio marcha atrás hasta que el vehículo entre y quede paralelo dentro del recuadro amarillo.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.ParkParallelRight,
                 0f,
                 CockpitControlFlags.All,
-                "");
+                "VRSteeringWheel");
 
-            LessonStepSO step7 = CreateOrUpdateStep("Lesson06_Step07_SecurePark",
+            LessonStepSO step8 = CreateOrUpdateStep("Lesson06_Step08_SecurePark",
                 "Asegurar y Finalizar",
-                "Apaga las balizas, coloca Parking (P) y sube firmemente el freno de mano.",
+                "¡Maniobra completada! Endereza el volante al centro. Coloca Parking (P), sube firmemente el freno de mano y apaga las balizas para finalizar.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.SecureParkDeactivateHazards,
                 0f,
                 CockpitControlFlags.All,
-                "HazardButton, VRGearShifter, VRHandbrake");
+                "HazardButton, VRGearShifter, VRHandbrake, VRSteeringWheel");
 
             LessonDefinitionSO lesson = AssetDatabase.LoadAssetAtPath<LessonDefinitionSO>(LESSON_06_PATH);
             if (lesson == null)
@@ -236,8 +245,7 @@ namespace PrimerVolante.Testing.Editor
 
             lesson.lessonId = "LESSON_06";
             lesson.lessonTitle = "Lección 6: Maniobras de Estacionamiento";
-            lesson.steps = new List<LessonStepSO> { step1, step2, step3, step4, step5, step6, step7 };
-
+            lesson.steps = new List<LessonStepSO> { step1, step2, step3, step4, step5, step6, step7, step8 };
             EditorUtility.SetDirty(lesson);
             AssetDatabase.SaveAssets();
             return lesson;
@@ -800,7 +808,7 @@ namespace PrimerVolante.Testing.Editor
 
             // Paso 4: En la calle exterior en dirección a la dársena en paralelo (posición manual del usuario)
             spawns[3] = EnsureChildTransform(container.transform, "SpawnPoint_04_ParallelApproach",
-                new Vector3(241.20f, 0.02f, 71.60f), Quaternion.Euler(0f, 0f, 0f));
+                new Vector3(241.40f, 0.02f, 95.10f), Quaternion.Euler(0f, 0f, 0f));
 
             // Paso 5: Auto estacionado listo para asegurar
             spawns[4] = EnsureChildTransform(container.transform, "SpawnPoint_05_SecurePark",
