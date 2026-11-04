@@ -71,6 +71,7 @@ namespace PrimerVolante.VR
         private Material m_MatRight;
         private InputAction m_DefaultJoystickAction;
         private InGameMenuController m_MenuController;
+        private bool m_MenuControllerSearched;
 
         /// <summary>True si el panel está bloqueado por una lección (selectores sin interactionLayers).</summary>
         public bool IsLockedByLesson => m_BtnSelectLeft != null && m_BtnSelectLeft.interactionLayers.value == 0;
@@ -119,7 +120,8 @@ namespace PrimerVolante.VR
 
         private void OnDisable()
         {
-            if (m_LeftJoystickAction.action != null) m_LeftJoystickAction.action.Disable();
+            // Una referencia a una acción compartida (asset XRI) no es nuestra: nunca se deshabilita.
+            if (m_LeftJoystickAction.action != null && m_LeftJoystickAction.reference == null) m_LeftJoystickAction.action.Disable();
             m_DefaultJoystickAction?.Disable();
         }
 
@@ -254,8 +256,9 @@ namespace PrimerVolante.VR
             if (m_CurrentSelection == MirrorSelection.Off) return false;
             if (IsLockedByLesson) return false;
 
-            if (m_MenuController == null)
+            if (m_MenuController == null && !m_MenuControllerSearched)
             {
+                m_MenuControllerSearched = true;
                 m_MenuController = Object.FindAnyObjectByType<InGameMenuController>();
             }
             if (m_MenuController != null && m_MenuController.IsOpen) return false;
