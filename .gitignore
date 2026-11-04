@@ -44,3 +44,6 @@ riderModule.iml
 .DS_Store?
 ehthumbs.db
 Thumbs.db
+
+# Android build temp (CMake/Gradle)
+.utmp/

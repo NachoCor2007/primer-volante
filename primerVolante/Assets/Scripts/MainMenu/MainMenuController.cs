@@ -397,6 +397,7 @@ namespace PrimerVolante.MainMenu
             m_ExitConfirmed = false;
             if (m_ExitOverlay != null) m_ExitOverlay.SetActive(visible);
             ApplyIllustrationVisibility();
+            ApplyCalibrationVisibility();
             UpdateLegendAndHighlight();
         }
 
@@ -439,21 +440,7 @@ namespace PrimerVolante.MainMenu
 
         private void ApplyPage()
         {
-            // La calibración standalone solo vive en su página.
-            bool wantCalibration = m_Page == MainMenuPage.Calibration;
-            if (m_InGameMenu != null)
-            {
-                if (wantCalibration && !m_CalibrationOpen)
-                {
-                    m_InGameMenu.OpenCalibrationStandalone();
-                    m_CalibrationOpen = true;
-                }
-                else if (!wantCalibration && m_CalibrationOpen)
-                {
-                    m_InGameMenu.CloseMenu();
-                    m_CalibrationOpen = false;
-                }
-            }
+            ApplyCalibrationVisibility();
 
             for (int i = 0; i < m_PageRoots.Length; i++)
             {
@@ -462,6 +449,25 @@ namespace PrimerVolante.MainMenu
 
             UpdateGearStrip();
             UpdateLegendAndHighlight();
+        }
+
+        // La calibración standalone solo vive en su página y se oculta mientras el overlay de salida está visible
+        // (al cancelar vuelve a abrirse en su posición).
+        private void ApplyCalibrationVisibility()
+        {
+            if (m_InGameMenu == null) return;
+
+            bool wantCalibration = m_Page == MainMenuPage.Calibration && !m_ExitOverlayVisible;
+            if (wantCalibration && !m_CalibrationOpen)
+            {
+                m_InGameMenu.OpenCalibrationStandalone();
+                m_CalibrationOpen = true;
+            }
+            else if (!wantCalibration && m_CalibrationOpen)
+            {
+                m_InGameMenu.CloseMenu();
+                m_CalibrationOpen = false;
+            }
         }
 
         // La pestaña activa sigue a la marcha registrada (m_CurrentGear), no a la página: se mueve al instante.
