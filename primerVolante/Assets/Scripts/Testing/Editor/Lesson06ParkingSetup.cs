@@ -808,7 +808,7 @@ namespace PrimerVolante.Testing.Editor
 
             // Paso 4: En la calle exterior en dirección a la dársena en paralelo (posición manual del usuario)
             spawns[3] = EnsureChildTransform(container.transform, "SpawnPoint_04_ParallelApproach",
-                new Vector3(241.40f, 0.02f, 95.10f), Quaternion.Euler(0f, 0f, 0f));
+                new Vector3(242.17f, 0.02f, 96.58f), Quaternion.Euler(0f, 0f, 0f));
 
             // Paso 5: Auto estacionado listo para asegurar
             spawns[4] = EnsureChildTransform(container.transform, "SpawnPoint_05_SecurePark",
