@@ -98,6 +98,18 @@ namespace PrimerVolante.Testing.Editor
 
         // ---------------------------------------------------------------- Car08
 
+        /// <summary>
+        /// Car08 conserva los 4 Btn_DPad_* del panel de espejos (ya sin función: los espejos se ajustan con el
+        /// joystick izquierdo y Car09 no los tiene). No cuentan como interactables esperados del habitáculo.
+        /// </summary>
+        private static int CountTargetsIgnoringLegacyDPad(CabinHapticTarget[] targets)
+        {
+            int count = 0;
+            foreach (var t in targets)
+                if (!t.name.StartsWith("Btn_DPad")) count++;
+            return count;
+        }
+
         private static void VerifyCar08Prefab(ref int total, ref int passed)
         {
             var profile = AssetDatabase.LoadAssetAtPath<CabinHapticProfile>(HapticsIntegrationSetup.PROFILE_PATH);
@@ -125,7 +137,7 @@ namespace PrimerVolante.Testing.Editor
                     Assert(target.Profile == profile && profile != null, $"{spec.Name}: debe tener el CabinHapticProfile_Car08 asignado", ref total, ref passed);
                 }
 
-                int targetCount = root.GetComponentsInChildren<CabinHapticTarget>(true).Length;
+                int targetCount = CountTargetsIgnoringLegacyDPad(root.GetComponentsInChildren<CabinHapticTarget>(true));
                 Assert(targetCount == HapticsIntegrationSetup.Targets.Length,
                     $"Car08 debe tener exactamente {HapticsIntegrationSetup.Targets.Length} CabinHapticTarget (encontrados {targetCount})", ref total, ref passed);
 
@@ -273,7 +285,7 @@ namespace PrimerVolante.Testing.Editor
                     Assert(uiHaptics[0].Profile == profile && profile != null, "UIHapticFeedback debe tener el CabinHapticProfile_Car08 asignado", ref total, ref passed);
 
                 // La instancia de Car08 hereda los componentes nuevos
-                int car08Targets = Object.FindObjectsByType<CabinHapticTarget>(FindObjectsInactive.Include).Length;
+                int car08Targets = CountTargetsIgnoringLegacyDPad(Object.FindObjectsByType<CabinHapticTarget>(FindObjectsInactive.Include));
                 Assert(car08Targets == HapticsIntegrationSetup.Targets.Length,
                     $"La escena debe tener {HapticsIntegrationSetup.Targets.Length} CabinHapticTarget (encontrados {car08Targets})", ref total, ref passed);
                 Assert(Object.FindObjectsByType<VehicleCabinControlsHaptics>(FindObjectsInactive.Include).Length == 1,
