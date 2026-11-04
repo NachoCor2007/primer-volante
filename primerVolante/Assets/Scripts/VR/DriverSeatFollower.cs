@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.XR;
+using Unity.XR.CoreUtils;
 
 namespace PrimerVolante.VR
 {
@@ -30,6 +33,12 @@ namespace PrimerVolante.VR
 
         [Tooltip("Límite máximo (derecha, arriba, adelante) del desplazamiento de calibración, en metros locales al asiento.")]
         [SerializeField] private Vector3 m_CalibrationLimitsMax = new Vector3(0.25f, 0.20f, 0.25f);
+
+        private XROrigin m_Origin;
+        private static readonly List<XRDisplaySubsystem> s_DisplaySubsystems = new();
+
+        private float m_DesktopLookPitch = 0f;
+        private float m_DesktopLookYaw = 0f;
 
         public Transform DriverSeat
         {
@@ -91,10 +100,34 @@ namespace PrimerVolante.VR
 
         private void Awake()
         {
+            m_Origin = GetComponent<XROrigin>();
             if (m_DriverSeat == null)
             {
                 AutoDiscoverDriverSeat();
             }
+        }
+
+        private void Start()
+        {
+            FollowSeatPosition();
+        }
+
+        /// <summary>
+        /// Determina si hay un visor de Realidad Virtual (HMD) conectado y renderizando activamente.
+        /// No usa APIs obsoletas (como XRSettings.isDeviceActive).
+        /// </summary>
+        public static bool IsVRHeadsetActive()
+        {
+            s_DisplaySubsystems.Clear();
+            SubsystemManager.GetSubsystems(s_DisplaySubsystems);
+            for (int i = 0; i < s_DisplaySubsystems.Count; i++)
+            {
+                if (s_DisplaySubsystems[i].running)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         /// <summary>
@@ -161,6 +194,97 @@ namespace PrimerVolante.VR
             {
                 transform.position = m_DriverSeat.TransformPoint(m_CalibrationOffset);
                 transform.rotation = m_DriverSeat.rotation;
+
+                AlignCameraOffset();
+            }
+        }
+
+        private void AlignCameraOffset()
+        {
+            if (m_Origin == null)
+            {
+                m_Origin = GetComponent<XROrigin>();
+            }
+
+            if (m_Origin == null || m_Origin.CameraFloorOffsetObject == null)
+            {
+                return;
+            }
+
+            Transform offsetTransform = m_Origin.CameraFloorOffsetObject.transform;
+            bool vrActive = IsVRHeadsetActive();
+
+            if (!vrActive)
+            {
+                // Modo Desktop / Simulador (sin cascos VR):
+                // XR Interaction Simulator o XR Device Simulator fuerzan CameraFloorOffsetObject.transform.position = Vector3.zero
+                // en espacio de mundo al inicializarse, lo cual en una escena con vehículo manda la cámara al origen del mundo (0,0,0)
+                // debajo del mapa en lugar de estar dentro del habitáculo.
+                // Aseguramos que Camera Offset permanezca relativo al asiento del auto a la altura de los ojos:
+                float targetY = m_Origin.CameraYOffset > 0.001f ? m_Origin.CameraYOffset : 1.36144f;
+                offsetTransform.localPosition = new Vector3(0f, targetY, 0f);
+
+                HandleDesktopLook(offsetTransform);
+            }
+            else
+            {
+                // Modo VR con cascos puestos:
+                // El tracking de orientación y posición de cabeza lo gestiona el HMD a través del TrackedPoseDriver en la cámara.
+                // Solo corregimos si el Camera Offset fue corrompido lateralmente (X o Z != 0) por inicializaciones previas del simulador:
+                Vector3 localPos = offsetTransform.localPosition;
+                if (Mathf.Abs(localPos.x) > 0.01f || Mathf.Abs(localPos.z) > 0.01f)
+                {
+                    localPos.x = 0f;
+                    localPos.z = 0f;
+                    offsetTransform.localPosition = localPos;
+                }
+            }
+        }
+
+        private void HandleDesktopLook(Transform offsetTransform)
+        {
+            // Soporte para mirar alrededor con Gamepad (PS4 / Xbox / genérico): stick derecho gira, R3 recentra:
+            var gamepad = UnityEngine.InputSystem.Gamepad.current;
+            if (gamepad != null)
+            {
+                if (gamepad.rightStickButton.wasPressedThisFrame)
+                {
+                    m_DesktopLookYaw = 0f;
+                    m_DesktopLookPitch = 0f;
+                    offsetTransform.localRotation = Quaternion.identity;
+                }
+                else
+                {
+                    Vector2 look = gamepad.rightStick.ReadValue();
+                    if (look.sqrMagnitude > 0.04f)
+                    {
+                        m_DesktopLookYaw += look.x * 90f * Time.unscaledDeltaTime;
+                        m_DesktopLookPitch = Mathf.Clamp(m_DesktopLookPitch - look.y * 70f * Time.unscaledDeltaTime, -60f, 60f);
+                        offsetTransform.localRotation = Quaternion.Euler(m_DesktopLookPitch, m_DesktopLookYaw, 0f);
+                    }
+                }
+            }
+
+            // Soporte para mirar alrededor con Mouse (manteniendo click derecho) en Desktop:
+            var mouse = UnityEngine.InputSystem.Mouse.current;
+            if (mouse != null && mouse.rightButton.isPressed)
+            {
+                Vector2 mouseDelta = mouse.delta.ReadValue();
+                if (mouseDelta.sqrMagnitude > 0.01f)
+                {
+                    m_DesktopLookYaw += mouseDelta.x * 0.15f;
+                    m_DesktopLookPitch = Mathf.Clamp(m_DesktopLookPitch - mouseDelta.y * 0.15f, -60f, 60f);
+                    offsetTransform.localRotation = Quaternion.Euler(m_DesktopLookPitch, m_DesktopLookYaw, 0f);
+                }
+            }
+
+            // Tecla R en teclado para recentrar la vista en Desktop:
+            var keyboard = UnityEngine.InputSystem.Keyboard.current;
+            if (keyboard != null && keyboard.rKey.wasPressedThisFrame)
+            {
+                m_DesktopLookYaw = 0f;
+                m_DesktopLookPitch = 0f;
+                offsetTransform.localRotation = Quaternion.identity;
             }
         }
 
