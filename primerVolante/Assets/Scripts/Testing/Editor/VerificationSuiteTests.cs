@@ -39,6 +39,7 @@ namespace PrimerVolante.Testing.Editor
             yield return Suite("NPCSafetyStop", NPCSafetyStopLifecycleTests.RunAllTests);
             yield return Suite("ObstacleCollision", ObstacleCollisionVerification.RunVerification);
             yield return Suite("ScriptedEvent", ScriptedEventTests.RunAllTests);
+            yield return Suite("SideMirrorJoystick", SideMirrorJoystickVerification.RunVerification);
             yield return Suite("SoundIntegration", SoundIntegrationVerification.RunVerification);
             yield return Suite("SteeringWheelTwoHands", SteeringWheelTwoHandsVerification.RunVerification);
             yield return Suite("TrafficLight", TrafficLightTests.RunAllTests);
