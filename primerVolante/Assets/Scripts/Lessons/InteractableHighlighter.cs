@@ -8,10 +8,11 @@ namespace PrimerVolante.Lessons
     /// <summary>
     /// Resalta visualmente mandos u objetos interactuables objetivo mediante un glow/brillo amarillo pulsante.
     /// Soporta resaltado individual o multiobjetivo simultáneo (ej. los soportes y carcasas de espejos retrovisores).
-    /// Utiliza MaterialPropertyBlock para no instanciar materiales ni ensuciar assets.
-    /// Modula _EmissionColor sobre materiales Lit (asegurando keyword _EMISSION).
-    /// El keyword se activa sobre el material compartido (asset): se registra para revertirlo al destruirse la última
-    /// instancia y, en el Editor, al salir de Play Mode, de modo que el highlighter no deje .mat modificados en disco.
+    /// Modula _EmissionColor con MaterialPropertyBlock sobre materiales Lit. El keyword _EMISSION (que un
+    /// MaterialPropertyBlock no puede activar) NUNCA se activa sobre el material compartido (asset), así ningún guardado
+    /// de assets persiste el resaltado en los .mat: en Play Mode se activa sobre las instancias propias del renderer
+    /// (las mismas que devuelve <c>renderer.material</c> a los demás scripts); en Edit Mode (verificaciones) el renderer
+    /// usa clones temporales mientras dura el resaltado. ClearHighlight deshace ambas cosas.
     /// Excluye explícitamente cualquier cristal reflectante (Mirror_Glass) y cámaras de retrovisores.
     /// </summary>
     public class InteractableHighlighter : MonoBehaviour
@@ -21,10 +22,6 @@ namespace PrimerVolante.Lessons
         private static readonly int ColorPropertyId = Shader.PropertyToID("_Color");
 
         private static readonly Color WarmYellowTint = new Color(1f, 0.95f, 0.3f, 1f);
-
-        // Materiales a los que el highlighter activó _EMISSION (solo los que no lo tenían), para revertirlos luego.
-        private static readonly HashSet<Material> s_MaterialsWithForcedEmission = new HashSet<Material>();
-        private static int s_LiveInstances;
 
         [Header("Configuración de Resaltado")]
         [Tooltip("Color base de emisión o realce del interactuable a resaltar.")]
@@ -45,6 +42,19 @@ namespace PrimerVolante.Lessons
 
         private readonly List<RendererHighlightInfo> m_TargetRendererInfos = new List<RendererHighlightInfo>();
 
+        // Edit Mode: renderers cuyos materiales se reemplazaron por clones con _EMISSION, para devolverles los originales.
+        private struct SwappedMaterials
+        {
+            public Renderer renderer;
+            public Material[] originals;
+            public Material[] clones;
+        }
+
+        private readonly List<SwappedMaterials> m_SwappedMaterials = new List<SwappedMaterials>();
+
+        // Play Mode: instancias del renderer (nunca assets) a las que se les activó _EMISSION y que no lo tenían.
+        private readonly List<Material> m_InstancesWithForcedEmission = new List<Material>();
+
         private MaterialPropertyBlock m_PropertyBlock;
         private MaterialPropertyBlock PropertyBlock => m_PropertyBlock ??= new MaterialPropertyBlock();
         private bool m_IsHighlighting = false;
@@ -56,8 +66,6 @@ namespace PrimerVolante.Lessons
 
         private void Awake()
         {
-            s_LiveInstances++;
-
             if (m_PropertyBlock == null)
             {
                 m_PropertyBlock = new MaterialPropertyBlock();
@@ -159,6 +167,7 @@ namespace PrimerVolante.Lessons
 
                     bool isLit = false;
                     bool isUnlit = false;
+                    bool needsEmissionKeyword = false;
 
                     Material[] sharedMats = r.sharedMaterials;
                     if (sharedMats != null)
@@ -171,17 +180,18 @@ namespace PrimerVolante.Lessons
                             if (mat.HasProperty(EmissionColorPropertyId))
                             {
                                 isLit = true;
-                                if (!mat.IsKeywordEnabled("_EMISSION"))
-                                {
-                                    mat.EnableKeyword("_EMISSION");
-                                    s_MaterialsWithForcedEmission.Add(mat);
-                                }
+                                if (NeedsEmissionKeyword(mat)) needsEmissionKeyword = true;
                             }
                             else if (mat.HasProperty(BaseColorPropertyId) || mat.HasProperty(ColorPropertyId))
                             {
                                 isUnlit = true;
                             }
                         }
+                    }
+
+                    if (needsEmissionKeyword)
+                    {
+                        EnableEmissionKeyword(r);
                     }
 
                     // Fallback por defecto si no detectó propiedades
@@ -561,6 +571,84 @@ namespace PrimerVolante.Lessons
             return null;
         }
 
+        private static bool NeedsEmissionKeyword(Material mat)
+        {
+            return mat != null && mat.HasProperty(EmissionColorPropertyId) && !mat.IsKeywordEnabled("_EMISSION");
+        }
+
+        /// <summary>
+        /// Activa _EMISSION para el renderer sin tocar los materiales compartidos (assets).
+        /// </summary>
+        private void EnableEmissionKeyword(Renderer r)
+        {
+            if (Application.isPlaying)
+            {
+                // Instancias propias del renderer: Unity las crea una sola vez y las reutiliza (también para
+                // renderer.material de otros scripts), así que no se pisan cambios de color de botones/perillas.
+                Material[] instances = r.materials;
+                for (int i = 0; i < instances.Length; i++)
+                {
+                    Material mat = instances[i];
+                    if (!NeedsEmissionKeyword(mat)) continue;
+
+                    mat.EnableKeyword("_EMISSION");
+                    m_InstancesWithForcedEmission.Add(mat);
+                }
+                return;
+            }
+
+            // Edit Mode: renderer.materials filtraría materiales a la escena; se usan clones temporales.
+            Material[] originals = r.sharedMaterials;
+            var clones = new Material[originals.Length];
+            for (int i = 0; i < originals.Length; i++)
+            {
+                Material mat = originals[i];
+                if (!NeedsEmissionKeyword(mat))
+                {
+                    clones[i] = mat;
+                    continue;
+                }
+
+                var clone = new Material(mat) { name = mat.name + " (Highlight)", hideFlags = HideFlags.DontSave };
+                clone.EnableKeyword("_EMISSION");
+                clones[i] = clone;
+            }
+
+            r.sharedMaterials = clones;
+            m_SwappedMaterials.Add(new SwappedMaterials { renderer = r, originals = originals, clones = clones });
+        }
+
+        /// <summary>
+        /// Deshace <see cref="EnableEmissionKeyword"/>: apaga _EMISSION en las instancias de Play Mode y devuelve los
+        /// materiales originales a los renderers de Edit Mode, destruyendo los clones.
+        /// </summary>
+        private void RestoreEmissionKeywords()
+        {
+            for (int i = 0; i < m_InstancesWithForcedEmission.Count; i++)
+            {
+                // Unity sobrecarga == para objetos destruidos: se omiten las instancias que ya no existen.
+                Material mat = m_InstancesWithForcedEmission[i];
+                if (mat != null) mat.DisableKeyword("_EMISSION");
+            }
+            m_InstancesWithForcedEmission.Clear();
+
+            for (int i = 0; i < m_SwappedMaterials.Count; i++)
+            {
+                SwappedMaterials swap = m_SwappedMaterials[i];
+                if (swap.renderer != null) swap.renderer.sharedMaterials = swap.originals;
+
+                for (int m = 0; m < swap.clones.Length; m++)
+                {
+                    Material clone = swap.clones[m];
+                    if (clone == null || clone == swap.originals[m]) continue;
+
+                    if (Application.isPlaying) Destroy(clone);
+                    else DestroyImmediate(clone);
+                }
+            }
+            m_SwappedMaterials.Clear();
+        }
+
         private static Transform FindDeep(Transform parent, string name)
         {
             if (parent == null) return null;
@@ -604,6 +692,8 @@ namespace PrimerVolante.Lessons
                 m_TargetRendererInfos.Clear();
             }
 
+            RestoreEmissionKeywords();
+
             m_CurrentTargets.Clear();
             m_IsHighlighting = false;
         }
@@ -612,49 +702,5 @@ namespace PrimerVolante.Lessons
         {
             ClearHighlight();
         }
-
-        private void OnDestroy()
-        {
-            s_LiveInstances = Mathf.Max(0, s_LiveInstances - 1);
-
-            // Sin instancias vivas nadie usa el glow: se devuelven los materiales compartidos a su estado original.
-            if (s_LiveInstances == 0)
-            {
-                RestoreForcedEmissionKeywords();
-            }
-        }
-
-        /// <summary>
-        /// Desactiva _EMISSION en los materiales a los que el highlighter se lo había activado y vacía el registro.
-        /// Evita que el keyword forzado sobre el asset quede persistido al guardar assets en el Editor.
-        /// </summary>
-        public static void RestoreForcedEmissionKeywords()
-        {
-            foreach (Material mat in s_MaterialsWithForcedEmission)
-            {
-                // Unity sobrecarga == para objetos destruidos: se omiten los materiales que ya no existen.
-                if (mat != null)
-                {
-                    mat.DisableKeyword("_EMISSION");
-                }
-            }
-
-            s_MaterialsWithForcedEmission.Clear();
-        }
-
-#if UNITY_EDITOR
-        // Red de seguridad: al volver a Edit Mode se revierten los keywords forzados durante Play Mode.
-        [UnityEditor.InitializeOnLoadMethod]
-        private static void RegisterPlayModeRestore()
-        {
-            UnityEditor.EditorApplication.playModeStateChanged += state =>
-            {
-                if (state == UnityEditor.PlayModeStateChange.EnteredEditMode)
-                {
-                    RestoreForcedEmissionKeywords();
-                }
-            };
-        }
-#endif
     }
 }

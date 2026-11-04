@@ -574,7 +574,9 @@ namespace PrimerVolante.Testing.Editor
             }
             finally
             {
-                InteractableHighlighter.RestoreForcedEmissionKeywords();
+                // En Edit Mode el highlighter usa clones temporales de los materiales: se devuelven los originales.
+                var highlighter = FindFirst<InteractableHighlighter>(scene);
+                if (highlighter != null) highlighter.ClearHighlight();
             }
         }
 
