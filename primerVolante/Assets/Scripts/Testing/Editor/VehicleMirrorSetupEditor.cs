@@ -578,7 +578,7 @@ namespace PrimerVolante.Testing.Editor
 
         /// <summary>
         /// Crea el mini-panel eléctrico en el apoyabrazos de la puerta del conductor con selector [Left | OFF | Right]
-        /// y mini D-Pad interactivo.
+        /// (el ajuste de orientación se hace con el joystick del mando izquierdo).
         /// </summary>
         private static VRSideMirrorControlPanel CreateDoorControlPanel(GameObject carRoot,
                                                                        VRSideMirror leftMirror,
@@ -617,15 +617,6 @@ namespace PrimerVolante.Testing.Editor
             var (btnOff, rendOff) = CreateButton(panelObj.transform, "Btn_Select_Off", new Vector3(0f, btnY, selZ), selSize, btnMat, "OFF", font, fontSize: 0.18f);
             var (btnRight, rendRight) = CreateButton(panelObj.transform, "Btn_Select_Right", new Vector3(0.022f, btnY, selZ), selSize, btnMat, "R", font);
 
-            // 2. Mini D-Pad (4 direcciones)
-            float dpadZ = -0.025f;
-            Vector3 dpadSize = new Vector3(0.016f, 0.010f, 0.016f);
-
-            var (btnUp, _) = CreateButton(panelObj.transform, "Btn_DPad_Up", new Vector3(0f, btnY, dpadZ + 0.018f), dpadSize, btnMat, "▲", font);
-            var (btnDown, _) = CreateButton(panelObj.transform, "Btn_DPad_Down", new Vector3(0f, btnY, dpadZ - 0.018f), dpadSize, btnMat, "▼", font);
-            var (btnDLeft, _) = CreateButton(panelObj.transform, "Btn_DPad_Left", new Vector3(-0.018f, btnY, dpadZ), dpadSize, btnMat, "◄", font);
-            var (btnDRight, _) = CreateButton(panelObj.transform, "Btn_DPad_Right", new Vector3(0.018f, btnY, dpadZ), dpadSize, btnMat, "►", font);
-
             AudioSource audio = panelObj.AddComponent<AudioSource>();
             audio.playOnAwake = false;
             audio.spatialBlend = 1f;
@@ -645,11 +636,6 @@ namespace PrimerVolante.Testing.Editor
             soPanel.FindProperty("m_BtnSelectLeft").objectReferenceValue = btnLeft;
             soPanel.FindProperty("m_BtnSelectOff").objectReferenceValue = btnOff;
             soPanel.FindProperty("m_BtnSelectRight").objectReferenceValue = btnRight;
-
-            soPanel.FindProperty("m_BtnUp").objectReferenceValue = btnUp;
-            soPanel.FindProperty("m_BtnDown").objectReferenceValue = btnDown;
-            soPanel.FindProperty("m_BtnLeft").objectReferenceValue = btnDLeft;
-            soPanel.FindProperty("m_BtnRight").objectReferenceValue = btnDRight;
 
             soPanel.FindProperty("m_IndicatorLeft").objectReferenceValue = rendLeft;
             soPanel.FindProperty("m_IndicatorOff").objectReferenceValue = rendOff;
