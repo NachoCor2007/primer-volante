@@ -1,5 +1,8 @@
 # Documents
 documents/
+*.docx
+hu_extracted.txt
+mejoras pendientes.txt
 
 # Unity generated folders
 [Lld]ibrary/
