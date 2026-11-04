@@ -139,7 +139,7 @@ namespace PrimerVolante.Testing.Editor
 
             LessonStepSO step4 = CreateOrUpdateStep("Lesson01_Step04_LeftMirror",
                 "Ajuste de Espejo Lateral Izquierdo",
-                "En el panel de la puerta, coloca el selector en 'L' y usa el mando de dirección (Stick derecho) para orientar el espejo exterior izquierdo hasta observar el flanco del coche.",
+                "En el panel de la puerta, coloca el selector en 'L' y usa el joystick del mando izquierdo para orientar el espejo exterior izquierdo hasta observar el flanco del coche.",
                 LessonStepCompletionMode.ActionRequired,
                 LessonActionType.AdjustLeftMirror,
                 0f,
