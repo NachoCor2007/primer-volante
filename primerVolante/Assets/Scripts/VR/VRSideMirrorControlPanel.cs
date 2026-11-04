@@ -9,8 +9,8 @@ namespace PrimerVolante.VR
     /// Mini-panel eléctrico de control de espejos laterales montado en la puerta del conductor.
     /// Implementa:
     /// 1. Selector de 3 posiciones: [ Left | OFF | Right ]. En OFF el sistema queda bloqueado.
-    /// 2. Mini D-Pad con 4 direcciones (Arriba, Abajo, Izquierda, Derecha).
-    /// 3. Interacción en VR mediante XRSimpleInteractable (tactil/poke/ray) para mover suavemente el espejo seleccionado.
+    /// 2. Joystick del mando VR izquierdo para orientar suavemente el espejo seleccionado (X = giro, Y = inclinación, respuesta analógica).
+    /// 3. Interacción en VR del selector mediante XRSimpleInteractable (tactil/poke/ray).
     /// 4. Controles de depuración por teclado: '[' y ']' para alternar espejo, flechas del teclado para orientar.
     /// 5. Controles de depuración por Gamepad (PS4/genérico): Triángulo / R3 para alternar espejo (L -> R -> OFF -> L), Stick Derecho para orientar.
     /// 6. Sonidos diegéticos de conmutador (clic) y servomotor eléctrico.
@@ -44,11 +44,12 @@ namespace PrimerVolante.VR
         [SerializeField] private XRSimpleInteractable m_BtnSelectOff;
         [SerializeField] private XRSimpleInteractable m_BtnSelectRight;
 
-        [Header("Interactables del Mini D-Pad (4 Direcciones)")]
-        [SerializeField] private XRSimpleInteractable m_BtnUp;
-        [SerializeField] private XRSimpleInteractable m_BtnDown;
-        [SerializeField] private XRSimpleInteractable m_BtnLeft;
-        [SerializeField] private XRSimpleInteractable m_BtnRight;
+        [Header("Joystick del Mando Izquierdo")]
+        [Tooltip("Acción Vector2 del joystick izquierdo. Si está vacía o sin bindings se crea una propia sobre <XRController>{LeftHand}.")]
+        [SerializeField] private InputActionProperty m_LeftJoystickAction;
+
+        [Tooltip("Zona muerta radial del joystick (0-0.9). Fuera de ella la respuesta es proporcional, sin salto.")]
+        [SerializeField, Range(0f, 0.9f)] private float m_JoystickDeadzone = 0.2f;
 
         [Header("Feedback Visual")]
         [SerializeField] private Renderer m_IndicatorLeft;
@@ -68,6 +69,11 @@ namespace PrimerVolante.VR
         private Material m_MatLeft;
         private Material m_MatOff;
         private Material m_MatRight;
+        private InputAction m_DefaultJoystickAction;
+        private InGameMenuController m_MenuController;
+
+        /// <summary>True si el panel está bloqueado por una lección (selectores sin interactionLayers).</summary>
+        public bool IsLockedByLesson => m_BtnSelectLeft != null && m_BtnSelectLeft.interactionLayers.value == 0;
 
         public MirrorSelection CurrentSelection => m_CurrentSelection;
         public VRSideMirror LeftMirror => m_LeftMirror;
@@ -105,6 +111,32 @@ namespace PrimerVolante.VR
             CacheVisualMaterials();
         }
 
+        private void OnEnable()
+        {
+            if (m_LeftJoystickAction.action != null) m_LeftJoystickAction.action.Enable();
+            SetupDefaultActionsIfNeeded();
+        }
+
+        private void OnDisable()
+        {
+            if (m_LeftJoystickAction.action != null) m_LeftJoystickAction.action.Disable();
+            m_DefaultJoystickAction?.Disable();
+        }
+
+        private void SetupDefaultActionsIfNeeded()
+        {
+            if (m_LeftJoystickAction.action == null || m_LeftJoystickAction.action.bindings.Count == 0)
+            {
+                if (m_DefaultJoystickAction == null)
+                {
+                    m_DefaultJoystickAction = new InputAction("LeftJoystickDefault", InputActionType.Value,
+                        "<XRController>{LeftHand}/primary2DAxis", expectedControlType: "Vector2");
+                    m_DefaultJoystickAction.AddBinding("<XRController>{LeftHand}/thumbstick");
+                }
+                m_DefaultJoystickAction.Enable();
+            }
+        }
+
         private void Start()
         {
             AutoLocateMirrorsIfMissing();
@@ -116,6 +148,8 @@ namespace PrimerVolante.VR
         {
             UnregisterInteractableListeners();
             DestroyCachedMaterials();
+            m_DefaultJoystickAction?.Dispose();
+            m_DefaultJoystickAction = null;
         }
 
         private void AutoLocateMirrorsIfMissing()
@@ -156,11 +190,6 @@ namespace PrimerVolante.VR
             if (m_BtnSelectLeft != null) m_BtnSelectLeft.selectEntered.AddListener(OnSelectLeftClicked);
             if (m_BtnSelectOff != null) m_BtnSelectOff.selectEntered.AddListener(OnSelectOffClicked);
             if (m_BtnSelectRight != null) m_BtnSelectRight.selectEntered.AddListener(OnSelectRightClicked);
-
-            if (m_BtnUp != null) m_BtnUp.selectEntered.AddListener(OnUpPulse);
-            if (m_BtnDown != null) m_BtnDown.selectEntered.AddListener(OnDownPulse);
-            if (m_BtnLeft != null) m_BtnLeft.selectEntered.AddListener(OnLeftPulse);
-            if (m_BtnRight != null) m_BtnRight.selectEntered.AddListener(OnRightPulse);
         }
 
         private void UnregisterInteractableListeners()
@@ -168,31 +197,18 @@ namespace PrimerVolante.VR
             if (m_BtnSelectLeft != null) m_BtnSelectLeft.selectEntered.RemoveListener(OnSelectLeftClicked);
             if (m_BtnSelectOff != null) m_BtnSelectOff.selectEntered.RemoveListener(OnSelectOffClicked);
             if (m_BtnSelectRight != null) m_BtnSelectRight.selectEntered.RemoveListener(OnSelectRightClicked);
-
-            if (m_BtnUp != null) m_BtnUp.selectEntered.RemoveListener(OnUpPulse);
-            if (m_BtnDown != null) m_BtnDown.selectEntered.RemoveListener(OnDownPulse);
-            if (m_BtnLeft != null) m_BtnLeft.selectEntered.RemoveListener(OnLeftPulse);
-            if (m_BtnRight != null) m_BtnRight.selectEntered.RemoveListener(OnRightPulse);
         }
 
         private void OnSelectLeftClicked(SelectEnterEventArgs args) => SetSelection(MirrorSelection.Left);
         private void OnSelectOffClicked(SelectEnterEventArgs args) => SetSelection(MirrorSelection.Off);
         private void OnSelectRightClicked(SelectEnterEventArgs args) => SetSelection(MirrorSelection.Right);
 
-        private void OnUpPulse(SelectEnterEventArgs args) => AdjustPulse(new Vector2(0f, 1f));
-        private void OnDownPulse(SelectEnterEventArgs args) => AdjustPulse(new Vector2(0f, -1f));
-        private void OnLeftPulse(SelectEnterEventArgs args) => AdjustPulse(new Vector2(-1f, 0f));
-        private void OnRightPulse(SelectEnterEventArgs args) => AdjustPulse(new Vector2(1f, 0f));
-
         private void Update()
         {
             Vector2 inputDir = Vector2.zero;
 
-            // 1. D-Pad en VR (mantener presionado el botón para movimiento continuo)
-            if (m_BtnUp != null && m_BtnUp.isSelected) inputDir.y += 1f;
-            if (m_BtnDown != null && m_BtnDown.isSelected) inputDir.y -= 1f;
-            if (m_BtnLeft != null && m_BtnLeft.isSelected) inputDir.x -= 1f;
-            if (m_BtnRight != null && m_BtnRight.isSelected) inputDir.x += 1f;
+            // 1. Joystick del mando VR izquierdo (analógico, con zona muerta)
+            ProcessJoystickInput(ref inputDir);
 
             // 2. Controles de depuración por teclado
             ProcessKeyboardInput(ref inputDir);
@@ -216,6 +232,49 @@ namespace PrimerVolante.VR
             {
                 StopMotorSound();
             }
+        }
+
+        /// <summary>
+        /// Zona muerta radial con respuesta proporcional: cero dentro de la zona muerta y
+        /// magnitud reescalada a [0,1] fuera de ella (sin salto al salir).
+        /// </summary>
+        public static Vector2 ApplyRadialDeadzone(Vector2 raw, float deadzone)
+        {
+            float mag = raw.magnitude;
+            if (mag <= deadzone) return Vector2.zero;
+            return raw.normalized * Mathf.Clamp01((mag - deadzone) / (1f - deadzone));
+        }
+
+        /// <summary>
+        /// True si el joystick puede mover un espejo: selector distinto de Off, panel no bloqueado
+        /// por una lección y sin menú in-game abierto.
+        /// </summary>
+        public bool CanUseJoystick()
+        {
+            if (m_CurrentSelection == MirrorSelection.Off) return false;
+            if (IsLockedByLesson) return false;
+
+            if (m_MenuController == null)
+            {
+                m_MenuController = Object.FindAnyObjectByType<InGameMenuController>();
+            }
+            if (m_MenuController != null && m_MenuController.IsOpen) return false;
+
+            return true;
+        }
+
+        private void ProcessJoystickInput(ref Vector2 inputDir)
+        {
+            InputAction action = m_LeftJoystickAction.action != null && m_LeftJoystickAction.action.bindings.Count > 0
+                ? m_LeftJoystickAction.action
+                : m_DefaultJoystickAction;
+            if (action == null || !action.enabled) return;
+
+            Vector2 stick = ApplyRadialDeadzone(action.ReadValue<Vector2>(), m_JoystickDeadzone);
+            if (stick == Vector2.zero) return;
+            if (!CanUseJoystick()) return;
+
+            inputDir += stick;
         }
 
         private void ProcessGamepadInput(ref Vector2 inputDir)
@@ -390,7 +449,6 @@ namespace PrimerVolante.VR
 
         public void Configure(VRSideMirror leftMirror, VRSideMirror rightMirror,
                               XRSimpleInteractable btnLeft, XRSimpleInteractable btnOff, XRSimpleInteractable btnRight,
-                              XRSimpleInteractable btnUp, XRSimpleInteractable btnDown, XRSimpleInteractable btnL, XRSimpleInteractable btnR,
                               Renderer indLeft, Renderer indOff, Renderer indRight)
         {
             m_LeftMirror = leftMirror;
@@ -398,10 +456,6 @@ namespace PrimerVolante.VR
             m_BtnSelectLeft = btnLeft;
             m_BtnSelectOff = btnOff;
             m_BtnSelectRight = btnRight;
-            m_BtnUp = btnUp;
-            m_BtnDown = btnDown;
-            m_BtnLeft = btnL;
-            m_BtnRight = btnR;
             m_IndicatorLeft = indLeft;
             m_IndicatorOff = indOff;
             m_IndicatorRight = indRight;
