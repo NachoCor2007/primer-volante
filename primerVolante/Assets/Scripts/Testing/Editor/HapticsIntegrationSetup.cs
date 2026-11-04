@@ -52,10 +52,6 @@ namespace PrimerVolante.Testing.Editor
             new TargetSpec("Btn_Select_Left", CabinHapticCategory.ButtonsAndKnobs, false),
             new TargetSpec("Btn_Select_Off", CabinHapticCategory.ButtonsAndKnobs, false),
             new TargetSpec("Btn_Select_Right", CabinHapticCategory.ButtonsAndKnobs, false),
-            new TargetSpec("Btn_DPad_Up", CabinHapticCategory.ButtonsAndKnobs, false),
-            new TargetSpec("Btn_DPad_Down", CabinHapticCategory.ButtonsAndKnobs, false),
-            new TargetSpec("Btn_DPad_Left", CabinHapticCategory.ButtonsAndKnobs, false),
-            new TargetSpec("Btn_DPad_Right", CabinHapticCategory.ButtonsAndKnobs, false),
         };
 
         [MenuItem("Tools/Primer Volante/Integrate Cabin Haptics (Car08 Prefab and Scene)")]

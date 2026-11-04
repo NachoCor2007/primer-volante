@@ -574,7 +574,9 @@ namespace PrimerVolante.Testing.Editor
             }
             finally
             {
-                InteractableHighlighter.RestoreForcedEmissionKeywords();
+                // En Edit Mode el highlighter usa clones temporales de los materiales: se devuelven los originales.
+                var highlighter = FindFirst<InteractableHighlighter>(scene);
+                if (highlighter != null) highlighter.ClearHighlight();
             }
         }
 
@@ -744,18 +746,19 @@ namespace PrimerVolante.Testing.Editor
                 Check(legendEverywhere, "La leyenda de las 4 páginas y del Splash incluye 'Freno de mano: tirar para salir'");
                 Check(highlighter == null || !highlighter.CurrentTargets.Contains(handbrake.gameObject), "Ninguna pantalla resalta el freno de mano");
 
-                // Calibración abierta: el overlay aparece, la calibración sigue abierta y la salida se confirma igual.
+                // Calibración abierta: el overlay aparece y oculta la calibración, la salida se confirma igual y al
+                // cancelar la calibración vuelve.
                 controller.HandleGearChanged(GearState.N);
                 controller.Tick(0.3f);
                 Check(controller.CurrentPage == MainMenuPage.Calibration && menu.IsOpen, "Calibración abierta (precondición del overlay)");
                 handbrake.SetEngagementImmediate(1f);
                 controller.Tick(0.016f);
-                Check(controller.ExitOverlayVisible && menu.IsOpen, "Calibración + freno a fondo: el overlay aparece y la calibración sigue abierta");
+                Check(controller.ExitOverlayVisible && !menu.IsOpen, "Calibración + freno a fondo: el overlay aparece y oculta la calibración");
                 car.SetHazardActive(true);
-                Check(exits == 3 && menu.IsOpen && controller.CurrentPage == MainMenuPage.Calibration, "Calibración + overlay: las balizas disparan ExitRequested sin cerrar la calibración");
+                Check(exits == 3 && !menu.IsOpen && controller.CurrentPage == MainMenuPage.Calibration, "Calibración + overlay: las balizas disparan ExitRequested y la calibración sigue oculta");
                 handbrake.SetEngagementImmediate(0f);
                 controller.Tick(0.016f);
-                Check(!controller.ExitOverlayVisible && menu.IsOpen, "Calibración: al cancelar el overlay, la calibración sigue abierta");
+                Check(!controller.ExitOverlayVisible && menu.IsOpen, "Calibración: al cancelar el overlay, la calibración vuelve a abrirse");
                 controller.HandleGearChanged(GearState.P);
                 controller.Tick(0.3f);
             }
