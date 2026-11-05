@@ -98,7 +98,6 @@ namespace PrimerVolante.Environment
         // Estado del filtro del sensor (offset de yaw relativo al vehículo, nunca rotación de mundo)
         private float m_SmoothedYawOffset = 0f;
         private float m_SmoothedDistance = 0f;
-        private float m_LastTransformYaw = 0f;
         private bool m_HasSmoothedSensor = false;
         private RaycastHit m_LastObstacleHit;
         private Collider m_LastObstacleCollider;
@@ -271,6 +270,8 @@ namespace PrimerVolante.Environment
 
         private void OnDisable()
         {
+            // Sin esto el gizmo de un NPC deshabilitado dibujaría un offset viejo
+            m_HasSmoothedSensor = false;
             if (m_PathFollower != null)
             {
                 m_PathFollower.OnReachedEnd -= HandlePathReachedEnd;
@@ -347,7 +348,8 @@ namespace PrimerVolante.Environment
                 m_VehicleController = GetComponent<NPCVehicleController>();
             }
 
-            UpdateSmoothedSensor(deltaTime);
+            // Con obstáculo simulado CastFrontalSensor descarta el resultado: no hace falta filtrar
+            if (!m_SimulateObstacle) UpdateSmoothedSensor(deltaTime);
 
             bool obstacleDetected = CastFrontalSensor(out RaycastHit hit);
 
@@ -671,30 +673,24 @@ namespace PrimerVolante.Environment
         }
 
         /// <summary>
-        /// Actualiza el filtro exponencial del sensor (yaw relativo y distancia) hacia el objetivo instantáneo.
-        /// El primer cálculo tras un reinicio copia el objetivo sin filtrar.
+        /// Actualiza el filtro exponencial del sensor hacia el objetivo instantáneo. El yaw se filtra directamente como
+        /// offset relativo al vehículo: en una curva sostenida ese offset es constante y no aparece desfase respecto del
+        /// objetivo. El primer cálculo tras un reinicio copia el objetivo sin filtrar.
         /// </summary>
         private void UpdateSmoothedSensor(float deltaTime)
         {
             ComputeSensorTarget(out float targetYaw, out float targetDistance);
-            float transformYaw = transform.eulerAngles.y;
 
             if (!m_HasSmoothedSensor)
             {
                 m_SmoothedYawOffset = targetYaw;
                 m_SmoothedDistance = targetDistance;
-                m_LastTransformYaw = transformYaw;
                 m_HasSmoothedSensor = true;
                 return;
             }
 
-            // El offset es relativo al vehículo: se descuenta lo que giró el vehículo en este paso para que el filtro
-            // suavice la orientación de mundo del sensor y no arrastre el giro propio del auto (que sí es real).
-            float vehicleTurn = Mathf.DeltaAngle(m_LastTransformYaw, transformYaw);
-            m_LastTransformYaw = transformYaw;
-
             float blend = m_SensorSmoothingTime > 0f ? 1f - Mathf.Exp(-deltaTime / m_SensorSmoothingTime) : 1f;
-            m_SmoothedYawOffset = Mathf.LerpAngle(m_SmoothedYawOffset - vehicleTurn, targetYaw, blend);
+            m_SmoothedYawOffset = Mathf.LerpAngle(m_SmoothedYawOffset, targetYaw, blend);
             m_SmoothedDistance = Mathf.Lerp(m_SmoothedDistance, targetDistance, blend);
         }
 

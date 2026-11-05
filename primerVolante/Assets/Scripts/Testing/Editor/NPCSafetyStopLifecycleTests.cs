@@ -420,6 +420,10 @@ namespace PrimerVolante.Testing.Editor
         {
             GameObject splineObj = new GameObject("TestSpline_CurveSmoothing");
             GameObject npcObj = new GameObject("TestNPC_CurveSmoothing");
+            GameObject loopSplineObj = null;
+            GameObject loopNpcObj = null;
+            GameObject circleSplineObj = null;
+            GameObject circleNpcObj = null;
             try
             {
                 SplineContainer splineContainer = splineObj.AddComponent<SplineContainer>();
@@ -442,17 +446,69 @@ namespace PrimerVolante.Testing.Editor
                 follower.SetPath(splineContainer, 0);
                 follower.Play();
 
-                // 9.1 / 9.2: recorrido recta + curva
-                SensorTrace trace = RecordSensorTrace(follower, safety, npcObj.transform);
-                Assert(trace.Steps > 100, $"[9.0] El recorrido de prueba avanza lo suficiente ({trace.Steps} pasos)", ref total, ref passed);
+                // 9.1 / 9.2 / 9.7: vuelta redondeada realista (cuadrado de 60x60 m, esquinas de R=6 m, Loop, como Route_Vehicle_Block).
+                // La spline del test 8 (radio ~1.4 m) no es representativa de las curvas reales.
+                loopSplineObj = new GameObject("TestSpline_CurveSmoothingLoop");
+                loopNpcObj = new GameObject("TestNPC_CurveSmoothingLoop");
+                SplineContainer loopContainer = loopSplineObj.AddComponent<SplineContainer>();
+                loopContainer.Spline = NPCDemoRoutesSetup.BuildRoundedLoop(new[]
+                {
+                    new Vector3(0f, 0f, 0f), new Vector3(0f, 0f, 60f), new Vector3(60f, 0f, 60f), new Vector3(60f, 0f, 0f),
+                }, 6.0f, null);
+
+                var loopFollower = loopNpcObj.AddComponent<NPCPathFollower>();
+                var loopSafety = loopNpcObj.AddComponent<NPCSafetyStop>();
+                loopSafety.DetectionDistance = 5.0f;
+                loopSafety.MinCurveDetectionDistance = 3.5f;
+                loopSafety.CurveAngleThreshold = 8.0f;
+                loopSafety.MaxCurveAngle = 45.0f;
+                loopSafety.AdaptSensorInCurves = true;
+                loopSafety.SensorSmoothingTime = 0.15f;
+                loopFollower.EndBehavior = NPCPathEndBehavior.Loop;
+                loopFollower.SetPath(loopContainer, 0);
+                loopFollower.Play();
+
+                SensorTrace trace = RecordSensorTrace(loopFollower, loopSafety, 8f, loopFollower.PathLength);
+                Assert(loopFollower.EndBehavior == NPCPathEndBehavior.Loop && trace.Steps > 500,
+                    $"[9.0] La vuelta de prueba (Loop) avanza una vuelta completa ({trace.Steps} pasos, {loopFollower.PathLength:F1}m)", ref total, ref passed);
                 Assert(trace.MaxInstantYawStep < 3.0f,
                     $"[9.1] Sin salto en el umbral: |Δyaw| instantáneo máx por paso < 3° (medido {trace.MaxInstantYawStep:F2}°)", ref total, ref passed);
-                Assert(trace.MaxSmoothYawStep < trace.MaxInstantYawStep,
-                    $"[9.2a] El yaw suavizado cambia menos por paso que el instantáneo ({trace.MaxSmoothYawStep:F3}° < {trace.MaxInstantYawStep:F3}°)", ref total, ref passed);
+                Assert(trace.MaxSmoothRelStep < trace.MaxInstantRelStep,
+                    $"[9.2a] El offset de yaw relativo suavizado cambia menos por paso que el instantáneo ({trace.MaxSmoothRelStep:F3}° < {trace.MaxInstantRelStep:F3}°; yaw de mundo {trace.MaxSmoothYawStep:F3}° vs {trace.MaxInstantYawStep:F3}°)", ref total, ref passed);
                 Assert(trace.MaxSmoothDistStep < trace.MaxInstantDistStep,
                     $"[9.2b] La distancia suavizada cambia menos por paso que la instantánea ({trace.MaxSmoothDistStep:F4}m < {trace.MaxInstantDistStep:F4}m)", ref total, ref passed);
-                Assert(trace.MinInstantDist < 8.0f - 1.0f,
+                Assert(trace.MinInstantDist < 5.0f - 1.0f,
                     $"[9.2c] La adaptación en curva se mantiene: el alcance baja en la curva (mín {trace.MinInstantDist:F2}m)", ref total, ref passed);
+                // 9.7 Curva sostenida: círculo de R=6 m a 8 m/s (arco largo). En la esquina de 90° de la vuelta el arco dura
+                // ~1 s y su salida cambia el objetivo, así que no sirve para medir el régimen permanente del filtro.
+                circleSplineObj = new GameObject("TestSpline_CurveSmoothingCircle");
+                circleNpcObj = new GameObject("TestNPC_CurveSmoothingCircle");
+                SplineContainer circleContainer = circleSplineObj.AddComponent<SplineContainer>();
+                const float radius = 6f;
+                float k = 0.5523f * radius;
+                Spline circle = new Spline();
+                circle.Add(new BezierKnot(new float3(radius, 0f, 0f), new float3(0f, 0f, -k), new float3(0f, 0f, k)));
+                circle.Add(new BezierKnot(new float3(0f, 0f, radius), new float3(k, 0f, 0f), new float3(-k, 0f, 0f)));
+                circle.Add(new BezierKnot(new float3(-radius, 0f, 0f), new float3(0f, 0f, k), new float3(0f, 0f, -k)));
+                circle.Add(new BezierKnot(new float3(0f, 0f, -radius), new float3(-k, 0f, 0f), new float3(k, 0f, 0f)));
+                circle.Closed = true;
+                circleContainer.Spline = circle;
+
+                var circleFollower = circleNpcObj.AddComponent<NPCPathFollower>();
+                var circleSafety = circleNpcObj.AddComponent<NPCSafetyStop>();
+                circleSafety.DetectionDistance = 5.0f;
+                circleSafety.SensorSmoothingTime = 0.15f;
+                circleFollower.EndBehavior = NPCPathEndBehavior.Loop;
+                circleFollower.SetPath(circleContainer, 0);
+                circleFollower.Play();
+
+                SensorTrace circleTrace = RecordSensorTrace(circleFollower, circleSafety, 8f, circleFollower.PathLength * 2f);
+                Assert(circleTrace.ArcSteps > 100 && circleTrace.MaxArcLag < 1.0f,
+                    $"[9.7] Sin desfase en curva sostenida (R=6 m): tras 0.5 s en el arco el yaw de mundo suavizado queda a < 1° del instantáneo (máx {circleTrace.MaxArcLag:F3}° en {circleTrace.ArcSteps} pasos)", ref total, ref passed);
+
+                // Para los casos siguientes se vuelve a la spline del test 8 (recta + curva)
+                follower.SetPath(splineContainer, 0);
+                follower.Play();
 
                 // 9.3 Convergencia con la pose fija (a mitad de ruta, ya en curva): 1 s de Tick
                 follower.TeleportToDistance(follower.PathLength * 0.55f);
@@ -474,7 +530,7 @@ namespace PrimerVolante.Testing.Editor
 
                 // 9.5 SensorSmoothingTime = 0: suavizado == instantáneo en cada paso
                 safety.SensorSmoothingTime = 0f;
-                SensorTrace noSmooth = RecordSensorTrace(follower, safety, npcObj.transform);
+                SensorTrace noSmooth = RecordSensorTrace(follower, safety, 6f, follower.PathLength - 1f);
                 Assert(noSmooth.MaxYawDiff < 0.01f && noSmooth.MaxDistDiff < 0.001f,
                     $"[9.5] Con SensorSmoothingTime=0 el suavizado coincide con el instantáneo en cada paso (Δ{noSmooth.MaxYawDiff:F4}° / Δ{noSmooth.MaxDistDiff:F5}m)", ref total, ref passed);
                 safety.SensorSmoothingTime = 0.15f;
@@ -491,6 +547,10 @@ namespace PrimerVolante.Testing.Editor
             {
                 Object.DestroyImmediate(splineObj);
                 Object.DestroyImmediate(npcObj);
+                if (loopSplineObj != null) Object.DestroyImmediate(loopSplineObj);
+                if (loopNpcObj != null) Object.DestroyImmediate(loopNpcObj);
+                if (circleSplineObj != null) Object.DestroyImmediate(circleSplineObj);
+                if (circleNpcObj != null) Object.DestroyImmediate(circleNpcObj);
             }
         }
 
@@ -499,18 +559,24 @@ namespace PrimerVolante.Testing.Editor
             public int Steps;
             public float MaxInstantYawStep;
             public float MaxSmoothYawStep;
+            public float MaxInstantRelStep;
+            public float MaxSmoothRelStep;
             public float MaxInstantDistStep;
             public float MaxSmoothDistStep;
             public float MinInstantDist;
             public float MaxYawDiff;
             public float MaxDistDiff;
+            public int ArcSteps;
+            public float MaxArcLag;
         }
 
         /// <summary>
         /// Recorre la ruta desde el inicio a velocidad fija llamando a Tick de a pasos y mide los cambios por paso del
-        /// yaw de mundo y de la distancia del sensor, instantáneo vs suavizado. Termina antes del final de la ruta.
+        /// yaw de mundo, del offset de yaw relativo al vehículo y de la distancia del sensor, instantáneo vs suavizado.
+        /// Termina al recorrer <paramref name="travel"/> metros. También mide el desfase del yaw de mundo suavizado
+        /// respecto del instantáneo mientras el vehículo lleva al menos 0.5 s dentro de una curva sostenida.
         /// </summary>
-        private static SensorTrace RecordSensorTrace(NPCPathFollower follower, NPCSafetyStop safety, Transform npc)
+        private static SensorTrace RecordSensorTrace(NPCPathFollower follower, NPCSafetyStop safety, float speed, float travel)
         {
             follower.TeleportToDistance(0f);
             follower.Play();
@@ -520,17 +586,31 @@ namespace PrimerVolante.Testing.Editor
             trace.MinInstantDist = float.MaxValue;
             bool hasPrev = false;
             float prevInstYaw = 0f, prevSmoothYaw = 0f, prevInstDist = 0f, prevSmoothDist = 0f;
+            float prevInstRel = 0f, prevSmoothRel = 0f, prevVehicleYaw = 0f, prevPathDistance = 0f, travelled = 0f;
+            int stepsInArc = 0;
 
-            for (int step = 0; step < 2000 && follower.DistanceTravelled < follower.PathLength - 1f; step++)
+            for (int step = 0; step < 6000 && travelled < travel; step++)
             {
-                follower.SetSpeedForTesting(6f);
+                follower.SetSpeedForTesting(speed);
                 follower.Tick(k_SmoothStep);
                 safety.Tick(k_SmoothStep);
+
+                float pathDistance = follower.DistanceTravelled;
+                if (step > 0)
+                {
+                    float delta = pathDistance - prevPathDistance;
+                    if (delta < -follower.PathLength * 0.5f) delta += follower.PathLength;
+                    travelled += Mathf.Max(0f, delta);
+                }
+                prevPathDistance = pathDistance;
 
                 safety.GetSensorParameters(out _, out Vector3 dirI, out _, out float distI);
                 safety.GetSmoothedSensorParameters(out _, out Vector3 dirS, out _, out float distS);
                 float yawI = Mathf.Atan2(dirI.x, dirI.z) * Mathf.Rad2Deg;
                 float yawS = Mathf.Atan2(dirS.x, dirS.z) * Mathf.Rad2Deg;
+                float vehicleYaw = safety.transform.eulerAngles.y;
+                float relI = Mathf.DeltaAngle(vehicleYaw, yawI);
+                float relS = Mathf.DeltaAngle(vehicleYaw, yawS);
 
                 trace.MinInstantDist = Mathf.Min(trace.MinInstantDist, distI);
                 trace.MaxYawDiff = Mathf.Max(trace.MaxYawDiff, Mathf.Abs(Mathf.DeltaAngle(yawI, yawS)));
@@ -540,11 +620,23 @@ namespace PrimerVolante.Testing.Editor
                 {
                     trace.MaxInstantYawStep = Mathf.Max(trace.MaxInstantYawStep, Mathf.Abs(Mathf.DeltaAngle(prevInstYaw, yawI)));
                     trace.MaxSmoothYawStep = Mathf.Max(trace.MaxSmoothYawStep, Mathf.Abs(Mathf.DeltaAngle(prevSmoothYaw, yawS)));
+                    trace.MaxInstantRelStep = Mathf.Max(trace.MaxInstantRelStep, Mathf.Abs(Mathf.DeltaAngle(prevInstRel, relI)));
+                    trace.MaxSmoothRelStep = Mathf.Max(trace.MaxSmoothRelStep, Mathf.Abs(Mathf.DeltaAngle(prevSmoothRel, relS)));
                     trace.MaxInstantDistStep = Mathf.Max(trace.MaxInstantDistStep, Mathf.Abs(distI - prevInstDist));
                     trace.MaxSmoothDistStep = Mathf.Max(trace.MaxSmoothDistStep, Mathf.Abs(distS - prevSmoothDist));
+
+                    // Curva sostenida: el vehículo gira más de 0.5° por paso; se mide pasados 0.5 s (25 pasos) dentro del arco
+                    bool turning = Mathf.Abs(Mathf.DeltaAngle(prevVehicleYaw, vehicleYaw)) > 0.5f;
+                    stepsInArc = turning ? stepsInArc + 1 : 0;
+                    if (stepsInArc >= 25)
+                    {
+                        trace.ArcSteps++;
+                        trace.MaxArcLag = Mathf.Max(trace.MaxArcLag, Mathf.Abs(Mathf.DeltaAngle(yawI, yawS)));
+                    }
                 }
 
                 prevInstYaw = yawI; prevSmoothYaw = yawS; prevInstDist = distI; prevSmoothDist = distS;
+                prevInstRel = relI; prevSmoothRel = relS; prevVehicleYaw = vehicleYaw;
                 hasPrev = true;
                 trace.Steps++;
             }
