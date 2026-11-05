@@ -115,6 +115,13 @@ namespace PrimerVolante.MainMenu
         private bool m_ExitOverlayVisible;
         private bool m_ExitConfirmed;
         private VRToggleButton m_HazardButton;
+        private bool m_InputWasBlocked;
+
+        /// <summary>
+        /// true mientras el menú in-game está abierto por una pausa de conexión VR: es el único punto de bloqueo de la entrada
+        /// del menú principal (<see cref="Tick"/>, ignición, balizas y cambios de marcha).
+        /// </summary>
+        private bool InputBlocked => m_InGameMenu != null && m_InGameMenu.IsBlockingGameplayInput;
 
         /// <summary>Se dispara al confirmar la salida con la ignición (antes de cerrar la aplicación si <c>m_PerformQuit</c>).</summary>
         public event System.Action ExitRequested;
@@ -308,6 +315,8 @@ namespace PrimerVolante.MainMenu
         /// </summary>
         public void HandleGearChanged(GearState gear)
         {
+            if (InputBlocked) return;
+
             m_CurrentGear = gear;
             if (m_Page == MainMenuPage.Splash) return;
 
@@ -319,12 +328,19 @@ namespace PrimerVolante.MainMenu
             m_HasPendingGear = true;
         }
 
+        // Las marchas que se movieron durante la pausa se ignoraron: al reanudar, la palanca vuelve a mandar.
+        private void ResyncGearAfterPause()
+        {
+            if (m_GearShifter != null && m_GearShifter.CurrentGear != m_CurrentGear) HandleGearChanged(m_GearShifter.CurrentGear);
+        }
+
         /// <summary>
         /// Pulsación de la ignición: en Lecciones selecciona la lección bajo el cursor. No hace nada en el Splash (se sale
         /// con las balizas) ni con el overlay de salida visible (se confirma con las balizas).
         /// </summary>
         public void HandleIgnitionPressed()
         {
+            if (InputBlocked) return;
             if (m_ExitOverlayVisible) return;
 
             if (m_Page == MainMenuPage.Lessons) SelectCurrentLesson();
@@ -337,6 +353,13 @@ namespace PrimerVolante.MainMenu
         /// </summary>
         public void HandleHazardChanged(bool active)
         {
+            // Pausa por desconexión VR: se ignora la pulsación (y no quedan las balizas titilando).
+            if (InputBlocked)
+            {
+                TurnHazardsOff(active);
+                return;
+            }
+
             if (m_ExitOverlayVisible)
             {
                 TurnHazardsOff(active);
@@ -574,6 +597,18 @@ namespace PrimerVolante.MainMenu
         /// </summary>
         public void Tick(float dt)
         {
+            // Pausa por desconexión VR: no avanza nada (ni scroll, ni marchas, ni overlay de salida).
+            if (InputBlocked)
+            {
+                m_InputWasBlocked = true;
+                return;
+            }
+            if (m_InputWasBlocked)
+            {
+                m_InputWasBlocked = false;
+                ResyncGearAfterPause();
+            }
+
             UpdateExitOverlay();
 
             if (m_HasPendingGear)
