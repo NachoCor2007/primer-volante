@@ -52,6 +52,9 @@ namespace PrimerVolante.Environment
         [Tooltip("Ángulo de desvío (grados) a partir del cual se alcanza la máxima reducción de distancia en curva.")]
         [SerializeField] private float m_MaxCurveAngle = 45.0f;
 
+        [Tooltip("Constante de tiempo (s) del suavizado del largo y la orientación del sensor. 0 = sin suavizado.")]
+        [SerializeField] private float m_SensorSmoothingTime = 0.15f;
+
         [Header("Respuesta de Frenado y Reanudación")]
         [Tooltip("Tiempo de seguridad en segundos con la vía completamente despejada antes de reanudar la marcha.")]
         [SerializeField] private float m_ResumeDelay = 0.5f;
@@ -91,6 +94,11 @@ namespace PrimerVolante.Environment
         private float m_ClearTimer = 0f;
         private float m_BrakingDetectionDistance = 0f;
         private float m_LastEffectiveDetectionDistance = 0f;
+
+        // Estado del filtro del sensor (offset de yaw relativo al vehículo, nunca rotación de mundo)
+        private float m_SmoothedYawOffset = 0f;
+        private float m_SmoothedDistance = 0f;
+        private bool m_HasSmoothedSensor = false;
         private RaycastHit m_LastObstacleHit;
         private Collider m_LastObstacleCollider;
 
@@ -199,6 +207,13 @@ namespace PrimerVolante.Environment
             set => m_MaxCurveAngle = Mathf.Max(m_CurveAngleThreshold + 1f, value);
         }
 
+        /// <summary>Constante de tiempo en segundos del suavizado del sensor en curvas (0 = sin suavizado).</summary>
+        public float SensorSmoothingTime
+        {
+            get => m_SensorSmoothingTime;
+            set => m_SensorSmoothingTime = Mathf.Max(0f, value);
+        }
+
         /// <summary>Tiempo transcurrido desde que la vía quedó despejada.</summary>
         public float ClearTimer => m_ClearTimer;
 
@@ -244,6 +259,7 @@ namespace PrimerVolante.Environment
 
         private void OnEnable()
         {
+            m_HasSmoothedSensor = false;
             if (m_PathFollower == null) m_PathFollower = GetComponent<NPCPathFollower>();
             if (m_PathFollower != null)
             {
@@ -254,6 +270,8 @@ namespace PrimerVolante.Environment
 
         private void OnDisable()
         {
+            // Sin esto el gizmo de un NPC deshabilitado dibujaría un offset viejo
+            m_HasSmoothedSensor = false;
             if (m_PathFollower != null)
             {
                 m_PathFollower.OnReachedEnd -= HandlePathReachedEnd;
@@ -289,6 +307,7 @@ namespace PrimerVolante.Environment
             m_MinCurveDetectionDistance = Mathf.Max(0.5f, m_MinCurveDetectionDistance);
             m_CurveAngleThreshold = Mathf.Max(0f, m_CurveAngleThreshold);
             m_MaxCurveAngle = Mathf.Max(m_CurveAngleThreshold + 1f, m_MaxCurveAngle);
+            m_SensorSmoothingTime = Mathf.Max(0f, m_SensorSmoothingTime);
             m_ResumeDelay = Mathf.Max(0f, m_ResumeDelay);
             m_ResumeHysteresisDistance = Mathf.Max(0f, m_ResumeHysteresisDistance);
             m_SpeedLookaheadFactor = Mathf.Max(0f, m_SpeedLookaheadFactor);
@@ -328,6 +347,9 @@ namespace PrimerVolante.Environment
             {
                 m_VehicleController = GetComponent<NPCVehicleController>();
             }
+
+            // Con obstáculo simulado CastFrontalSensor descarta el resultado: no hace falta filtrar
+            if (!m_SimulateObstacle) UpdateSmoothedSensor(deltaTime);
 
             bool obstacleDetected = CastFrontalSensor(out RaycastHit hit);
 
@@ -420,7 +442,7 @@ namespace PrimerVolante.Environment
                 return m_SimulatedHasObstacle;
             }
 
-            GetSensorParameters(out Vector3 origin, out Vector3 direction, out Quaternion rotation, out float maxDistance);
+            GetSmoothedSensorParameters(out Vector3 origin, out Vector3 direction, out Quaternion rotation, out float maxDistance);
             m_LastEffectiveDetectionDistance = maxDistance;
 
             // 1. Detección inmediata por solapamiento (OverlapBox)
@@ -535,71 +557,141 @@ namespace PrimerVolante.Environment
         }
 
         /// <summary>
-        /// Obtiene los parámetros del sensor frontal (origen, dirección, rotación y distancia máxima),
-        /// adaptándolos dinámicamente a la curvatura de la ruta si el NPC sigue una spline.
-        /// En rectas mantiene el sensor alargado y recto; en curvas orienta el sensor hacia la trayectoria
-        /// y reduce su alcance para evitar detectar edificios, veredas o tráfico en otros carriles.
+        /// Obtiene los parámetros INSTANTÁNEOS (sin filtrar) del sensor frontal (origen, dirección, rotación y distancia máxima),
+        /// adaptándolos a la curvatura de la ruta si el NPC sigue una spline.
+        /// El cálculo es continuo y se hace en espacio de ruta: la reducción de alcance usa un smoothstep entre
+        /// <see cref="CurveAngleThreshold"/> y <see cref="MaxCurveAngle"/>, y la caja apunta siempre hacia la cuerda de la
+        /// trayectoria (en rectas coincide con el frente). Para el sensor que realmente se castea usar
+        /// <see cref="GetSmoothedSensorParameters"/>.
         /// </summary>
         public void GetSensorParameters(out Vector3 origin, out Vector3 direction, out Quaternion rotation, out float maxDistance)
         {
-            origin = GetSensorOrigin();
-            direction = transform.forward;
-            rotation = transform.rotation;
-            maxDistance = GetEffectiveDetectionDistance();
+            ComputeSensorTarget(out float yawOffset, out float distance);
+            BuildSensorPose(yawOffset, distance, out origin, out direction, out rotation, out maxDistance);
+        }
 
-            if (!m_AdaptSensorInCurves) return;
-            if (m_PathFollower == null) m_PathFollower = GetComponent<NPCPathFollower>();
-            if (m_PathFollower == null || !m_PathFollower.HasPath) return;
-
-            float pathLength = m_PathFollower.PathLength;
-            if (pathLength <= 0f) return;
-
-            float currentDist = m_PathFollower.DistanceTravelled;
-            bool isLoop = m_PathFollower.EndBehavior == NPCPathEndBehavior.Loop;
-
-            // Muestreamos la ruta por delante (anticipación entre 4m y maxDistance)
-            float lookahead = Mathf.Clamp(maxDistance * 0.75f, 4.0f, 10.0f);
-            float targetDist = currentDist + lookahead;
-            targetDist = isLoop ? Mathf.Repeat(targetDist, pathLength) : Mathf.Clamp(targetDist, 0f, pathLength);
-
-            if (!m_PathFollower.EvaluatePose(targetDist, out Vector3 futurePos, out Quaternion futureRot))
+        /// <summary>
+        /// Obtiene los parámetros del sensor frontal tal como se castea: el objetivo instantáneo filtrado con un
+        /// suavizado exponencial (<see cref="SensorSmoothingTime"/>) que se actualiza en <see cref="Tick"/>.
+        /// Mientras no haya estado filtrado (Edit Mode, o antes del primer Tick) devuelve el valor instantáneo.
+        /// El offset de yaw se guarda relativo al vehículo, por lo que sigue al transform interpolado sin temblar.
+        /// </summary>
+        public void GetSmoothedSensorParameters(out Vector3 origin, out Vector3 direction, out Quaternion rotation, out float maxDistance)
+        {
+            if (!m_HasSmoothedSensor)
             {
+                GetSensorParameters(out origin, out direction, out rotation, out maxDistance);
                 return;
             }
 
-            // Calculamos el ángulo entre la orientación actual del NPC y la tangente futura de la spline
-            float angleDelta = Quaternion.Angle(transform.rotation, futureRot);
+            BuildSensorPose(m_SmoothedYawOffset, m_SmoothedDistance, out origin, out direction, out rotation, out maxDistance);
+        }
 
-            if (angleDelta > m_CurveAngleThreshold)
+        /// <summary>
+        /// Arma la pose de mundo del sensor a partir de un yaw relativo al vehículo y una distancia.
+        /// </summary>
+        private void BuildSensorPose(float yawOffset, float distance, out Vector3 origin, out Vector3 direction, out Quaternion rotation, out float maxDistance)
+        {
+            origin = GetSensorOrigin();
+            maxDistance = distance;
+
+            if (!IsSensorAdaptationActive())
             {
-                float t = Mathf.Clamp01((angleDelta - m_CurveAngleThreshold) / Mathf.Max(1f, m_MaxCurveAngle - m_CurveAngleThreshold));
-
-                // 1. Reducción proporcional del alcance de detección en curva
-                float minCurveDist = m_MinCurveDetectionDistance;
-                if (m_IsEmergencyBraking && m_BrakingDetectionDistance > 0f)
-                {
-                    minCurveDist = Mathf.Max(minCurveDist, m_BrakingDetectionDistance + m_ResumeHysteresisDistance);
-                }
-
-                maxDistance = Mathf.Lerp(maxDistance, Mathf.Min(maxDistance, minCurveDist), t);
-
-                // 2. Orientación de la caja de detección hacia la curva (punto futuro de la ruta a la distancia adaptada)
-                float chordDist = currentDist + maxDistance;
-                chordDist = isLoop ? Mathf.Repeat(chordDist, pathLength) : Mathf.Clamp(chordDist, 0f, pathLength);
-
-                if (m_PathFollower.EvaluatePose(chordDist, out Vector3 chordPos, out Quaternion chordRot))
-                {
-                    Vector3 targetSensorPoint = chordPos + chordRot * m_SensorOffset;
-                    Vector3 chordVector = targetSensorPoint - origin;
-                    Vector3 flatChord = new Vector3(chordVector.x, 0f, chordVector.z);
-
-                    if (flatChord.sqrMagnitude > 1e-4f)
-                    {
-                        direction = flatChord.normalized;
-                        rotation = Quaternion.LookRotation(direction, Vector3.up);
-                    }
-                }
+                rotation = transform.rotation;
+                direction = transform.forward;
+                return;
             }
+
+            rotation = Quaternion.AngleAxis(yawOffset, Vector3.up) * Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
+            direction = rotation * Vector3.forward;
+        }
+
+        private bool IsSensorAdaptationActive()
+        {
+            if (!m_AdaptSensorInCurves) return false;
+            if (m_PathFollower == null) m_PathFollower = GetComponent<NPCPathFollower>();
+            return m_PathFollower != null && m_PathFollower.HasPath && m_PathFollower.PathLength > 0f;
+        }
+
+        /// <summary>
+        /// Calcula el objetivo instantáneo del sensor en espacio de ruta: yaw relativo al frente de la ruta (hacia la
+        /// cuerda) y distancia de detección (reducida en curva con un smoothstep del ángulo de desvío).
+        /// Sin ruta o sin adaptación devuelve yaw 0 y la distancia efectiva.
+        /// </summary>
+        /// <param name="yawOffset">Giro en grados (eje Y) respecto de la orientación del vehículo.</param>
+        /// <param name="distance">Alcance del sensor en metros.</param>
+        private void ComputeSensorTarget(out float yawOffset, out float distance)
+        {
+            yawOffset = 0f;
+            distance = GetEffectiveDetectionDistance();
+
+            if (!IsSensorAdaptationActive()) return;
+
+            float pathLength = m_PathFollower.PathLength;
+            float currentDist = m_PathFollower.DistanceTravelled;
+            bool isLoop = m_PathFollower.EndBehavior == NPCPathEndBehavior.Loop;
+
+            // Pose de la ruta en la distancia actual (mismo marco que la evaluación futura)
+            if (!m_PathFollower.EvaluatePose(currentDist, out Vector3 pathPos, out Quaternion pathRot)) return;
+
+            // Muestreamos la ruta por delante (anticipación entre 4m y 10m)
+            float lookahead = Mathf.Clamp(distance * 0.75f, 4.0f, 10.0f);
+            float targetDist = currentDist + lookahead;
+            targetDist = isLoop ? Mathf.Repeat(targetDist, pathLength) : Mathf.Clamp(targetDist, 0f, pathLength);
+
+            if (!m_PathFollower.EvaluatePose(targetDist, out _, out Quaternion futureRot)) return;
+
+            // Ángulo entre la tangente actual y la futura de la spline, mapeado a [0,1] con smoothstep (continuo en los bordes)
+            float angleDelta = Quaternion.Angle(pathRot, futureRot);
+            float t = Mathf.Clamp01((angleDelta - m_CurveAngleThreshold) / Mathf.Max(1f, m_MaxCurveAngle - m_CurveAngleThreshold));
+            t = t * t * (3f - 2f * t);
+
+            // 1. Reducción proporcional del alcance de detección en curva
+            float minCurveDist = m_MinCurveDetectionDistance;
+            if (m_IsEmergencyBraking && m_BrakingDetectionDistance > 0f)
+            {
+                minCurveDist = Mathf.Max(minCurveDist, m_BrakingDetectionDistance + m_ResumeHysteresisDistance);
+            }
+
+            distance = Mathf.Lerp(distance, Mathf.Min(distance, minCurveDist), t);
+
+            // 2. Orientación hacia la cuerda: del sensor en la pose actual al sensor en currentDist + distance
+            float chordDist = currentDist + distance;
+            chordDist = isLoop ? Mathf.Repeat(chordDist, pathLength) : Mathf.Clamp(chordDist, 0f, pathLength);
+
+            if (!m_PathFollower.EvaluatePose(chordDist, out Vector3 chordPos, out Quaternion chordRot)) return;
+
+            Vector3 pathSensorPoint = pathPos + pathRot * m_SensorOffset;
+            Vector3 targetSensorPoint = chordPos + chordRot * m_SensorOffset;
+            Vector3 flatChord = targetSensorPoint - pathSensorPoint;
+            flatChord.y = 0f;
+
+            if (flatChord.sqrMagnitude > 1e-4f)
+            {
+                yawOffset = Vector3.SignedAngle(pathRot * Vector3.forward, flatChord.normalized, Vector3.up);
+            }
+        }
+
+        /// <summary>
+        /// Actualiza el filtro exponencial del sensor hacia el objetivo instantáneo. El yaw se filtra directamente como
+        /// offset relativo al vehículo: en una curva sostenida ese offset es constante y no aparece desfase respecto del
+        /// objetivo. El primer cálculo tras un reinicio copia el objetivo sin filtrar.
+        /// </summary>
+        private void UpdateSmoothedSensor(float deltaTime)
+        {
+            ComputeSensorTarget(out float targetYaw, out float targetDistance);
+
+            if (!m_HasSmoothedSensor)
+            {
+                m_SmoothedYawOffset = targetYaw;
+                m_SmoothedDistance = targetDistance;
+                m_HasSmoothedSensor = true;
+                return;
+            }
+
+            float blend = m_SensorSmoothingTime > 0f ? 1f - Mathf.Exp(-deltaTime / m_SensorSmoothingTime) : 1f;
+            m_SmoothedYawOffset = Mathf.LerpAngle(m_SmoothedYawOffset, targetYaw, blend);
+            m_SmoothedDistance = Mathf.Lerp(m_SmoothedDistance, targetDistance, blend);
         }
 
         /// <summary>
@@ -743,6 +835,7 @@ namespace PrimerVolante.Environment
             m_ClearTimer = 0f;
             m_BrakingDetectionDistance = 0f;
             m_LastEffectiveDetectionDistance = 0f;
+            m_HasSmoothedSensor = false;
             m_LastObstacleHit = default;
             m_LastObstacleCollider = null;
         }
@@ -870,7 +963,7 @@ namespace PrimerVolante.Environment
 
         private void DrawSafetyGizmos(bool isSelected)
         {
-            GetSensorParameters(out Vector3 origin, out Vector3 direction, out Quaternion rotation, out float maxDistance);
+            GetSmoothedSensorParameters(out Vector3 origin, out Vector3 direction, out Quaternion rotation, out float maxDistance);
             Vector3 endPoint = origin + direction * maxDistance;
 
             Color sensorColor = m_IsEmergencyBraking
