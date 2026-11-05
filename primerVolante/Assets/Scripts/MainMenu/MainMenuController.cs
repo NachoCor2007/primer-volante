@@ -194,6 +194,7 @@ namespace PrimerVolante.MainMenu
         {
             Unsubscribe();
             if (m_Highlighter != null) m_Highlighter.ClearHighlight();
+            if (m_Vehicle != null) m_Vehicle.HazardLightsMuted = false;
         }
 
         /// <summary>
@@ -268,6 +269,7 @@ namespace PrimerVolante.MainMenu
 
             m_Vehicle.SetEngineRunning(false);
             m_Vehicle.SetEngineLocked(true);
+            m_Vehicle.HazardLightsMuted = true;
             if (m_Handbrake != null) m_Handbrake.SetEngagementImmediate(0f);
             m_Vehicle.SetHazardActive(false);
 
@@ -426,6 +428,7 @@ namespace PrimerVolante.MainMenu
 
             if (lesson != null && Application.isPlaying && LessonSceneFlowManager.Instance != null)
             {
+                if (m_Vehicle != null) m_Vehicle.HazardLightsMuted = false;
                 LessonSceneFlowManager.Instance.LoadLesson(lesson);
             }
         }

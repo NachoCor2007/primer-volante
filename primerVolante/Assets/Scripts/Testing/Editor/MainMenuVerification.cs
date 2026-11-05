@@ -969,14 +969,21 @@ namespace PrimerVolante.Testing.Editor
                 Check(controller.CurrentPage == MainMenuPage.Splash && controller.SelectedLessonIndex == -1, "Press() en Splash: no sale del Splash ni marca lección");
 
                 // Las balizas salen del Splash hacia la marcha actual y se vuelven a apagar.
+                Check(car.HazardLightsMuted, "MainMenu: car.HazardLightsMuted == true (simulación de balizas silenciada en el menú)");
                 car.SetHazardActive(true);
                 Check(controller.CurrentPage == MainMenuPage.Lessons, "Balizas en Splash -> página Lecciones (marcha P)");
                 Check(!car.IsHazardActive, "Balizas en Splash: quedan apagadas al salir");
                 Check(controller.SelectedLessonIndex == -1, "Balizas en Splash: no marcan ninguna lección");
 
-                // Fuera del Splash las balizas no cambian de página.
+                // Fuera del Splash las balizas no cambian de página y sus efectos siguen silenciados.
                 car.SetHazardActive(true);
                 Check(controller.CurrentPage == MainMenuPage.Lessons && car.IsHazardActive, "Balizas en Lecciones: no cambian de página");
+                var blinkClock = car.GetComponentInChildren<TurnSignalLightController>(true);
+                if (blinkClock != null)
+                {
+                    Check(!blinkClock.IsLeftActive && !blinkClock.IsRightActive,
+                        "Balizas en Lecciones: TurnSignalLightController no activa lados (reloj y luces silenciados en menú)");
+                }
                 car.SetHazardActive(false);
 
                 // Scroll con el volante

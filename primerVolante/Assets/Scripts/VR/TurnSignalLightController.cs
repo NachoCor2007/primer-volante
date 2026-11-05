@@ -34,17 +34,21 @@ namespace PrimerVolante.VR
         /// </summary>
         public bool IsBlinkOn => m_BlinkOn;
 
+        private bool EffectiveHazardActive => m_VehicleController != null &&
+            m_VehicleController.IsHazardActive &&
+            !m_VehicleController.HazardLightsMuted;
+
         /// <summary>
         /// Indica si el lado izquierdo está activo (guiño izquierdo o balizas).
         /// </summary>
         public bool IsLeftActive => m_VehicleController != null &&
-            (m_VehicleController.IsHazardActive || m_LastAppliedSignal == TurnSignalState.Left);
+            (EffectiveHazardActive || m_LastAppliedSignal == TurnSignalState.Left);
 
         /// <summary>
         /// Indica si el lado derecho está activo (guiño derecho o balizas).
         /// </summary>
         public bool IsRightActive => m_VehicleController != null &&
-            (m_VehicleController.IsHazardActive || m_LastAppliedSignal == TurnSignalState.Right);
+            (EffectiveHazardActive || m_LastAppliedSignal == TurnSignalState.Right);
 
         /// <summary>
         /// Indica si hay algún guiño o las balizas activas.
@@ -68,7 +72,7 @@ namespace PrimerVolante.VR
             if (m_VehicleController == null) return;
 
             TurnSignalState signal = m_VehicleController.CurrentTurnSignal;
-            bool hazard = m_VehicleController.IsHazardActive;
+            bool hazard = EffectiveHazardActive;
 
             if (signal != m_LastAppliedSignal || hazard != m_LastHazardActive)
             {
@@ -104,7 +108,7 @@ namespace PrimerVolante.VR
 
         private void ApplyBlinkState()
         {
-            bool isHazard = m_VehicleController != null && m_VehicleController.IsHazardActive;
+            bool isHazard = EffectiveHazardActive;
             bool leftOn = (isHazard || m_LastAppliedSignal == TurnSignalState.Left) && m_BlinkOn;
             bool rightOn = (isHazard || m_LastAppliedSignal == TurnSignalState.Right) && m_BlinkOn;
 
