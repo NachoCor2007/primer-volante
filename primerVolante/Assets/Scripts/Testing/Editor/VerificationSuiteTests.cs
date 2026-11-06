@@ -48,6 +48,7 @@ namespace PrimerVolante.Testing.Editor
             yield return Suite("TurnSignal", TurnSignalVerification.RunVerification);
             yield return Suite("VehicleLighting", VehicleLightingVerification.RunVerification);
             yield return Suite("VehicleMirror", VehicleMirrorVerification.RunVerification);
+            yield return Suite("VRHardwareStateMonitor", VRHardwareStateMonitorVerification.RunVerification);
             yield return Suite("WrongWay", WrongWayVerification.RunVerification);
         }
 
