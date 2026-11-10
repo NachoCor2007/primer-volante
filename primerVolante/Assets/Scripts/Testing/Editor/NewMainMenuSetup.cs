@@ -38,6 +38,7 @@ namespace PrimerVolante.Testing.Editor
         private const string FONT_PATH = "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset";
         private const string CONTROLLER_MODEL_PATH = "Assets/Samples/XR Interaction Toolkit/3.5.1/Starter Assets/Models/UniversalController.fbx";
         private const string INPUT_ACTIONS_PATH = "Assets/Samples/XR Interaction Toolkit/3.5.1/Starter Assets/XRI Default Input Actions.inputactions";
+        private const string PLATFORM_MATERIAL_PATH = "Assets/Samples/XR Interaction Toolkit/3.5.1/Starter Assets/DemoAssets/Materials/Concrete Dark Blue.mat";
         private const string CURRICULUM_FOLDER = "Assets/Scripts/Lessons/Curriculum";
         private const int LESSON_COUNT = 6;
 
@@ -104,10 +105,13 @@ namespace PrimerVolante.Testing.Editor
             // 2. Eliminar menús legados de la escena
             RemoveLegacyMenuObjects();
 
-            // 3. Configurar XR Origin (XR Rig)
+            // 3. Configurar XR Origin (XR Rig) y anclaje estático (desactivando gravedad y locomoción)
             GameObject xrOriginObj = SetupXROrigin();
 
-            // 4. Garantizar EventSystem con XRUIInputModule
+            // 4. Garantizar piso físico y plataforma de menú en el origen (0, 0, 0)
+            EnsureGroundPlatform();
+
+            // 5. Garantizar EventSystem con XRUIInputModule
             EnsureEventSystem();
 
             TMP_FontAsset font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FONT_PATH);
@@ -200,6 +204,37 @@ namespace PrimerVolante.Testing.Editor
                 xrOriginObj.transform.position = Vector3.zero;
                 xrOriginObj.transform.rotation = Quaternion.identity;
 
+                // Desactivar CharacterController en el rig: evita caída al vacío y colisiones físicas en menú
+                CharacterController cc = xrOriginObj.GetComponent<CharacterController>();
+                if (cc != null)
+                {
+                    cc.enabled = false;
+                }
+
+                // Desactivar sub-objeto Locomotion (contiene GravityProvider, ContinuousMove, SnapTurn, etc.)
+                Transform locomotion = xrOriginObj.transform.Find("Locomotion");
+                if (locomotion != null)
+                {
+                    locomotion.gameObject.SetActive(false);
+                }
+
+                // Desactivar cualquier componente de locomoción o física en el rig
+                foreach (var mb in xrOriginObj.GetComponentsInChildren<MonoBehaviour>(true))
+                {
+                    if (mb != null && mb.GetType().Namespace != null && mb.GetType().Namespace.Contains("Locomotion"))
+                    {
+                        mb.enabled = false;
+                    }
+                }
+
+                // Configurar XROrigin con Tracking Origin Floor y CameraYOffset estándar (1.36m)
+                var originComp = xrOriginObj.GetComponent<Unity.XR.CoreUtils.XROrigin>();
+                if (originComp != null)
+                {
+                    originComp.RequestedTrackingOriginMode = Unity.XR.CoreUtils.XROrigin.TrackingOriginMode.Floor;
+                    originComp.CameraYOffset = 1.36f;
+                }
+
                 // Eliminar cámaras huérfanas que no pertenezcan al XR Origin
                 Camera[] cameras = Object.FindObjectsByType<Camera>(FindObjectsInactive.Include);
                 foreach (Camera cam in cameras)
@@ -230,6 +265,48 @@ namespace PrimerVolante.Testing.Editor
             }
 
             return xrOriginObj;
+        }
+
+        // ====================================================================
+        // PISO FÍSICO Y PLATAFORMA DEL MENÚ PRINCIPAL
+        // ====================================================================
+        private static void EnsureGroundPlatform()
+        {
+            // 1. Collider de piso físico centrado en el origen (superficie superior en y = 0)
+            GameObject ground = GameObject.Find("Ground_FallbackCollider");
+            if (ground == null) ground = GameObject.Find("Ground_MainMenu");
+            if (ground == null) ground = new GameObject("Ground_MainMenu");
+            ground.name = "Ground_MainMenu";
+            ground.transform.position = new Vector3(0f, -0.5f, 0f);
+            ground.transform.rotation = Quaternion.identity;
+            ground.transform.localScale = Vector3.one;
+
+            BoxCollider box = ground.GetComponent<BoxCollider>();
+            if (box == null) box = ground.AddComponent<BoxCollider>();
+            box.center = Vector3.zero;
+            box.size = new Vector3(200f, 1f, 200f);
+            box.isTrigger = false;
+            box.enabled = true;
+            ground.layer = 0; // Default
+
+            // 2. Plataforma visual showroom bajo los pies del usuario
+            GameObject platform = GameObject.Find("Menu_FloorPlatform");
+            if (platform == null)
+            {
+                platform = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                platform.name = "Menu_FloorPlatform";
+            }
+            platform.transform.position = new Vector3(0f, -0.05f, 0f);
+            platform.transform.rotation = Quaternion.identity;
+            platform.transform.localScale = new Vector3(14f, 0.05f, 14f);
+            platform.layer = 0; // Default
+
+            Material mat = AssetDatabase.LoadAssetAtPath<Material>(PLATFORM_MATERIAL_PATH);
+            MeshRenderer renderer = platform.GetComponent<MeshRenderer>();
+            if (renderer != null && mat != null)
+            {
+                renderer.sharedMaterial = mat;
+            }
         }
 
         public static void EnsureEventSystem()
@@ -452,6 +529,9 @@ namespace PrimerVolante.Testing.Editor
             so.FindProperty("m_ExitModal").objectReferenceValue = exitModal;
             so.FindProperty("m_BtnConfirmExit").objectReferenceValue = btnConfirmExit;
             so.FindProperty("m_BtnCancelExit").objectReferenceValue = btnCancelExit;
+
+            // Anclaje Estático del Jugador
+            so.FindProperty("m_XROriginTransform").objectReferenceValue = xrOriginObj != null ? xrOriginObj.transform : null;
 
             // Interactores VR
             NearFarInteractor[] interactors = xrOriginObj != null

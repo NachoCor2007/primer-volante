@@ -96,6 +96,9 @@ namespace PrimerVolante.MainMenu
         [Header("Interactores VR (Rayo acotado a la UI)")]
         [SerializeField] private NearFarInteractor[] m_FarCastInteractors;
 
+        [Header("Anclaje Estático del Jugador")]
+        [SerializeField] private Transform m_XROriginTransform;
+
         // Estado interno
         private NewMenuTab m_CurrentTab = NewMenuTab.Lecciones;
         private int m_SelectedLessonIndex = 0;
@@ -114,6 +117,7 @@ namespace PrimerVolante.MainMenu
         public bool IsExitModalOpen => m_ExitModal != null && m_ExitModal.activeSelf;
         public IReadOnlyList<LessonDefinitionSO> Lessons => m_Lessons;
         public IReadOnlyList<CircuitDefinition> Circuits => m_Circuits;
+        public Transform XROriginTransform => m_XROriginTransform;
 
         public event Action<NewMenuTab> OnTabChanged;
         public event Action<int> OnLessonSelected;
@@ -135,6 +139,7 @@ namespace PrimerVolante.MainMenu
             EnsureLessonsLoadedInEditor();
             InitializeDefaultCircuitsIfEmpty();
             FindDependenciesIfNull();
+            LockPlayerStationary();
         }
 
         private void OnValidate()
@@ -160,6 +165,7 @@ namespace PrimerVolante.MainMenu
 
         private void Start()
         {
+            LockPlayerStationary();
             SetupTabButtons();
             SetupLessonItems();
             SetupCircuitItems();
@@ -275,6 +281,50 @@ namespace PrimerVolante.MainMenu
             // Sondeo directo de controles OpenXR / Meta Quest
             CheckHardwareTrigger(XRNode.RightHand, ref m_RightTriggerWasPressed);
             CheckHardwareTrigger(XRNode.LeftHand, ref m_LeftTriggerWasPressed);
+        }
+
+        private void LateUpdate()
+        {
+            // Garantizar que la base del visor se mantenga firmemente anclada al centro de la escena
+            // sin caer al vacío por gravedad física ni derivar por controles de locomoción
+            if (m_XROriginTransform != null)
+            {
+                m_XROriginTransform.position = Vector3.zero;
+                m_XROriginTransform.rotation = Quaternion.identity;
+            }
+        }
+
+        /// <summary>
+        /// Desactiva componentes de locomoción y gravedad física sobre el XR Origin,
+        /// manteniendo al jugador en una estación de visualización fija y cómoda.
+        /// </summary>
+        public void LockPlayerStationary()
+        {
+            if (m_XROriginTransform == null)
+            {
+                var origin = UnityEngine.Object.FindAnyObjectByType<Unity.XR.CoreUtils.XROrigin>(FindObjectsInactive.Include);
+                if (origin != null) m_XROriginTransform = origin.transform;
+            }
+
+            if (m_XROriginTransform != null)
+            {
+                // Desactivar CharacterController para que no ejecute gravedad ni colisiones físicas
+                var cc = m_XROriginTransform.GetComponent<CharacterController>();
+                if (cc != null) cc.enabled = false;
+
+                // Desactivar GameObject de Locomotion (GravityProvider, ContinuousMove, SnapTurn, etc.)
+                Transform locomotion = m_XROriginTransform.Find("Locomotion");
+                if (locomotion != null) locomotion.gameObject.SetActive(false);
+
+                // Desactivar proveedores de locomoción residuales
+                foreach (var provider in m_XROriginTransform.GetComponentsInChildren<UnityEngine.XR.Interaction.Toolkit.Locomotion.LocomotionProvider>(true))
+                {
+                    provider.enabled = false;
+                }
+
+                m_XROriginTransform.position = Vector3.zero;
+                m_XROriginTransform.rotation = Quaternion.identity;
+            }
         }
 
         private void CheckHardwareTrigger(XRNode handNode, ref bool wasPressed)

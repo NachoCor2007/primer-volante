@@ -104,7 +104,33 @@ namespace PrimerVolante.Testing.Editor
 
                 Camera headCam = xrOriginObj.GetComponentInChildren<Camera>(true);
                 Check(headCam != null && headCam.gameObject.activeSelf, "XR Origin posee una cámara activa para el visor VR");
+
+                // Verificaciones de anclaje estático y prevención de caída por gravedad física
+                CharacterController cc = xrOriginObj.GetComponent<CharacterController>();
+                Check(cc == null || !cc.enabled, "CharacterController está desactivado (evita que la física acelere el rig hacia abajo)");
+
+                Transform locomotion = xrOriginObj.transform.Find("Locomotion");
+                Check(locomotion != null && !locomotion.gameObject.activeSelf, "GameObject Locomotion está desactivado (elimina GravityProvider y traslación)");
+
+                bool anyLocoProviderEnabled = false;
+                foreach (var provider in xrOriginObj.GetComponentsInChildren<UnityEngine.XR.Interaction.Toolkit.Locomotion.LocomotionProvider>(true))
+                {
+                    if (provider.enabled) anyLocoProviderEnabled = true;
+                }
+                Check(!anyLocoProviderEnabled, "Todos los proveedores de locomoción están desactivados");
             }
+
+            // 2.b. Piso físico y plataforma de menú
+            GameObject groundObj = GameObject.Find("Ground_MainMenu");
+            Check(groundObj != null, "Existe el GameObject Ground_MainMenu en la escena");
+            if (groundObj != null)
+            {
+                BoxCollider groundBox = groundObj.GetComponent<BoxCollider>();
+                Check(groundBox != null && groundBox.enabled && !groundBox.isTrigger, "Ground_MainMenu posee un BoxCollider físico activo");
+            }
+
+            GameObject platformObj = GameObject.Find("Menu_FloorPlatform");
+            Check(platformObj != null, "Existe la plataforma visual Menu_FloorPlatform bajo los pies del usuario");
 
             // 3. Canvas WorldSpace, WorldCamera y Raycaster
             GameObject canvasObj = GameObject.Find(NewMainMenuSetup.CANVAS_NAME);
@@ -151,6 +177,10 @@ namespace PrimerVolante.Testing.Editor
             NewMainMenuController controller = canvasObj.GetComponent<NewMainMenuController>();
             Check(controller != null, "NewMainMenuController está adjunto al Canvas");
             if (controller == null) return;
+
+            Check(controller.XROriginTransform != null, "NewMainMenuController tiene asignado m_XROriginTransform para anclaje estático");
+            controller.LockPlayerStationary();
+            Check(controller.XROriginTransform != null && controller.XROriginTransform.position == Vector3.zero, "LockPlayerStationary mantiene el rig anclado en Vector3.zero");
 
             Check(controller.Lessons.Count == 6, "NewMainMenuController tiene cargadas las 6 lecciones del currículum");
             Check(controller.Circuits.Count >= 3, "NewMainMenuController tiene configurados al menos 3 circuitos integradores");
