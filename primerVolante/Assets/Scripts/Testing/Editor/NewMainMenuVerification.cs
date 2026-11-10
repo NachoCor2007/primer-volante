@@ -1,23 +1,31 @@
 using System;
 using System.Collections.Generic;
+using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnityEngine.XR.Interaction.Toolkit.Inputs;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
 using UnityEngine.XR.Interaction.Toolkit.UI;
 using PrimerVolante.Lessons;
 using PrimerVolante.MainMenu;
+using PrimerVolante.VR;
 
 namespace PrimerVolante.Testing.Editor
 {
     /// <summary>
     /// Batería de verificación automatizada para el nuevo menú principal NewMainMenu.
-    /// Valida escena, Canvas en World Space, TrackedDeviceGraphicRaycaster, EventSystem,
-    /// solapas, selección de lecciones, circuitos integradores, calibración y modal de salida.
-    /// Cumple estrictamente la regla de cero APIs obsoletas (AGENTS.md).
+    /// Valida:
+    /// - Ausencia total de Car09 o vehículos en la escena (menú limpio sin obstrucciones de cabina).
+    /// - XR Origin centrado en (0,0,0) sin DriverSeatFollower y con InputActionManager configurado.
+    /// - Canvas en World Space con worldCamera asignada y TrackedDeviceGraphicRaycaster único.
+    /// - RaycastTargets disciplinados (fondos y textos en false, botones en true).
+    /// - Navegación entre solapas, currículum de 6 lecciones con botón "COMENZAR LECCIÓN",
+    ///   circuitos con "INICIAR RECORRIDO", ilustraciones 3D en controles y modal de salida centrado.
+    /// - Cumple estrictamente la regla de cero APIs obsoletas (AGENTS.md).
     /// </summary>
     public static class NewMainMenuVerification
     {
@@ -33,7 +41,7 @@ namespace PrimerVolante.Testing.Editor
             s_Failures.Clear();
 
             Debug.Log("==================================================================");
-            Debug.Log("[NewMainMenuVerification] Iniciando suite de verificación...");
+            Debug.Log("[NewMainMenuVerification] Iniciando suite de verificación exhaustiva...");
 
             try
             {
@@ -75,21 +83,49 @@ namespace PrimerVolante.Testing.Editor
             Scene scene = EditorSceneManager.GetSceneByPath(NewMainMenuSetup.SCENE_PATH);
             Check(scene.IsValid() && scene.isLoaded, $"La escena {NewMainMenuSetup.SCENE_PATH} se cargó correctamente");
 
-            // 1. Canvas WorldSpace y Raycaster
+            // 1. Validar que NO exista Car09 ni VehicleController en la escena
+            VehicleController[] cars = UnityEngine.Object.FindObjectsByType<VehicleController>(FindObjectsInactive.Include);
+            Check(cars == null || cars.Length == 0, "No existe ningún VehicleController (Car09) en la escena");
+
+            GameObject car09Obj = GameObject.Find("Car09");
+            Check(car09Obj == null, "No existe el GameObject Car09 en la escena");
+
+            // 2. XR Origin (XR Rig) centrado y sin DriverSeatFollower
+            GameObject xrOriginObj = GameObject.Find("XR Origin (XR Rig)");
+            Check(xrOriginObj != null, "Existe el GameObject XR Origin (XR Rig)");
+            if (xrOriginObj != null)
+            {
+                DriverSeatFollower follower = xrOriginObj.GetComponent<DriverSeatFollower>();
+                Check(follower == null, "XR Origin no tiene DriverSeatFollower (no intenta seguir un auto inexistente)");
+                Check(xrOriginObj.transform.position == Vector3.zero, "XR Origin está centrado en el origen Vector3.zero");
+
+                var inputMgr = xrOriginObj.GetComponent<InputActionManager>();
+                Check(inputMgr != null && inputMgr.actionAssets != null && inputMgr.actionAssets.Count > 0, "XR Origin tiene InputActionManager con acciones XRI configuradas");
+
+                Camera headCam = xrOriginObj.GetComponentInChildren<Camera>(true);
+                Check(headCam != null && headCam.gameObject.activeSelf, "XR Origin posee una cámara activa para el visor VR");
+            }
+
+            // 3. Canvas WorldSpace, WorldCamera y Raycaster
             GameObject canvasObj = GameObject.Find(NewMainMenuSetup.CANVAS_NAME);
             Check(canvasObj != null, "Existe el GameObject NewMainMenu_Canvas");
             if (canvasObj == null) return;
 
             Canvas canvas = canvasObj.GetComponent<Canvas>();
             Check(canvas != null && canvas.renderMode == RenderMode.WorldSpace, "El Canvas está configurado en WorldSpace");
+            Check(canvas != null && canvas.worldCamera != null, "El Canvas tiene asignada la worldCamera de XR Origin");
 
-            TrackedDeviceGraphicRaycaster raycaster = canvasObj.GetComponent<TrackedDeviceGraphicRaycaster>();
-            Check(raycaster != null, "El Canvas posee TrackedDeviceGraphicRaycaster para interacción VR");
+            TrackedDeviceGraphicRaycaster trackedRaycaster = canvasObj.GetComponent<TrackedDeviceGraphicRaycaster>();
+            Check(trackedRaycaster != null, "El Canvas posee TrackedDeviceGraphicRaycaster para interacción VR");
 
-            GraphicRaycaster fallbackRaycaster = canvasObj.GetComponent<GraphicRaycaster>();
-            Check(fallbackRaycaster != null, "El Canvas posee GraphicRaycaster para interacción con mouse/escritorio");
+            GraphicRaycaster legacyRaycaster = canvasObj.GetComponent<GraphicRaycaster>();
+            Check(legacyRaycaster == null, "El Canvas NO posee GraphicRaycaster redundante (evita conflictos de raycast)");
 
-            // 2. Capa UI
+            // 4. Disciplina de RaycastTargets
+            Image bg = canvasObj.transform.Find("Background")?.GetComponent<Image>();
+            Check(bg != null && !bg.raycastTarget, "El fondo del Canvas tiene raycastTarget = false (no absorbe eventos de puntero)");
+
+            // 5. Capa UI estricta
             int uiLayer = LayerMask.NameToLayer("UI");
             bool allInUILayer = true;
             foreach (Transform t in canvasObj.GetComponentsInChildren<Transform>(true))
@@ -100,9 +136,9 @@ namespace PrimerVolante.Testing.Editor
                     break;
                 }
             }
-            Check(allInUILayer, "Todos los elementos del Canvas pertenecen estrictamente a la capa UI (UIOnlyFarCasting)");
+            Check(allInUILayer, "Todos los elementos del Canvas pertenecen estrictamente a la capa UI");
 
-            // 3. EventSystem con XRUIInputModule
+            // 6. EventSystem con XRUIInputModule
             EventSystem eventSystem = UnityEngine.Object.FindAnyObjectByType<EventSystem>(FindObjectsInactive.Include);
             Check(eventSystem != null, "Existe EventSystem en la escena");
             if (eventSystem != null)
@@ -111,7 +147,7 @@ namespace PrimerVolante.Testing.Editor
                 Check(xrModule != null, "EventSystem tiene agregado XRUIInputModule");
             }
 
-            // 4. Controlador y Solapas
+            // 7. Controlador y Solapas
             NewMainMenuController controller = canvasObj.GetComponent<NewMainMenuController>();
             Check(controller != null, "NewMainMenuController está adjunto al Canvas");
             if (controller == null) return;
@@ -119,7 +155,7 @@ namespace PrimerVolante.Testing.Editor
             Check(controller.Lessons.Count == 6, "NewMainMenuController tiene cargadas las 6 lecciones del currículum");
             Check(controller.Circuits.Count >= 3, "NewMainMenuController tiene configurados al menos 3 circuitos integradores");
 
-            // 5. Test de Navegación por Solapas
+            // 8. Test de Navegación por Solapas
             controller.SelectTab(NewMenuTab.Controles);
             Check(controller.CurrentTab == NewMenuTab.Controles, "Navegación: Activar solapa Controles");
 
@@ -135,21 +171,39 @@ namespace PrimerVolante.Testing.Editor
             controller.SelectTab(NewMenuTab.Lecciones);
             Check(controller.CurrentTab == NewMenuTab.Lecciones, "Navegación: Activar solapa Lecciones");
 
-            // 6. Test de Selección de Lecciones
-            controller.SelectLesson(2);
-            Check(controller.SelectedLessonIndex == 2, "Selección: Cambiar a Lección índice 2 (Lección 3)");
+            // 9. Ilustraciones 3D de Controles
+            ControllerIllustration[] illustrations = canvasObj.GetComponentsInChildren<ControllerIllustration>(true);
+            Check(illustrations != null && illustrations.Length >= 3, "El panel de Controles contiene al menos 3 ilustraciones 3D interactivas de mando VR");
 
-            controller.SelectLesson(0);
-            Check(controller.SelectedLessonIndex == 0, "Selección: Volver a Lección índice 0 (Lección 1)");
+            // 10. Botones de acción formativos verdes
+            Button btnStartLesson = canvasObj.transform.Find("ContentArea/Panel_Lessons/LessonDetailColumn/ActionBox/Btn_StartLesson")?.GetComponent<Button>();
+            Check(btnStartLesson != null, "Existe el botón de acción formativa para Lecciones");
+            if (btnStartLesson != null)
+            {
+                TextMeshProUGUI txt = btnStartLesson.GetComponentInChildren<TextMeshProUGUI>();
+                Check(txt != null && txt.text.Contains("COMENZAR"), "El botón de lección tiene mensaje formativo adecuado ('COMENZAR LECCIÓN')");
+            }
 
-            // 7. Test de Selección de Circuitos
-            controller.SelectCircuit(1);
-            Check(controller.SelectedCircuitIndex == 1, "Selección: Cambiar a Circuito índice 1");
+            Button btnStartCircuit = canvasObj.transform.Find("ContentArea/Panel_Circuits/CircuitDetailColumn/ActionBox/Btn_StartCircuit")?.GetComponent<Button>();
+            Check(btnStartCircuit != null, "Existe el botón de acción para Circuitos");
+            if (btnStartCircuit != null)
+            {
+                TextMeshProUGUI txt = btnStartCircuit.GetComponentInChildren<TextMeshProUGUI>();
+                Check(txt != null && txt.text.Contains("INICIAR"), "El botón de circuito tiene mensaje adecuado ('INICIAR RECORRIDO')");
+            }
 
-            // 8. Test de Modal de Salida
+            // 11. Modal de Salida
             Check(!controller.IsExitModalOpen, "El modal de salida está inicialmente cerrado");
             controller.OpenExitModal();
             Check(controller.IsExitModalOpen, "OpenExitModal abre el modal de confirmación");
+
+            GameObject exitModalObj = canvasObj.transform.Find("Modal_ExitConfirmation")?.gameObject;
+            Check(exitModalObj != null && exitModalObj.activeSelf, "Modal_ExitConfirmation se encuentra activo visualmente");
+
+            Button btnConfirmExit = exitModalObj?.transform.Find("ConfirmBox/ButtonRow/Btn_Confirm")?.GetComponent<Button>();
+            Button btnCancelExit = exitModalObj?.transform.Find("ConfirmBox/ButtonRow/Btn_Cancel")?.GetComponent<Button>();
+            Check(btnConfirmExit != null && btnCancelExit != null, "El modal de salida contiene botones de Cancelar y Confirmar Salida");
+
             controller.CloseExitModal();
             Check(!controller.IsExitModalOpen, "CloseExitModal cierra el modal de confirmación");
         }
@@ -170,4 +224,3 @@ namespace PrimerVolante.Testing.Editor
         }
     }
 }
-

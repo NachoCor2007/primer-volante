@@ -2,10 +2,15 @@ using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
 using PrimerVolante.Lessons;
 using PrimerVolante.VR;
+using XRNode = UnityEngine.XR.XRNode;
+using XRInputDevice = UnityEngine.XR.InputDevice;
+using XRInputDevices = UnityEngine.XR.InputDevices;
+using XRCommonUsages = UnityEngine.XR.CommonUsages;
 
 namespace PrimerVolante.MainMenu
 {
@@ -32,13 +37,14 @@ namespace PrimerVolante.MainMenu
 
     /// <summary>
     /// Controlador del Nuevo Menú Principal en Realidad Virtual ("NewMainMenu").
-    /// Ofrece una experiencia ortodoxa, accesible y estática en World Space:
+    /// Ofrece una experiencia ortodoxa, accesible, estática y sin desorden visual en World Space:
     /// - Navegación lateral por solapas (Controles, Lecciones, Circuitos, Calibración, Créditos).
-    /// - Área central de contenido con selección de lecciones y circuitos.
-    /// - Botón verde destacado "Iniciar Práctica" / "Comenzar Lección".
-    /// - Sistema de salida seguro con modal de confirmación.
-    /// - Soporte de interacción por rayo (XR Raycast) acotado a la UI mientras el menú está abierto
-    ///   (usando <see cref="UIOnlyFarCasting"/>) y liberado al iniciar una lección.
+    /// - Módulo de controles con ilustraciones 3D interactivas del mando VR.
+    /// - Selección clara de lecciones y circuitos con resumen legible y botón verde "Comenzar Lección" / "Iniciar Recorrido".
+    /// - Modal de confirmación de salida limpio y centrado.
+    /// - Doble soporte de interacción VR: XRI TrackedDeviceGraphicRaycaster estándar + sondeo directo
+    ///   de hardware (XRInputDevices.trigger / primaryButton) con UIOnlyFarCasting para garantizar 100%
+    ///   la interactividad del gatillo en visores Meta Quest / OpenXR.
     /// - Cumple estrictamente la regla de cero APIs obsoletas (AGENTS.md).
     /// </summary>
     public class NewMainMenuController : MonoBehaviour
@@ -52,10 +58,10 @@ namespace PrimerVolante.MainMenu
         [SerializeField] private Button m_BtnExit;
 
         [Header("Colores de Solapas")]
-        [SerializeField] private Color m_ActiveTabColor = new Color(0.15f, 0.39f, 0.92f, 1f);   // Azul destacado #2563eb
-        [SerializeField] private Color m_InactiveTabColor = new Color(0.12f, 0.15f, 0.22f, 1f); // Gris azulado oscuro
+        [SerializeField] private Color m_ActiveTabColor = new Color(0.15f, 0.42f, 0.90f, 1f);   // Azul #266be6
+        [SerializeField] private Color m_InactiveTabColor = new Color(0.10f, 0.12f, 0.18f, 1f); // Slate oscuro #1a1f2e
         [SerializeField] private Color m_ActiveTextColor = Color.white;
-        [SerializeField] private Color m_InactiveTextColor = new Color(0.70f, 0.74f, 0.82f, 1f);
+        [SerializeField] private Color m_InactiveTextColor = new Color(0.70f, 0.75f, 0.85f, 1f);
 
         [Header("Paneles de Contenido")]
         [SerializeField] private GameObject m_PanelControls;
@@ -69,7 +75,7 @@ namespace PrimerVolante.MainMenu
         [SerializeField] private Transform m_LessonItemsContainer;
         [SerializeField] private TextMeshProUGUI m_LessonDetailTitle;
         [SerializeField] private TextMeshProUGUI m_LessonDetailDescription;
-        [SerializeField] private TextMeshProUGUI m_LessonDetailSteps;
+        [SerializeField] private TextMeshProUGUI m_LessonDetailDuration;
         [SerializeField] private Button m_BtnStartLesson;
         [SerializeField] private TextMeshProUGUI m_BtnStartLessonText;
 
@@ -81,13 +87,6 @@ namespace PrimerVolante.MainMenu
         [SerializeField] private TextMeshProUGUI m_CircuitDetailInfo;
         [SerializeField] private Button m_BtnStartCircuit;
         [SerializeField] private TextMeshProUGUI m_BtnStartCircuitText;
-
-        [Header("Sección Calibración")]
-        [SerializeField] private Slider m_CalibLateralSlider;
-        [SerializeField] private Slider m_CalibHeightSlider;
-        [SerializeField] private Slider m_CalibDepthSlider;
-        [SerializeField] private Button m_BtnResetCalibration;
-        [SerializeField] private DriverSeatFollower m_DriverSeatFollower;
 
         [Header("Modal de Salida")]
         [SerializeField] private GameObject m_ExitModal;
@@ -103,6 +102,11 @@ namespace PrimerVolante.MainMenu
         private int m_SelectedCircuitIndex = 0;
         private readonly List<Button> m_LessonCardButtons = new List<Button>();
         private readonly List<Button> m_CircuitCardButtons = new List<Button>();
+
+        // Estado de hardware para fallback de gatillo / botones
+        private bool m_RightTriggerWasPressed = false;
+        private bool m_LeftTriggerWasPressed = false;
+        private float m_LastHardwareClickTime = 0f;
 
         public NewMenuTab CurrentTab => m_CurrentTab;
         public int SelectedLessonIndex => m_SelectedLessonIndex;
@@ -159,10 +163,9 @@ namespace PrimerVolante.MainMenu
             SetupTabButtons();
             SetupLessonItems();
             SetupCircuitItems();
-            SetupCalibrationSection();
             SetupExitModal();
 
-            // Activar solapa inicial (Lecciones)
+            // Solapa inicial: Lecciones
             SelectTab(NewMenuTab.Lecciones);
         }
 
@@ -183,11 +186,6 @@ namespace PrimerVolante.MainMenu
 
         private void FindDependenciesIfNull()
         {
-            if (m_DriverSeatFollower == null)
-            {
-                m_DriverSeatFollower = UnityEngine.Object.FindAnyObjectByType<DriverSeatFollower>();
-            }
-
             if (m_FarCastInteractors == null || m_FarCastInteractors.Length == 0)
             {
                 m_FarCastInteractors = UnityEngine.Object.FindObjectsByType<NearFarInteractor>(FindObjectsInactive.Include);
@@ -197,7 +195,6 @@ namespace PrimerVolante.MainMenu
         public void InitializeDefaultCircuitsIfEmpty()
         {
             if (m_Circuits != null && m_Circuits.Count > 0) return;
-
             m_Circuits = GetDefaultCircuits();
         }
 
@@ -208,8 +205,8 @@ namespace PrimerVolante.MainMenu
                 new CircuitDefinition
                 {
                     circuitId = "CIRCUIT_01",
-                    title = "Circuito Integrador 1: Tráfico y Señalización Urbana",
-                    description = "Recorrido integral por el casco urbano con intersecciones reguladas por semáforos, señales reglamentarias y evaluación en tiempo real de infracciones de tránsito.",
+                    title = "Circuito Integrador 1: Tráfico y Señales",
+                    description = "Recorrido integral por el casco urbano con intersecciones reguladas por semáforos, señales reglamentarias y evaluación en tiempo real de infracciones.",
                     sceneName = "Lesson_05_TurnIntersections",
                     difficulty = "Intermedio",
                     estimatedTime = "10 - 15 min"
@@ -217,8 +214,8 @@ namespace PrimerVolante.MainMenu
                 new CircuitDefinition
                 {
                     circuitId = "CIRCUIT_02",
-                    title = "Circuito Integrador 2: Maniobras y Estacionamiento",
-                    description = "Práctica integral de conducción que combina desplazamiento seguro por calles urbanas y maniobras avanzadas de estacionamiento en dársena a 45° y en paralelo.",
+                    title = "Circuito Integrador 2: Maniobras y Parking",
+                    description = "Práctica integral que combina desplazamiento seguro por calles urbanas y maniobras de estacionamiento en dársena a 45° y en paralelo.",
                     sceneName = "Lesson_06_ParkingManeuvers",
                     difficulty = "Avanzado",
                     estimatedTime = "12 - 18 min"
@@ -227,7 +224,7 @@ namespace PrimerVolante.MainMenu
                 {
                     circuitId = "CIRCUIT_CITY",
                     title = "Práctica Libre: Ciudad Completa",
-                    description = "Manejo libre e independiente a lo largo de todo el mapa de la ciudad. Ideal para familiarizarse con el comportamiento dinámico del vehículo y los controles.",
+                    description = "Manejo libre e independiente a lo largo de todo el mapa de la ciudad. Ideal para familiarizarse con el comportamiento dinámico del vehículo.",
                     sceneName = "City_Master",
                     difficulty = "Libre",
                     estimatedTime = "Sin límite"
@@ -263,75 +260,125 @@ namespace PrimerVolante.MainMenu
         }
 
         // ====================================================================
-        // NAVEGACIÓN POR SOLAPAS
+        // SONDEO DE HARDWARE VR (FALLBACK ROBUSTO PARA TRIGGER / BOTONES)
+        // ====================================================================
+        private void Update()
+        {
+            // Atajo de teclado para pruebas en Editor (Escape abre/cierra modal de salida)
+            if (UnityEngine.InputSystem.Keyboard.current != null &&
+                UnityEngine.InputSystem.Keyboard.current[UnityEngine.InputSystem.Key.Escape].wasPressedThisFrame)
+            {
+                if (IsExitModalOpen) CloseExitModal();
+                else OpenExitModal();
+            }
+
+            // Sondeo directo de controles OpenXR / Meta Quest
+            CheckHardwareTrigger(XRNode.RightHand, ref m_RightTriggerWasPressed);
+            CheckHardwareTrigger(XRNode.LeftHand, ref m_LeftTriggerWasPressed);
+        }
+
+        private void CheckHardwareTrigger(XRNode handNode, ref bool wasPressed)
+        {
+            XRInputDevice device = XRInputDevices.GetDeviceAtXRNode(handNode);
+            if (!device.isValid) return;
+
+            bool isPressed = false;
+            if (device.TryGetFeatureValue(XRCommonUsages.triggerButton, out bool tb) && tb)
+            {
+                isPressed = true;
+            }
+            else if (device.TryGetFeatureValue(XRCommonUsages.trigger, out float triggerVal) && triggerVal > 0.5f)
+            {
+                isPressed = true;
+            }
+            else if (device.TryGetFeatureValue(XRCommonUsages.primaryButton, out bool pb) && pb)
+            {
+                isPressed = true;
+            }
+
+            if (isPressed && !wasPressed)
+            {
+                if (Time.unscaledTime - m_LastHardwareClickTime > 0.20f)
+                {
+                    if (TryTriggerClickOnHoveredUI(handNode))
+                    {
+                        m_LastHardwareClickTime = Time.unscaledTime;
+                    }
+                }
+            }
+            wasPressed = isPressed;
+        }
+
+        private bool TryTriggerClickOnHoveredUI(XRNode handNode)
+        {
+            if (m_FarCastInteractors == null) return false;
+
+            for (int i = 0; i < m_FarCastInteractors.Length; i++)
+            {
+                var interactor = m_FarCastInteractors[i];
+                if (interactor == null || !interactor.isActiveAndEnabled) continue;
+
+                // Verificar si este interactor corresponde a la mano sondeada
+                bool matchesHand = (handNode == XRNode.RightHand && interactor.name.Contains("Right")) ||
+                                   (handNode == XRNode.LeftHand && interactor.name.Contains("Left"));
+
+                if (!matchesHand && m_FarCastInteractors.Length > 1) continue;
+
+                if (interactor.TryGetCurrentUIRaycastResult(out RaycastResult hit) && hit.isValid && hit.gameObject != null)
+                {
+                    Button btn = hit.gameObject.GetComponentInParent<Button>();
+                    if (btn != null && btn.interactable && btn.gameObject.activeInHierarchy)
+                    {
+                        btn.onClick.Invoke();
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        // ====================================================================
+        // CONFIGURACIÓN DE NAVEGACIÓN Y SOLAPAS
         // ====================================================================
         private void SetupTabButtons()
         {
-            if (m_TabBtnControls != null)
-                m_TabBtnControls.onClick.AddListener(() => SelectTab(NewMenuTab.Controles));
+            if (m_TabBtnControls != null) m_TabBtnControls.onClick.AddListener(() => SelectTab(NewMenuTab.Controles));
+            if (m_TabBtnLessons != null) m_TabBtnLessons.onClick.AddListener(() => SelectTab(NewMenuTab.Lecciones));
+            if (m_TabBtnCircuits != null) m_TabBtnCircuits.onClick.AddListener(() => SelectTab(NewMenuTab.Circuitos));
+            if (m_TabBtnCalibration != null) m_TabBtnCalibration.onClick.AddListener(() => SelectTab(NewMenuTab.Calibracion));
+            if (m_TabBtnCredits != null) m_TabBtnCredits.onClick.AddListener(() => SelectTab(NewMenuTab.Creditos));
 
-            if (m_TabBtnLessons != null)
-                m_TabBtnLessons.onClick.AddListener(() => SelectTab(NewMenuTab.Lecciones));
-
-            if (m_TabBtnCircuits != null)
-                m_TabBtnCircuits.onClick.AddListener(() => SelectTab(NewMenuTab.Circuitos));
-
-            if (m_TabBtnCalibration != null)
-                m_TabBtnCalibration.onClick.AddListener(() => SelectTab(NewMenuTab.Calibracion));
-
-            if (m_TabBtnCredits != null)
-                m_TabBtnCredits.onClick.AddListener(() => SelectTab(NewMenuTab.Creditos));
-
-            if (m_BtnExit != null)
-                m_BtnExit.onClick.AddListener(OpenExitModal);
+            if (m_BtnExit != null) m_BtnExit.onClick.AddListener(OpenExitModal);
         }
 
         public void SelectTab(NewMenuTab tab)
         {
             m_CurrentTab = tab;
 
-            // Paneles
             if (m_PanelControls != null) m_PanelControls.SetActive(tab == NewMenuTab.Controles);
             if (m_PanelLessons != null) m_PanelLessons.SetActive(tab == NewMenuTab.Lecciones);
             if (m_PanelCircuits != null) m_PanelCircuits.SetActive(tab == NewMenuTab.Circuitos);
             if (m_PanelCalibration != null) m_PanelCalibration.SetActive(tab == NewMenuTab.Calibracion);
             if (m_PanelCredits != null) m_PanelCredits.SetActive(tab == NewMenuTab.Creditos);
 
-            // Estilos de botones
-            UpdateTabButtonStyle(m_TabBtnControls, tab == NewMenuTab.Controles);
-            UpdateTabButtonStyle(m_TabBtnLessons, tab == NewMenuTab.Lecciones);
-            UpdateTabButtonStyle(m_TabBtnCircuits, tab == NewMenuTab.Circuitos);
-            UpdateTabButtonStyle(m_TabBtnCalibration, tab == NewMenuTab.Calibracion);
-            UpdateTabButtonStyle(m_TabBtnCredits, tab == NewMenuTab.Creditos);
-
-            // Refresco contextual
-            if (tab == NewMenuTab.Lecciones)
-            {
-                UpdateLessonDetailView();
-            }
-            else if (tab == NewMenuTab.Circuitos)
-            {
-                UpdateCircuitDetailView();
-            }
-            else if (tab == NewMenuTab.Calibracion)
-            {
-                RefreshCalibrationSliders();
-            }
+            UpdateTabButtonVisuals(m_TabBtnControls, tab == NewMenuTab.Controles);
+            UpdateTabButtonVisuals(m_TabBtnLessons, tab == NewMenuTab.Lecciones);
+            UpdateTabButtonVisuals(m_TabBtnCircuits, tab == NewMenuTab.Circuitos);
+            UpdateTabButtonVisuals(m_TabBtnCalibration, tab == NewMenuTab.Calibracion);
+            UpdateTabButtonVisuals(m_TabBtnCredits, tab == NewMenuTab.Creditos);
 
             OnTabChanged?.Invoke(tab);
         }
 
-        private void UpdateTabButtonStyle(Button button, bool isActive)
+        private void UpdateTabButtonVisuals(Button btn, bool isActive)
         {
-            if (button == null) return;
+            if (btn == null) return;
 
-            Image bg = button.GetComponent<Image>();
-            if (bg != null)
-            {
-                bg.color = isActive ? m_ActiveTabColor : m_InactiveTabColor;
-            }
+            Image bg = btn.GetComponent<Image>();
+            if (bg != null) bg.color = isActive ? m_ActiveTabColor : m_InactiveTabColor;
 
-            TextMeshProUGUI label = button.GetComponentInChildren<TextMeshProUGUI>();
+            TextMeshProUGUI label = btn.GetComponentInChildren<TextMeshProUGUI>();
             if (label != null)
             {
                 label.color = isActive ? m_ActiveTextColor : m_InactiveTextColor;
@@ -347,7 +394,7 @@ namespace PrimerVolante.MainMenu
             if (m_LessonItemsContainer == null) return;
 
             m_LessonCardButtons.Clear();
-            Button[] buttons = m_LessonItemsContainer.GetComponentsInChildren<Button>(true);
+            var buttons = m_LessonItemsContainer.GetComponentsInChildren<Button>(true);
             m_LessonCardButtons.AddRange(buttons);
 
             for (int i = 0; i < m_LessonCardButtons.Count; i++)
@@ -363,7 +410,7 @@ namespace PrimerVolante.MainMenu
                 m_BtnStartLesson.onClick.AddListener(StartSelectedLesson);
             }
 
-            SelectLesson(m_SelectedLessonIndex);
+            SelectLesson(0);
         }
 
         public void SelectLesson(int index)
@@ -371,89 +418,56 @@ namespace PrimerVolante.MainMenu
             if (m_Lessons == null || m_Lessons.Count == 0) return;
             m_SelectedLessonIndex = Mathf.Clamp(index, 0, m_Lessons.Count - 1);
 
-            // Resaltar tarjeta seleccionada
+            var lesson = m_Lessons[m_SelectedLessonIndex];
+            if (lesson != null)
+            {
+                if (m_LessonDetailTitle != null) m_LessonDetailTitle.text = $"{lesson.lessonId}: {lesson.lessonTitle}";
+                if (m_LessonDetailDescription != null) m_LessonDetailDescription.text = GetLessonDescription(lesson);
+                if (m_LessonDetailDuration != null)
+                {
+                    int stepCount = lesson.steps != null ? lesson.steps.Count : 5;
+                    m_LessonDetailDuration.text = $"• Duración: 10 - 15 min   |   • Fases: {stepCount} guiadas por voz";
+                }
+            }
+
+            // Actualizar estilo visual de la lista
             for (int i = 0; i < m_LessonCardButtons.Count; i++)
             {
-                bool isSel = (i == m_SelectedLessonIndex);
-                Image cardBg = m_LessonCardButtons[i].GetComponent<Image>();
-                if (cardBg != null)
+                bool isSelected = (i == m_SelectedLessonIndex);
+                var img = m_LessonCardButtons[i].GetComponent<Image>();
+                if (img != null) img.color = isSelected ? new Color(0.12f, 0.28f, 0.65f, 1f) : new Color(0.12f, 0.15f, 0.22f, 1f);
+
+                var txt = m_LessonCardButtons[i].GetComponentInChildren<TextMeshProUGUI>();
+                if (txt != null)
                 {
-                    cardBg.color = isSel ? new Color(0.18f, 0.28f, 0.48f, 1f) : new Color(0.11f, 0.14f, 0.20f, 1f);
+                    txt.color = isSelected ? Color.white : new Color(0.80f, 0.85f, 0.95f, 1f);
+                    txt.fontStyle = isSelected ? FontStyles.Bold : FontStyles.Normal;
                 }
             }
 
-            UpdateLessonDetailView();
             OnLessonSelected?.Invoke(m_SelectedLessonIndex);
-        }
-
-        private void UpdateLessonDetailView()
-        {
-            if (m_Lessons == null || m_SelectedLessonIndex < 0 || m_SelectedLessonIndex >= m_Lessons.Count) return;
-
-            LessonDefinitionSO lesson = m_Lessons[m_SelectedLessonIndex];
-            if (lesson == null) return;
-
-            if (m_LessonDetailTitle != null)
-            {
-                m_LessonDetailTitle.text = lesson.lessonTitle;
-            }
-
-            if (m_LessonDetailSteps != null)
-            {
-                int count = lesson.steps != null ? lesson.steps.Count : 0;
-                m_LessonDetailSteps.text = $"Pasos formativos a cumplir: {count}";
-            }
-
-            if (m_LessonDetailDescription != null)
-            {
-                if (lesson.steps != null && lesson.steps.Count > 0)
-                {
-                    System.Text.StringBuilder sb = new System.Text.StringBuilder();
-                    sb.AppendLine("<b>Contenido y Objetivos de la Práctica:</b>");
-                    for (int i = 0; i < lesson.steps.Count && i < 6; i++)
-                    {
-                        var step = lesson.steps[i];
-                        if (step != null)
-                        {
-                            sb.AppendLine($"• {step.stepTitle}");
-                        }
-                    }
-                    if (lesson.steps.Count > 6)
-                    {
-                        sb.AppendLine($"... y {lesson.steps.Count - 6} pasos más.");
-                    }
-                    m_LessonDetailDescription.text = sb.ToString();
-                }
-                else
-                {
-                    m_LessonDetailDescription.text = "Lección práctica orientada al aprendizaje progresivo de maniobras y seguridad vial.";
-                }
-            }
-
-            if (m_BtnStartLessonText != null)
-            {
-                m_BtnStartLessonText.text = "COMENZAR LECCIÓN";
-            }
         }
 
         public void StartSelectedLesson()
         {
             if (m_Lessons == null || m_SelectedLessonIndex < 0 || m_SelectedLessonIndex >= m_Lessons.Count) return;
 
-            LessonDefinitionSO lesson = m_Lessons[m_SelectedLessonIndex];
+            var lesson = m_Lessons[m_SelectedLessonIndex];
             if (lesson == null) return;
 
-            Debug.Log($"[NewMainMenu] Iniciando lección formativa: {lesson.lessonTitle} ({lesson.lessonId})");
+            Debug.Log($"[NewMainMenuController] Comenzando Lección: {lesson.lessonId} - {lesson.lessonTitle}");
             EnableUIFarCasting(false);
+            LessonSceneFlowManager.Instance.LoadLesson(lesson.lessonId);
+        }
 
-            if (LessonSceneFlowManager.Instance != null)
+        private static string GetLessonDescription(LessonDefinitionSO lesson)
+        {
+            if (lesson == null) return string.Empty;
+            if (lesson.steps != null && lesson.steps.Count > 0 && lesson.steps[0] != null)
             {
-                LessonSceneFlowManager.Instance.LoadLesson(lesson);
+                return $"{lesson.steps[0].stepTitle}: {lesson.steps[0].instructionText}";
             }
-            else
-            {
-                Debug.LogWarning("[NewMainMenu] LessonSceneFlowManager no disponible. Comprobando escena directamente.");
-            }
+            return "Módulo formativo de conducción vehicular con asistencia y evaluación en tiempo real.";
         }
 
         // ====================================================================
@@ -464,7 +478,7 @@ namespace PrimerVolante.MainMenu
             if (m_CircuitItemsContainer == null) return;
 
             m_CircuitCardButtons.Clear();
-            Button[] buttons = m_CircuitItemsContainer.GetComponentsInChildren<Button>(true);
+            var buttons = m_CircuitItemsContainer.GetComponentsInChildren<Button>(true);
             m_CircuitCardButtons.AddRange(buttons);
 
             for (int i = 0; i < m_CircuitCardButtons.Count; i++)
@@ -480,7 +494,7 @@ namespace PrimerVolante.MainMenu
                 m_BtnStartCircuit.onClick.AddListener(StartSelectedCircuit);
             }
 
-            SelectCircuit(m_SelectedCircuitIndex);
+            SelectCircuit(0);
         }
 
         public void SelectCircuit(int index)
@@ -488,160 +502,52 @@ namespace PrimerVolante.MainMenu
             if (m_Circuits == null || m_Circuits.Count == 0) return;
             m_SelectedCircuitIndex = Mathf.Clamp(index, 0, m_Circuits.Count - 1);
 
-            for (int i = 0; i < m_CircuitCardButtons.Count; i++)
+            var circuit = m_Circuits[m_SelectedCircuitIndex];
+            if (circuit != null)
             {
-                bool isSel = (i == m_SelectedCircuitIndex);
-                Image cardBg = m_CircuitCardButtons[i].GetComponent<Image>();
-                if (cardBg != null)
+                if (m_CircuitDetailTitle != null) m_CircuitDetailTitle.text = circuit.title;
+                if (m_CircuitDetailDescription != null) m_CircuitDetailDescription.text = circuit.description;
+                if (m_CircuitDetailInfo != null)
                 {
-                    cardBg.color = isSel ? new Color(0.18f, 0.28f, 0.48f, 1f) : new Color(0.11f, 0.14f, 0.20f, 1f);
+                    m_CircuitDetailInfo.text = $"• Dificultad: {circuit.difficulty}   |   • Tiempo: {circuit.estimatedTime}";
                 }
             }
 
-            UpdateCircuitDetailView();
+            for (int i = 0; i < m_CircuitCardButtons.Count; i++)
+            {
+                bool isSelected = (i == m_SelectedCircuitIndex);
+                var img = m_CircuitCardButtons[i].GetComponent<Image>();
+                if (img != null) img.color = isSelected ? new Color(0.12f, 0.28f, 0.65f, 1f) : new Color(0.12f, 0.15f, 0.22f, 1f);
+
+                var txt = m_CircuitCardButtons[i].GetComponentInChildren<TextMeshProUGUI>();
+                if (txt != null)
+                {
+                    txt.color = isSelected ? Color.white : new Color(0.80f, 0.85f, 0.95f, 1f);
+                    txt.fontStyle = isSelected ? FontStyles.Bold : FontStyles.Normal;
+                }
+            }
+
             OnCircuitSelected?.Invoke(m_SelectedCircuitIndex);
-        }
-
-        private void UpdateCircuitDetailView()
-        {
-            if (m_Circuits == null || m_SelectedCircuitIndex < 0 || m_SelectedCircuitIndex >= m_Circuits.Count) return;
-
-            CircuitDefinition circuit = m_Circuits[m_SelectedCircuitIndex];
-            if (circuit == null) return;
-
-            if (m_CircuitDetailTitle != null)
-            {
-                m_CircuitDetailTitle.text = circuit.title;
-            }
-
-            if (m_CircuitDetailDescription != null)
-            {
-                m_CircuitDetailDescription.text = circuit.description;
-            }
-
-            if (m_CircuitDetailInfo != null)
-            {
-                m_CircuitDetailInfo.text = $"Dificultad: <color=#38bdf8>{circuit.difficulty}</color>   |   Duración estimada: <color=#38bdf8>{circuit.estimatedTime}</color>";
-            }
-
-            if (m_BtnStartCircuitText != null)
-            {
-                m_BtnStartCircuitText.text = "INICIAR RECORRIDO";
-            }
         }
 
         public void StartSelectedCircuit()
         {
             if (m_Circuits == null || m_SelectedCircuitIndex < 0 || m_SelectedCircuitIndex >= m_Circuits.Count) return;
 
-            CircuitDefinition circuit = m_Circuits[m_SelectedCircuitIndex];
-            if (circuit == null || string.IsNullOrEmpty(circuit.sceneName)) return;
+            var circuit = m_Circuits[m_SelectedCircuitIndex];
+            if (circuit == null) return;
 
-            Debug.Log($"[NewMainMenu] Iniciando circuito: {circuit.title} (Escena: {circuit.sceneName})");
+            Debug.Log($"[NewMainMenuController] Iniciando Recorrido: {circuit.circuitId} - {circuit.title} (Escena: {circuit.sceneName})");
             EnableUIFarCasting(false);
 
-            if (LessonSceneFlowManager.Instance != null)
-            {
-                // Si es una lección del diccionario, cargarla vía su ID o cargar la escena directamente
-                bool matchedLesson = false;
-                foreach (var pair in LessonSceneFlowManager.LessonScenes)
-                {
-                    if (pair.Value == circuit.sceneName)
-                    {
-                        LessonSceneFlowManager.Instance.LoadLesson(pair.Key);
-                        matchedLesson = true;
-                        break;
-                    }
-                }
-
-                if (!matchedLesson)
-                {
-                    UnityEngine.SceneManagement.SceneManager.LoadScene(circuit.sceneName);
-                }
-            }
-            else
+            if (!string.IsNullOrEmpty(circuit.sceneName))
             {
                 UnityEngine.SceneManagement.SceneManager.LoadScene(circuit.sceneName);
             }
         }
 
         // ====================================================================
-        // SECCIÓN CALIBRACIÓN
-        // ====================================================================
-        private void SetupCalibrationSection()
-        {
-            if (m_DriverSeatFollower == null)
-            {
-                m_DriverSeatFollower = UnityEngine.Object.FindAnyObjectByType<DriverSeatFollower>();
-            }
-
-            if (m_DriverSeatFollower != null)
-            {
-                Vector3 min = m_DriverSeatFollower.CalibrationLimitsMin;
-                Vector3 max = m_DriverSeatFollower.CalibrationLimitsMax;
-
-                if (m_CalibLateralSlider != null) { m_CalibLateralSlider.minValue = min.x; m_CalibLateralSlider.maxValue = max.x; }
-                if (m_CalibHeightSlider != null) { m_CalibHeightSlider.minValue = min.y; m_CalibHeightSlider.maxValue = max.y; }
-                if (m_CalibDepthSlider != null) { m_CalibDepthSlider.minValue = min.z; m_CalibDepthSlider.maxValue = max.z; }
-            }
-
-            if (m_CalibLateralSlider != null)
-            {
-                m_CalibLateralSlider.onValueChanged.RemoveAllListeners();
-                m_CalibLateralSlider.onValueChanged.AddListener(val =>
-                {
-                    if (m_DriverSeatFollower != null) m_DriverSeatFollower.SetCalibrationAxis(0, val);
-                });
-            }
-
-            if (m_CalibHeightSlider != null)
-            {
-                m_CalibHeightSlider.onValueChanged.RemoveAllListeners();
-                m_CalibHeightSlider.onValueChanged.AddListener(val =>
-                {
-                    if (m_DriverSeatFollower != null) m_DriverSeatFollower.SetCalibrationAxis(1, val);
-                });
-            }
-
-            if (m_CalibDepthSlider != null)
-            {
-                m_CalibDepthSlider.onValueChanged.RemoveAllListeners();
-                m_CalibDepthSlider.onValueChanged.AddListener(val =>
-                {
-                    if (m_DriverSeatFollower != null) m_DriverSeatFollower.SetCalibrationAxis(2, val);
-                });
-            }
-
-            if (m_BtnResetCalibration != null)
-            {
-                m_BtnResetCalibration.onClick.RemoveAllListeners();
-                m_BtnResetCalibration.onClick.AddListener(ResetCalibration);
-            }
-
-            RefreshCalibrationSliders();
-        }
-
-        public void ResetCalibration()
-        {
-            if (m_DriverSeatFollower != null)
-            {
-                m_DriverSeatFollower.ResetCalibration();
-            }
-            RefreshCalibrationSliders();
-        }
-
-        public void RefreshCalibrationSliders()
-        {
-            if (m_DriverSeatFollower == null) return;
-
-            Vector3 offset = m_DriverSeatFollower.CalibrationOffset;
-            if (m_CalibLateralSlider != null) m_CalibLateralSlider.SetValueWithoutNotify(offset.x);
-            if (m_CalibHeightSlider != null) m_CalibHeightSlider.SetValueWithoutNotify(offset.y);
-            if (m_CalibDepthSlider != null) m_CalibDepthSlider.SetValueWithoutNotify(offset.z);
-        }
-
-        // ====================================================================
-        // MODAL DE SALIDA (SALIR)
+        // MODAL DE SALIDA
         // ====================================================================
         private void SetupExitModal()
         {
@@ -657,29 +563,26 @@ namespace PrimerVolante.MainMenu
                 m_BtnCancelExit.onClick.AddListener(CloseExitModal);
             }
 
-            CloseExitModal();
-        }
-
-        public void OpenExitModal()
-        {
-            if (m_ExitModal != null)
-            {
-                m_ExitModal.SetActive(true);
-            }
-            OnExitRequested?.Invoke();
-        }
-
-        public void CloseExitModal()
-        {
             if (m_ExitModal != null)
             {
                 m_ExitModal.SetActive(false);
             }
         }
 
+        public void OpenExitModal()
+        {
+            if (m_ExitModal != null) m_ExitModal.SetActive(true);
+            OnExitRequested?.Invoke();
+        }
+
+        public void CloseExitModal()
+        {
+            if (m_ExitModal != null) m_ExitModal.SetActive(false);
+        }
+
         public void ConfirmExit()
         {
-            Debug.Log("[NewMainMenu] Confirmando salida del simulador.");
+            Debug.Log("[NewMainMenuController] Confirmación de salida: cerrando aplicación...");
 #if UNITY_EDITOR
             UnityEditor.EditorApplication.isPlaying = false;
 #else

@@ -4,8 +4,10 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnityEngine.XR.Interaction.Toolkit.Inputs;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
 using UnityEngine.XR.Interaction.Toolkit.UI;
 using PrimerVolante.Lessons;
@@ -15,11 +17,14 @@ using PrimerVolante.VR;
 namespace PrimerVolante.Testing.Editor
 {
     /// <summary>
-    /// Herramienta de Editor para la construcción automatizada e idempotente de la escena NewMainMenu:
-    /// - Duplica la base de MainMenu a NewMainMenu.unity (si no existe).
-    /// - Remueve controladores antiguos (MainMenuController, MainMenu_Canvas).
-    /// - Construye NewMainMenu_Canvas (World Space) con TrackedDeviceGraphicRaycaster, diseño ortogonal por solapas,
-    ///   lista de lecciones data-driven, circuitos integradores, controles, calibración integrada y modal de confirmación de salida.
+    /// Herramienta de Editor para la construcción automatizada, limpia e idempotente de la escena NewMainMenu:
+    /// - Duplica la base de MainMenu o Lesson_01 a NewMainMenu.unity (si no existe).
+    /// - Elimina completamente Car09, vehículos y controladores obsoletos de la cabina.
+    /// - Configura XR Origin (XR Rig) centrado en (0,0,0) sin DriverSeatFollower y con InputActionManager activo.
+    /// - Construye NewMainMenu_Canvas en World Space con TrackedDeviceGraphicRaycaster calibrado y sin GraphicRaycaster conflictivo.
+    /// - Implementa el diseño ortogonal por solapas con tarjetas de controles 3D (ControllerIllustration),
+    ///   currículum de lecciones con botón "Comenzar Lección", circuitos integradores con botón "Iniciar Recorrido",
+    ///   panel de calibración/créditos y modal de confirmación de salida centrado y sin errores visuales.
     /// - Cumple estrictamente la regla de cero APIs obsoletas (AGENTS.md).
     /// </summary>
     public static class NewMainMenuSetup
@@ -31,23 +36,25 @@ namespace PrimerVolante.Testing.Editor
         public const string CONTROLLER_NAME = "NewMainMenuController";
 
         private const string FONT_PATH = "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset";
+        private const string CONTROLLER_MODEL_PATH = "Assets/Samples/XR Interaction Toolkit/3.5.1/Starter Assets/Models/UniversalController.fbx";
+        private const string INPUT_ACTIONS_PATH = "Assets/Samples/XR Interaction Toolkit/3.5.1/Starter Assets/XRI Default Input Actions.inputactions";
         private const string CURRICULUM_FOLDER = "Assets/Scripts/Lessons/Curriculum";
         private const int LESSON_COUNT = 6;
 
-        // Dimensiones del Canvas en World Space
+        // Dimensiones del Canvas en World Space (scale 0.001f -> 2.3m x 1.35m)
         private const float CANVAS_W = 2300f;
         private const float CANVAS_H = 1350f;
-        private static readonly Vector3 s_CanvasOffsetFromCar = new Vector3(0f, 1.25f, 2.3f);
+        private static readonly Vector3 s_CanvasWorldPosition = new Vector3(0f, 1.35f, 2.3f);
 
-        // Paleta de Colores
-        private static readonly Color s_BgCanvasColor = new Color(0.05f, 0.07f, 0.11f, 0.98f);     // #0d121c
-        private static readonly Color s_SidebarBgColor = new Color(0.08f, 0.10f, 0.16f, 1f);       // #141a29
-        private static readonly Color s_ContentAreaBgColor = new Color(0.10f, 0.12f, 0.19f, 1f);   // #1a1f30
+        // Paleta de Colores estandarizada (basada en MainMenuSetup original)
+        private static readonly Color s_BgCanvasColor = new Color(0.04f, 0.05f, 0.09f, 0.98f);     // #0a0d17
+        private static readonly Color s_SidebarBgColor = new Color(0.09f, 0.11f, 0.17f, 1f);       // #171c2b
+        private static readonly Color s_ContentAreaBgColor = new Color(0.07f, 0.09f, 0.14f, 1f);   // #121724
         private static readonly Color s_CardBgColor = new Color(0.13f, 0.16f, 0.24f, 1f);          // #21293d
-        private static readonly Color s_TabActiveColor = new Color(0.15f, 0.39f, 0.92f, 1f);       // #2563eb
-        private static readonly Color s_TabInactiveColor = new Color(0.11f, 0.14f, 0.22f, 1f);     // #1c2438
-        private static readonly Color s_GreenActionColor = new Color(0.06f, 0.73f, 0.51f, 1f);     // #10b981
-        private static readonly Color s_ExitRedColor = new Color(0.86f, 0.15f, 0.15f, 1f);         // #dc2626
+        private static readonly Color s_TabActiveColor = new Color(0.15f, 0.42f, 0.90f, 1f);       // #266be6
+        private static readonly Color s_TabInactiveColor = new Color(0.10f, 0.12f, 0.18f, 1f);     // #1a1f2e
+        private static readonly Color s_GreenActionColor = new Color(0.08f, 0.68f, 0.45f, 1f);     // #14ad73
+        private static readonly Color s_ExitRedColor = new Color(0.85f, 0.16f, 0.16f, 1f);         // #d92929
 
         [MenuItem("Tools/Primer Volante/Setup New Main Menu Scene")]
         public static void SetupNewMainMenu()
@@ -79,7 +86,7 @@ namespace PrimerVolante.Testing.Editor
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
 
-            Debug.Log("[NewMainMenuSetup] Nueva escena de menú NewMainMenu configurada y guardada con éxito.");
+            Debug.Log("[NewMainMenuSetup] ¡Nueva escena NewMainMenu configurada y guardada con éxito!");
         }
 
         public static NewMainMenuController BuildInActiveScene()
@@ -91,26 +98,26 @@ namespace PrimerVolante.Testing.Editor
                 return null;
             }
 
-            VehicleController car = UnityEngine.Object.FindAnyObjectByType<VehicleController>(FindObjectsInactive.Include);
-            if (car == null)
-            {
-                Debug.LogError("[NewMainMenuSetup] No se encontró ningún VehicleController (Car09) en la escena.");
-                return null;
-            }
+            // 1. Eliminar completamente el vehículo Car09 y controladores de conducción
+            RemoveCarAndCabinObjects();
 
-            // Eliminar objetos de menús legados si existen en la escena duplicada
+            // 2. Eliminar menús legados de la escena
             RemoveLegacyMenuObjects();
 
-            // Garantizar EventSystem con XRUIInputModule
+            // 3. Configurar XR Origin (XR Rig)
+            GameObject xrOriginObj = SetupXROrigin();
+
+            // 4. Garantizar EventSystem con XRUIInputModule
             EnsureEventSystem();
 
             TMP_FontAsset font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FONT_PATH);
+            GameObject controllerModel = AssetDatabase.LoadAssetAtPath<GameObject>(CONTROLLER_MODEL_PATH);
             List<LessonDefinitionSO> lessons = LoadLessons();
 
-            // Construir Canvas y Jerarquía Visual
-            GameObject canvasObj = BuildCanvas(car, font, lessons, out NewMainMenuController controller);
+            // 5. Construir Canvas y Jerarquía Visual
+            GameObject canvasObj = BuildCanvas(font, controllerModel, lessons, xrOriginObj, out NewMainMenuController controller);
 
-            // Capa UI en toda la jerarquía para compatibilidad estricta con UIOnlyFarCasting
+            // 6. Asignar capa UI estrictamente en toda la jerarquía para compatibilidad con UIOnlyFarCasting
             int uiLayer = LayerMask.NameToLayer("UI");
             if (uiLayer >= 0)
             {
@@ -124,21 +131,110 @@ namespace PrimerVolante.Testing.Editor
             return controller;
         }
 
+        // ====================================================================
+        // LIMPIEZA DE VEHÍCULO Y OBJETOS DE CABINA
+        // ====================================================================
+        private static void RemoveCarAndCabinObjects()
+        {
+            // Destruir todas las instancias de VehicleController en la escena
+            var cars = Object.FindObjectsByType<VehicleController>(FindObjectsInactive.Include);
+            foreach (var car in cars)
+            {
+                if (car != null && car.gameObject != null)
+                {
+                    Object.DestroyImmediate(car.gameObject);
+                }
+            }
+
+            // Destruir cualquier GameObject que se llame Car09 o Car08
+            GameObject carObj = GameObject.Find("Car09");
+            if (carObj != null) Object.DestroyImmediate(carObj);
+
+            GameObject car08Obj = GameObject.Find("Car08");
+            if (car08Obj != null) Object.DestroyImmediate(car08Obj);
+
+            // Destruir controladores de espejo o cabina si quedaron sueltos
+            foreach (var mirror in Object.FindObjectsByType<VRRearviewMirror>(FindObjectsInactive.Include))
+            {
+                Object.DestroyImmediate(mirror.gameObject);
+            }
+        }
+
         private static void RemoveLegacyMenuObjects()
         {
             GameObject oldCanvas = GameObject.Find("MainMenu_Canvas");
-            if (oldCanvas != null) UnityEngine.Object.DestroyImmediate(oldCanvas);
+            if (oldCanvas != null) Object.DestroyImmediate(oldCanvas);
 
             GameObject oldController = GameObject.Find("MainMenuController");
-            if (oldController != null) UnityEngine.Object.DestroyImmediate(oldController);
+            if (oldController != null) Object.DestroyImmediate(oldController);
 
             GameObject oldHighlighter = GameObject.Find("MainMenu_Highlighter");
-            if (oldHighlighter != null) UnityEngine.Object.DestroyImmediate(oldHighlighter);
+            if (oldHighlighter != null) Object.DestroyImmediate(oldHighlighter);
+
+            GameObject inGameCanvas = GameObject.Find("InGameMenu_Canvas");
+            if (inGameCanvas != null) Object.DestroyImmediate(inGameCanvas);
+
+            GameObject inGameController = GameObject.Find("InGameMenuController");
+            if (inGameController != null) Object.DestroyImmediate(inGameController);
+        }
+
+        // ====================================================================
+        // CONFIGURACIÓN DE XR ORIGIN
+        // ====================================================================
+        private static GameObject SetupXROrigin()
+        {
+            GameObject xrOriginObj = GameObject.Find("XR Origin (XR Rig)");
+            if (xrOriginObj == null)
+            {
+                var origin = Object.FindAnyObjectByType<Unity.XR.CoreUtils.XROrigin>(FindObjectsInactive.Include);
+                if (origin != null) xrOriginObj = origin.gameObject;
+            }
+
+            if (xrOriginObj != null)
+            {
+                // Remover DriverSeatFollower: no hay asiento ni auto en el menú principal estático
+                DriverSeatFollower follower = xrOriginObj.GetComponent<DriverSeatFollower>();
+                if (follower != null) Object.DestroyImmediate(follower);
+
+                // Centrar el Rig en el origen del mundo
+                xrOriginObj.transform.position = Vector3.zero;
+                xrOriginObj.transform.rotation = Quaternion.identity;
+
+                // Eliminar cámaras huérfanas que no pertenezcan al XR Origin
+                Camera[] cameras = Object.FindObjectsByType<Camera>(FindObjectsInactive.Include);
+                foreach (Camera cam in cameras)
+                {
+                    if (cam != null && !cam.transform.IsChildOf(xrOriginObj.transform))
+                    {
+                        Object.DestroyImmediate(cam.gameObject);
+                    }
+                }
+
+                // Asegurar que la cámara principal de XR Origin esté activa y con tag MainCamera
+                Camera headCam = xrOriginObj.GetComponentInChildren<Camera>(true);
+                if (headCam != null)
+                {
+                    headCam.gameObject.SetActive(true);
+                    headCam.tag = "MainCamera";
+                }
+
+                // Garantizar InputActionManager con XRI Default Input Actions activo
+                var inputMgr = xrOriginObj.GetComponent<InputActionManager>();
+                if (inputMgr == null) inputMgr = xrOriginObj.AddComponent<InputActionManager>();
+
+                var inputAsset = AssetDatabase.LoadAssetAtPath<InputActionAsset>(INPUT_ACTIONS_PATH);
+                if (inputAsset != null)
+                {
+                    inputMgr.actionAssets = new List<InputActionAsset> { inputAsset };
+                }
+            }
+
+            return xrOriginObj;
         }
 
         public static void EnsureEventSystem()
         {
-            EventSystem eventSystem = UnityEngine.Object.FindAnyObjectByType<EventSystem>(FindObjectsInactive.Include);
+            EventSystem eventSystem = Object.FindAnyObjectByType<EventSystem>(FindObjectsInactive.Include);
             GameObject eventSystemObj;
             if (eventSystem == null)
             {
@@ -150,13 +246,23 @@ namespace PrimerVolante.Testing.Editor
                 eventSystemObj = eventSystem.gameObject;
             }
 
-            if (eventSystemObj.GetComponent<XRUIInputModule>() == null)
-            {
-                var inputModule = eventSystemObj.GetComponent<StandaloneInputModule>();
-                if (inputModule != null) UnityEngine.Object.DestroyImmediate(inputModule);
+            // Eliminar módulos de entrada incompatibles
+            var standaloneModule = eventSystemObj.GetComponent<StandaloneInputModule>();
+            if (standaloneModule != null) Object.DestroyImmediate(standaloneModule);
 
-                eventSystemObj.AddComponent<XRUIInputModule>();
-            }
+            var inputSystemUIModule = eventSystemObj.GetComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
+            if (inputSystemUIModule != null) Object.DestroyImmediate(inputSystemUIModule);
+
+            // Asegurar y configurar XRUIInputModule
+            var xrModule = eventSystemObj.GetComponent<XRUIInputModule>();
+            if (xrModule == null) xrModule = eventSystemObj.AddComponent<XRUIInputModule>();
+
+            var so = new SerializedObject(xrModule);
+            so.Update();
+            so.FindProperty("m_EnableXRInput").boolValue = true;
+            so.FindProperty("m_EnableBuiltinActionsAsFallback").boolValue = true;
+            so.FindProperty("m_EnableMouseInput").boolValue = true;
+            so.ApplyModifiedProperties();
         }
 
         private static List<LessonDefinitionSO> LoadLessons()
@@ -170,30 +276,42 @@ namespace PrimerVolante.Testing.Editor
             return list;
         }
 
-        private static GameObject BuildCanvas(VehicleController car, TMP_FontAsset font, List<LessonDefinitionSO> lessons, out NewMainMenuController controller)
+        // ====================================================================
+        // CONSTRUCCIÓN DEL CANVAS WORLD SPACE
+        // ====================================================================
+        private static GameObject BuildCanvas(TMP_FontAsset font, GameObject controllerModel, List<LessonDefinitionSO> lessons,
+            GameObject xrOriginObj, out NewMainMenuController controller)
         {
             GameObject existing = GameObject.Find(CANVAS_NAME);
-            if (existing != null) UnityEngine.Object.DestroyImmediate(existing);
+            if (existing != null) Object.DestroyImmediate(existing);
 
             var canvasObj = new GameObject(CANVAS_NAME, typeof(RectTransform));
             RectTransform canvasRect = (RectTransform)canvasObj.transform;
             canvasRect.sizeDelta = new Vector2(CANVAS_W, CANVAS_H);
             canvasObj.transform.localScale = Vector3.one * 0.001f;
-            canvasObj.transform.position = car.transform.position + car.transform.TransformDirection(s_CanvasOffsetFromCar);
-            canvasObj.transform.rotation = Quaternion.LookRotation(car.transform.forward, Vector3.up);
+            canvasObj.transform.position = s_CanvasWorldPosition;
+            canvasObj.transform.rotation = Quaternion.identity; // Mirando hacia el jugador en (0,0,0)
 
             var canvas = canvasObj.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.WorldSpace;
+
+            Camera headCam = xrOriginObj != null ? xrOriginObj.GetComponentInChildren<Camera>(true) : Camera.main;
+            canvas.worldCamera = headCam;
+
             var scaler = canvasObj.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
             scaler.dynamicPixelsPerUnit = 10f;
 
-            // Soporte de Raycasting VR y mouse/desktop
-            canvasObj.AddComponent<TrackedDeviceGraphicRaycaster>();
-            canvasObj.AddComponent<GraphicRaycaster>();
+            // ÚNICAMENTE TrackedDeviceGraphicRaycaster (sin GraphicRaycaster redundante que causa conflicto)
+            GraphicRaycaster oldRaycaster = canvasObj.GetComponent<GraphicRaycaster>();
+            if (oldRaycaster != null) Object.DestroyImmediate(oldRaycaster);
 
-            // Fondo general
-            Image bg = AddImage(canvasObj.transform, "Background", s_BgCanvasColor);
+            var trackedRaycaster = canvasObj.AddComponent<TrackedDeviceGraphicRaycaster>();
+            trackedRaycaster.checkFor2DOcclusion = false;
+            trackedRaycaster.checkFor3DOcclusion = false;
+
+            // Fondo general (raycastTarget = false para no bloquear interactores)
+            Image bg = AddImage(canvasObj.transform, "Background", s_BgCanvasColor, false);
             Stretch(bg.rectTransform, 0f, 0f, 0f, 0f);
 
             // ================================================================
@@ -202,16 +320,17 @@ namespace PrimerVolante.Testing.Editor
             RectTransform header = CreateRect("Header", canvasObj.transform);
             AnchorTop(header, 0f, 110f);
             Image headerBg = header.gameObject.AddComponent<Image>();
-            headerBg.color = new Color(0.07f, 0.09f, 0.14f, 1f);
+            headerBg.color = new Color(0.06f, 0.08f, 0.13f, 1f);
+            headerBg.raycastTarget = false;
 
-            TextMeshProUGUI headerTitle = AddText(header, "Title", font, "PRIMER VOLANTE", 52f, Color.white, TextAlignmentOptions.MidlineLeft);
+            TextMeshProUGUI headerTitle = AddText(header, "Title", font, "PRIMER VOLANTE", 50f, Color.white, TextAlignmentOptions.MidlineLeft);
             headerTitle.fontStyle = FontStyles.Bold;
             headerTitle.rectTransform.anchorMin = new Vector2(0f, 0f);
             headerTitle.rectTransform.anchorMax = new Vector2(0.5f, 1f);
             headerTitle.rectTransform.offsetMin = new Vector2(40f, 0f);
             headerTitle.rectTransform.offsetMax = new Vector2(-10f, 0f);
 
-            TextMeshProUGUI headerSub = AddText(header, "Subtitle", font, "Simulador de Aprendizaje y Conducción Segura en RV", 32f, new Color(0.6f, 0.68f, 0.82f, 1f), TextAlignmentOptions.MidlineRight);
+            TextMeshProUGUI headerSub = AddText(header, "Subtitle", font, "Simulador de Aprendizaje y Conducción Segura en RV", 30f, new Color(0.60f, 0.68f, 0.82f, 1f), TextAlignmentOptions.MidlineRight);
             headerSub.rectTransform.anchorMin = new Vector2(0.5f, 0f);
             headerSub.rectTransform.anchorMax = new Vector2(1f, 1f);
             headerSub.rectTransform.offsetMin = new Vector2(10f, 0f);
@@ -224,39 +343,40 @@ namespace PrimerVolante.Testing.Editor
             sidebar.anchorMin = new Vector2(0f, 0f);
             sidebar.anchorMax = new Vector2(0f, 1f);
             sidebar.pivot = new Vector2(0f, 0.5f);
-            sidebar.sizeDelta = new Vector2(520f, -110f);
+            sidebar.sizeDelta = new Vector2(500f, -110f);
             sidebar.anchoredPosition = new Vector2(0f, -55f);
             Image sidebarBg = sidebar.gameObject.AddComponent<Image>();
             sidebarBg.color = s_SidebarBgColor;
+            sidebarBg.raycastTarget = false;
 
-            // Grupo de botones de navegación
+            // Grupo de botones de navegación (solapas)
             RectTransform navGroup = CreateRect("NavButtons", sidebar);
             navGroup.anchorMin = new Vector2(0f, 0f);
             navGroup.anchorMax = new Vector2(1f, 1f);
-            navGroup.offsetMin = new Vector2(25f, 130f);
-            navGroup.offsetMax = new Vector2(-25f, -30f);
+            navGroup.offsetMin = new Vector2(25f, 120f);
+            navGroup.offsetMax = new Vector2(-25f, -25f);
             var navLayout = navGroup.gameObject.AddComponent<VerticalLayoutGroup>();
-            navLayout.spacing = 18f;
+            navLayout.spacing = 16f;
             navLayout.childControlWidth = true;
             navLayout.childControlHeight = false;
             navLayout.childForceExpandWidth = true;
             navLayout.childForceExpandHeight = false;
 
-            Button btnTabLessons = CreateMenuButton("Tab_Lecciones", navGroup, font, "Lecciones Formativas", s_TabActiveColor, 95f);
-            Button btnTabCircuits = CreateMenuButton("Tab_Circuitos", navGroup, font, "Circuitos / Integradores", s_TabInactiveColor, 95f);
-            Button btnTabControls = CreateMenuButton("Tab_Controles", navGroup, font, "Controles y Mandos", s_TabInactiveColor, 95f);
-            Button btnTabCalib = CreateMenuButton("Tab_Calibracion", navGroup, font, "Calibración de Asiento", s_TabInactiveColor, 95f);
-            Button btnTabCredits = CreateMenuButton("Tab_Creditos", navGroup, font, "Créditos del Proyecto", s_TabInactiveColor, 95f);
+            Button btnTabControls = CreateMenuButton("Tab_Controles", navGroup, font, "Controles y Mandos", s_TabInactiveColor, 90f);
+            Button btnTabLessons = CreateMenuButton("Tab_Lecciones", navGroup, font, "Lecciones Formativas", s_TabActiveColor, 90f);
+            Button btnTabCircuits = CreateMenuButton("Tab_Circuitos", navGroup, font, "Circuitos / Integradores", s_TabInactiveColor, 90f);
+            Button btnTabCalib = CreateMenuButton("Tab_Calibracion", navGroup, font, "Calibración de Asiento", s_TabInactiveColor, 90f);
+            Button btnTabCredits = CreateMenuButton("Tab_Creditos", navGroup, font, "Créditos del Proyecto", s_TabInactiveColor, 90f);
 
             // Botón Salir (parte inferior de sidebar)
             RectTransform exitBox = CreateRect("ExitBox", sidebar);
             exitBox.anchorMin = new Vector2(0f, 0f);
             exitBox.anchorMax = new Vector2(1f, 0f);
-            exitBox.sizeDelta = new Vector2(-50f, 90f);
-            exitBox.anchoredPosition = new Vector2(0f, 65f);
-            Button btnExit = CreateMenuButton("Btn_Exit", exitBox, font, "Salir del Simulador", new Color(0.24f, 0.10f, 0.12f, 1f), 85f);
+            exitBox.sizeDelta = new Vector2(-50f, 80f);
+            exitBox.anchoredPosition = new Vector2(0f, 55f);
+            Button btnExit = CreateMenuButton("Btn_Exit", exitBox, font, "Salir del Simulador", new Color(0.20f, 0.10f, 0.12f, 1f), 75f);
             var exitText = btnExit.GetComponentInChildren<TextMeshProUGUI>();
-            if (exitText != null) exitText.color = new Color(0.96f, 0.44f, 0.44f, 1f);
+            if (exitText != null) exitText.color = new Color(0.95f, 0.40f, 0.40f, 1f);
 
             // ================================================================
             // ÁREA DE CONTENIDO DERECHA
@@ -264,30 +384,30 @@ namespace PrimerVolante.Testing.Editor
             RectTransform contentArea = CreateRect("ContentArea", canvasObj.transform);
             contentArea.anchorMin = new Vector2(0f, 0f);
             contentArea.anchorMax = new Vector2(1f, 1f);
-            contentArea.offsetMin = new Vector2(550f, 25f);
+            contentArea.offsetMin = new Vector2(530f, 25f);
             contentArea.offsetMax = new Vector2(-30f, -135f);
             Image contentBg = contentArea.gameObject.AddComponent<Image>();
             contentBg.color = s_ContentAreaBgColor;
+            contentBg.raycastTarget = false;
 
-            // Paneles
+            // Paneles de Contenido
+            GameObject panelControls = BuildControlsPanel(contentArea, font, controllerModel);
             GameObject panelLessons = BuildLessonsPanel(contentArea, font, lessons,
-                out Transform lessonItemsContainer, out TextMeshProUGUI lTitle, out TextMeshProUGUI lDesc, out TextMeshProUGUI lSteps,
+                out Transform lessonItemsContainer, out TextMeshProUGUI lTitle, out TextMeshProUGUI lDesc, out TextMeshProUGUI lDuration,
                 out Button btnStartLesson, out TextMeshProUGUI btnStartLessonText);
 
             GameObject panelCircuits = BuildCircuitsPanel(contentArea, font,
                 out Transform circuitItemsContainer, out TextMeshProUGUI cTitle, out TextMeshProUGUI cDesc, out TextMeshProUGUI cInfo,
                 out Button btnStartCircuit, out TextMeshProUGUI btnStartCircuitText);
 
-            GameObject panelControls = BuildControlsPanel(contentArea, font);
-            GameObject panelCalib = BuildCalibrationPanel(contentArea, font,
-                out Slider sLateral, out Slider sHeight, out Slider sDepth, out Button btnResetCalib);
+            GameObject panelCalib = BuildCalibrationPanel(contentArea, font);
             GameObject panelCredits = BuildCreditsPanel(contentArea, font);
 
             // Modal de Salida
             GameObject exitModal = BuildExitModal(canvasObj.transform, font, out Button btnConfirmExit, out Button btnCancelExit);
 
             // ================================================================
-            // CONTROLADOR
+            // CONTROLADOR DEL MENÚ
             // ================================================================
             controller = canvasObj.AddComponent<NewMainMenuController>();
             List<CircuitDefinition> defaultCircuits = NewMainMenuController.GetDefaultCircuits();
@@ -316,20 +436,11 @@ namespace PrimerVolante.Testing.Editor
             so.FindProperty("m_LessonItemsContainer").objectReferenceValue = lessonItemsContainer;
             so.FindProperty("m_LessonDetailTitle").objectReferenceValue = lTitle;
             so.FindProperty("m_LessonDetailDescription").objectReferenceValue = lDesc;
-            so.FindProperty("m_LessonDetailSteps").objectReferenceValue = lSteps;
+            so.FindProperty("m_LessonDetailDuration").objectReferenceValue = lDuration;
             so.FindProperty("m_BtnStartLesson").objectReferenceValue = btnStartLesson;
             so.FindProperty("m_BtnStartLessonText").objectReferenceValue = btnStartLessonText;
 
-            SerializedProperty lessonsProp = so.FindProperty("m_Lessons");
-            lessonsProp.arraySize = lessons.Count;
-            for (int i = 0; i < lessons.Count; i++)
-            {
-                lessonsProp.GetArrayElementAtIndex(i).objectReferenceValue = lessons[i];
-            }
-
             // Circuitos
-            controller.InitializeDefaultCircuitsIfEmpty();
-            so.Update();
             so.FindProperty("m_CircuitItemsContainer").objectReferenceValue = circuitItemsContainer;
             so.FindProperty("m_CircuitDetailTitle").objectReferenceValue = cTitle;
             so.FindProperty("m_CircuitDetailDescription").objectReferenceValue = cDesc;
@@ -337,39 +448,21 @@ namespace PrimerVolante.Testing.Editor
             so.FindProperty("m_BtnStartCircuit").objectReferenceValue = btnStartCircuit;
             so.FindProperty("m_BtnStartCircuitText").objectReferenceValue = btnStartCircuitText;
 
-            SerializedProperty circuitsProp = so.FindProperty("m_Circuits");
-            circuitsProp.arraySize = defaultCircuits.Count;
-            for (int i = 0; i < defaultCircuits.Count; i++)
-            {
-                SerializedProperty elem = circuitsProp.GetArrayElementAtIndex(i);
-                elem.FindPropertyRelative("circuitId").stringValue = defaultCircuits[i].circuitId;
-                elem.FindPropertyRelative("title").stringValue = defaultCircuits[i].title;
-                elem.FindPropertyRelative("description").stringValue = defaultCircuits[i].description;
-                elem.FindPropertyRelative("sceneName").stringValue = defaultCircuits[i].sceneName;
-                elem.FindPropertyRelative("difficulty").stringValue = defaultCircuits[i].difficulty;
-                elem.FindPropertyRelative("estimatedTime").stringValue = defaultCircuits[i].estimatedTime;
-            }
-
-            // Calibración
-            so.FindProperty("m_CalibLateralSlider").objectReferenceValue = sLateral;
-            so.FindProperty("m_CalibHeightSlider").objectReferenceValue = sHeight;
-            so.FindProperty("m_CalibDepthSlider").objectReferenceValue = sDepth;
-            so.FindProperty("m_BtnResetCalibration").objectReferenceValue = btnResetCalib;
-            DriverSeatFollower follower = UnityEngine.Object.FindAnyObjectByType<DriverSeatFollower>(FindObjectsInactive.Include);
-            so.FindProperty("m_DriverSeatFollower").objectReferenceValue = follower;
-
-            // Modal
+            // Modal Salida
             so.FindProperty("m_ExitModal").objectReferenceValue = exitModal;
             so.FindProperty("m_BtnConfirmExit").objectReferenceValue = btnConfirmExit;
             so.FindProperty("m_BtnCancelExit").objectReferenceValue = btnCancelExit;
 
-            // Interactors
-            NearFarInteractor[] interactors = UnityEngine.Object.FindObjectsByType<NearFarInteractor>(FindObjectsInactive.Include);
-            SerializedProperty interactorsProp = so.FindProperty("m_FarCastInteractors");
-            interactorsProp.arraySize = interactors.Length;
+            // Interactores VR
+            NearFarInteractor[] interactors = xrOriginObj != null
+                ? xrOriginObj.GetComponentsInChildren<NearFarInteractor>(true)
+                : Object.FindObjectsByType<NearFarInteractor>(FindObjectsInactive.Include);
+
+            SerializedProperty farCastProp = so.FindProperty("m_FarCastInteractors");
+            farCastProp.arraySize = interactors.Length;
             for (int i = 0; i < interactors.Length; i++)
             {
-                interactorsProp.GetArrayElementAtIndex(i).objectReferenceValue = interactors[i];
+                farCastProp.GetArrayElementAtIndex(i).objectReferenceValue = interactors[i];
             }
 
             so.ApplyModifiedProperties();
@@ -377,35 +470,99 @@ namespace PrimerVolante.Testing.Editor
         }
 
         // ====================================================================
-        // CONSTRUCCIÓN DE PANELES
+        // PANEL CONTROLES (CON ILUSTRACIONES 3D INTERACTIVAS)
         // ====================================================================
-        private static GameObject BuildLessonsPanel(
-            Transform parent, TMP_FontAsset font, List<LessonDefinitionSO> lessons,
-            out Transform container, out TextMeshProUGUI title, out TextMeshProUGUI desc, out TextMeshProUGUI steps,
+        private static GameObject BuildControlsPanel(Transform parent, TMP_FontAsset font, GameObject controllerModel)
+        {
+            RectTransform panel = CreateRect("Panel_Controls", parent);
+            Stretch(panel, 25f, 25f, 25f, 25f);
+
+            TextMeshProUGUI title = AddText(panel, "Title", font, "Mandos y Controles de Conducción", 42f, Color.white, TextAlignmentOptions.TopLeft);
+            title.fontStyle = FontStyles.Bold;
+            AnchorTop(title.rectTransform, 0f, 60f);
+
+            RectTransform cards = CreateRect("Cards", panel);
+            cards.anchorMin = Vector2.zero;
+            cards.anchorMax = Vector2.one;
+            cards.offsetMin = Vector2.zero;
+            cards.offsetMax = new Vector2(0f, -80f);
+            var layout = cards.gameObject.AddComponent<HorizontalLayoutGroup>();
+            layout.spacing = 30f;
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = true;
+
+            BuildCard(cards, font, controllerModel, "Card_Grip", "Grip / Agarre", "Bumper", false,
+                "Agarrar volante, palanca de cambios, freno de mano, guiños y espejos retrovisores.", 2800f, new Vector3(20f, -40f, 0f));
+            BuildCard(cards, font, controllerModel, "Card_Trigger", "Gatillo / Trigger", "Trigger", false,
+                "Acelerar y frenar el auto progresivamente. En menús, apuntar y presionar para seleccionar.", 2800f, new Vector3(20f, 40f, 0f));
+            BuildCard(cards, font, controllerModel, "Card_Menu", "Menú / Pausa", "Button_Home", false,
+                "Pausar la simulación y calibrar asiento en cualquier momento durante las lecciones.", 2800f, new Vector3(-65f, 20f, 0f));
+
+            return panel.gameObject;
+        }
+
+        private static void BuildCard(RectTransform parent, TMP_FontAsset font, GameObject controllerModel, string name,
+            string caption, string pieceName, bool pressAnimation, string description, float modelScale, Vector3 modelEuler)
+        {
+            RectTransform card = CreateRect(name, parent);
+            Image bg = card.gameObject.AddComponent<Image>();
+            bg.color = s_CardBgColor;
+            bg.raycastTarget = false;
+
+            TextMeshProUGUI captionText = AddText(card, "Caption", font, caption, 44f, new Color(1f, 0.85f, 0.2f), TextAlignmentOptions.Center);
+            captionText.fontStyle = FontStyles.Bold;
+            AnchorTop(captionText.rectTransform, 20f, 60f);
+
+            if (!string.IsNullOrEmpty(description))
+            {
+                TextMeshProUGUI desc = AddText(card, "Description", font, description, 28f, Color.white, TextAlignmentOptions.Top);
+                desc.textWrappingMode = TextWrappingModes.Normal;
+                var descRect = desc.rectTransform;
+                descRect.anchorMin = new Vector2(0f, 0f);
+                descRect.anchorMax = new Vector2(1f, 0f);
+                descRect.pivot = new Vector2(0.5f, 0f);
+                descRect.sizeDelta = new Vector2(-40f, 140f);
+                descRect.anchoredPosition = new Vector2(0f, 20f);
+            }
+
+            // Soporte de la ilustración 3D hacia el frente (z negativo) para que no quede detrás del fondo
+            var holder = CreateRect("Illustration", card);
+            holder.anchorMin = holder.anchorMax = new Vector2(0.5f, 0.55f);
+            holder.sizeDelta = new Vector2(100f, 100f);
+            holder.anchoredPosition3D = new Vector3(0f, 0f, -120f);
+
+            var illustration = holder.gameObject.AddComponent<ControllerIllustration>();
+            var so = new SerializedObject(illustration);
+            so.Update();
+            so.FindProperty("m_ControllerModel").objectReferenceValue = controllerModel;
+            so.FindProperty("m_PieceName").stringValue = pieceName;
+            so.FindProperty("m_PressAnimation").boolValue = pressAnimation;
+            so.FindProperty("m_ModelScale").floatValue = modelScale;
+            so.FindProperty("m_ModelEuler").vector3Value = modelEuler;
+            so.ApplyModifiedProperties();
+        }
+
+        // ====================================================================
+        // PANEL LECCIONES
+        // ====================================================================
+        private static GameObject BuildLessonsPanel(Transform parent, TMP_FontAsset font, List<LessonDefinitionSO> lessons,
+            out Transform container, out TextMeshProUGUI title, out TextMeshProUGUI desc, out TextMeshProUGUI duration,
             out Button btnStart, out TextMeshProUGUI btnStartText)
         {
             RectTransform panel = CreateRect("Panel_Lessons", parent);
             Stretch(panel, 25f, 25f, 25f, 25f);
 
-            // Subcolumna izquierda: Lista de lecciones
-            RectTransform listCol = CreateRect("LessonsListColumn", panel);
+            // Columna Izquierda: Lista de lecciones
+            RectTransform listCol = CreateRect("LessonListColumn", panel);
             listCol.anchorMin = new Vector2(0f, 0f);
-            listCol.anchorMax = new Vector2(0.48f, 1f);
+            listCol.anchorMax = new Vector2(0.46f, 1f);
             listCol.offsetMin = Vector2.zero;
             listCol.offsetMax = new Vector2(-15f, 0f);
 
-            TextMeshProUGUI listTitle = AddText(listCol, "Title", font, "Lecciones del Currículum", 38f, Color.white, TextAlignmentOptions.TopLeft);
-            listTitle.fontStyle = FontStyles.Bold;
-            listTitle.rectTransform.anchorMin = new Vector2(0f, 1f);
-            listTitle.rectTransform.anchorMax = new Vector2(1f, 1f);
-            listTitle.rectTransform.sizeDelta = new Vector2(0f, 50f);
-            listTitle.rectTransform.anchoredPosition = new Vector2(0f, -25f);
-
             RectTransform itemsBox = CreateRect("ItemsBox", listCol);
-            itemsBox.anchorMin = new Vector2(0f, 0f);
-            itemsBox.anchorMax = new Vector2(1f, 1f);
-            itemsBox.offsetMin = Vector2.zero;
-            itemsBox.offsetMax = new Vector2(0f, -65f);
+            Stretch(itemsBox, 0f, 0f, 0f, 0f);
             var layout = itemsBox.gameObject.AddComponent<VerticalLayoutGroup>();
             layout.spacing = 14f;
             layout.childControlWidth = true;
@@ -416,12 +573,12 @@ namespace PrimerVolante.Testing.Editor
 
             for (int i = 0; i < lessons.Count; i++)
             {
-                var lesson = lessons[i];
-                string label = $"{i + 1:D2}  {lesson.lessonTitle}";
-                CreateLessonCardButton($"LessonItem_{i + 1}", itemsBox, font, label, 110f);
+                var l = lessons[i];
+                string label = $"{l.lessonId}: {l.lessonTitle}";
+                CreateLessonCardButton($"LessonItem_{i}", itemsBox, font, label, 110f);
             }
 
-            // Subcolumna derecha: Detalle de la lección seleccionada
+            // Columna Derecha: Detalle de la lección seleccionada
             RectTransform detailCol = CreateRect("LessonDetailColumn", panel);
             detailCol.anchorMin = new Vector2(0.48f, 0f);
             detailCol.anchorMax = new Vector2(1f, 1f);
@@ -431,37 +588,38 @@ namespace PrimerVolante.Testing.Editor
             RectTransform cardBox = CreateRect("DetailCard", detailCol);
             cardBox.anchorMin = new Vector2(0f, 0f);
             cardBox.anchorMax = new Vector2(1f, 1f);
-            cardBox.offsetMin = new Vector2(0f, 120f);
+            cardBox.offsetMin = new Vector2(0f, 130f);
             cardBox.offsetMax = Vector2.zero;
             Image cardBg = cardBox.gameObject.AddComponent<Image>();
             cardBg.color = s_CardBgColor;
+            cardBg.raycastTarget = false;
 
-            title = AddText(cardBox, "DetailTitle", font, "Título de la Lección", 42f, Color.white, TextAlignmentOptions.TopLeft);
+            title = AddText(cardBox, "DetailTitle", font, "Lección 1: Calibración y Asiento", 42f, Color.white, TextAlignmentOptions.TopLeft);
             title.fontStyle = FontStyles.Bold;
             title.rectTransform.anchorMin = new Vector2(0f, 1f);
             title.rectTransform.anchorMax = new Vector2(1f, 1f);
-            title.rectTransform.offsetMin = new Vector2(30f, -70f);
-            title.rectTransform.offsetMax = new Vector2(-30f, -25f);
+            title.rectTransform.offsetMin = new Vector2(35f, -80f);
+            title.rectTransform.offsetMax = new Vector2(-35f, -25f);
 
-            steps = AddText(cardBox, "DetailSteps", font, "Pasos formativos a cumplir: 5", 30f, new Color(0.22f, 0.74f, 0.97f, 1f), TextAlignmentOptions.TopLeft);
-            steps.rectTransform.anchorMin = new Vector2(0f, 1f);
-            steps.rectTransform.anchorMax = new Vector2(1f, 1f);
-            steps.rectTransform.offsetMin = new Vector2(30f, -120f);
-            steps.rectTransform.offsetMax = new Vector2(-30f, -75f);
+            duration = AddText(cardBox, "DetailDuration", font, "• Duración estimada: 10 - 15 min   |   • Fases: 5 guiadas por voz", 28f, new Color(0.22f, 0.74f, 0.97f, 1f), TextAlignmentOptions.TopLeft);
+            duration.rectTransform.anchorMin = new Vector2(0f, 1f);
+            duration.rectTransform.anchorMax = new Vector2(1f, 1f);
+            duration.rectTransform.offsetMin = new Vector2(35f, -135f);
+            duration.rectTransform.offsetMax = new Vector2(-35f, -85f);
 
-            desc = AddText(cardBox, "DetailDesc", font, "Descripción detallada...", 28f, new Color(0.85f, 0.88f, 0.95f, 1f), TextAlignmentOptions.TopLeft);
+            desc = AddText(cardBox, "DetailDesc", font, "Descripción de la lección formativa...", 30f, new Color(0.85f, 0.88f, 0.95f, 1f), TextAlignmentOptions.TopLeft);
             desc.textWrappingMode = TextWrappingModes.Normal;
             desc.rectTransform.anchorMin = new Vector2(0f, 0f);
             desc.rectTransform.anchorMax = new Vector2(1f, 1f);
-            desc.rectTransform.offsetMin = new Vector2(30f, 25f);
-            desc.rectTransform.offsetMax = new Vector2(-30f, -135f);
+            desc.rectTransform.offsetMin = new Vector2(35f, 30f);
+            desc.rectTransform.offsetMax = new Vector2(-35f, -150f);
 
-            // Botón verde de acción en la parte inferior
+            // Botón verde destacado inferior
             RectTransform actionBox = CreateRect("ActionBox", detailCol);
             actionBox.anchorMin = new Vector2(0f, 0f);
             actionBox.anchorMax = new Vector2(1f, 0f);
-            actionBox.sizeDelta = new Vector2(0f, 100f);
-            actionBox.anchoredPosition = new Vector2(0f, 50f);
+            actionBox.sizeDelta = new Vector2(0f, 105f);
+            actionBox.anchoredPosition = new Vector2(0f, 52f);
 
             btnStart = CreateActionButton("Btn_StartLesson", actionBox, font, "COMENZAR LECCIÓN", s_GreenActionColor);
             btnStartText = btnStart.GetComponentInChildren<TextMeshProUGUI>();
@@ -469,44 +627,38 @@ namespace PrimerVolante.Testing.Editor
             return panel.gameObject;
         }
 
-        private static GameObject BuildCircuitsPanel(
-            Transform parent, TMP_FontAsset font,
+        // ====================================================================
+        // PANEL CIRCUITOS / INTEGRADORES
+        // ====================================================================
+        private static GameObject BuildCircuitsPanel(Transform parent, TMP_FontAsset font,
             out Transform container, out TextMeshProUGUI title, out TextMeshProUGUI desc, out TextMeshProUGUI info,
             out Button btnStart, out TextMeshProUGUI btnStartText)
         {
             RectTransform panel = CreateRect("Panel_Circuits", parent);
             Stretch(panel, 25f, 25f, 25f, 25f);
 
-            RectTransform listCol = CreateRect("CircuitsListColumn", panel);
+            // Columna Izquierda: Lista de circuitos
+            RectTransform listCol = CreateRect("CircuitListColumn", panel);
             listCol.anchorMin = new Vector2(0f, 0f);
-            listCol.anchorMax = new Vector2(0.48f, 1f);
+            listCol.anchorMax = new Vector2(0.46f, 1f);
             listCol.offsetMin = Vector2.zero;
             listCol.offsetMax = new Vector2(-15f, 0f);
 
-            TextMeshProUGUI listTitle = AddText(listCol, "Title", font, "Circuitos Integradores", 38f, Color.white, TextAlignmentOptions.TopLeft);
-            listTitle.fontStyle = FontStyles.Bold;
-            listTitle.rectTransform.anchorMin = new Vector2(0f, 1f);
-            listTitle.rectTransform.anchorMax = new Vector2(1f, 1f);
-            listTitle.rectTransform.sizeDelta = new Vector2(0f, 50f);
-            listTitle.rectTransform.anchoredPosition = new Vector2(0f, -25f);
-
             RectTransform itemsBox = CreateRect("ItemsBox", listCol);
-            itemsBox.anchorMin = new Vector2(0f, 0f);
-            itemsBox.anchorMax = new Vector2(1f, 1f);
-            itemsBox.offsetMin = Vector2.zero;
-            itemsBox.offsetMax = new Vector2(0f, -65f);
+            Stretch(itemsBox, 0f, 0f, 0f, 0f);
             var layout = itemsBox.gameObject.AddComponent<VerticalLayoutGroup>();
-            layout.spacing = 16f;
+            layout.spacing = 14f;
             layout.childControlWidth = true;
             layout.childControlHeight = false;
             layout.childForceExpandWidth = true;
             layout.childForceExpandHeight = false;
             container = itemsBox;
 
-            CreateLessonCardButton("CircuitItem_1", itemsBox, font, "Circuito Integrador 1: Tráfico y Señales", 125f);
-            CreateLessonCardButton("CircuitItem_2", itemsBox, font, "Circuito Integrador 2: Maniobras y Parking", 125f);
-            CreateLessonCardButton("CircuitItem_3", itemsBox, font, "Práctica Libre: Ciudad Completa", 125f);
+            CreateLessonCardButton("CircuitItem_0", itemsBox, font, "Circuito Integrador 1: Tráfico y Señales", 125f);
+            CreateLessonCardButton("CircuitItem_1", itemsBox, font, "Circuito Integrador 2: Maniobras y Parking", 125f);
+            CreateLessonCardButton("CircuitItem_2", itemsBox, font, "Práctica Libre: Ciudad Completa", 125f);
 
+            // Columna Derecha: Detalle del circuito
             RectTransform detailCol = CreateRect("CircuitDetailColumn", panel);
             detailCol.anchorMin = new Vector2(0.48f, 0f);
             detailCol.anchorMax = new Vector2(1f, 1f);
@@ -516,36 +668,38 @@ namespace PrimerVolante.Testing.Editor
             RectTransform cardBox = CreateRect("DetailCard", detailCol);
             cardBox.anchorMin = new Vector2(0f, 0f);
             cardBox.anchorMax = new Vector2(1f, 1f);
-            cardBox.offsetMin = new Vector2(0f, 120f);
+            cardBox.offsetMin = new Vector2(0f, 130f);
             cardBox.offsetMax = Vector2.zero;
             Image cardBg = cardBox.gameObject.AddComponent<Image>();
             cardBg.color = s_CardBgColor;
+            cardBg.raycastTarget = false;
 
             title = AddText(cardBox, "DetailTitle", font, "Circuito Integrador", 42f, Color.white, TextAlignmentOptions.TopLeft);
             title.fontStyle = FontStyles.Bold;
             title.rectTransform.anchorMin = new Vector2(0f, 1f);
             title.rectTransform.anchorMax = new Vector2(1f, 1f);
-            title.rectTransform.offsetMin = new Vector2(30f, -70f);
-            title.rectTransform.offsetMax = new Vector2(-30f, -25f);
+            title.rectTransform.offsetMin = new Vector2(35f, -80f);
+            title.rectTransform.offsetMax = new Vector2(-35f, -25f);
 
-            info = AddText(cardBox, "DetailInfo", font, "Dificultad: Intermedio  |  Tiempo: 15 min", 30f, new Color(0.22f, 0.74f, 0.97f, 1f), TextAlignmentOptions.TopLeft);
+            info = AddText(cardBox, "DetailInfo", font, "• Dificultad: Intermedio   |   • Tiempo: 15 min", 28f, new Color(0.22f, 0.74f, 0.97f, 1f), TextAlignmentOptions.TopLeft);
             info.rectTransform.anchorMin = new Vector2(0f, 1f);
             info.rectTransform.anchorMax = new Vector2(1f, 1f);
-            info.rectTransform.offsetMin = new Vector2(30f, -120f);
-            info.rectTransform.offsetMax = new Vector2(-30f, -75f);
+            info.rectTransform.offsetMin = new Vector2(35f, -135f);
+            info.rectTransform.offsetMax = new Vector2(-35f, -85f);
 
-            desc = AddText(cardBox, "DetailDesc", font, "Descripción del circuito...", 28f, new Color(0.85f, 0.88f, 0.95f, 1f), TextAlignmentOptions.TopLeft);
+            desc = AddText(cardBox, "DetailDesc", font, "Descripción del circuito de práctica...", 30f, new Color(0.85f, 0.88f, 0.95f, 1f), TextAlignmentOptions.TopLeft);
             desc.textWrappingMode = TextWrappingModes.Normal;
             desc.rectTransform.anchorMin = new Vector2(0f, 0f);
             desc.rectTransform.anchorMax = new Vector2(1f, 1f);
-            desc.rectTransform.offsetMin = new Vector2(30f, 25f);
-            desc.rectTransform.offsetMax = new Vector2(-30f, -135f);
+            desc.rectTransform.offsetMin = new Vector2(35f, 30f);
+            desc.rectTransform.offsetMax = new Vector2(-35f, -150f);
 
+            // Botón verde destacado inferior
             RectTransform actionBox = CreateRect("ActionBox", detailCol);
             actionBox.anchorMin = new Vector2(0f, 0f);
             actionBox.anchorMax = new Vector2(1f, 0f);
-            actionBox.sizeDelta = new Vector2(0f, 100f);
-            actionBox.anchoredPosition = new Vector2(0f, 50f);
+            actionBox.sizeDelta = new Vector2(0f, 105f);
+            actionBox.anchoredPosition = new Vector2(0f, 52f);
 
             btnStart = CreateActionButton("Btn_StartCircuit", actionBox, font, "INICIAR RECORRIDO", s_GreenActionColor);
             btnStartText = btnStart.GetComponentInChildren<TextMeshProUGUI>();
@@ -553,58 +707,10 @@ namespace PrimerVolante.Testing.Editor
             return panel.gameObject;
         }
 
-        private static GameObject BuildControlsPanel(Transform parent, TMP_FontAsset font)
-        {
-            RectTransform panel = CreateRect("Panel_Controls", parent);
-            Stretch(panel, 25f, 25f, 25f, 25f);
-
-            TextMeshProUGUI title = AddText(panel, "Title", font, "Mandos y Controles de Manejo", 42f, Color.white, TextAlignmentOptions.TopLeft);
-            title.fontStyle = FontStyles.Bold;
-            AnchorTop(title.rectTransform, 0f, 60f);
-
-            RectTransform grid = CreateRect("CardsGrid", panel);
-            grid.anchorMin = new Vector2(0f, 0f);
-            grid.anchorMax = new Vector2(1f, 1f);
-            grid.offsetMin = Vector2.zero;
-            grid.offsetMax = new Vector2(0f, -75f);
-            var layout = grid.gameObject.AddComponent<GridLayoutGroup>();
-            layout.cellSize = new Vector2(530f, 220f);
-            layout.spacing = new Vector2(25f, 25f);
-            layout.startCorner = GridLayoutGroup.Corner.UpperLeft;
-
-            CreateControlCard(grid, font, "Volante de Dirección", "Grip de cualquier mano para agarrar y girar el volante de forma natural.");
-            CreateControlCard(grid, font, "Palanca de Cambios", "Grip para mover la palanca entre las marchas P (Parking), R (Reversa), N (Neutro) y D (Directa).");
-            CreateControlCard(grid, font, "Acelerador y Freno", "Gatillo derecho para acelerar progresivamente. Gatillo izquierdo para accionar el pedal de freno.");
-            CreateControlCard(grid, font, "Freno de Mano", "Grip para subir la palanca e inmovilizar el coche, o bajarla para liberar las ruedas.");
-            CreateControlCard(grid, font, "Guiños y Luces", "Palanca izquierda en la columna para guiños. Perilla selectora en el tablero para luces reglamentarias.");
-            CreateControlCard(grid, font, "Interacción en Menús", "Apuntá con el rayo de tu mano hacia los botones y presioná el Gatillo (Trigger) para confirmar.");
-
-            return panel.gameObject;
-        }
-
-        private static void CreateControlCard(Transform parent, TMP_FontAsset font, string title, string description)
-        {
-            RectTransform card = CreateRect("Card", parent);
-            Image bg = card.gameObject.AddComponent<Image>();
-            bg.color = s_CardBgColor;
-
-            TextMeshProUGUI t = AddText(card, "CardTitle", font, title, 32f, new Color(0.22f, 0.74f, 0.97f, 1f), TextAlignmentOptions.TopLeft);
-            t.fontStyle = FontStyles.Bold;
-            t.rectTransform.anchorMin = new Vector2(0f, 1f);
-            t.rectTransform.anchorMax = new Vector2(1f, 1f);
-            t.rectTransform.offsetMin = new Vector2(20f, -50f);
-            t.rectTransform.offsetMax = new Vector2(-20f, -15f);
-
-            TextMeshProUGUI d = AddText(card, "CardDesc", font, description, 26f, new Color(0.82f, 0.86f, 0.92f, 1f), TextAlignmentOptions.TopLeft);
-            d.textWrappingMode = TextWrappingModes.Normal;
-            d.rectTransform.anchorMin = new Vector2(0f, 0f);
-            d.rectTransform.anchorMax = new Vector2(1f, 1f);
-            d.rectTransform.offsetMin = new Vector2(20f, 15f);
-            d.rectTransform.offsetMax = new Vector2(-20f, -60f);
-        }
-
-        private static GameObject BuildCalibrationPanel(Transform parent, TMP_FontAsset font,
-            out Slider sLateral, out Slider sHeight, out Slider sDepth, out Button btnReset)
+        // ====================================================================
+        // PANEL CALIBRACIÓN
+        // ====================================================================
+        private static GameObject BuildCalibrationPanel(Transform parent, TMP_FontAsset font)
         {
             RectTransform panel = CreateRect("Panel_Calibration", parent);
             Stretch(panel, 25f, 25f, 25f, 25f);
@@ -613,38 +719,32 @@ namespace PrimerVolante.Testing.Editor
             title.fontStyle = FontStyles.Bold;
             AnchorTop(title.rectTransform, 0f, 60f);
 
-            TextMeshProUGUI subtitle = AddText(panel, "Subtitle", font, "Ajustá la altura y distancia de la vista para alcanzar el volante y pedales con comodidad.", 30f, new Color(0.65f, 0.72f, 0.85f, 1f), TextAlignmentOptions.TopLeft);
-            subtitle.rectTransform.anchorMin = new Vector2(0f, 1f);
-            subtitle.rectTransform.anchorMax = new Vector2(1f, 1f);
-            subtitle.rectTransform.offsetMin = new Vector2(0f, -110f);
-            subtitle.rectTransform.offsetMax = new Vector2(0f, -65f);
+            RectTransform card = CreateRect("Card_CalibInfo", panel);
+            card.anchorMin = Vector2.zero;
+            card.anchorMax = Vector2.one;
+            card.offsetMin = Vector2.zero;
+            card.offsetMax = new Vector2(0f, -80f);
+            Image bg = card.gameObject.AddComponent<Image>();
+            bg.color = s_CardBgColor;
+            bg.raycastTarget = false;
 
-            RectTransform slidersBox = CreateRect("SlidersBox", panel);
-            slidersBox.anchorMin = new Vector2(0f, 0f);
-            slidersBox.anchorMax = new Vector2(1f, 1f);
-            slidersBox.offsetMin = new Vector2(100f, 150f);
-            slidersBox.offsetMax = new Vector2(-100f, -130f);
+            string infoText = "<b>Ajuste de Postura y Altura del Asiento:</b>\n\n" +
+                              "Para garantizar que alcances el volante, palanca y pedales con máxima comodidad y ergonomía:\n\n" +
+                              "• <b>Durante las lecciones:</b> Podés presionar en cualquier momento el botón <b>Menú</b> de tu control izquierdo " +
+                              "(o tecla <b>Escape</b>) para abrir el menú de pausa in-game y calibrar en vivo tu altura, distancia y alineación con respecto al volante.\n\n" +
+                              "• <b>Recentrado de visor:</b> Si sentís que la orientación principal está desplazada, mantené pulsado el botón Oculus/Meta en el control derecho para recentrar el campo visual.\n\n" +
+                              "• <b>Configuración guardada:</b> Tu calibración se guarda automáticamente entre lecciones y se aplica al subirte al vehículo.";
 
-            CreateLabel("Lbl_Lateral", slidersBox, font, "Posición Lateral (Izquierda / Derecha)", 28f, new Vector2(0f, 120f), new Vector2(900f, 35f));
-            sLateral = CreateModernSlider("Slider_Lateral", slidersBox, new Vector2(0f, 80f), new Vector2(900f, 32f));
-
-            CreateLabel("Lbl_Height", slidersBox, font, "Altura del Asiento (Arriba / Abajo)", 28f, new Vector2(0f, 0f), new Vector2(900f, 35f));
-            sHeight = CreateModernSlider("Slider_Height", slidersBox, new Vector2(0f, -40f), new Vector2(900f, 32f));
-
-            CreateLabel("Lbl_Depth", slidersBox, font, "Distancia Longitudinal (Adelante / Atrás)", 28f, new Vector2(0f, -120f), new Vector2(900f, 35f));
-            sDepth = CreateModernSlider("Slider_Depth", slidersBox, new Vector2(0f, -160f), new Vector2(900f, 32f));
-
-            RectTransform resetBox = CreateRect("ResetBox", panel);
-            resetBox.anchorMin = new Vector2(0.5f, 0f);
-            resetBox.anchorMax = new Vector2(0.5f, 0f);
-            resetBox.sizeDelta = new Vector2(500f, 85f);
-            resetBox.anchoredPosition = new Vector2(0f, 60f);
-
-            btnReset = CreateActionButton("Btn_ResetCalib", resetBox, font, "RESTABLECER CALIBRACIÓN", new Color(0.25f, 0.32f, 0.45f, 1f));
+            TextMeshProUGUI bodyText = AddText(card, "Body", font, infoText, 32f, new Color(0.88f, 0.90f, 0.96f, 1f), TextAlignmentOptions.TopLeft);
+            bodyText.textWrappingMode = TextWrappingModes.Normal;
+            Stretch(bodyText.rectTransform, 40f, 40f, 40f, 40f);
 
             return panel.gameObject;
         }
 
+        // ====================================================================
+        // PANEL CRÉDITOS
+        // ====================================================================
         private static GameObject BuildCreditsPanel(Transform parent, TMP_FontAsset font)
         {
             RectTransform panel = CreateRect("Panel_Credits", parent);
@@ -655,12 +755,13 @@ namespace PrimerVolante.Testing.Editor
             AnchorTop(title.rectTransform, 0f, 60f);
 
             RectTransform card = CreateRect("Card_Credits", panel);
-            card.anchorMin = new Vector2(0f, 0f);
-            card.anchorMax = new Vector2(1f, 1f);
+            card.anchorMin = Vector2.zero;
+            card.anchorMax = Vector2.one;
             card.offsetMin = Vector2.zero;
-            card.offsetMax = new Vector2(0f, -75f);
+            card.offsetMax = new Vector2(0f, -80f);
             Image bg = card.gameObject.AddComponent<Image>();
             bg.color = s_CardBgColor;
+            bg.raycastTarget = false;
 
             string creditBody = "<b>Primer Volante</b> es una plataforma inmersiva de entrenamiento para nuevos conductores basada en Realidad Virtual.\n\n" +
                                 "<b>Objetivo Pedagógico:</b>\n" +
@@ -670,9 +771,9 @@ namespace PrimerVolante.Testing.Editor
                                 "• Sistema de detección y penalización de infracciones viales en tiempo real.\n" +
                                 "• Currículum de 6 lecciones guiadas por voz y HUD visual.\n" +
                                 "• Sistema de navegación GPS dinámico en entorno urbano completo.\n\n" +
-                                "<i>Versión: 2.0 (Menú VR Unificado)</i>";
+                                "<i>Versión: 2.1 (Menú VR Unificado y Accesible)</i>";
 
-            TextMeshProUGUI bodyText = AddText(card, "Body", font, creditBody, 28f, new Color(0.88f, 0.90f, 0.96f, 1f), TextAlignmentOptions.TopLeft);
+            TextMeshProUGUI bodyText = AddText(card, "Body", font, creditBody, 30f, new Color(0.88f, 0.90f, 0.96f, 1f), TextAlignmentOptions.TopLeft);
             bodyText.textWrappingMode = TextWrappingModes.Normal;
             Stretch(bodyText.rectTransform, 40f, 40f, 40f, 40f);
 
@@ -680,47 +781,53 @@ namespace PrimerVolante.Testing.Editor
         }
 
         // ====================================================================
-        // MODAL DE SALIDA
+        // MODAL DE SALIDA (CENTRO, ELEGANTE, SIN BUGS VISUALES)
         // ====================================================================
         private static GameObject BuildExitModal(Transform parent, TMP_FontAsset font, out Button btnConfirm, out Button btnCancel)
         {
             RectTransform modalRoot = CreateRect("Modal_ExitConfirmation", parent);
             Stretch(modalRoot, 0f, 0f, 0f, 0f);
             Image backdrop = modalRoot.gameObject.AddComponent<Image>();
-            backdrop.color = new Color(0.02f, 0.03f, 0.06f, 0.85f);
+            backdrop.color = new Color(0.03f, 0.04f, 0.07f, 0.88f);
+            backdrop.raycastTarget = true; // El backdrop bloquea clicks hacia el fondo mientras el modal está abierto
 
             RectTransform box = CreateRect("ConfirmBox", modalRoot);
             box.anchorMin = new Vector2(0.5f, 0.5f);
             box.anchorMax = new Vector2(0.5f, 0.5f);
-            box.sizeDelta = new Vector2(900f, 480f);
+            box.pivot = new Vector2(0.5f, 0.5f);
+            box.sizeDelta = new Vector2(850f, 440f);
+            box.anchoredPosition = Vector2.zero;
             Image boxBg = box.gameObject.AddComponent<Image>();
-            boxBg.color = new Color(0.14f, 0.08f, 0.10f, 1f);
+            boxBg.color = new Color(0.12f, 0.15f, 0.22f, 1f);
+            boxBg.raycastTarget = false;
 
-            TextMeshProUGUI title = AddText(box, "Title", font, "¿Desea salir del simulador?", 48f, Color.white, TextAlignmentOptions.Center);
+            TextMeshProUGUI title = AddText(box, "Title", font, "¿Salir del Simulador?", 46f, Color.white, TextAlignmentOptions.Center);
             title.fontStyle = FontStyles.Bold;
-            AnchorTop(title.rectTransform, 35f, 70f);
+            AnchorTop(title.rectTransform, 45f, 65f);
 
-            TextMeshProUGUI sub = AddText(box, "Subtitle", font, "Se cerrará la aplicación y volverá al sistema operativo.", 30f, new Color(0.8f, 0.84f, 0.9f, 1f), TextAlignmentOptions.Center);
-            sub.rectTransform.anchorMin = new Vector2(0.05f, 0.5f);
-            sub.rectTransform.anchorMax = new Vector2(0.95f, 0.5f);
+            TextMeshProUGUI sub = AddText(box, "Subtitle", font, "Se cerrará la aplicación y volverás a la pantalla principal de tu visor.", 28f, new Color(0.75f, 0.80f, 0.90f, 1f), TextAlignmentOptions.Center);
+            sub.textWrappingMode = TextWrappingModes.Normal;
+            sub.rectTransform.anchorMin = new Vector2(0.08f, 0.5f);
+            sub.rectTransform.anchorMax = new Vector2(0.92f, 0.5f);
             sub.rectTransform.sizeDelta = new Vector2(0f, 60f);
-            sub.rectTransform.anchoredPosition = new Vector2(0f, 20f);
+            sub.rectTransform.anchoredPosition = new Vector2(0f, 15f);
 
             RectTransform btnBox = CreateRect("ButtonRow", box);
             btnBox.anchorMin = new Vector2(0f, 0f);
             btnBox.anchorMax = new Vector2(1f, 0f);
+            btnBox.pivot = new Vector2(0.5f, 0f);
             btnBox.sizeDelta = new Vector2(0f, 110f);
-            btnBox.anchoredPosition = new Vector2(0f, 75f);
+            btnBox.anchoredPosition = new Vector2(0f, 35f);
             var layout = btnBox.gameObject.AddComponent<HorizontalLayoutGroup>();
-            layout.spacing = 30f;
-            layout.childControlWidth = true;
-            layout.childControlHeight = true;
-            layout.childForceExpandWidth = true;
-            layout.childForceExpandHeight = true;
-            layout.padding = new RectOffset(60, 60, 10, 10);
+            layout.spacing = 35f;
+            layout.childAlignment = TextAnchor.MiddleCenter;
+            layout.childControlWidth = false;
+            layout.childControlHeight = false;
+            layout.childForceExpandWidth = false;
+            layout.childForceExpandHeight = false;
 
-            btnCancel = CreateActionButton("Btn_Cancel", btnBox, font, "CANCELAR", new Color(0.24f, 0.28f, 0.38f, 1f));
-            btnConfirm = CreateActionButton("Btn_Confirm", btnBox, font, "CONFIRMAR SALIDA", s_ExitRedColor);
+            btnCancel = CreateModalButton("Btn_Cancel", btnBox, font, "CANCELAR", new Color(0.22f, 0.26f, 0.36f, 1f), 300f, 75f);
+            btnConfirm = CreateModalButton("Btn_Confirm", btnBox, font, "SALIR", s_ExitRedColor, 300f, 75f);
 
             modalRoot.gameObject.SetActive(false);
             return modalRoot.gameObject;
@@ -736,12 +843,13 @@ namespace PrimerVolante.Testing.Editor
             return (RectTransform)go.transform;
         }
 
-        private static Image AddImage(Transform parent, string name, Color color)
+        private static Image AddImage(Transform parent, string name, Color color, bool raycastTarget = false)
         {
             var go = new GameObject(name, typeof(RectTransform), typeof(Image));
             go.transform.SetParent(parent, false);
             var img = go.GetComponent<Image>();
             img.color = color;
+            img.raycastTarget = raycastTarget;
             return img;
         }
 
@@ -755,16 +863,8 @@ namespace PrimerVolante.Testing.Editor
             tmp.fontSize = size;
             tmp.color = color;
             tmp.alignment = align;
+            tmp.raycastTarget = false; // Siempre false para no absorber eventos del botón
             return tmp;
-        }
-
-        private static void CreateLabel(string name, Transform parent, TMP_FontAsset font, string text, float size, Vector2 pos, Vector2 delta)
-        {
-            TextMeshProUGUI t = AddText(parent, name, font, text, size, Color.white, TextAlignmentOptions.MidlineLeft);
-            t.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
-            t.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-            t.rectTransform.anchoredPosition = pos;
-            t.rectTransform.sizeDelta = delta;
         }
 
         private static Button CreateMenuButton(string name, Transform parent, TMP_FontAsset font, string text, Color bgColor, float height)
@@ -776,11 +876,14 @@ namespace PrimerVolante.Testing.Editor
 
             var img = go.GetComponent<Image>();
             img.color = bgColor;
+            img.raycastTarget = true;
 
             var btn = go.GetComponent<Button>();
+            btn.targetGraphic = img;
             var colors = btn.colors;
-            colors.highlightedColor = new Color(0.28f, 0.48f, 0.95f, 1f);
-            colors.pressedColor = new Color(0.18f, 0.35f, 0.8f, 1f);
+            colors.normalColor = bgColor;
+            colors.highlightedColor = new Color(0.25f, 0.48f, 0.95f, 1f);
+            colors.pressedColor = new Color(0.18f, 0.35f, 0.80f, 1f);
             btn.colors = colors;
 
             var label = AddText(go.transform, "Text", font, text, 30f, Color.white, TextAlignmentOptions.MidlineLeft);
@@ -798,11 +901,14 @@ namespace PrimerVolante.Testing.Editor
 
             var img = go.GetComponent<Image>();
             img.color = s_CardBgColor;
+            img.raycastTarget = true;
 
             var btn = go.GetComponent<Button>();
+            btn.targetGraphic = img;
             var colors = btn.colors;
-            colors.highlightedColor = new Color(0.20f, 0.30f, 0.50f, 1f);
-            colors.pressedColor = new Color(0.14f, 0.22f, 0.38f, 1f);
+            colors.normalColor = s_CardBgColor;
+            colors.highlightedColor = new Color(0.18f, 0.32f, 0.58f, 1f);
+            colors.pressedColor = new Color(0.12f, 0.22f, 0.42f, 1f);
             btn.colors = colors;
 
             var label = AddText(go.transform, "Text", font, text, 28f, Color.white, TextAlignmentOptions.MidlineLeft);
@@ -821,11 +927,14 @@ namespace PrimerVolante.Testing.Editor
 
             var img = go.GetComponent<Image>();
             img.color = bgColor;
+            img.raycastTarget = true;
 
             var btn = go.GetComponent<Button>();
+            btn.targetGraphic = img;
             var colors = btn.colors;
-            colors.highlightedColor = bgColor * 1.15f;
-            colors.pressedColor = bgColor * 0.85f;
+            colors.normalColor = bgColor;
+            colors.highlightedColor = bgColor * 1.20f;
+            colors.pressedColor = bgColor * 0.80f;
             btn.colors = colors;
 
             var label = AddText(go.transform, "Text", font, text, 36f, Color.white, TextAlignmentOptions.Center);
@@ -835,37 +944,30 @@ namespace PrimerVolante.Testing.Editor
             return btn;
         }
 
-        private static Slider CreateModernSlider(string name, Transform parent, Vector2 pos, Vector2 delta)
+        private static Button CreateModalButton(string name, Transform parent, TMP_FontAsset font, string text, Color bgColor, float width, float height)
         {
-            var sliderObj = new GameObject(name, typeof(RectTransform), typeof(Slider));
-            sliderObj.transform.SetParent(parent, false);
-            var rect = (RectTransform)sliderObj.transform;
-            rect.anchorMin = new Vector2(0.5f, 0.5f);
-            rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.anchoredPosition = pos;
-            rect.sizeDelta = delta;
+            var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
+            go.transform.SetParent(parent, false);
+            var rect = (RectTransform)go.transform;
+            rect.sizeDelta = new Vector2(width, height);
 
-            var bg = AddImage(sliderObj.transform, "Background", new Color(0.14f, 0.17f, 0.25f, 1f));
-            Stretch(bg.rectTransform, 0f, 0f, 0f, 0f);
+            var img = go.GetComponent<Image>();
+            img.color = bgColor;
+            img.raycastTarget = true;
 
-            var fillArea = CreateRect("Fill Area", sliderObj.transform);
-            Stretch(fillArea, 5f, 5f, 4f, 4f);
+            var btn = go.GetComponent<Button>();
+            btn.targetGraphic = img;
+            var colors = btn.colors;
+            colors.normalColor = bgColor;
+            colors.highlightedColor = bgColor * 1.25f;
+            colors.pressedColor = bgColor * 0.80f;
+            btn.colors = colors;
 
-            var fill = AddImage(fillArea, "Fill", new Color(0.15f, 0.39f, 0.92f, 1f));
-            Stretch(fill.rectTransform, 0f, 0f, 0f, 0f);
+            var label = AddText(go.transform, "Text", font, text, 32f, Color.white, TextAlignmentOptions.Center);
+            label.fontStyle = FontStyles.Bold;
+            Stretch(label.rectTransform, 10f, 10f, 5f, 5f);
 
-            var handleArea = CreateRect("Handle Slide Area", sliderObj.transform);
-            Stretch(handleArea, 10f, 10f, 0f, 0f);
-
-            var handle = AddImage(handleArea, "Handle", Color.white);
-            handle.rectTransform.sizeDelta = new Vector2(25f, 40f);
-
-            var slider = sliderObj.GetComponent<Slider>();
-            slider.fillRect = fill.rectTransform;
-            slider.handleRect = handle.rectTransform;
-            slider.targetGraphic = handle;
-            slider.direction = Slider.Direction.LeftToRight;
-            return slider;
+            return btn;
         }
 
         private static void Stretch(RectTransform rt, float left, float right, float bottom, float top)
