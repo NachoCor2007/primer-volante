@@ -53,12 +53,14 @@ namespace PrimerVolante.Testing.Editor
                 VerifyDegenerateAndInvalidCases(created);
                 VerifyPassthroughResumeRestoresOffset(created);
                 VerifySystemMenuHoldsHeadPose(created);
+                VerifySystemMenuFollowsLegacyHeadPose(created);
             }
             finally
             {
                 DriverSeatFollower.SetVRActiveOverrideForTests(null);
                 DriverSeatFollower.SetTrackingOriginModeOverrideForTests(null);
                 DriverSeatFollower.SetAppFocusedOverrideForTests(null);
+                DriverSeatFollower.SetLegacyHeadPoseOverrideForTests(null);
                 foreach (GameObject go in created)
                 {
                     if (go != null) Object.DestroyImmediate(go);
@@ -277,6 +279,8 @@ namespace PrimerVolante.Testing.Editor
             DriverSeatFollower.SetTrackingOriginModeOverrideForTests(UnityEngine.XR.TrackingOriginModeFlags.Floor);
             DriverSeatFollower.SetVRActiveOverrideForTests(true);
             DriverSeatFollower.SetAppFocusedOverrideForTests(true);
+            // Sin pose XR heredada válida: se congela la última pose conocida.
+            DriverSeatFollower.SetLegacyHeadPoseOverrideForTests(Pose.identity, valid: false);
 
             Quaternion headRotation = Quaternion.Euler(8f, 20f, 0f);
             SetCameraPose(rig, new Vector3(0.04f, 1.08f, 0.2f), headRotation);
@@ -319,6 +323,64 @@ namespace PrimerVolante.Testing.Editor
 
             DriverSeatFollower.SetAppFocusedOverrideForTests(null);
             DriverSeatFollower.SetTrackingOriginModeOverrideForTests(null);
+            DriverSeatFollower.SetLegacyHeadPoseOverrideForTests(null);
+        }
+
+        // Con pose XR heredada viva durante el menú del sistema, el fondo tiene que seguir la cabeza (no quedar congelado),
+        // tanto en el Update como justo antes de dibujar.
+        private static void VerifySystemMenuFollowsLegacyHeadPose(List<GameObject> created)
+        {
+            Rig rig = BuildRig(created, new Vector3(3f, 0.5f, -9f), Quaternion.Euler(0f, 160f, 0f));
+            DriverSeatFollower.SetTrackingOriginModeOverrideForTests(UnityEngine.XR.TrackingOriginModeFlags.Floor);
+            DriverSeatFollower.SetVRActiveOverrideForTests(true);
+            DriverSeatFollower.SetAppFocusedOverrideForTests(true);
+
+            Vector3 focusedPosition = new Vector3(-0.02f, 1.1f, 0.15f);
+            Quaternion focusedRotation = Quaternion.Euler(0f, 10f, 0f);
+            SetCameraPose(rig, focusedPosition, focusedRotation);
+            rig.Follower.RecenterHeadPose();
+            rig.Follower.SnapToSeat();
+
+            // Pose esperada en el mundo para una pose local de cabeza dada (como si la cámara tuviera esa pose con foco).
+            Vector3 ExpectedWorldPosition(Vector3 local) => rig.CameraOffset.parent.TransformPoint(local);
+            Quaternion ExpectedWorldRotation(Quaternion local) => rig.CameraOffset.parent.rotation * local;
+
+            DriverSeatFollower.SetAppFocusedOverrideForTests(false);
+            Vector3 menuPosition1 = new Vector3(0.05f, 1.12f, 0.1f);
+            Quaternion menuRotation1 = Quaternion.Euler(-5f, 45f, 0f);
+            DriverSeatFollower.SetLegacyHeadPoseOverrideForTests(new Pose(menuPosition1, menuRotation1));
+            SetCameraPose(rig, Vector3.zero, Quaternion.identity);
+            Check(Vector3.Distance(rig.Camera.position, ExpectedWorldPosition(menuPosition1)) < POSITION_TOLERANCE
+                    && Quaternion.Angle(rig.Camera.rotation, ExpectedWorldRotation(menuRotation1)) < ANGLE_TOLERANCE,
+                "Menú del sistema con pose XR heredada: la cámara toma la pose viva de la cabeza");
+
+            // La cabeza se mueve: antes de dibujar se actualiza sin esperar al Update siguiente.
+            Vector3 menuPosition2 = new Vector3(-0.1f, 1.05f, 0.18f);
+            Quaternion menuRotation2 = Quaternion.Euler(10f, -60f, 5f);
+            DriverSeatFollower.SetLegacyHeadPoseOverrideForTests(new Pose(menuPosition2, menuRotation2));
+            rig.Follower.ApplyBeforeRenderForTests();
+            Check(Vector3.Distance(rig.Camera.position, ExpectedWorldPosition(menuPosition2)) < POSITION_TOLERANCE
+                    && Quaternion.Angle(rig.Camera.rotation, ExpectedWorldRotation(menuRotation2)) < ANGLE_TOLERANCE,
+                "Menú del sistema: justo antes de dibujar el fondo sigue el movimiento de la cabeza");
+
+            // Si la pose heredada deja de ser válida, se usa la última pose con foco.
+            DriverSeatFollower.SetLegacyHeadPoseOverrideForTests(Pose.identity, valid: false);
+            rig.Follower.SnapToSeat();
+            Check(Vector3.Distance(rig.Camera.position, ExpectedWorldPosition(focusedPosition)) < POSITION_TOLERANCE,
+                "Menú del sistema sin pose heredada válida: se vuelve a la última pose con foco");
+
+            // Vuelve el foco: el Camera Offset vuelve a (0, 0, 0) y antes de dibujar no se toca nada.
+            DriverSeatFollower.SetAppFocusedOverrideForTests(true);
+            DriverSeatFollower.SetLegacyHeadPoseOverrideForTests(new Pose(menuPosition1, menuRotation1));
+            SetCameraPose(rig, focusedPosition, focusedRotation);
+            rig.Follower.ApplyBeforeRenderForTests();
+            Check(rig.CameraOffset.localPosition.sqrMagnitude < 1e-8f
+                    && Quaternion.Angle(rig.CameraOffset.localRotation, Quaternion.identity) < 1e-3f,
+                "Con foco: el Camera Offset queda en (0, 0, 0) sin rotación, también antes de dibujar");
+
+            DriverSeatFollower.SetAppFocusedOverrideForTests(null);
+            DriverSeatFollower.SetTrackingOriginModeOverrideForTests(null);
+            DriverSeatFollower.SetLegacyHeadPoseOverrideForTests(null);
         }
 
         // ------------------------------------------------------------------ Utilidades

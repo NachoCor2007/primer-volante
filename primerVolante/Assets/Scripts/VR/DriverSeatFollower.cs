@@ -65,6 +65,12 @@ namespace PrimerVolante.VR
         private bool m_HasLastHeadPose;
         private bool m_HoldingHeadPose;
         private float m_HoldBaseHeight;
+        private float m_HeldPoseBaseHeight;
+        private HeldPoseSource m_LoggedHeldPoseSource = HeldPoseSource.None;
+
+        private static bool s_HasLegacyHeadPoseOverride;
+        private static bool s_LegacyHeadPoseOverrideValid;
+        private static Pose s_LegacyHeadPoseOverride;
 
         // Compensación de la pose de la cabeza (solo VR). Es una foto, no se recalcula por frame.
         private float m_HeadYawCompensation;      // grados, yaw de la cabeza en el espacio local del XROrigin
@@ -151,10 +157,12 @@ namespace PrimerVolante.VR
             m_CapturePending = true;
             m_CaptureNotBeforeFrame = 0;
             m_NextSubscriptionRefresh = 0f;
+            Application.onBeforeRender += OnBeforeRenderHoldPose;
         }
 
         private void OnDisable()
         {
+            Application.onBeforeRender -= OnBeforeRenderHoldPose;
             UnsubscribeFromTrackingOrigin();
         }
 
@@ -192,6 +200,20 @@ namespace PrimerVolante.VR
         }
 
         private static bool IsAppFocused() => s_AppFocusedOverride ?? Application.isFocused;
+
+        /// <summary>
+        /// Seam de tests: fuerza la pose de cabeza de la API XR heredada. <paramref name="valid"/> = false simula que no hay
+        /// pose. Pasar null en <paramref name="pose"/> restaura la lectura real de InputDevices.
+        /// </summary>
+        public static void SetLegacyHeadPoseOverrideForTests(Pose? pose, bool valid = true)
+        {
+            s_HasLegacyHeadPoseOverride = pose.HasValue;
+            s_LegacyHeadPoseOverride = pose ?? Pose.identity;
+            s_LegacyHeadPoseOverrideValid = pose.HasValue && valid;
+        }
+
+        /// <summary>Solo para tests: aplica lo mismo que corre justo antes de dibujar mientras se sostiene la vista.</summary>
+        public void ApplyBeforeRenderForTests() => OnBeforeRenderHoldPose();
 
         /// <summary>
         /// Determina si hay un visor de Realidad Virtual (HMD) conectado y renderizando activamente.
@@ -478,8 +500,8 @@ namespace PrimerVolante.VR
                 Quaternion targetRot = Quaternion.identity;
 
                 // Sin foco (menú del botón Meta) el Quest sigue mostrando la app de fondo, pero la pose local de la cámara
-                // cae a (0, 0, 0) y la vista queda al ras del asiento. Mientras dure, el Camera Offset sostiene la última
-                // pose de cabeza conocida para que el fondo se vea desde donde estaba el usuario.
+                // cae a (0, 0, 0) y la vista queda al ras del asiento. Mientras dure, el Camera Offset lleva la pose de la
+                // cabeza: la de la API XR heredada si sigue viva (el fondo acompaña la cabeza) o, si no, la última conocida.
                 Transform head = m_Origin.Camera != null ? m_Origin.Camera.transform : null;
                 if (head != null)
                 {
@@ -500,15 +522,12 @@ namespace PrimerVolante.VR
                             m_HoldBaseHeight = baseHeight;
                         }
 
-                        targetPos += m_LastHeadLocalPosition;
-                        // Si la rotación también cayó a la identidad, se sostiene la última; si sigue viva, se deja.
-                        if (head.localRotation == Quaternion.identity)
-                        {
-                            targetRot = m_LastHeadLocalRotation;
-                        }
+                        m_HeldPoseBaseHeight = baseHeight;
+                        ComputeHeldOffset(head, baseHeight, out targetPos, out targetRot);
                     }
                     else
                     {
+                        if (m_HoldingHeadPose) LogHeldPoseSource(HeldPoseSource.None);
                         m_HoldingHeadPose = false;
                     }
                 }
@@ -522,6 +541,89 @@ namespace PrimerVolante.VR
                 {
                     offsetTransform.localRotation = targetRot;
                 }
+            }
+        }
+
+        private enum HeldPoseSource { None, LegacyLive, LastKnown }
+
+        /// <summary>
+        /// Pose del Camera Offset mientras se sostiene la vista sin foco. La cámara quedó en (0, 0, 0), así que el offset
+        /// lleva la pose entera: altura base + posición de la cabeza, y la rotación si la de la cámara también cayó.
+        /// </summary>
+        private void ComputeHeldOffset(Transform head, float baseHeight, out Vector3 position, out Quaternion rotation)
+        {
+            Vector3 headPosition;
+            Quaternion headRotation;
+            if (TryGetLegacyHeadPose(out headPosition, out headRotation))
+            {
+                LogHeldPoseSource(HeldPoseSource.LegacyLive);
+            }
+            else
+            {
+                headPosition = m_LastHeadLocalPosition;
+                headRotation = m_LastHeadLocalRotation;
+                LogHeldPoseSource(HeldPoseSource.LastKnown);
+            }
+
+            position = new Vector3(0f, baseHeight, 0f) + headPosition;
+            // Si la rotación de la cámara sigue viva, el offset no agrega rotación (se duplicaría).
+            rotation = head.localRotation == Quaternion.identity ? headRotation : Quaternion.identity;
+        }
+
+        /// <summary>
+        /// Pose de la cabeza según la API XR heredada (InputDevices), en el mismo espacio que la pose local de la cámara.
+        /// No depende del Input System, que sin foco deja la cámara en cero. False si no hay una pose trackeada no nula.
+        /// </summary>
+        private static bool TryGetLegacyHeadPose(out Vector3 position, out Quaternion rotation)
+        {
+            if (s_HasLegacyHeadPoseOverride)
+            {
+                position = s_LegacyHeadPoseOverride.position;
+                rotation = s_LegacyHeadPoseOverride.rotation;
+                return s_LegacyHeadPoseOverrideValid;
+            }
+
+            position = Vector3.zero;
+            rotation = Quaternion.identity;
+            InputDevice device = InputDevices.GetDeviceAtXRNode(XRNode.Head);
+            if (!device.isValid) return false;
+            if (device.TryGetFeatureValue(CommonUsages.isTracked, out bool tracked) && !tracked) return false;
+            if (!device.TryGetFeatureValue(CommonUsages.devicePosition, out position)) return false;
+            if (!device.TryGetFeatureValue(CommonUsages.deviceRotation, out rotation)) return false;
+
+            float rotationNorm = rotation.x * rotation.x + rotation.y * rotation.y + rotation.z * rotation.z + rotation.w * rotation.w;
+            return position.sqrMagnitude >= COLLAPSED_POSE_SQR && rotationNorm > 0.5f;
+        }
+
+        // Justo antes de dibujar se vuelve a leer la pose, para que el fondo siga la cabeza con la menor latencia posible.
+        private void OnBeforeRenderHoldPose()
+        {
+            if (!m_HoldingHeadPose || m_Origin == null || m_Origin.CameraFloorOffsetObject == null || m_Origin.Camera == null) return;
+
+            Transform head = m_Origin.Camera.transform;
+            if (head.localPosition.sqrMagnitude >= COLLAPSED_POSE_SQR) return;
+
+            ComputeHeldOffset(head, m_HeldPoseBaseHeight, out Vector3 position, out Quaternion rotation);
+            Transform offsetTransform = m_Origin.CameraFloorOffsetObject.transform;
+            offsetTransform.localPosition = position;
+            offsetTransform.localRotation = rotation;
+        }
+
+        private void LogHeldPoseSource(HeldPoseSource source)
+        {
+            if (source == m_LoggedHeldPoseSource) return;
+            m_LoggedHeldPoseSource = source;
+            switch (source)
+            {
+                case HeldPoseSource.LegacyLive:
+                    Debug.Log("[DriverSeat] Sin foco: la vista sigue la cabeza con la pose de la API XR heredada.");
+                    break;
+                case HeldPoseSource.LastKnown:
+                    Debug.Log("[DriverSeat] Sin foco: no hay pose XR heredada válida, se congela la última pose conocida.");
+                    break;
+                default:
+                    Debug.Log("[DriverSeat] Foco recuperado: se suelta la vista sostenida.");
+                    break;
             }
         }
 
