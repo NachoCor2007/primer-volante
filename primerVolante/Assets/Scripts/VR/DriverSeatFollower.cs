@@ -13,6 +13,12 @@ namespace PrimerVolante.VR
     /// el XRInteractionManager detecta hover/select, las manos quedan un frame atrasadas respecto de los
     /// interactuables del vehículo (desfase = velocidad × deltaTime) y los colliders chicos, como los del
     /// retrovisor, dejan de poder agarrarse.
+    /// <para>
+    /// En VR, la pose de la cabeza llega relativa al origen de tracking del runtime (en el Quest, el del último
+    /// recentrado del sistema), no a donde está sentado el usuario. Para que la cámara quede en el asiento mirando hacia
+    /// adelante, se guarda una "foto" (<see cref="RecenterHeadPose"/>) del desplazamiento horizontal y el yaw de la cabeza
+    /// en el espacio del XROrigin, y se compensa al posicionar el rig. No se compensa la altura ni el pitch/roll.
+    /// </para>
     /// </summary>
     [DefaultExecutionOrder(-300)]
     public class DriverSeatFollower : MonoBehaviour
@@ -34,8 +40,28 @@ namespace PrimerVolante.VR
         [Tooltip("Límite máximo (derecha, arriba, adelante) del desplazamiento de calibración, en metros locales al asiento.")]
         [SerializeField] private Vector3 m_CalibrationLimitsMax = new Vector3(0.25f, 0.20f, 0.25f);
 
+        // Espera mínima, en frames, entre un recentrado del runtime y la recaptura: la pose tiene que reflejar el origen nuevo.
+        private const int RECAPTURE_DELAY_FRAMES = 2;
+        // Cada cuántos segundos se revisa si cambió el conjunto de subsistemas de entrada XR (reinicio de la sesión VR).
+        private const float SUBSCRIPTION_REFRESH_SECONDS = 2f;
+        // Si el forward horizontal de la cabeza es menor (mirando casi recto arriba/abajo), el yaw es indeterminado.
+        private const float MIN_HORIZONTAL_FORWARD_SQR = 0.04f;
+
         private XROrigin m_Origin;
         private static readonly List<XRDisplaySubsystem> s_DisplaySubsystems = new();
+        private static readonly List<XRInputSubsystem> s_InputSubsystems = new();
+
+        // Seam de tests: fuerza la rama VR (true) o escritorio (false). Null = comportamiento real (subsistemas de display).
+        private static bool? s_VRActiveOverride;
+
+        // Compensación de la pose de la cabeza (solo VR). Es una foto, no se recalcula por frame.
+        private float m_HeadYawCompensation;      // grados, yaw de la cabeza en el espacio local del XROrigin
+        private Vector3 m_HeadOffsetCompensation; // posición horizontal de la cabeza en el espacio local del XROrigin (y = 0)
+        private bool m_CapturePending = true;
+        private int m_CaptureNotBeforeFrame;
+        private volatile bool m_RecenterRequested;
+        private float m_NextSubscriptionRefresh;
+        private readonly List<XRInputSubsystem> m_SubscribedSubsystems = new();
 
         private float m_DesktopLookPitch = 0f;
         private float m_DesktopLookYaw = 0f;
@@ -107,9 +133,35 @@ namespace PrimerVolante.VR
             }
         }
 
+        private void OnEnable()
+        {
+            // En cada escena (y al reactivar el componente) se captura de nuevo apenas el HMD esté trackeando.
+            m_CapturePending = true;
+            m_CaptureNotBeforeFrame = 0;
+            m_NextSubscriptionRefresh = 0f;
+        }
+
+        private void OnDisable()
+        {
+            UnsubscribeFromTrackingOrigin();
+        }
+
+        private void OnDestroy()
+        {
+            UnsubscribeFromTrackingOrigin();
+        }
+
         private void Start()
         {
             FollowSeatPosition();
+        }
+
+        /// <summary>
+        /// Seam de tests: fuerza <see cref="IsVRHeadsetActive"/> a true/false. Pasar null restaura el comportamiento real.
+        /// </summary>
+        public static void SetVRActiveOverrideForTests(bool? vrActive)
+        {
+            s_VRActiveOverride = vrActive;
         }
 
         /// <summary>
@@ -118,6 +170,8 @@ namespace PrimerVolante.VR
         /// </summary>
         public static bool IsVRHeadsetActive()
         {
+            if (s_VRActiveOverride.HasValue) return s_VRActiveOverride.Value;
+
             s_DisplaySubsystems.Clear();
             SubsystemManager.GetSubsystems(s_DisplaySubsystems);
             for (int i = 0; i < s_DisplaySubsystems.Count; i++)
@@ -175,6 +229,7 @@ namespace PrimerVolante.VR
 
         private void Update()
         {
+            UpdateHeadPoseCapture();
             FollowSeatPosition();
         }
 
@@ -192,14 +247,159 @@ namespace PrimerVolante.VR
 
             if (m_FollowSeat && m_DriverSeat != null)
             {
-                transform.position = m_DriverSeat.TransformPoint(m_CalibrationOffset);
-                transform.rotation = m_DriverSeat.rotation;
+                bool vrActive = IsVRHeadsetActive();
+                Vector3 position = m_DriverSeat.TransformPoint(m_CalibrationOffset);
+                Quaternion rotation = m_DriverSeat.rotation;
 
-                AlignCameraOffset();
+                if (vrActive)
+                {
+                    // Compensación de la pose de la cabeza: se gira el rig -yaw para que la cabeza (que mira con yaw local)
+                    // quede mirando hacia adelante del asiento, y se desplaza el rig para que la cabeza (desplazada
+                    // m_HeadOffsetCompensation en el espacio del rig, ya rotado) caiga justo en el punto de vista del asiento.
+                    rotation = m_DriverSeat.rotation * Quaternion.Euler(0f, -m_HeadYawCompensation, 0f);
+                    position -= rotation * m_HeadOffsetCompensation;
+                }
+
+                transform.position = position;
+                transform.rotation = rotation;
+
+                AlignCameraOffset(vrActive);
             }
         }
 
-        private void AlignCameraOffset()
+        /// <summary>
+        /// Captura la compensación de la pose de la cabeza (desplazamiento horizontal y yaw respecto del XROrigin), de modo
+        /// que la cámara quede horizontalmente en el punto de vista del asiento (asiento + calibración) y mirando hacia
+        /// el frente del asiento. Reemplaza cualquier captura anterior: la pose se mide en el espacio local del XROrigin,
+        /// que no depende de dónde esté el rig ni de la compensación que ya tenía aplicada. No toca altura, pitch ni roll.
+        /// Devuelve false si no hay cámara o si la cabeza mira casi vertical (yaw indeterminado); en ese caso no cambia nada.
+        /// </summary>
+        public bool RecenterHeadPose()
+        {
+            if (m_Origin == null)
+            {
+                m_Origin = GetComponent<XROrigin>();
+            }
+
+            Camera head = m_Origin != null ? m_Origin.Camera : null;
+            if (head == null) return false;
+
+            Vector3 localForward = transform.InverseTransformDirection(head.transform.forward);
+            localForward.y = 0f;
+            if (localForward.sqrMagnitude < MIN_HORIZONTAL_FORWARD_SQR) return false;
+
+            Vector3 localPosition = transform.InverseTransformPoint(head.transform.position);
+            m_HeadOffsetCompensation = new Vector3(localPosition.x, 0f, localPosition.z);
+            m_HeadYawCompensation = Mathf.Atan2(localForward.x, localForward.z) * Mathf.Rad2Deg;
+
+            if (m_FollowSeat && m_DriverSeat != null)
+            {
+                FollowSeatPosition();
+            }
+            return true;
+        }
+
+        /// <summary>Pide recapturar la compensación en cuanto el HMD tenga una pose válida (ej. tras un recentrado).</summary>
+        public void RequestHeadPoseRecenter()
+        {
+            m_RecenterRequested = true;
+        }
+
+        private void UpdateHeadPoseCapture()
+        {
+            if (!IsVRHeadsetActive()) return;
+
+            RefreshTrackingOriginSubscriptions();
+
+            if (m_RecenterRequested)
+            {
+                // El runtime recentró: la pose del frame siguiente ya refleja el origen nuevo.
+                m_RecenterRequested = false;
+                m_CapturePending = true;
+                m_CaptureNotBeforeFrame = Time.frameCount + RECAPTURE_DELAY_FRAMES;
+            }
+
+            if (!m_CapturePending || Time.frameCount < m_CaptureNotBeforeFrame) return;
+            if (!IsHeadPoseValid()) return;
+
+            if (RecenterHeadPose())
+            {
+                m_CapturePending = false;
+            }
+        }
+
+        /// <summary>
+        /// El HMD está trackeando y su pose ya no es la identidad (al arrancar la app el runtime puede entregar la pose
+        /// identidad durante unos frames). Se usan InputDevices y también la pose local de la cámara del rig.
+        /// </summary>
+        private bool IsHeadPoseValid()
+        {
+            InputDevice head = InputDevices.GetDeviceAtXRNode(XRNode.Head);
+            if (!head.isValid) return false;
+            if (head.TryGetFeatureValue(CommonUsages.isTracked, out bool tracked) && !tracked) return false;
+
+            bool hasPosition = head.TryGetFeatureValue(CommonUsages.devicePosition, out Vector3 devicePosition);
+            bool hasRotation = head.TryGetFeatureValue(CommonUsages.deviceRotation, out Quaternion deviceRotation);
+            bool positionIsIdentity = !hasPosition || devicePosition == Vector3.zero;
+            bool rotationIsIdentity = !hasRotation || deviceRotation == Quaternion.identity;
+            if (positionIsIdentity && rotationIsIdentity) return false;
+
+            Camera cam = m_Origin != null ? m_Origin.Camera : null;
+            if (cam == null) return false;
+            Transform camTransform = cam.transform;
+            return camTransform.localPosition != Vector3.zero || camTransform.localRotation != Quaternion.identity;
+        }
+
+        // Los subsistemas pueden crearse después del arranque (o recrearse al reiniciar la sesión VR): se revisan cada tanto.
+        // Un subsistema nuevo implica un origen de tracking potencialmente nuevo, así que dispara una recaptura.
+        private void RefreshTrackingOriginSubscriptions()
+        {
+            if (Time.unscaledTime < m_NextSubscriptionRefresh) return;
+            m_NextSubscriptionRefresh = Time.unscaledTime + SUBSCRIPTION_REFRESH_SECONDS;
+
+            s_InputSubsystems.Clear();
+            SubsystemManager.GetSubsystems(s_InputSubsystems);
+
+            for (int i = m_SubscribedSubsystems.Count - 1; i >= 0; i--)
+            {
+                XRInputSubsystem known = m_SubscribedSubsystems[i];
+                if (known == null || !s_InputSubsystems.Contains(known))
+                {
+                    if (known != null) known.trackingOriginUpdated -= OnTrackingOriginUpdated;
+                    m_SubscribedSubsystems.RemoveAt(i);
+                }
+            }
+
+            for (int i = 0; i < s_InputSubsystems.Count; i++)
+            {
+                XRInputSubsystem subsystem = s_InputSubsystems[i];
+                if (m_SubscribedSubsystems.Contains(subsystem)) continue;
+
+                subsystem.trackingOriginUpdated += OnTrackingOriginUpdated;
+                m_SubscribedSubsystems.Add(subsystem);
+                m_CapturePending = true;
+            }
+        }
+
+        private void UnsubscribeFromTrackingOrigin()
+        {
+            for (int i = 0; i < m_SubscribedSubsystems.Count; i++)
+            {
+                if (m_SubscribedSubsystems[i] != null)
+                {
+                    m_SubscribedSubsystems[i].trackingOriginUpdated -= OnTrackingOriginUpdated;
+                }
+            }
+            m_SubscribedSubsystems.Clear();
+        }
+
+        // Puede llamarse desde el runtime XR: solo se marca el pedido, la recaptura ocurre en Update.
+        private void OnTrackingOriginUpdated(XRInputSubsystem subsystem)
+        {
+            m_RecenterRequested = true;
+        }
+
+        private void AlignCameraOffset(bool vrActive)
         {
             if (m_Origin == null)
             {
@@ -212,7 +412,6 @@ namespace PrimerVolante.VR
             }
 
             Transform offsetTransform = m_Origin.CameraFloorOffsetObject.transform;
-            bool vrActive = IsVRHeadsetActive();
 
             if (!vrActive)
             {

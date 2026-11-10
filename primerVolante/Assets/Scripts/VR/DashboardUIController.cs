@@ -241,7 +241,7 @@ namespace PrimerVolante.VR
             if (m_VehicleController != null)
             {
                 signal = m_VehicleController.CurrentTurnSignal;
-                isHazard = m_VehicleController.IsHazardActive;
+                isHazard = m_VehicleController.IsHazardActive && !m_VehicleController.HazardLightsMuted;
             }
 
             bool leftShouldBlink = isHazard || (signal == TurnSignalState.Left);

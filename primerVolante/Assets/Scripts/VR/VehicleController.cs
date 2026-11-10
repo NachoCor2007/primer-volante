@@ -137,6 +137,8 @@ namespace PrimerVolante.VR
         [Header("Balizas / Luces de Emergencia")]
         [SerializeField] private bool m_HazardsActive = false;
         [SerializeField] private VRToggleButton m_HazardButton;
+        [Tooltip("Si es true, silencia los efectos visuales y sonoros de balizas (luces, tic-tac y tablero) para menús.")]
+        [SerializeField] private bool m_HazardLightsMuted = false;
 
         /// <summary>
         /// Velocidad actual del vehículo en km/h.
@@ -195,6 +197,15 @@ namespace PrimerVolante.VR
         /// Indica si las balizas (luces de emergencia) están activas.
         /// </summary>
         public bool IsHazardActive => m_HazardsActive;
+
+        /// <summary>
+        /// Si es true, silencia los efectos visuales y sonoros de balizas (luces, tic-tac y tablero) para menús.
+        /// </summary>
+        public bool HazardLightsMuted
+        {
+            get => m_HazardLightsMuted;
+            set => m_HazardLightsMuted = value;
+        }
 
         /// <summary>
         /// Se dispara cuando cambian las balizas (por botón VR o tecla H).
@@ -352,6 +363,7 @@ namespace PrimerVolante.VR
             // 4. Luces y Señalización: Apagadas
             SetHeadlightMode(HeadlightMode.Off);
             SetHazardActive(false);
+            m_HazardLightsMuted = false;
             SetTurnSignal(TurnSignalState.Off);
             if (m_TurnSignal != null)
             {
