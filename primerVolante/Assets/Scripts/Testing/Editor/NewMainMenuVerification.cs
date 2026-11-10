@@ -184,6 +184,18 @@ namespace PrimerVolante.Testing.Editor
 
             Check(controller.Lessons.Count == 6, "NewMainMenuController tiene cargadas las 6 lecciones del currículum");
             Check(controller.Circuits.Count >= 3, "NewMainMenuController tiene configurados al menos 3 circuitos integradores");
+            Check(controller.CurrentTab == NewMenuTab.Controles, "La solapa inicial por defecto es 'Controles y Mandos'");
+
+            // 7.b. Botón Salir en columna izquierda (Sidebar)
+            Button btnExit = canvasObj.transform.Find("Sidebar/Btn_Exit")?.GetComponent<Button>();
+            Check(btnExit != null, "Existe el botón rojo Btn_Exit en la columna izquierda");
+            if (btnExit != null)
+            {
+                RectTransform rt = (RectTransform)btnExit.transform;
+                Check(rt.rect.width > 200f || (rt.anchorMax.x - rt.anchorMin.x > 0.5f), "Btn_Exit tiene ancho completo en la columna (no se comprime verticalmente)");
+                TextMeshProUGUI txt = btnExit.GetComponentInChildren<TextMeshProUGUI>();
+                Check(txt != null && txt.text.Contains("SALIR"), "Btn_Exit tiene texto legible 'SALIR DEL SIMULADOR'");
+            }
 
             // 8. Test de Navegación por Solapas
             controller.SelectTab(NewMenuTab.Controles);

@@ -100,7 +100,7 @@ namespace PrimerVolante.MainMenu
         [SerializeField] private Transform m_XROriginTransform;
 
         // Estado interno
-        private NewMenuTab m_CurrentTab = NewMenuTab.Lecciones;
+        private NewMenuTab m_CurrentTab = NewMenuTab.Controles;
         private int m_SelectedLessonIndex = 0;
         private int m_SelectedCircuitIndex = 0;
         private readonly List<Button> m_LessonCardButtons = new List<Button>();
@@ -171,8 +171,8 @@ namespace PrimerVolante.MainMenu
             SetupCircuitItems();
             SetupExitModal();
 
-            // Solapa inicial: Lecciones
-            SelectTab(NewMenuTab.Lecciones);
+            // Solapa inicial: Controles y Mandos
+            SelectTab(NewMenuTab.Controles);
         }
 
         private void OnEnable()

@@ -430,7 +430,7 @@ namespace PrimerVolante.Testing.Editor
             RectTransform navGroup = CreateRect("NavButtons", sidebar);
             navGroup.anchorMin = new Vector2(0f, 0f);
             navGroup.anchorMax = new Vector2(1f, 1f);
-            navGroup.offsetMin = new Vector2(25f, 120f);
+            navGroup.offsetMin = new Vector2(25f, 135f);
             navGroup.offsetMax = new Vector2(-25f, -25f);
             var navLayout = navGroup.gameObject.AddComponent<VerticalLayoutGroup>();
             navLayout.spacing = 16f;
@@ -439,21 +439,14 @@ namespace PrimerVolante.Testing.Editor
             navLayout.childForceExpandWidth = true;
             navLayout.childForceExpandHeight = false;
 
-            Button btnTabControls = CreateMenuButton("Tab_Controles", navGroup, font, "Controles y Mandos", s_TabInactiveColor, 90f);
-            Button btnTabLessons = CreateMenuButton("Tab_Lecciones", navGroup, font, "Lecciones Formativas", s_TabActiveColor, 90f);
+            Button btnTabControls = CreateMenuButton("Tab_Controles", navGroup, font, "Controles y Mandos", s_TabActiveColor, 90f);
+            Button btnTabLessons = CreateMenuButton("Tab_Lecciones", navGroup, font, "Lecciones Formativas", s_TabInactiveColor, 90f);
             Button btnTabCircuits = CreateMenuButton("Tab_Circuitos", navGroup, font, "Circuitos / Integradores", s_TabInactiveColor, 90f);
             Button btnTabCalib = CreateMenuButton("Tab_Calibracion", navGroup, font, "Calibración de Asiento", s_TabInactiveColor, 90f);
             Button btnTabCredits = CreateMenuButton("Tab_Creditos", navGroup, font, "Créditos del Proyecto", s_TabInactiveColor, 90f);
 
-            // Botón Salir (parte inferior de sidebar)
-            RectTransform exitBox = CreateRect("ExitBox", sidebar);
-            exitBox.anchorMin = new Vector2(0f, 0f);
-            exitBox.anchorMax = new Vector2(1f, 0f);
-            exitBox.sizeDelta = new Vector2(-50f, 80f);
-            exitBox.anchoredPosition = new Vector2(0f, 55f);
-            Button btnExit = CreateMenuButton("Btn_Exit", exitBox, font, "Salir del Simulador", new Color(0.20f, 0.10f, 0.12f, 1f), 75f);
-            var exitText = btnExit.GetComponentInChildren<TextMeshProUGUI>();
-            if (exitText != null) exitText.color = new Color(0.95f, 0.40f, 0.40f, 1f);
+            // Botón Salir (parte inferior de sidebar: botón rojo visible a todo lo ancho de la columna izquierda)
+            Button btnExit = CreateExitButton("Btn_Exit", sidebar, font, "SALIR DEL SIMULADOR", s_ExitRedColor, 85f);
 
             // ================================================================
             // ÁREA DE CONTENIDO DERECHA
@@ -968,6 +961,37 @@ namespace PrimerVolante.Testing.Editor
 
             var label = AddText(go.transform, "Text", font, text, 30f, Color.white, TextAlignmentOptions.MidlineLeft);
             Stretch(label.rectTransform, 30f, 20f, 10f, 10f);
+
+            return btn;
+        }
+
+        private static Button CreateExitButton(string name, Transform parent, TMP_FontAsset font, string text, Color bgColor, float height)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
+            go.transform.SetParent(parent, false);
+            var rect = (RectTransform)go.transform;
+            rect.anchorMin = new Vector2(0f, 0f);
+            rect.anchorMax = new Vector2(1f, 0f);
+            rect.pivot = new Vector2(0.5f, 0f);
+            rect.offsetMin = new Vector2(25f, 25f);
+            rect.offsetMax = new Vector2(-25f, 25f + height);
+
+            var img = go.GetComponent<Image>();
+            img.color = bgColor;
+            img.raycastTarget = true;
+
+            var btn = go.GetComponent<Button>();
+            btn.targetGraphic = img;
+            var colors = btn.colors;
+            colors.normalColor = bgColor;
+            colors.highlightedColor = new Color(0.98f, 0.28f, 0.28f, 1f);
+            colors.pressedColor = new Color(0.65f, 0.10f, 0.10f, 1f);
+            btn.colors = colors;
+
+            var label = AddText(go.transform, "Text", font, text, 32f, Color.white, TextAlignmentOptions.Center);
+            label.fontStyle = FontStyles.Bold;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            Stretch(label.rectTransform, 15f, 15f, 5f, 5f);
 
             return btn;
         }
