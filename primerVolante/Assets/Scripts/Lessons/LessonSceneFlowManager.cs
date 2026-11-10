@@ -20,7 +20,18 @@ namespace PrimerVolante.Lessons
         private static LessonSceneFlowManager s_Instance;
 
         public const string CITY_MASTER_SCENE = "City_Master";
+        public const string NEW_MAIN_MENU_SCENE = "NewMainMenu";
         public const string MAIN_MENU_SCENE = "MainMenu";
+        private static string s_PreferredMainMenuScene = NEW_MAIN_MENU_SCENE;
+
+        /// <summary>
+        /// Escena de menú principal preferida a la que retornar ("NewMainMenu" por defecto, o "MainMenu" legado).
+        /// </summary>
+        public static string PreferredMainMenuScene
+        {
+            get => s_PreferredMainMenuScene;
+            set => s_PreferredMainMenuScene = value;
+        }
 
         public static readonly Dictionary<string, string> LessonScenes = new Dictionary<string, string>
         {
@@ -173,7 +184,8 @@ namespace PrimerVolante.Lessons
         public void ReturnToMainMenu()
         {
             if (m_IsTransitioning) return;
-            StartCoroutine(TransitionToSceneRoutine(MAIN_MENU_SCENE));
+            string targetMenu = !string.IsNullOrEmpty(s_PreferredMainMenuScene) ? s_PreferredMainMenuScene : MAIN_MENU_SCENE;
+            StartCoroutine(TransitionToSceneRoutine(targetMenu));
         }
 
         /// <summary>
@@ -213,7 +225,7 @@ namespace PrimerVolante.Lessons
         public void RestartCurrentLesson()
         {
             if (m_IsTransitioning) return;
-            if (!string.IsNullOrEmpty(m_CurrentOverlayScene) && m_CurrentOverlayScene != MAIN_MENU_SCENE)
+            if (!string.IsNullOrEmpty(m_CurrentOverlayScene) && m_CurrentOverlayScene != MAIN_MENU_SCENE && m_CurrentOverlayScene != NEW_MAIN_MENU_SCENE)
             {
                 StartCoroutine(TransitionToSceneRoutine(m_CurrentOverlayScene));
             }
