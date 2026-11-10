@@ -51,10 +51,16 @@ namespace PrimerVolante.Testing.Editor
                 VerifySeatChangeKeepsCompensation(created);
                 VerifyTiltedSeat(created);
                 VerifyDegenerateAndInvalidCases(created);
+                VerifyPassthroughResumeRestoresOffset(created);
+                VerifySystemMenuHoldsHeadPose(created);
+                VerifySystemMenuFollowsLegacyHeadPose(created);
             }
             finally
             {
                 DriverSeatFollower.SetVRActiveOverrideForTests(null);
+                DriverSeatFollower.SetTrackingOriginModeOverrideForTests(null);
+                DriverSeatFollower.SetAppFocusedOverrideForTests(null);
+                DriverSeatFollower.SetLegacyHeadPoseOverrideForTests(null);
                 foreach (GameObject go in created)
                 {
                     if (go != null) Object.DestroyImmediate(go);
@@ -222,6 +228,159 @@ namespace PrimerVolante.Testing.Editor
             noCameraObject.AddComponent<XROrigin>();
             var noCameraFollower = noCameraObject.AddComponent<DriverSeatFollower>();
             Check(!noCameraFollower.RecenterHeadPose(), "Sin cámara en el XROrigin, RecenterHeadPose devuelve false sin lanzar");
+        }
+
+        // Al volver de passthrough en el Quest el display figura detenido un frame: corre la rama de escritorio, que sube el
+        // Camera Offset a la altura de los ojos. De vuelta en VR el offset tiene que volver a lo que fija el modo de tracking.
+        private static void VerifyPassthroughResumeRestoresOffset(List<GameObject> created)
+        {
+            Rig rig = BuildRig(created, new Vector3(8f, 0.4f, -2f), Quaternion.Euler(0f, 95f, 0f));
+            SetCameraPose(rig, new Vector3(0.05f, 1.05f, 0.25f), Quaternion.Euler(0f, 15f, 0f));
+
+            DriverSeatFollower.SetTrackingOriginModeOverrideForTests(UnityEngine.XR.TrackingOriginModeFlags.Floor);
+            DriverSeatFollower.SetVRActiveOverrideForTests(true);
+            rig.Follower.RecenterHeadPose();
+            rig.Follower.SnapToSeat();
+            Check(Mathf.Abs(rig.CameraOffset.localPosition.y) < 1e-5f, "VR Floor: la altura del Camera Offset es 0");
+            Vector3 cameraBefore = rig.Camera.position;
+
+            DriverSeatFollower.SetVRActiveOverrideForTests(false); // frame de "display detenido" al reanudar
+            rig.Follower.SnapToSeat();
+            rig.CameraOffset.localRotation = Quaternion.Euler(0f, 30f, 0f); // ej. vista de escritorio girada
+            Check(rig.CameraOffset.localPosition.y > 0.5f, "Escritorio: el Camera Offset sube a la altura de los ojos (reproduce el bug)");
+
+            DriverSeatFollower.SetVRActiveOverrideForTests(true);
+            rig.Follower.SnapToSeat();
+            Check(rig.CameraOffset.localPosition.sqrMagnitude < 1e-8f, "VR Floor tras el frame de escritorio: el Camera Offset vuelve a (0, 0, 0)");
+            Check(Quaternion.Angle(rig.CameraOffset.localRotation, Quaternion.identity) < 1e-3f, "VR tras el frame de escritorio: el Camera Offset vuelve a no tener rotación");
+            Check(Vector3.Distance(rig.Camera.position, cameraBefore) < POSITION_TOLERANCE,
+                "VR tras el frame de escritorio: la cámara vuelve exactamente a donde estaba (altura incluida)");
+            AssertAlignedToSeat(rig, "VR tras el frame de escritorio");
+
+            DriverSeatFollower.SetTrackingOriginModeOverrideForTests(UnityEngine.XR.TrackingOriginModeFlags.Device);
+            rig.Follower.SnapToSeat();
+            Check(Mathf.Abs(rig.CameraOffset.localPosition.y - rig.Origin.GetComponent<XROrigin>().CameraYOffset) < 1e-5f,
+                "VR Device: la altura del Camera Offset es CameraYOffset");
+
+            DriverSeatFollower.SetTrackingOriginModeOverrideForTests(UnityEngine.XR.TrackingOriginModeFlags.Unknown);
+            rig.CameraOffset.localPosition = new Vector3(0.2f, 0.42f, -0.1f);
+            rig.Follower.SnapToSeat();
+            Check(Vector3.Distance(rig.CameraOffset.localPosition, new Vector3(0f, 0.42f, 0f)) < 1e-5f,
+                "VR con modo desconocido: se corrigen X/Z pero no se toca la altura");
+
+            DriverSeatFollower.SetTrackingOriginModeOverrideForTests(null);
+        }
+
+        // Con el menú del botón Meta la app pierde el foco y la pose local de la cámara cae a (0, 0, 0): la vista de fondo
+        // quedaba al ras del asiento. El Camera Offset tiene que sostener la última pose y soltarla al recuperar el foco.
+        private static void VerifySystemMenuHoldsHeadPose(List<GameObject> created)
+        {
+            Rig rig = BuildRig(created, new Vector3(-6f, 0.3f, 11f), Quaternion.Euler(0f, -40f, 0f));
+            DriverSeatFollower.SetTrackingOriginModeOverrideForTests(UnityEngine.XR.TrackingOriginModeFlags.Floor);
+            DriverSeatFollower.SetVRActiveOverrideForTests(true);
+            DriverSeatFollower.SetAppFocusedOverrideForTests(true);
+            // Sin pose XR heredada válida: se congela la última pose conocida.
+            DriverSeatFollower.SetLegacyHeadPoseOverrideForTests(Pose.identity, valid: false);
+
+            Quaternion headRotation = Quaternion.Euler(8f, 20f, 0f);
+            SetCameraPose(rig, new Vector3(0.04f, 1.08f, 0.2f), headRotation);
+            rig.Follower.RecenterHeadPose();
+            rig.Follower.SnapToSeat();
+            Vector3 cameraBefore = rig.Camera.position;
+            Quaternion cameraRotationBefore = rig.Camera.rotation;
+
+            // Se abre el menú del sistema: sin foco, la pose cae a cero (posición y rotación).
+            DriverSeatFollower.SetAppFocusedOverrideForTests(false);
+            SetCameraPose(rig, Vector3.zero, Quaternion.identity);
+            Check(Vector3.Distance(rig.Camera.position, cameraBefore) < POSITION_TOLERANCE,
+                "Menú del sistema: la cámara se mantiene donde estaba aunque la pose caiga a cero");
+            Check(Quaternion.Angle(rig.Camera.rotation, cameraRotationBefore) < ANGLE_TOLERANCE,
+                "Menú del sistema: la cámara mantiene la orientación previa");
+
+            rig.Follower.SnapToSeat();
+            Check(Vector3.Distance(rig.Camera.position, cameraBefore) < POSITION_TOLERANCE,
+                "Menú del sistema: frames siguientes no acumulan desplazamiento");
+
+            // Sin foco pero con rotación todavía viva: se sostiene la posición y la rotación sigue a la cabeza.
+            SetCameraPose(rig, Vector3.zero, Quaternion.Euler(0f, -30f, 0f));
+            Check(Vector3.Distance(rig.Camera.position, cameraBefore) < POSITION_TOLERANCE,
+                "Menú del sistema con rotación viva: la posición se sostiene");
+            Check(Quaternion.Angle(rig.CameraOffset.localRotation, Quaternion.identity) < 1e-3f,
+                "Menú del sistema con rotación viva: el Camera Offset no agrega rotación");
+
+            // Vuelve el foco y la pose real: el Camera Offset vuelve a (0, 0, 0) sin rotación.
+            DriverSeatFollower.SetAppFocusedOverrideForTests(true);
+            SetCameraPose(rig, new Vector3(0.04f, 1.08f, 0.2f), headRotation);
+            Check(rig.CameraOffset.localPosition.sqrMagnitude < 1e-8f
+                    && Quaternion.Angle(rig.CameraOffset.localRotation, Quaternion.identity) < 1e-3f,
+                "Al recuperar el foco el Camera Offset vuelve a (0, 0, 0) sin rotación");
+            Check(Vector3.Distance(rig.Camera.position, cameraBefore) < POSITION_TOLERANCE,
+                "Al recuperar el foco la cámara sigue en el mismo lugar");
+
+            // Con foco, una pose en cero no se sostiene (no es el caso del menú del sistema).
+            SetCameraPose(rig, Vector3.zero, Quaternion.identity);
+            Check(rig.CameraOffset.localPosition.sqrMagnitude < 1e-8f, "Con foco, una pose en cero no activa el sostén");
+
+            DriverSeatFollower.SetAppFocusedOverrideForTests(null);
+            DriverSeatFollower.SetTrackingOriginModeOverrideForTests(null);
+            DriverSeatFollower.SetLegacyHeadPoseOverrideForTests(null);
+        }
+
+        // Con pose XR heredada viva durante el menú del sistema, el fondo tiene que seguir la cabeza (no quedar congelado),
+        // tanto en el Update como justo antes de dibujar.
+        private static void VerifySystemMenuFollowsLegacyHeadPose(List<GameObject> created)
+        {
+            Rig rig = BuildRig(created, new Vector3(3f, 0.5f, -9f), Quaternion.Euler(0f, 160f, 0f));
+            DriverSeatFollower.SetTrackingOriginModeOverrideForTests(UnityEngine.XR.TrackingOriginModeFlags.Floor);
+            DriverSeatFollower.SetVRActiveOverrideForTests(true);
+            DriverSeatFollower.SetAppFocusedOverrideForTests(true);
+
+            Vector3 focusedPosition = new Vector3(-0.02f, 1.1f, 0.15f);
+            Quaternion focusedRotation = Quaternion.Euler(0f, 10f, 0f);
+            SetCameraPose(rig, focusedPosition, focusedRotation);
+            rig.Follower.RecenterHeadPose();
+            rig.Follower.SnapToSeat();
+
+            // Pose esperada en el mundo para una pose local de cabeza dada (como si la cámara tuviera esa pose con foco).
+            Vector3 ExpectedWorldPosition(Vector3 local) => rig.CameraOffset.parent.TransformPoint(local);
+            Quaternion ExpectedWorldRotation(Quaternion local) => rig.CameraOffset.parent.rotation * local;
+
+            DriverSeatFollower.SetAppFocusedOverrideForTests(false);
+            Vector3 menuPosition1 = new Vector3(0.05f, 1.12f, 0.1f);
+            Quaternion menuRotation1 = Quaternion.Euler(-5f, 45f, 0f);
+            DriverSeatFollower.SetLegacyHeadPoseOverrideForTests(new Pose(menuPosition1, menuRotation1));
+            SetCameraPose(rig, Vector3.zero, Quaternion.identity);
+            Check(Vector3.Distance(rig.Camera.position, ExpectedWorldPosition(menuPosition1)) < POSITION_TOLERANCE
+                    && Quaternion.Angle(rig.Camera.rotation, ExpectedWorldRotation(menuRotation1)) < ANGLE_TOLERANCE,
+                "Menú del sistema con pose XR heredada: la cámara toma la pose viva de la cabeza");
+
+            // La cabeza se mueve: antes de dibujar se actualiza sin esperar al Update siguiente.
+            Vector3 menuPosition2 = new Vector3(-0.1f, 1.05f, 0.18f);
+            Quaternion menuRotation2 = Quaternion.Euler(10f, -60f, 5f);
+            DriverSeatFollower.SetLegacyHeadPoseOverrideForTests(new Pose(menuPosition2, menuRotation2));
+            rig.Follower.ApplyBeforeRenderForTests();
+            Check(Vector3.Distance(rig.Camera.position, ExpectedWorldPosition(menuPosition2)) < POSITION_TOLERANCE
+                    && Quaternion.Angle(rig.Camera.rotation, ExpectedWorldRotation(menuRotation2)) < ANGLE_TOLERANCE,
+                "Menú del sistema: justo antes de dibujar el fondo sigue el movimiento de la cabeza");
+
+            // Si la pose heredada deja de ser válida, se usa la última pose con foco.
+            DriverSeatFollower.SetLegacyHeadPoseOverrideForTests(Pose.identity, valid: false);
+            rig.Follower.SnapToSeat();
+            Check(Vector3.Distance(rig.Camera.position, ExpectedWorldPosition(focusedPosition)) < POSITION_TOLERANCE,
+                "Menú del sistema sin pose heredada válida: se vuelve a la última pose con foco");
+
+            // Vuelve el foco: el Camera Offset vuelve a (0, 0, 0) y antes de dibujar no se toca nada.
+            DriverSeatFollower.SetAppFocusedOverrideForTests(true);
+            DriverSeatFollower.SetLegacyHeadPoseOverrideForTests(new Pose(menuPosition1, menuRotation1));
+            SetCameraPose(rig, focusedPosition, focusedRotation);
+            rig.Follower.ApplyBeforeRenderForTests();
+            Check(rig.CameraOffset.localPosition.sqrMagnitude < 1e-8f
+                    && Quaternion.Angle(rig.CameraOffset.localRotation, Quaternion.identity) < 1e-3f,
+                "Con foco: el Camera Offset queda en (0, 0, 0) sin rotación, también antes de dibujar");
+
+            DriverSeatFollower.SetAppFocusedOverrideForTests(null);
+            DriverSeatFollower.SetTrackingOriginModeOverrideForTests(null);
+            DriverSeatFollower.SetLegacyHeadPoseOverrideForTests(null);
         }
 
         // ------------------------------------------------------------------ Utilidades

@@ -298,6 +298,19 @@ namespace PrimerVolante.Lessons
             }
         }
 
+#if UNITY_EDITOR
+        /// <summary>Solo Editor (tests): reemplaza la lectura de Escape, que un teclado virtual no puede simular en Edit Mode.</summary>
+        public static System.Func<bool> EscapePressedOverrideForTests;
+#endif
+
+        private static bool EscapePressedThisFrame()
+        {
+#if UNITY_EDITOR
+            if (EscapePressedOverrideForTests != null) return EscapePressedOverrideForTests();
+#endif
+            return Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame;
+        }
+
         /// <summary>
         /// Evalúa si la condición de la acción requerida en un paso está actualmente satisfecha.
         /// </summary>
@@ -316,13 +329,18 @@ namespace PrimerVolante.Lessons
                     return false;
 
                 case LessonActionType.OpenCalibrationMenu:
-                    if (m_MenuController != null && m_MenuController.IsOpen)
+                    // Mientras el menú está abierto por la pausa de conexión VR (entrada bloqueada) no cuenta como abrirlo a propósito,
+                    // ni el menú ni Escape.
+                    if (m_MenuController == null || !m_MenuController.IsBlockingGameplayInput)
                     {
-                        m_CalibrationMenuWasOpened = true;
-                    }
-                    else if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
-                    {
-                        m_CalibrationMenuWasOpened = true;
+                        if (m_MenuController != null && m_MenuController.IsOpen)
+                        {
+                            m_CalibrationMenuWasOpened = true;
+                        }
+                        else if (EscapePressedThisFrame())
+                        {
+                            m_CalibrationMenuWasOpened = true;
+                        }
                     }
                     // La acción se cumple únicamente al cerrar / salir del menú tras haberlo abierto
                     return m_CalibrationMenuWasOpened && (m_MenuController == null || !m_MenuController.IsOpen);

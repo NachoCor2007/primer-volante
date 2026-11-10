@@ -734,6 +734,7 @@ MonoBehaviour:
   - {fileID: 1618903768835503784}
   - {fileID: -3847414143676915324}
   - {fileID: -3259496814242430987}
+  - {fileID: -2092716306300709964}
   customLoaderName: 
   m_renderMode: 0
   m_latencyOptimization: 0
@@ -993,6 +994,28 @@ MonoBehaviour:
   customRuntimeLoaderName: 
   m_LeftHandPreference: 2
   m_RightHandPreference: 2
+--- !u!114 &-3711705657926219390
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66217e923bbea2347a116b52e5b861f1, type: 3}
+  m_Name: VRSessionStateFeature Android
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.VRSessionStateFeature
+  m_enabled: 1
+  nameUi: 'Primer Volante: Session State'
+  version: 1.0.0
+  featureIdInternal: com.primervolante.sessionstate
+  openxrExtensionStrings: 
+  company: Primer Volante
+  priority: 0
+  targetOpenXRApiVersion: 
+  required: 0
+  customRuntimeLoaderName: 
 --- !u!114 &-3684617200565882833
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1197,6 +1220,28 @@ MonoBehaviour:
   customRuntimeLoaderName: 
   cacheSize: 1048576
   perThreadCacheSize: 51200
+--- !u!114 &-2092716306300709964
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66217e923bbea2347a116b52e5b861f1, type: 3}
+  m_Name: VRSessionStateFeature Standalone
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.VRSessionStateFeature
+  m_enabled: 1
+  nameUi: 'Primer Volante: Session State'
+  version: 1.0.0
+  featureIdInternal: com.primervolante.sessionstate
+  openxrExtensionStrings: 
+  company: Primer Volante
+  priority: 0
+  targetOpenXRApiVersion: 
+  required: 0
+  customRuntimeLoaderName: 
 --- !u!114 &-1792293151131426384
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1586,6 +1631,7 @@ MonoBehaviour:
   - {fileID: 4853274370477301145}
   - {fileID: -3656169467162751686}
   - {fileID: -85864520782985752}
+  - {fileID: -3711705657926219390}
   customLoaderName: 
   m_renderMode: 1
   m_latencyOptimization: 1
