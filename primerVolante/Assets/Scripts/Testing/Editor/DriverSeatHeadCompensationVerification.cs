@@ -52,11 +52,13 @@ namespace PrimerVolante.Testing.Editor
                 VerifyTiltedSeat(created);
                 VerifyDegenerateAndInvalidCases(created);
                 VerifyPassthroughResumeRestoresOffset(created);
+                VerifySystemMenuHoldsHeadPose(created);
             }
             finally
             {
                 DriverSeatFollower.SetVRActiveOverrideForTests(null);
                 DriverSeatFollower.SetTrackingOriginModeOverrideForTests(null);
+                DriverSeatFollower.SetAppFocusedOverrideForTests(null);
                 foreach (GameObject go in created)
                 {
                     if (go != null) Object.DestroyImmediate(go);
@@ -264,6 +266,58 @@ namespace PrimerVolante.Testing.Editor
             Check(Vector3.Distance(rig.CameraOffset.localPosition, new Vector3(0f, 0.42f, 0f)) < 1e-5f,
                 "VR con modo desconocido: se corrigen X/Z pero no se toca la altura");
 
+            DriverSeatFollower.SetTrackingOriginModeOverrideForTests(null);
+        }
+
+        // Con el menú del botón Meta la app pierde el foco y la pose local de la cámara cae a (0, 0, 0): la vista de fondo
+        // quedaba al ras del asiento. El Camera Offset tiene que sostener la última pose y soltarla al recuperar el foco.
+        private static void VerifySystemMenuHoldsHeadPose(List<GameObject> created)
+        {
+            Rig rig = BuildRig(created, new Vector3(-6f, 0.3f, 11f), Quaternion.Euler(0f, -40f, 0f));
+            DriverSeatFollower.SetTrackingOriginModeOverrideForTests(UnityEngine.XR.TrackingOriginModeFlags.Floor);
+            DriverSeatFollower.SetVRActiveOverrideForTests(true);
+            DriverSeatFollower.SetAppFocusedOverrideForTests(true);
+
+            Quaternion headRotation = Quaternion.Euler(8f, 20f, 0f);
+            SetCameraPose(rig, new Vector3(0.04f, 1.08f, 0.2f), headRotation);
+            rig.Follower.RecenterHeadPose();
+            rig.Follower.SnapToSeat();
+            Vector3 cameraBefore = rig.Camera.position;
+            Quaternion cameraRotationBefore = rig.Camera.rotation;
+
+            // Se abre el menú del sistema: sin foco, la pose cae a cero (posición y rotación).
+            DriverSeatFollower.SetAppFocusedOverrideForTests(false);
+            SetCameraPose(rig, Vector3.zero, Quaternion.identity);
+            Check(Vector3.Distance(rig.Camera.position, cameraBefore) < POSITION_TOLERANCE,
+                "Menú del sistema: la cámara se mantiene donde estaba aunque la pose caiga a cero");
+            Check(Quaternion.Angle(rig.Camera.rotation, cameraRotationBefore) < ANGLE_TOLERANCE,
+                "Menú del sistema: la cámara mantiene la orientación previa");
+
+            rig.Follower.SnapToSeat();
+            Check(Vector3.Distance(rig.Camera.position, cameraBefore) < POSITION_TOLERANCE,
+                "Menú del sistema: frames siguientes no acumulan desplazamiento");
+
+            // Sin foco pero con rotación todavía viva: se sostiene la posición y la rotación sigue a la cabeza.
+            SetCameraPose(rig, Vector3.zero, Quaternion.Euler(0f, -30f, 0f));
+            Check(Vector3.Distance(rig.Camera.position, cameraBefore) < POSITION_TOLERANCE,
+                "Menú del sistema con rotación viva: la posición se sostiene");
+            Check(Quaternion.Angle(rig.CameraOffset.localRotation, Quaternion.identity) < 1e-3f,
+                "Menú del sistema con rotación viva: el Camera Offset no agrega rotación");
+
+            // Vuelve el foco y la pose real: el Camera Offset vuelve a (0, 0, 0) sin rotación.
+            DriverSeatFollower.SetAppFocusedOverrideForTests(true);
+            SetCameraPose(rig, new Vector3(0.04f, 1.08f, 0.2f), headRotation);
+            Check(rig.CameraOffset.localPosition.sqrMagnitude < 1e-8f
+                    && Quaternion.Angle(rig.CameraOffset.localRotation, Quaternion.identity) < 1e-3f,
+                "Al recuperar el foco el Camera Offset vuelve a (0, 0, 0) sin rotación");
+            Check(Vector3.Distance(rig.Camera.position, cameraBefore) < POSITION_TOLERANCE,
+                "Al recuperar el foco la cámara sigue en el mismo lugar");
+
+            // Con foco, una pose en cero no se sostiene (no es el caso del menú del sistema).
+            SetCameraPose(rig, Vector3.zero, Quaternion.identity);
+            Check(rig.CameraOffset.localPosition.sqrMagnitude < 1e-8f, "Con foco, una pose en cero no activa el sostén");
+
+            DriverSeatFollower.SetAppFocusedOverrideForTests(null);
             DriverSeatFollower.SetTrackingOriginModeOverrideForTests(null);
         }
 

@@ -54,6 +54,17 @@ namespace PrimerVolante.VR
         // Seam de tests: fuerza la rama VR (true) o escritorio (false). Null = comportamiento real (subsistemas de display).
         private static bool? s_VRActiveOverride;
         private static TrackingOriginModeFlags? s_TrackingOriginModeOverride;
+        private static bool? s_AppFocusedOverride;
+
+        // Por debajo de esto (en m²) la pose local de la cámara se considera caída a cero (sin foco), no una pose real.
+        private const float COLLAPSED_POSE_SQR = 1e-10f;
+
+        // Última pose de cabeza válida con foco, para sostener la vista mientras el menú del sistema está abierto.
+        private Vector3 m_LastHeadLocalPosition;
+        private Quaternion m_LastHeadLocalRotation = Quaternion.identity;
+        private bool m_HasLastHeadPose;
+        private bool m_HoldingHeadPose;
+        private float m_HoldBaseHeight;
 
         // Compensación de la pose de la cabeza (solo VR). Es una foto, no se recalcula por frame.
         private float m_HeadYawCompensation;      // grados, yaw de la cabeza en el espacio local del XROrigin
@@ -173,6 +184,14 @@ namespace PrimerVolante.VR
         {
             s_TrackingOriginModeOverride = mode;
         }
+
+        /// <summary>Seam de tests: fuerza si la app tiene foco (<see cref="Application.isFocused"/>). Null = el real.</summary>
+        public static void SetAppFocusedOverrideForTests(bool? focused)
+        {
+            s_AppFocusedOverride = focused;
+        }
+
+        private static bool IsAppFocused() => s_AppFocusedOverride ?? Application.isFocused;
 
         /// <summary>
         /// Determina si hay un visor de Realidad Virtual (HMD) conectado y renderizando activamente.
@@ -444,10 +463,54 @@ namespace PrimerVolante.VR
                 // última corre un frame al volver de passthrough en el Quest (el display figura detenido justo al reanudar) y
                 // dejaba la cámara 1,36 m más alta hasta que el usuario recentrara.
                 Vector3 localPos = offsetTransform.localPosition;
-                Vector3 targetPos = new Vector3(0f, localPos.y, 0f);
+                float baseHeight;
                 if (TryGetVRCameraOffsetHeight(out float vrHeight))
                 {
-                    targetPos.y = vrHeight;
+                    baseHeight = vrHeight;
+                }
+                else
+                {
+                    // Modo desconocido: se conserva la altura actual (sin contar lo que sumó el sostén de la vista).
+                    baseHeight = m_HoldingHeadPose ? m_HoldBaseHeight : localPos.y;
+                }
+
+                Vector3 targetPos = new Vector3(0f, baseHeight, 0f);
+                Quaternion targetRot = Quaternion.identity;
+
+                // Sin foco (menú del botón Meta) el Quest sigue mostrando la app de fondo, pero la pose local de la cámara
+                // cae a (0, 0, 0) y la vista queda al ras del asiento. Mientras dure, el Camera Offset sostiene la última
+                // pose de cabeza conocida para que el fondo se vea desde donde estaba el usuario.
+                Transform head = m_Origin.Camera != null ? m_Origin.Camera.transform : null;
+                if (head != null)
+                {
+                    bool focused = IsAppFocused();
+                    bool positionCollapsed = head.localPosition.sqrMagnitude < COLLAPSED_POSE_SQR;
+                    if (focused && !positionCollapsed)
+                    {
+                        m_LastHeadLocalPosition = head.localPosition;
+                        m_LastHeadLocalRotation = head.localRotation;
+                        m_HasLastHeadPose = true;
+                    }
+
+                    if (!focused && positionCollapsed && m_HasLastHeadPose)
+                    {
+                        if (!m_HoldingHeadPose)
+                        {
+                            m_HoldingHeadPose = true;
+                            m_HoldBaseHeight = baseHeight;
+                        }
+
+                        targetPos += m_LastHeadLocalPosition;
+                        // Si la rotación también cayó a la identidad, se sostiene la última; si sigue viva, se deja.
+                        if (head.localRotation == Quaternion.identity)
+                        {
+                            targetRot = m_LastHeadLocalRotation;
+                        }
+                    }
+                    else
+                    {
+                        m_HoldingHeadPose = false;
+                    }
                 }
 
                 if ((localPos - targetPos).sqrMagnitude > 0.0001f)
@@ -455,9 +518,9 @@ namespace PrimerVolante.VR
                     offsetTransform.localPosition = targetPos;
                 }
 
-                if (offsetTransform.localRotation != Quaternion.identity)
+                if (offsetTransform.localRotation != targetRot)
                 {
-                    offsetTransform.localRotation = Quaternion.identity;
+                    offsetTransform.localRotation = targetRot;
                 }
             }
         }
