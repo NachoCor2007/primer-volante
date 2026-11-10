@@ -51,10 +51,12 @@ namespace PrimerVolante.Testing.Editor
                 VerifySeatChangeKeepsCompensation(created);
                 VerifyTiltedSeat(created);
                 VerifyDegenerateAndInvalidCases(created);
+                VerifyPassthroughResumeRestoresOffset(created);
             }
             finally
             {
                 DriverSeatFollower.SetVRActiveOverrideForTests(null);
+                DriverSeatFollower.SetTrackingOriginModeOverrideForTests(null);
                 foreach (GameObject go in created)
                 {
                     if (go != null) Object.DestroyImmediate(go);
@@ -222,6 +224,47 @@ namespace PrimerVolante.Testing.Editor
             noCameraObject.AddComponent<XROrigin>();
             var noCameraFollower = noCameraObject.AddComponent<DriverSeatFollower>();
             Check(!noCameraFollower.RecenterHeadPose(), "Sin cámara en el XROrigin, RecenterHeadPose devuelve false sin lanzar");
+        }
+
+        // Al volver de passthrough en el Quest el display figura detenido un frame: corre la rama de escritorio, que sube el
+        // Camera Offset a la altura de los ojos. De vuelta en VR el offset tiene que volver a lo que fija el modo de tracking.
+        private static void VerifyPassthroughResumeRestoresOffset(List<GameObject> created)
+        {
+            Rig rig = BuildRig(created, new Vector3(8f, 0.4f, -2f), Quaternion.Euler(0f, 95f, 0f));
+            SetCameraPose(rig, new Vector3(0.05f, 1.05f, 0.25f), Quaternion.Euler(0f, 15f, 0f));
+
+            DriverSeatFollower.SetTrackingOriginModeOverrideForTests(UnityEngine.XR.TrackingOriginModeFlags.Floor);
+            DriverSeatFollower.SetVRActiveOverrideForTests(true);
+            rig.Follower.RecenterHeadPose();
+            rig.Follower.SnapToSeat();
+            Check(Mathf.Abs(rig.CameraOffset.localPosition.y) < 1e-5f, "VR Floor: la altura del Camera Offset es 0");
+            Vector3 cameraBefore = rig.Camera.position;
+
+            DriverSeatFollower.SetVRActiveOverrideForTests(false); // frame de "display detenido" al reanudar
+            rig.Follower.SnapToSeat();
+            rig.CameraOffset.localRotation = Quaternion.Euler(0f, 30f, 0f); // ej. vista de escritorio girada
+            Check(rig.CameraOffset.localPosition.y > 0.5f, "Escritorio: el Camera Offset sube a la altura de los ojos (reproduce el bug)");
+
+            DriverSeatFollower.SetVRActiveOverrideForTests(true);
+            rig.Follower.SnapToSeat();
+            Check(rig.CameraOffset.localPosition.sqrMagnitude < 1e-8f, "VR Floor tras el frame de escritorio: el Camera Offset vuelve a (0, 0, 0)");
+            Check(Quaternion.Angle(rig.CameraOffset.localRotation, Quaternion.identity) < 1e-3f, "VR tras el frame de escritorio: el Camera Offset vuelve a no tener rotación");
+            Check(Vector3.Distance(rig.Camera.position, cameraBefore) < POSITION_TOLERANCE,
+                "VR tras el frame de escritorio: la cámara vuelve exactamente a donde estaba (altura incluida)");
+            AssertAlignedToSeat(rig, "VR tras el frame de escritorio");
+
+            DriverSeatFollower.SetTrackingOriginModeOverrideForTests(UnityEngine.XR.TrackingOriginModeFlags.Device);
+            rig.Follower.SnapToSeat();
+            Check(Mathf.Abs(rig.CameraOffset.localPosition.y - rig.Origin.GetComponent<XROrigin>().CameraYOffset) < 1e-5f,
+                "VR Device: la altura del Camera Offset es CameraYOffset");
+
+            DriverSeatFollower.SetTrackingOriginModeOverrideForTests(UnityEngine.XR.TrackingOriginModeFlags.Unknown);
+            rig.CameraOffset.localPosition = new Vector3(0.2f, 0.42f, -0.1f);
+            rig.Follower.SnapToSeat();
+            Check(Vector3.Distance(rig.CameraOffset.localPosition, new Vector3(0f, 0.42f, 0f)) < 1e-5f,
+                "VR con modo desconocido: se corrigen X/Z pero no se toca la altura");
+
+            DriverSeatFollower.SetTrackingOriginModeOverrideForTests(null);
         }
 
         // ------------------------------------------------------------------ Utilidades

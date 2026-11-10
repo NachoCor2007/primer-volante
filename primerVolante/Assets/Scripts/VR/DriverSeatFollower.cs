@@ -53,6 +53,7 @@ namespace PrimerVolante.VR
 
         // Seam de tests: fuerza la rama VR (true) o escritorio (false). Null = comportamiento real (subsistemas de display).
         private static bool? s_VRActiveOverride;
+        private static TrackingOriginModeFlags? s_TrackingOriginModeOverride;
 
         // Compensación de la pose de la cabeza (solo VR). Es una foto, no se recalcula por frame.
         private float m_HeadYawCompensation;      // grados, yaw de la cabeza en el espacio local del XROrigin
@@ -162,6 +163,15 @@ namespace PrimerVolante.VR
         public static void SetVRActiveOverrideForTests(bool? vrActive)
         {
             s_VRActiveOverride = vrActive;
+        }
+
+        /// <summary>
+        /// Seam de tests: fuerza el modo de origen de tracking que se usa para la altura del Camera Offset en VR
+        /// (en el Editor sin runtime, <see cref="XROrigin.CurrentTrackingOriginMode"/> es Unknown). Null = el real.
+        /// </summary>
+        public static void SetTrackingOriginModeOverrideForTests(TrackingOriginModeFlags? mode)
+        {
+            s_TrackingOriginModeOverride = mode;
         }
 
         /// <summary>
@@ -429,14 +439,48 @@ namespace PrimerVolante.VR
             {
                 // Modo VR con cascos puestos:
                 // El tracking de orientación y posición de cabeza lo gestiona el HMD a través del TrackedPoseDriver en la cámara.
-                // Solo corregimos si el Camera Offset fue corrompido lateralmente (X o Z != 0) por inicializaciones previas del simulador:
+                // El Camera Offset debe quedar como lo deja el XROrigin: X/Z en 0, sin rotación y con la altura de su modo de
+                // tracking. Se restaura si algo lo pisó: el simulador al inicializarse o la rama de escritorio de arriba. Esta
+                // última corre un frame al volver de passthrough en el Quest (el display figura detenido justo al reanudar) y
+                // dejaba la cámara 1,36 m más alta hasta que el usuario recentrara.
                 Vector3 localPos = offsetTransform.localPosition;
-                if (Mathf.Abs(localPos.x) > 0.01f || Mathf.Abs(localPos.z) > 0.01f)
+                Vector3 targetPos = new Vector3(0f, localPos.y, 0f);
+                if (TryGetVRCameraOffsetHeight(out float vrHeight))
                 {
-                    localPos.x = 0f;
-                    localPos.z = 0f;
-                    offsetTransform.localPosition = localPos;
+                    targetPos.y = vrHeight;
                 }
+
+                if ((localPos - targetPos).sqrMagnitude > 0.0001f)
+                {
+                    offsetTransform.localPosition = targetPos;
+                }
+
+                if (offsetTransform.localRotation != Quaternion.identity)
+                {
+                    offsetTransform.localRotation = Quaternion.identity;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Altura del Camera Offset que corresponde en VR, igual que la aplica el XROrigin: 0 en modo Floor y
+        /// <see cref="XROrigin.CameraYOffset"/> en Device/Unbounded. False si el modo todavía es desconocido (no se toca la altura).
+        /// </summary>
+        private bool TryGetVRCameraOffsetHeight(out float height)
+        {
+            TrackingOriginModeFlags mode = s_TrackingOriginModeOverride ?? m_Origin.CurrentTrackingOriginMode;
+            switch (mode)
+            {
+                case TrackingOriginModeFlags.Floor:
+                    height = 0f;
+                    return true;
+                case TrackingOriginModeFlags.Device:
+                case TrackingOriginModeFlags.Unbounded:
+                    height = m_Origin.CameraYOffset;
+                    return true;
+                default:
+                    height = 0f;
+                    return false;
             }
         }
 
