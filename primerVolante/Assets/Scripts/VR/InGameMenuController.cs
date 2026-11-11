@@ -99,6 +99,9 @@ namespace PrimerVolante.VR
         private bool m_ResumeBlocked;
         private bool m_OpenedByConnectionPause;
 
+        // Transición de escena en curso (reiniciar/salir de la lección): el menú no se puede cerrar. No hay desbloqueo: muere con la escena.
+        private bool m_LockedForTransition;
+
         // Modo en el que estaba el menú cuando la pausa por conexión lo tomó, para restaurarlo al reanudar.
         private enum PreviousMenuMode { Closed, Normal, Standalone }
         private PreviousMenuMode m_PreviousMode;
@@ -114,6 +117,12 @@ namespace PrimerVolante.VR
         /// ignorar lo que pase mientras dura la pausa.
         /// </summary>
         public bool IsBlockingGameplayInput => m_OpenedByConnectionPause && IsOpen;
+
+        /// <summary>
+        /// true tras <see cref="LockForTransition"/>: <see cref="CloseMenu"/> y <see cref="ToggleMenu"/> no cierran el menú, así que la
+        /// simulación sigue pausada durante el fade-out de la transición de escena.
+        /// </summary>
+        public bool IsLockedForTransition => m_LockedForTransition;
 
         /// <summary>true mientras Reanudar está bloqueado: <see cref="CloseMenu"/> y <see cref="ToggleMenu"/> no cierran el menú.</summary>
         public bool ResumeBlocked => m_ResumeBlocked;
@@ -323,6 +332,8 @@ namespace PrimerVolante.VR
         /// </summary>
         public void ToggleMenu()
         {
+            if (m_LockedForTransition) return;
+
             if (IsOpen)
             {
                 CloseMenu();
@@ -357,6 +368,9 @@ namespace PrimerVolante.VR
         {
             if (m_MenuRoot == null) return;
 
+            // Transición de escena en curso: el menú queda abierto y la simulación pausada hasta que se descargue la escena.
+            if (m_LockedForTransition) return;
+
             // Pausa por desconexión VR sin recuperar: no hay reanudación (ni por Reanudar, ni por el botón Menu o Escape).
             if (m_ResumeBlocked) return;
 
@@ -374,6 +388,17 @@ namespace PrimerVolante.VR
             if (m_CalibrationBackButton != null) m_CalibrationBackButton.SetActive(true);
             MenuClosed?.Invoke();
             NotifyBlockingChanged();
+        }
+
+        /// <summary>
+        /// Bloquea el cierre del menú durante la transición de escena (reiniciar o salir de la lección): ni Menu/Escape ni Reanudar
+        /// despausan la simulación mientras dura el fade-out. No tiene desbloqueo: el bloqueo muere con la escena, y la pausa la libera
+        /// <c>OnDisable</c> al descargarse. <see cref="OpenMenuWithNotice"/> sigue funcionando.
+        /// </summary>
+        public void LockForTransition()
+        {
+            m_LockedForTransition = true;
+            SetResumeBlocked(m_ResumeBlocked);
         }
 
         /// <summary>
@@ -446,6 +471,13 @@ namespace PrimerVolante.VR
             switch (m_PreviousMode)
             {
                 case PreviousMenuMode.Closed:
+                    // Con la transición de escena en curso el menú no se cierra: queda abierto y pausado hasta que se descargue la escena.
+                    if (m_LockedForTransition)
+                    {
+                        ShowMainPanel();
+                        break;
+                    }
+
                     m_MenuRoot.SetActive(false);
                     SetFarCastingForMenu(false);
                     SetSimulationPaused(false);
@@ -458,12 +490,12 @@ namespace PrimerVolante.VR
                     if (m_PreviousCalibrationPanelActive) ShowCalibrationPanel();
                     else ShowMainPanel();
                     if (m_CalibrationBackButton != null) m_CalibrationBackButton.SetActive(m_PreviousBackButtonActive);
-                    if (!m_PauseSimulation) SetSimulationPaused(false);
+                    if (!m_PauseSimulation && !m_LockedForTransition) SetSimulationPaused(false);
                     break;
 
                 case PreviousMenuMode.Standalone:
                     // La calibración standalone no pausa el tiempo: se reabre reubicada y se libera la pausa.
-                    SetSimulationPaused(false);
+                    if (!m_LockedForTransition) SetSimulationPaused(false);
                     PositionInFrontOfHead(m_StandaloneYawOffsetDegrees, m_StandaloneForwardReference);
                     ShowCalibrationPanel();
                     if (m_CalibrationBackButton != null) m_CalibrationBackButton.SetActive(false);
@@ -482,7 +514,7 @@ namespace PrimerVolante.VR
         {
             m_ResumeBlocked = blocked;
             Button resume = ResumeButton;
-            if (resume != null) resume.interactable = !blocked;
+            if (resume != null) resume.interactable = !blocked && !m_LockedForTransition;
         }
 
         /// <summary>Muestra (o actualiza) el aviso debajo del título del panel principal. Con texto vacío lo oculta.</summary>
