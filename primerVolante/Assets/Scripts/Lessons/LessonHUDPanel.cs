@@ -5,8 +5,6 @@ using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
 using PrimerVolante.VR;
-using XRInputDevice = UnityEngine.XR.InputDevice;
-using XRInputDevices = UnityEngine.XR.InputDevices;
 using XRCommonUsages = UnityEngine.XR.CommonUsages;
 using XRNode = UnityEngine.XR.XRNode;
 
@@ -104,8 +102,10 @@ namespace PrimerVolante.Lessons
         [Tooltip("Botón 'Mostrar (A)' de la franja minimizada. Maximiza el panel.")]
         [SerializeField] private Button m_MaximizeButton;
 
-        [Tooltip("Tecla de teclado que minimiza/maximiza el panel para pruebas en el Editor/XR Device Simulator.")]
-        [SerializeField] private Key m_ToggleMinimizeKey = Key.H;
+        [Tooltip("Tecla de teclado que minimiza/maximiza el panel para pruebas en el Editor/XR Device Simulator. " +
+                 "No debe coincidir con las teclas de depuración de VehicleController (W, S, E, Z, C, H, flechas). " +
+                 "Key.None desactiva la tecla.")]
+        [SerializeField] private Key m_ToggleMinimizeKey = Key.O;
 
         [Tooltip("Nodo XR del control cuyo botón A (primaryButton) minimiza/maximiza el panel (mano derecha en Meta Quest).")]
         [SerializeField] private XRNode m_ToggleMinimizeNode = XRNode.RightHand;
@@ -115,7 +115,7 @@ namespace PrimerVolante.Lessons
         private Coroutine m_GlowCoroutine;
         private bool m_IsMinimized;
         private bool m_WarningActive;
-        private bool m_MinimizeButtonWasPressed;
+        private XRButtonEdgeDetector m_MinimizeButtonEdge;
         private static Sprite s_HollowBorderSprite;
 
         // Propiedades públicas para acceso e inspección en tests
@@ -191,7 +191,9 @@ namespace PrimerVolante.Lessons
 
         private void Update()
         {
-            if (Keyboard.current != null && Keyboard.current[m_ToggleMinimizeKey].wasPressedThisFrame)
+            // Key.None (o un valor fuera de rango) desactiva la tecla; el botón A se lee igual
+            bool keyValid = m_ToggleMinimizeKey > Key.None && m_ToggleMinimizeKey <= Key.OEM5;
+            if (keyValid && Keyboard.current != null && Keyboard.current[m_ToggleMinimizeKey].wasPressedThisFrame)
             {
                 ToggleMinimized();
             }
@@ -200,20 +202,14 @@ namespace PrimerVolante.Lessons
         }
 
         /// <summary>
-        /// Sondea el botón A del control derecho vía la API legada de XR (la única que, en este proyecto,
-        /// refleja en vivo el estado de los controles OpenXR) y minimiza/maximiza solo en el flanco de subida.
+        /// Sondea el botón A del control derecho (API legada de XR, ver <see cref="XRButtonEdgeDetector"/>)
+        /// y minimiza/maximiza solo en el flanco de subida.
         /// </summary>
         private void CheckMinimizeButtonPress()
         {
-            XRInputDevice device = XRInputDevices.GetDeviceAtXRNode(m_ToggleMinimizeNode);
-            bool pressed = false;
-            if (device.isValid && device.TryGetFeatureValue(XRCommonUsages.primaryButton, out pressed))
+            if (m_MinimizeButtonEdge.Poll(m_ToggleMinimizeNode, XRCommonUsages.primaryButton))
             {
-                if (pressed && !m_MinimizeButtonWasPressed)
-                {
-                    ToggleMinimized();
-                }
-                m_MinimizeButtonWasPressed = pressed;
+                ToggleMinimized();
             }
         }
 
@@ -366,10 +362,12 @@ namespace PrimerVolante.Lessons
         /// <summary>
         /// Minimiza el panel a una franja fina en su borde inferior, o lo restaura. El canvas y el rayo VR siguen
         /// activos para poder usar la franja. Dispara <see cref="MinimizedChanged"/> solo si el estado cambia.
+        /// Minimizar no hace nada con el panel de felicitaciones visible; maximizar funciona siempre.
         /// </summary>
         public void SetMinimized(bool minimized)
         {
             if (m_IsMinimized == minimized) return;
+            if (minimized && m_CompletionPanel != null && m_CompletionPanel.activeSelf) return;
             m_IsMinimized = minimized;
             ApplyMinimizedState();
             MinimizedChanged?.Invoke(m_IsMinimized);
@@ -499,15 +497,9 @@ namespace PrimerVolante.Lessons
 
             ClearStepWarning();
 
-            if (m_StepProgressText != null)
-            {
-                m_StepProgressText.text = $"Paso {stepIndex + 1} de {totalSteps}: {step.stepTitle}";
-            }
-
-            if (m_MinimizedStepText != null)
-            {
-                m_MinimizedStepText.text = $"Paso {stepIndex + 1} de {totalSteps}: {step.stepTitle}";
-            }
+            string stepProgress = $"Paso {stepIndex + 1} de {totalSteps}: {step.stepTitle}";
+            if (m_StepProgressText != null) m_StepProgressText.text = stepProgress;
+            if (m_MinimizedStepText != null) m_MinimizedStepText.text = stepProgress;
 
             if (m_InstructionText != null)
             {
