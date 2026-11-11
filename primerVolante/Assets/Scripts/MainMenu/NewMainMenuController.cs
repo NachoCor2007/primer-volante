@@ -75,7 +75,6 @@ namespace PrimerVolante.MainMenu
         [SerializeField] private Transform m_LessonItemsContainer;
         [SerializeField] private TextMeshProUGUI m_LessonDetailTitle;
         [SerializeField] private TextMeshProUGUI m_LessonDetailDescription;
-        [SerializeField] private TextMeshProUGUI m_LessonDetailDuration;
         [SerializeField] private Button m_BtnStartLesson;
         [SerializeField] private TextMeshProUGUI m_BtnStartLessonText;
 
@@ -602,13 +601,8 @@ namespace PrimerVolante.MainMenu
             var lesson = m_Lessons[m_SelectedLessonIndex];
             if (lesson != null)
             {
-                if (m_LessonDetailTitle != null) m_LessonDetailTitle.text = $"{lesson.lessonId}: {lesson.lessonTitle}";
+                if (m_LessonDetailTitle != null) m_LessonDetailTitle.text = lesson.lessonTitle;
                 if (m_LessonDetailDescription != null) m_LessonDetailDescription.text = GetLessonDescription(lesson);
-                if (m_LessonDetailDuration != null)
-                {
-                    int stepCount = lesson.steps != null ? lesson.steps.Count : 5;
-                    m_LessonDetailDuration.text = $"• Duración: 10 - 15 min   |   • Fases: {stepCount} guiadas por voz";
-                }
             }
 
             // Actualizar estilo visual de la lista
