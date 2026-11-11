@@ -2,8 +2,6 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
 using XRNode = UnityEngine.XR.XRNode;
-using XRInputDevice = UnityEngine.XR.InputDevice;
-using XRInputDevices = UnityEngine.XR.InputDevices;
 using XRCommonUsages = UnityEngine.XR.CommonUsages;
 
 namespace PrimerVolante.VR
@@ -82,7 +80,7 @@ namespace PrimerVolante.VR
         [Tooltip("Pausa también el audio del mundo (motor, viento, guiños) mientras la simulación está detenida.")]
         [SerializeField] private bool m_PauseAudio = true;
 
-        private bool m_MenuButtonWasPressed = false;
+        private XRButtonEdgeDetector m_MenuButtonEdge;
 
         private bool m_IsSimulationPaused;
         private bool m_PausedAudio;
@@ -192,21 +190,15 @@ namespace PrimerVolante.VR
         }
 
         /// <summary>
-        /// Sondea el botón Menu físico del control VR vía la API legada de XR (la única que, en
-        /// este proyecto, refleja en vivo el estado de los controles OpenXR) y dispara el toggle
-        /// solo en el flanco de subida (al apretar, no mientras se mantiene apretado).
+        /// Sondea el botón Menu físico del control VR vía la API legada de XR (ver
+        /// <see cref="XRButtonEdgeDetector"/>) y dispara el toggle solo en el flanco de subida
+        /// (al apretar, no mientras se mantiene apretado).
         /// </summary>
         private void CheckMenuButtonPress()
         {
-            XRInputDevice device = XRInputDevices.GetDeviceAtXRNode(m_MenuButtonNode);
-            bool pressed = false;
-            if (device.isValid && device.TryGetFeatureValue(XRCommonUsages.menuButton, out pressed))
+            if (m_MenuButtonEdge.Poll(m_MenuButtonNode, XRCommonUsages.menuButton))
             {
-                if (pressed && !m_MenuButtonWasPressed)
-                {
-                    ToggleMenu();
-                }
-                m_MenuButtonWasPressed = pressed;
+                ToggleMenu();
             }
         }
 
