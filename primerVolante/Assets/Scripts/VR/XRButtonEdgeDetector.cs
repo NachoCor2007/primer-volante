@@ -14,7 +14,8 @@ namespace PrimerVolante.VR
 
         /// <summary>
         /// Devuelve true solo en el frame en que el botón pasa de suelto a apretado. Si el dispositivo no es válido
-        /// o no reporta el botón, cuenta como suelto (así un botón apretado al reconectar vuelve a disparar).
+        /// o no reporta el botón, devuelve false y conserva el último estado: un botón que sigue apretado al
+        /// reconectar el control no genera un flanco nuevo (p. ej. no cierra ni reabre el menú de pausa solo).
         /// </summary>
         public bool Poll(XRNode node, InputFeatureUsage<bool> usage)
         {
@@ -22,7 +23,6 @@ namespace PrimerVolante.VR
             bool pressed = false;
             if (!device.isValid || !device.TryGetFeatureValue(usage, out pressed))
             {
-                m_WasPressed = false;
                 return false;
             }
 
