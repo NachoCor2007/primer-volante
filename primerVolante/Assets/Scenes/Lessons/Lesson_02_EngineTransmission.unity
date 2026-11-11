@@ -3859,7 +3859,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -10215,7 +10215,7 @@ MonoBehaviour:
   m_MinimizedStepText: {fileID: 740754023}
   m_MinimizeButton: {fileID: 756689709}
   m_MaximizeButton: {fileID: 578243779}
-  m_ToggleMinimizeKey: 22
+  m_ToggleMinimizeKey: 29
   m_ToggleMinimizeNode: 5
 --- !u!114 &1963091739
 MonoBehaviour:

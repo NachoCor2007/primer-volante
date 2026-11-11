@@ -10215,7 +10215,7 @@ MonoBehaviour:
   m_MinimizedStepText: {fileID: 396057281}
   m_MinimizeButton: {fileID: 363434155}
   m_MaximizeButton: {fileID: 1724183531}
-  m_ToggleMinimizeKey: 22
+  m_ToggleMinimizeKey: 29
   m_ToggleMinimizeNode: 5
 --- !u!114 &1963091739
 MonoBehaviour:

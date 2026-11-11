@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -29,10 +30,33 @@ namespace PrimerVolante.Testing.Editor
         [MenuItem("Tools/Primer Volante/Lessons/Setup Lesson HUD Minimize")]
         public static void SetupAllLessonScenes()
         {
-            int ok = 0;
-            foreach (string path in LESSON_SCENE_PATHS)
+            // Las escenas se abren en modo Single: pedir guardar las que estén sucias y abortar si el usuario cancela
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
             {
-                if (SetupScene(path)) ok++;
+                Debug.LogWarning("[LessonHUDMinimizeSetup] Cancelado por el usuario: hay escenas sin guardar.");
+                return;
+            }
+
+            // Escenas abiertas al empezar (y cuál era la activa) para volver a dejarlas como estaban
+            var openPaths = new List<string>();
+            string activePath = SceneManager.GetActiveScene().path;
+            for (int i = 0; i < SceneManager.sceneCount; i++)
+            {
+                string path = SceneManager.GetSceneAt(i).path;
+                if (!string.IsNullOrEmpty(path)) openPaths.Add(path);
+            }
+
+            int ok = 0;
+            try
+            {
+                foreach (string path in LESSON_SCENE_PATHS)
+                {
+                    if (SetupScene(path)) ok++;
+                }
+            }
+            finally
+            {
+                RestoreOpenScenes(openPaths, activePath);
             }
 
             if (ok == LESSON_SCENE_PATHS.Length)
@@ -43,6 +67,23 @@ namespace PrimerVolante.Testing.Editor
             {
                 Debug.LogError($"[LessonHUDMinimizeSetup] [FAIL] Solo se configuraron {ok}/{LESSON_SCENE_PATHS.Length} escenas de lección.");
             }
+        }
+
+        private static void RestoreOpenScenes(List<string> openPaths, string activePath)
+        {
+            if (openPaths.Count == 0)
+            {
+                EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                return;
+            }
+
+            for (int i = 0; i < openPaths.Count; i++)
+            {
+                EditorSceneManager.OpenScene(openPaths[i], i == 0 ? OpenSceneMode.Single : OpenSceneMode.Additive);
+            }
+
+            Scene active = SceneManager.GetSceneByPath(activePath);
+            if (active.IsValid() && active.isLoaded) SceneManager.SetActiveScene(active);
         }
 
         /// <summary>Abre la escena, agrega/reconfigura los controles en su LessonHUD_Canvas y la guarda.</summary>
