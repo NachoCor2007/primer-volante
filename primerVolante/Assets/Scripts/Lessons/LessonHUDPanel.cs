@@ -1,8 +1,14 @@
+using System;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
 using PrimerVolante.VR;
+using XRInputDevice = UnityEngine.XR.InputDevice;
+using XRInputDevices = UnityEngine.XR.InputDevices;
+using XRCommonUsages = UnityEngine.XR.CommonUsages;
+using XRNode = UnityEngine.XR.XRNode;
 
 namespace PrimerVolante.Lessons
 {
@@ -12,6 +18,8 @@ namespace PrimerVolante.Lessons
     /// y el botón interactivo de confirmación/avance mediante raycast de VR.
     /// Al terminar la lección, presenta el panel de felicitaciones con opciones para
     /// repetir la lección o continuar a la siguiente lección del currículum.
+    /// El panel se puede minimizar a una franja fina en su borde inferior (botón A del control derecho,
+    /// tecla H o botones del propio panel) para no tapar la calle, y se maximiza solo cuando hay información nueva.
     /// </summary>
     public class LessonHUDPanel : MonoBehaviour
     {
@@ -80,9 +88,34 @@ namespace PrimerVolante.Lessons
         [Tooltip("Clip sonoro de confirmación / chime positivo.")]
         [SerializeField] private AudioClip m_SuccessChimeClip;
 
+        [Header("Minimizar / Maximizar")]
+        [Tooltip("Fondo general del panel (se oculta al minimizar).")]
+        [SerializeField] private GameObject m_Background;
+
+        [Tooltip("Franja fina anclada al borde inferior que se muestra mientras el panel está minimizado.")]
+        [SerializeField] private GameObject m_MinimizedBar;
+
+        [Tooltip("Texto 'Paso X de Y: título' de la franja minimizada.")]
+        [SerializeField] private TextMeshProUGUI m_MinimizedStepText;
+
+        [Tooltip("Botón 'Ocultar (A)' del panel maximizado. Minimiza el panel.")]
+        [SerializeField] private Button m_MinimizeButton;
+
+        [Tooltip("Botón 'Mostrar (A)' de la franja minimizada. Maximiza el panel.")]
+        [SerializeField] private Button m_MaximizeButton;
+
+        [Tooltip("Tecla de teclado que minimiza/maximiza el panel para pruebas en el Editor/XR Device Simulator.")]
+        [SerializeField] private Key m_ToggleMinimizeKey = Key.H;
+
+        [Tooltip("Nodo XR del control cuyo botón A (primaryButton) minimiza/maximiza el panel (mano derecha en Meta Quest).")]
+        [SerializeField] private XRNode m_ToggleMinimizeNode = XRNode.RightHand;
+
         private Canvas m_Canvas;
         private bool m_FarCastingActive = false;
         private Coroutine m_GlowCoroutine;
+        private bool m_IsMinimized;
+        private bool m_WarningActive;
+        private bool m_MinimizeButtonWasPressed;
         private static Sprite s_HollowBorderSprite;
 
         // Propiedades públicas para acceso e inspección en tests
@@ -113,6 +146,17 @@ namespace PrimerVolante.Lessons
         public Canvas Canvas => m_Canvas != null ? m_Canvas : (m_Canvas = GetComponent<Canvas>());
         public Camera WorldCamera => Canvas != null ? Canvas.worldCamera : null;
         public bool FarCastingActive => m_FarCastingActive;
+        public GameObject Background => m_Background;
+        public GameObject MinimizedBar => m_MinimizedBar;
+        public TextMeshProUGUI MinimizedStepText => m_MinimizedStepText;
+        public Button MinimizeButton => m_MinimizeButton;
+        public Button MaximizeButton => m_MaximizeButton;
+
+        /// <summary>true mientras el panel está reducido a la franja inferior.</summary>
+        public bool IsMinimized => m_IsMinimized;
+
+        /// <summary>Se dispara solo cuando el estado minimizado cambia de verdad. El argumento es el nuevo estado.</summary>
+        public event Action<bool> MinimizedChanged;
 
         private void Awake()
         {
@@ -132,9 +176,45 @@ namespace PrimerVolante.Lessons
                 m_InGameMenuController = UnityEngine.Object.FindAnyObjectByType<InGameMenuController>();
             }
 
+            if (m_Background == null)
+            {
+                Transform background = transform.Find("Background");
+                if (background != null) m_Background = background.gameObject;
+            }
+
+            if (m_MinimizedBar != null) m_MinimizedBar.SetActive(m_IsMinimized);
+
             ConfigureHollowBorderGlow();
             DiscoverFarCastInteractors();
             SetupButtons();
+        }
+
+        private void Update()
+        {
+            if (Keyboard.current != null && Keyboard.current[m_ToggleMinimizeKey].wasPressedThisFrame)
+            {
+                ToggleMinimized();
+            }
+
+            CheckMinimizeButtonPress();
+        }
+
+        /// <summary>
+        /// Sondea el botón A del control derecho vía la API legada de XR (la única que, en este proyecto,
+        /// refleja en vivo el estado de los controles OpenXR) y minimiza/maximiza solo en el flanco de subida.
+        /// </summary>
+        private void CheckMinimizeButtonPress()
+        {
+            XRInputDevice device = XRInputDevices.GetDeviceAtXRNode(m_ToggleMinimizeNode);
+            bool pressed = false;
+            if (device.isValid && device.TryGetFeatureValue(XRCommonUsages.primaryButton, out pressed))
+            {
+                if (pressed && !m_MinimizeButtonWasPressed)
+                {
+                    ToggleMinimized();
+                }
+                m_MinimizeButtonWasPressed = pressed;
+            }
         }
 
         private void OnEnable()
@@ -238,6 +318,86 @@ namespace PrimerVolante.Lessons
                 m_NextLessonButton.onClick.RemoveAllListeners();
                 m_NextLessonButton.onClick.AddListener(OnNextLessonClicked);
             }
+
+            if (m_MinimizeButton != null)
+            {
+                m_MinimizeButton.onClick.RemoveAllListeners();
+                m_MinimizeButton.onClick.AddListener(OnMinimizeClicked);
+            }
+
+            if (m_MaximizeButton != null)
+            {
+                m_MaximizeButton.onClick.RemoveAllListeners();
+                m_MaximizeButton.onClick.AddListener(OnMaximizeClicked);
+            }
+        }
+
+        /// <summary>
+        /// true si el usuario puede minimizar/maximizar el panel: no con el menú de pausa abierto
+        /// ni con el panel de felicitaciones visible.
+        /// </summary>
+        private bool CanToggleMinimized()
+        {
+            if (m_InGameMenuController != null && m_InGameMenuController.IsOpen) return false;
+            if (m_CompletionPanel != null && m_CompletionPanel.activeSelf) return false;
+            return true;
+        }
+
+        private void OnMinimizeClicked()
+        {
+            if (CanToggleMinimized()) SetMinimized(true);
+        }
+
+        private void OnMaximizeClicked()
+        {
+            if (CanToggleMinimized()) SetMinimized(false);
+        }
+
+        /// <summary>
+        /// Alterna entre el panel completo y la franja inferior. Se ignora con el menú de pausa abierto
+        /// o con el panel de felicitaciones visible.
+        /// </summary>
+        public void ToggleMinimized()
+        {
+            if (!CanToggleMinimized()) return;
+            SetMinimized(!m_IsMinimized);
+        }
+
+        /// <summary>
+        /// Minimiza el panel a una franja fina en su borde inferior, o lo restaura. El canvas y el rayo VR siguen
+        /// activos para poder usar la franja. Dispara <see cref="MinimizedChanged"/> solo si el estado cambia.
+        /// </summary>
+        public void SetMinimized(bool minimized)
+        {
+            if (m_IsMinimized == minimized) return;
+            m_IsMinimized = minimized;
+            ApplyMinimizedState();
+            MinimizedChanged?.Invoke(m_IsMinimized);
+        }
+
+        private void ApplyMinimizedState()
+        {
+            if (m_IsMinimized)
+            {
+                if (m_Background != null) m_Background.SetActive(false);
+                if (m_StepContentPanel != null) m_StepContentPanel.SetActive(false);
+                if (m_SuccessBorderGlow != null) m_SuccessBorderGlow.gameObject.SetActive(false);
+                if (m_MinimizedBar != null) m_MinimizedBar.SetActive(true);
+            }
+            else
+            {
+                if (m_MinimizedBar != null) m_MinimizedBar.SetActive(false);
+                if (m_Background != null) m_Background.SetActive(true);
+
+                bool completionVisible = m_CompletionPanel != null && m_CompletionPanel.activeSelf;
+                if (m_StepContentPanel != null) m_StepContentPanel.SetActive(!completionVisible);
+
+                // El glow solo vuelve si había un feedback o una advertencia activos
+                if (m_SuccessBorderGlow != null)
+                {
+                    m_SuccessBorderGlow.gameObject.SetActive(m_GlowCoroutine != null || m_WarningActive);
+                }
+            }
         }
 
         /// <summary>
@@ -326,8 +486,11 @@ namespace PrimerVolante.Lessons
                 m_SuccessBorderGlow.gameObject.SetActive(false);
             }
 
-            if (m_StepContentPanel != null) m_StepContentPanel.SetActive(true);
+            m_WarningActive = false;
             if (m_CompletionPanel != null) m_CompletionPanel.SetActive(false);
+            if (m_StepContentPanel != null) m_StepContentPanel.SetActive(true);
+            // Un paso nuevo es información nueva: se maximiza solo
+            SetMinimized(false);
 
             if (m_LessonManager != null && m_LessonManager.ActiveLesson != null && m_LessonTitleText != null)
             {
@@ -339,6 +502,11 @@ namespace PrimerVolante.Lessons
             if (m_StepProgressText != null)
             {
                 m_StepProgressText.text = $"Paso {stepIndex + 1} de {totalSteps}: {step.stepTitle}";
+            }
+
+            if (m_MinimizedStepText != null)
+            {
+                m_MinimizedStepText.text = $"Paso {stepIndex + 1} de {totalSteps}: {step.stepTitle}";
             }
 
             if (m_InstructionText != null)
@@ -419,7 +587,8 @@ namespace PrimerVolante.Lessons
             {
                 ConfigureHollowBorderGlow();
                 m_SuccessBorderGlow.color = new Color(emerald.r, emerald.g, emerald.b, 0f);
-                m_SuccessBorderGlow.gameObject.SetActive(true);
+                // Minimizado, el glow no se ve (el paso siguiente maximiza el panel)
+                m_SuccessBorderGlow.gameObject.SetActive(!m_IsMinimized);
             }
 
             float duration = 0.8f;
@@ -463,6 +632,10 @@ namespace PrimerVolante.Lessons
                 m_GlowCoroutine = null;
             }
 
+            // Una falta es información nueva: se maximiza solo
+            m_WarningActive = true;
+            SetMinimized(false);
+
             if (m_InstructionText != null)
             {
                 m_InstructionText.text = $"<color=#FF3B30>{warningMessage}</color>";
@@ -488,6 +661,7 @@ namespace PrimerVolante.Lessons
         /// </summary>
         public void ClearStepWarning()
         {
+            m_WarningActive = false;
             if (m_SuccessBorderGlow != null && m_GlowCoroutine == null)
             {
                 m_SuccessBorderGlow.gameObject.SetActive(false);
@@ -656,6 +830,10 @@ namespace PrimerVolante.Lessons
             {
                 m_AudioSource.Stop();
             }
+
+            // El fin de la lección es información nueva: se maximiza solo (antes de mostrar el panel de felicitaciones)
+            m_WarningActive = false;
+            SetMinimized(false);
 
             if (m_StepContentPanel != null) m_StepContentPanel.SetActive(false);
             if (m_CompletionPanel != null) m_CompletionPanel.SetActive(true);
