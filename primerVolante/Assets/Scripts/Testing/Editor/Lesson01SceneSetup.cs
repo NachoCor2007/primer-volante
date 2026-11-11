@@ -122,6 +122,7 @@ namespace PrimerVolante.Testing.Editor
 
             // 6. Asegurar InGameMenu y EventSystem con XRUIInputModule en la escena
             InGameMenuSetup.EnsureInGameMenuInActiveScene();
+            LessonPauseActionsSetup.SetupActiveScene();
 
             // 7. Configurar o crear el LessonHUDPanel sobre el volante de Car09
             LessonHUDPanel hudPanel = SetupLessonHUD(car09);

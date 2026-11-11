@@ -20,7 +20,7 @@ namespace PrimerVolante.Testing.Editor
     /// </summary>
     public static class InGameMenuSetup
     {
-        private const string FONT_PATH = "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset";
+        internal const string FONT_PATH = "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset";
 
         [MenuItem("Tools/Primer Volante/Setup In-Game Menu (Cockpit Integration Scene)")]
         public static void SetupMenu()
@@ -328,7 +328,7 @@ namespace PrimerVolante.Testing.Editor
             return canvasRoot;
         }
 
-        private static GameObject CreatePanel(string name, Transform parent)
+        internal static GameObject CreatePanel(string name, Transform parent)
         {
             GameObject panel = new GameObject(name);
             panel.transform.SetParent(parent, false);
@@ -345,7 +345,7 @@ namespace PrimerVolante.Testing.Editor
             return panel;
         }
 
-        private static TextMeshProUGUI CreateLabel(string name, Transform parent, TMP_FontAsset fontAsset, string text, float fontSize, Vector2 anchoredPosition, Vector2 sizeDelta)
+        internal static TextMeshProUGUI CreateLabel(string name, Transform parent, TMP_FontAsset fontAsset, string text, float fontSize, Vector2 anchoredPosition, Vector2 sizeDelta)
         {
             GameObject labelObj = new GameObject(name);
             labelObj.transform.SetParent(parent, false);
@@ -366,7 +366,7 @@ namespace PrimerVolante.Testing.Editor
             return label;
         }
 
-        private static Button CreateButton(string name, Transform parent, TMP_FontAsset fontAsset, string text, Vector2 anchoredPosition, Vector2 sizeDelta)
+        internal static Button CreateButton(string name, Transform parent, TMP_FontAsset fontAsset, string text, Vector2 anchoredPosition, Vector2 sizeDelta)
         {
             GameObject buttonObj = new GameObject(name);
             buttonObj.transform.SetParent(parent, false);
@@ -463,7 +463,7 @@ namespace PrimerVolante.Testing.Editor
             return slider;
         }
 
-        private static void WireButtonClick(Button button, Object target, string methodName)
+        internal static void WireButtonClick(Button button, Object target, string methodName)
         {
             if (button == null || target == null) return;
 
