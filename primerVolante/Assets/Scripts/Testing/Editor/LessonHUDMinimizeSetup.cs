@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -38,13 +37,7 @@ namespace PrimerVolante.Testing.Editor
             }
 
             // Escenas abiertas al empezar (y cuál era la activa) para volver a dejarlas como estaban
-            var openPaths = new List<string>();
-            string activePath = SceneManager.GetActiveScene().path;
-            for (int i = 0; i < SceneManager.sceneCount; i++)
-            {
-                string path = SceneManager.GetSceneAt(i).path;
-                if (!string.IsNullOrEmpty(path)) openPaths.Add(path);
-            }
+            SceneSetup[] setup = EditorSceneManager.GetSceneManagerSetup();
 
             int ok = 0;
             try
@@ -56,7 +49,7 @@ namespace PrimerVolante.Testing.Editor
             }
             finally
             {
-                RestoreOpenScenes(openPaths, activePath);
+                RestoreOpenScenes(setup);
             }
 
             if (ok == LESSON_SCENE_PATHS.Length)
@@ -69,21 +62,18 @@ namespace PrimerVolante.Testing.Editor
             }
         }
 
-        private static void RestoreOpenScenes(List<string> openPaths, string activePath)
+        private static void RestoreOpenScenes(SceneSetup[] setup)
         {
-            if (openPaths.Count == 0)
+            // Una escena sin guardar (path vacío) no se puede restaurar: se deja el setup por defecto de Unity
+            if (setup.Length == 0 || System.Array.Exists(setup, s => string.IsNullOrEmpty(s.path)))
             {
-                EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                Debug.LogWarning("[LessonHUDMinimizeSetup] Había una escena sin guardar abierta: no se puede restaurar. " +
+                                 "Se deja una escena nueva por defecto.");
+                EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
                 return;
             }
 
-            for (int i = 0; i < openPaths.Count; i++)
-            {
-                EditorSceneManager.OpenScene(openPaths[i], i == 0 ? OpenSceneMode.Single : OpenSceneMode.Additive);
-            }
-
-            Scene active = SceneManager.GetSceneByPath(activePath);
-            if (active.IsValid() && active.isLoaded) SceneManager.SetActiveScene(active);
+            EditorSceneManager.RestoreSceneManagerSetup(setup);
         }
 
         /// <summary>Abre la escena, agrega/reconfigura los controles en su LessonHUD_Canvas y la guarda.</summary>

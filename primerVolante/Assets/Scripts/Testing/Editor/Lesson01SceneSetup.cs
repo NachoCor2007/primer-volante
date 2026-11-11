@@ -828,15 +828,7 @@ namespace PrimerVolante.Testing.Editor
             so.FindProperty("m_MinimizedBar").objectReferenceValue = barObj;
             so.FindProperty("m_MinimizedStepText").objectReferenceValue = stepText;
             so.FindProperty("m_MinimizeButton").objectReferenceValue = minimizeBtn;
-            so.FindProperty("m_MaximizeButton").objectReferenceValue = maximizeBtn;
-
-            // Migración: la tecla H (valor inicial de la primera versión) choca con ToggleHazard de VehicleController
-            SerializedProperty toggleKeyProp = so.FindProperty("m_ToggleMinimizeKey");
-            if (toggleKeyProp != null && toggleKeyProp.intValue == (int)UnityEngine.InputSystem.Key.H)
-            {
-                toggleKeyProp.intValue = (int)UnityEngine.InputSystem.Key.O;
-            }
-            so.ApplyModifiedProperties();
+            so.FindProperty("m_MaximizeButton").objectReferenceValue = maximizeBtn;            so.ApplyModifiedProperties();
 
             EditorUtility.SetDirty(hud);
         }
