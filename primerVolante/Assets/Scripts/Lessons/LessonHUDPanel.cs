@@ -191,9 +191,11 @@ namespace PrimerVolante.Lessons
 
         private void Update()
         {
-            // Key.None (o un valor fuera de rango) desactiva la tecla; el botón A se lee igual
-            bool keyValid = m_ToggleMinimizeKey > Key.None && m_ToggleMinimizeKey <= Key.OEM5;
-            if (keyValid && Keyboard.current != null && Keyboard.current[m_ToggleMinimizeKey].wasPressedThisFrame)
+            // Key.None (o un valor fuera de rango) desactiva la tecla; el botón A se lee igual.
+            // Mismo criterio que el indexador de Keyboard, que lanza ArgumentOutOfRangeException fuera de rango.
+            Keyboard keyboard = Keyboard.current;
+            int keyIndex = (int)m_ToggleMinimizeKey - 1;
+            if (keyboard != null && keyIndex >= 0 && keyIndex < keyboard.allKeys.Count && keyboard[m_ToggleMinimizeKey].wasPressedThisFrame)
             {
                 ToggleMinimized();
             }
