@@ -6,7 +6,9 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
+using UnityEngine.XR.Interaction.Toolkit.Interactors;
 using PrimerVolante.Lessons;
 using PrimerVolante.VR;
 
@@ -35,12 +37,33 @@ namespace PrimerVolante.Testing.Editor
             Debug.Log("INICIANDO VERIFICACION DE MINIMIZAR/MAXIMIZAR DEL HUD DE LECCIONES");
             Debug.Log("=========================================================");
 
+            // Escenas guardadas que estaban limpias: la verificación no puede ensuciarlas
+            var cleanScenePaths = new System.Collections.Generic.List<string>();
+            for (int i = 0; i < SceneManager.sceneCount; i++)
+            {
+                Scene open = SceneManager.GetSceneAt(i);
+                if (!string.IsNullOrEmpty(open.path) && !open.isDirty) cleanScenePaths.Add(open.path);
+            }
+
             try
             {
                 VerifyLessonScenes(ref total, ref passed);
                 VerifyHudBehaviour(ref total, ref passed);
                 VerifyMainMenuCard(ref total, ref passed);
+                VerifyEdgeDetector(ref total, ref passed);
                 VerifySourceRules(ref total, ref passed);
+
+                bool stillClean = true;
+                foreach (string path in cleanScenePaths)
+                {
+                    Scene scene = SceneManager.GetSceneByPath(path);
+                    if (scene.IsValid() && scene.isLoaded && scene.isDirty)
+                    {
+                        stillClean = false;
+                        Debug.LogError($"[FAIL] La verificación dejó sucia la escena abierta {path}");
+                    }
+                }
+                Assert(stillClean, "Ninguna escena guardada del usuario quedó modificada (isDirty) tras la verificación", ref total, ref passed);
             }
             catch (Exception ex)
             {
@@ -107,10 +130,9 @@ namespace PrimerVolante.Testing.Editor
                     Assert(hud.Background != null && hud.Background.activeSelf && hud.Background.transform.parent == hud.transform,
                         $"{label}: Background está activo y es hijo directo del canvas", ref total, ref passed);
 
-                    SerializedProperty keyProp = new SerializedObject(hud).FindProperty("m_ToggleMinimizeKey");
-                    string keyName = keyProp.enumNames[keyProp.enumValueIndex];
-                    Assert(keyName == "O" && !VehicleControllerReadsKey(keyName),
-                        $"{label}: la tecla serializada del HUD es O y no choca con VehicleController (es {keyName})", ref total, ref passed);
+                    int rawKey = ReadToggleKey(hud);
+                    Assert(rawKey == (int)Key.O && !VehicleControllerReadsKey(((Key)rawKey).ToString()),
+                        $"{label}: la tecla serializada del HUD es O y no choca con VehicleController (valor {rawKey} = {(Key)rawKey})", ref total, ref passed);
                 }
                 finally
                 {
@@ -127,13 +149,20 @@ namespace PrimerVolante.Testing.Editor
             // Los objetos de prueba se crean en una escena de trabajo aditiva y vacía (activa mientras corre la
             // verificación): no se pierde ni se ensucia la escena que tenga abierta el usuario.
             Scene previousActive = SceneManager.GetActiveScene();
-            Scene scratch = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
-            SceneManager.SetActiveScene(scratch);
-
+            Scene scratch = default;
+            LessonHUDPanel hud = null;
             var created = new System.Collections.Generic.List<UnityEngine.Object>();
             try
             {
-                LessonHUDPanel hud = BuildTestHud(created, out GameObject menuRoot, out InGameMenuController menu);
+                if (!TryCreateScratchScene(out scratch, out bool replacedUserScenes))
+                {
+                    Assert(false, "No se pudo crear la escena de trabajo (hay una escena sin guardar y se canceló): se saltea el comportamiento del HUD",
+                        ref total, ref passed);
+                    return;
+                }
+                if (replacedUserScenes) previousActive = default;
+
+                hud = BuildTestHud(created, out GameObject menuRoot, out InGameMenuController menu);
                 LessonStepSO step = ScriptableObject.CreateInstance<LessonStepSO>();
                 step.stepTitle = "Encender el motor";
                 step.instructionText = "Gira la llave.";
@@ -150,9 +179,9 @@ namespace PrimerVolante.Testing.Editor
                 hud.InGameMenuController = menu;
 
                 // La tecla configurada del HUD no puede coincidir con una tecla que lea VehicleController
-                string toggleKeyName = new SerializedObject(hud).FindProperty("m_ToggleMinimizeKey").enumNames[
-                    new SerializedObject(hud).FindProperty("m_ToggleMinimizeKey").enumValueIndex];
-                Assert(toggleKeyName == "O", $"La tecla por defecto del HUD es O (es {toggleKeyName})", ref total, ref passed);
+                int toggleKeyValue = ReadToggleKey(hud);
+                string toggleKeyName = ((Key)toggleKeyValue).ToString();
+                Assert(toggleKeyValue == (int)Key.O, $"La tecla por defecto del HUD es O (valor {toggleKeyValue} = {toggleKeyName})", ref total, ref passed);
                 Assert(VehicleControllerReadsKey("H") && !VehicleControllerReadsKey("O"),
                     "El escaneo de VehicleController.cs detecta la tecla H (ToggleHazard) y no detecta la O", ref total, ref passed);
                 Assert(!VehicleControllerReadsKey(toggleKeyName),
@@ -240,7 +269,7 @@ namespace PrimerVolante.Testing.Editor
                 SerializedProperty keyProp = keySo.FindProperty("m_ToggleMinimizeKey");
                 int keyBefore = keyProp.intValue;
                 bool updateOk = true;
-                foreach (int badKey in new[] { 0, 9999 })
+                foreach (int badKey in new[] { (int)Key.None, 9999, (int)Key.F13 })
                 {
                     keyProp.intValue = badKey;
                     keySo.ApplyModifiedPropertiesWithoutUndo();
@@ -249,7 +278,7 @@ namespace PrimerVolante.Testing.Editor
                 }
                 keyProp.intValue = keyBefore;
                 keySo.ApplyModifiedPropertiesWithoutUndo();
-                Assert(updateOk, "Update no lanza excepción con Key.None ni con una tecla inválida", ref total, ref passed);
+                Assert(updateOk, "Update no lanza excepción con Key.None, una tecla inválida ni una tecla extendida válida (F13)", ref total, ref passed);
 
                 hud.DisplayStep(step, 0, 3);
                 menuRoot.SetActive(true);
@@ -272,8 +301,6 @@ namespace PrimerVolante.Testing.Editor
                 Invoke(hud, "HandleInGameMenuOpened");
                 Assert(!hud.Canvas.enabled, "Al abrir el menú de pausa el canvas del HUD se oculta", ref total, ref passed);
                 menuRoot.SetActive(false);
-                // El rayo del HUD figura como activo: SetFarCasting(true) no toca los interactors de otras escenas
-                SetPrivateField(hud, "m_FarCastingActive", true);
                 Invoke(hud, "HandleInGameMenuClosed");
                 Assert(hud.Canvas.enabled && hud.IsMinimized && !hud.StepContentPanel.activeSelf && hud.MinimizedBar.activeSelf && !hud.Background.activeSelf,
                     "Minimizado -> abrir menú -> cerrar menú: sigue minimizado (StepContentPanel inactivo, MinimizedBar activa)", ref total, ref passed);
@@ -293,6 +320,8 @@ namespace PrimerVolante.Testing.Editor
             }
             finally
             {
+                // Soltar el pedido de rayo sobre el interactor de prueba antes de destruirlo
+                if (hud != null) hud.SetFarCasting(false);
                 foreach (UnityEngine.Object o in created)
                 {
                     if (o != null) UnityEngine.Object.DestroyImmediate(o);
@@ -301,6 +330,68 @@ namespace PrimerVolante.Testing.Editor
                 if (previousActive.IsValid() && previousActive.isLoaded) SceneManager.SetActiveScene(previousActive);
                 if (scratch.IsValid()) EditorSceneManager.CloseScene(scratch, true);
             }
+        }
+
+        /// <summary>
+        /// Crea la escena de trabajo vacía y la deja activa. Aditiva si se puede; con una escena sin guardar abierta
+        /// (Editor recién abierto) NewScene aditivo falla: se ofrece guardar y se cae a NewScene Single
+        /// (<paramref name="replacedUserScenes"/> = true). Devuelve false si el usuario cancela.
+        /// </summary>
+        private static bool TryCreateScratchScene(out Scene scratch, out bool replacedUserScenes)
+        {
+            replacedUserScenes = false;
+            scratch = default;
+
+            bool hasUnsaved = false;
+            for (int i = 0; i < SceneManager.sceneCount; i++)
+            {
+                if (string.IsNullOrEmpty(SceneManager.GetSceneAt(i).path)) hasUnsaved = true;
+            }
+
+            if (!hasUnsaved)
+            {
+                try { scratch = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive); }
+                catch (Exception) { scratch = default; }
+            }
+
+            if (!scratch.IsValid())
+            {
+                if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return false;
+                scratch = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                replacedUserScenes = true;
+            }
+
+            SceneManager.SetActiveScene(scratch);
+            return true;
+        }
+
+        /// <summary>Valor entero serializado de <c>m_ToggleMinimizeKey</c> (no lanza si no es un valor del enum).</summary>
+        private static int ReadToggleKey(LessonHUDPanel hud)
+        {
+            return new SerializedObject(hud).FindProperty("m_ToggleMinimizeKey").intValue;
+        }
+
+        // =========================================================================
+        // XRButtonEdgeDetector
+        // =========================================================================
+        private static void VerifyEdgeDetector(ref int total, ref int passed)
+        {
+            // Nodo que el simulador/visor no usa: sin dispositivo válido Poll no puede leer el botón
+            const UnityEngine.XR.XRNode node = UnityEngine.XR.XRNode.GameController;
+            if (UnityEngine.XR.InputDevices.GetDeviceAtXRNode(node).isValid)
+            {
+                Debug.Log("  [SKIP] XRButtonEdgeDetector: hay un dispositivo válido en el nodo de prueba");
+                return;
+            }
+
+            object detector = new XRButtonEdgeDetector();
+            SetPrivateField(detector, "m_WasPressed", true);
+            MethodInfo poll = typeof(XRButtonEdgeDetector).GetMethod("Poll");
+            bool edge = (bool)poll.Invoke(detector, new object[] { node, UnityEngine.XR.CommonUsages.primaryButton });
+            bool wasPressed = (bool)typeof(XRButtonEdgeDetector).GetField("m_WasPressed", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(detector);
+            Assert(!edge && wasPressed,
+                "XRButtonEdgeDetector.Poll sin dispositivo válido devuelve false y conserva el estado (no genera un flanco al reconectar)",
+                ref total, ref passed);
         }
 
         private static LessonHUDPanel BuildTestHud(System.Collections.Generic.List<UnityEngine.Object> created,
@@ -356,6 +447,11 @@ namespace PrimerVolante.Testing.Editor
             so.FindProperty("m_CompletionDescriptionText").objectReferenceValue = compDesc;
             so.FindProperty("m_SuccessBorderGlow").objectReferenceValue = glowImg;
             so.ApplyModifiedPropertiesWithoutUndo();
+
+            // Interactor de prueba (en la escena de trabajo): así SetFarCasting nunca busca los de las escenas del usuario
+            var interactorObj = new GameObject("TMP_NearFarInteractor");
+            created.Add(interactorObj);
+            hud.SetFarCastInteractors(new[] { interactorObj.AddComponent<NearFarInteractor>() });
 
             // Mismo código que usan los setups de las escenas
             Lesson01SceneSetup.BuildMinimizeControls(hud, null);
