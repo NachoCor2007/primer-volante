@@ -31,8 +31,6 @@ namespace PrimerVolante.MainMenu
         [TextArea(2, 4)]
         public string description;
         public string sceneName;
-        public string difficulty = "Intermedio";
-        public string estimatedTime = "10 - 15 min";
     }
 
     /// <summary>
@@ -83,7 +81,6 @@ namespace PrimerVolante.MainMenu
         [SerializeField] private Transform m_CircuitItemsContainer;
         [SerializeField] private TextMeshProUGUI m_CircuitDetailTitle;
         [SerializeField] private TextMeshProUGUI m_CircuitDetailDescription;
-        [SerializeField] private TextMeshProUGUI m_CircuitDetailInfo;
         [SerializeField] private Button m_BtnStartCircuit;
         [SerializeField] private TextMeshProUGUI m_BtnStartCircuitText;
 
@@ -257,27 +254,21 @@ namespace PrimerVolante.MainMenu
                     circuitId = "CIRCUIT_01",
                     title = "Circuito Integrador 1: Tráfico y Señales",
                     description = "Recorrido integral por el casco urbano con intersecciones reguladas por semáforos, señales reglamentarias y evaluación en tiempo real de infracciones.",
-                    sceneName = "Lesson_05_TurnIntersections",
-                    difficulty = "Intermedio",
-                    estimatedTime = "10 - 15 min"
+                    sceneName = "Lesson_05_TurnIntersections"
                 },
                 new CircuitDefinition
                 {
                     circuitId = "CIRCUIT_02",
                     title = "Circuito Integrador 2: Maniobras y Parking",
                     description = "Práctica integral que combina desplazamiento seguro por calles urbanas y maniobras de estacionamiento en dársena a 45° y en paralelo.",
-                    sceneName = "Lesson_06_ParkingManeuvers",
-                    difficulty = "Avanzado",
-                    estimatedTime = "12 - 18 min"
+                    sceneName = "Lesson_06_ParkingManeuvers"
                 },
                 new CircuitDefinition
                 {
                     circuitId = "CIRCUIT_CITY",
                     title = "Práctica Libre: Ciudad Completa",
                     description = "Manejo libre e independiente a lo largo de todo el mapa de la ciudad. Ideal para familiarizarse con el comportamiento dinámico del vehículo.",
-                    sceneName = "City_Master",
-                    difficulty = "Libre",
-                    estimatedTime = "Sin límite"
+                    sceneName = "City_Master"
                 }
             };
         }
@@ -682,10 +673,6 @@ namespace PrimerVolante.MainMenu
             {
                 if (m_CircuitDetailTitle != null) m_CircuitDetailTitle.text = circuit.title;
                 if (m_CircuitDetailDescription != null) m_CircuitDetailDescription.text = circuit.description;
-                if (m_CircuitDetailInfo != null)
-                {
-                    m_CircuitDetailInfo.text = $"• Dificultad: {circuit.difficulty}   |   • Tiempo: {circuit.estimatedTime}";
-                }
             }
 
             for (int i = 0; i < m_CircuitCardButtons.Count; i++)

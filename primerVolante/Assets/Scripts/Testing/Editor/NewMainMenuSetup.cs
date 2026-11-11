@@ -453,7 +453,7 @@ namespace PrimerVolante.Testing.Editor
                 out Button btnStartLesson, out TextMeshProUGUI btnStartLessonText);
 
             GameObject panelCircuits = BuildCircuitsPanel(contentArea, font,
-                out Transform circuitItemsContainer, out TextMeshProUGUI cTitle, out TextMeshProUGUI cDesc, out TextMeshProUGUI cInfo,
+                out Transform circuitItemsContainer, out TextMeshProUGUI cTitle, out TextMeshProUGUI cDesc,
                 out Button btnStartCircuit, out TextMeshProUGUI btnStartCircuitText);
 
             GameObject panelCalib = BuildCalibrationPanel(contentArea, font);
@@ -499,7 +499,6 @@ namespace PrimerVolante.Testing.Editor
             so.FindProperty("m_CircuitItemsContainer").objectReferenceValue = circuitItemsContainer;
             so.FindProperty("m_CircuitDetailTitle").objectReferenceValue = cTitle;
             so.FindProperty("m_CircuitDetailDescription").objectReferenceValue = cDesc;
-            so.FindProperty("m_CircuitDetailInfo").objectReferenceValue = cInfo;
             so.FindProperty("m_BtnStartCircuit").objectReferenceValue = btnStartCircuit;
             so.FindProperty("m_BtnStartCircuitText").objectReferenceValue = btnStartCircuitText;
 
@@ -651,26 +650,13 @@ namespace PrimerVolante.Testing.Editor
             cardBg.color = s_CardBgColor;
             cardBg.raycastTarget = false;
 
-            // Título y descripción apilados: el título hace wrap y empuja la descripción hacia abajo
-            // en vez de tener una altura fija que, con títulos largos, desbordaba sobre el texto inferior.
-            var detailLayout = cardBox.gameObject.AddComponent<VerticalLayoutGroup>();
-            detailLayout.padding = new RectOffset(35, 35, 25, 30);
-            detailLayout.spacing = 20f;
-            detailLayout.childAlignment = TextAnchor.UpperLeft;
-            detailLayout.childControlWidth = true;
-            detailLayout.childControlHeight = true;
-            detailLayout.childForceExpandWidth = true;
-            detailLayout.childForceExpandHeight = false;
+            AddDetailStackLayout(cardBox);
 
             title = AddText(cardBox, "DetailTitle", font, "Calibración y Asiento", 42f, Color.white, TextAlignmentOptions.TopLeft);
-            title.fontStyle = FontStyles.Bold;
-            title.textWrappingMode = TextWrappingModes.Normal;
-            title.overflowMode = TextOverflowModes.Overflow;
-            title.gameObject.AddComponent<LayoutElement>().flexibleHeight = 0f;
+            ConfigureDetailTitle(title);
 
             desc = AddText(cardBox, "DetailDesc", font, "Descripción de la lección formativa...", 30f, new Color(0.85f, 0.88f, 0.95f, 1f), TextAlignmentOptions.TopLeft);
-            desc.textWrappingMode = TextWrappingModes.Normal;
-            desc.gameObject.AddComponent<LayoutElement>().flexibleHeight = 1f;
+            ConfigureDetailDescription(desc);
 
             // Botón verde destacado inferior
             RectTransform actionBox = CreateRect("ActionBox", detailCol);
@@ -689,7 +675,7 @@ namespace PrimerVolante.Testing.Editor
         // PANEL CIRCUITOS / INTEGRADORES
         // ====================================================================
         private static GameObject BuildCircuitsPanel(Transform parent, TMP_FontAsset font,
-            out Transform container, out TextMeshProUGUI title, out TextMeshProUGUI desc, out TextMeshProUGUI info,
+            out Transform container, out TextMeshProUGUI title, out TextMeshProUGUI desc,
             out Button btnStart, out TextMeshProUGUI btnStartText)
         {
             RectTransform panel = CreateRect("Panel_Circuits", parent);
@@ -732,25 +718,13 @@ namespace PrimerVolante.Testing.Editor
             cardBg.color = s_CardBgColor;
             cardBg.raycastTarget = false;
 
-            title = AddText(cardBox, "DetailTitle", font, "Circuito Integrador", 42f, Color.white, TextAlignmentOptions.TopLeft);
-            title.fontStyle = FontStyles.Bold;
-            title.rectTransform.anchorMin = new Vector2(0f, 1f);
-            title.rectTransform.anchorMax = new Vector2(1f, 1f);
-            title.rectTransform.offsetMin = new Vector2(35f, -80f);
-            title.rectTransform.offsetMax = new Vector2(-35f, -25f);
+            AddDetailStackLayout(cardBox);
 
-            info = AddText(cardBox, "DetailInfo", font, "• Dificultad: Intermedio   |   • Tiempo: 15 min", 28f, new Color(0.22f, 0.74f, 0.97f, 1f), TextAlignmentOptions.TopLeft);
-            info.rectTransform.anchorMin = new Vector2(0f, 1f);
-            info.rectTransform.anchorMax = new Vector2(1f, 1f);
-            info.rectTransform.offsetMin = new Vector2(35f, -135f);
-            info.rectTransform.offsetMax = new Vector2(-35f, -85f);
+            title = AddText(cardBox, "DetailTitle", font, "Circuito Integrador", 42f, Color.white, TextAlignmentOptions.TopLeft);
+            ConfigureDetailTitle(title);
 
             desc = AddText(cardBox, "DetailDesc", font, "Descripción del circuito de práctica...", 30f, new Color(0.85f, 0.88f, 0.95f, 1f), TextAlignmentOptions.TopLeft);
-            desc.textWrappingMode = TextWrappingModes.Normal;
-            desc.rectTransform.anchorMin = new Vector2(0f, 0f);
-            desc.rectTransform.anchorMax = new Vector2(1f, 1f);
-            desc.rectTransform.offsetMin = new Vector2(35f, 30f);
-            desc.rectTransform.offsetMax = new Vector2(-35f, -150f);
+            ConfigureDetailDescription(desc);
 
             // Botón verde destacado inferior
             RectTransform actionBox = CreateRect("ActionBox", detailCol);
@@ -909,6 +883,36 @@ namespace PrimerVolante.Testing.Editor
             img.color = color;
             img.raycastTarget = raycastTarget;
             return img;
+        }
+
+        /// <summary>
+        /// Apila título y descripción en la tarjeta de detalle: el título hace wrap y empuja la descripción hacia abajo
+        /// en vez de tener una altura fija que, con títulos largos, desbordaba sobre el texto inferior.
+        /// </summary>
+        private static void AddDetailStackLayout(RectTransform cardBox)
+        {
+            var layout = cardBox.gameObject.AddComponent<VerticalLayoutGroup>();
+            layout.padding = new RectOffset(35, 35, 25, 30);
+            layout.spacing = 20f;
+            layout.childAlignment = TextAnchor.UpperLeft;
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = false;
+        }
+
+        private static void ConfigureDetailTitle(TextMeshProUGUI title)
+        {
+            title.fontStyle = FontStyles.Bold;
+            title.textWrappingMode = TextWrappingModes.Normal;
+            title.overflowMode = TextOverflowModes.Overflow;
+            title.gameObject.AddComponent<LayoutElement>().flexibleHeight = 0f;
+        }
+
+        private static void ConfigureDetailDescription(TextMeshProUGUI desc)
+        {
+            desc.textWrappingMode = TextWrappingModes.Normal;
+            desc.gameObject.AddComponent<LayoutElement>().flexibleHeight = 1f;
         }
 
         private static TextMeshProUGUI AddText(Transform parent, string name, TMP_FontAsset font, string text, float size, Color color, TextAlignmentOptions align)
