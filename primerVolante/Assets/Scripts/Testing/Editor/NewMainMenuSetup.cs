@@ -571,7 +571,7 @@ namespace PrimerVolante.Testing.Editor
             BuildCard(cards, font, controllerModel, "Card_Trigger", "Gatillo / Trigger", "Trigger", false,
                 "Acelerar y frenar el auto progresivamente. En menús, apuntar y presionar para seleccionar.", 2800f, new Vector3(20f, 40f, 0f));
             BuildCard(cards, font, controllerModel, "Card_Menu", "Menú / Pausa", "Button_Home", false,
-                "Pausar la simulación y calibrar asiento en cualquier momento durante las lecciones.", 2800f, new Vector3(-65f, 20f, 0f));
+                "Pausar la simulación y calibrar asiento en cualquier momento. En las lecciones, el botón A del control derecho oculta o muestra el panel del paso.", 2800f, new Vector3(-65f, 20f, 0f));
 
             return panel.gameObject;
         }
