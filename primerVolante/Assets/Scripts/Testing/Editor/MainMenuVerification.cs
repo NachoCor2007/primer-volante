@@ -488,8 +488,8 @@ namespace PrimerVolante.Testing.Editor
             Check(scene.IsValid() && scene.isLoaded, $"Existe y carga {MainMenuSetup.SCENE_PATH}");
             if (!scene.IsValid() || !scene.isLoaded) return;
 
-            Check(FindAll<LessonManager>(scene).Count == 0, "MainMenu.unity: no tiene LessonManager");
-            Check(FindAll<LessonHUDPanel>(scene).TrueForAll(h => !h.gameObject.activeInHierarchy), "MainMenu.unity: el HUD de lección no está activo");
+            Check(VerificationSceneUtil.AllInScene<LessonManager>(scene).Length == 0, "MainMenu.unity: no tiene LessonManager");
+            Check(VerificationSceneUtil.AllInScene<LessonHUDPanel>(scene).All(h => !h.gameObject.activeInHierarchy), "MainMenu.unity: el HUD de lección no está activo");
 
             var controller = FindFirst<MainMenuController>(scene);
             var car = FindFirst<VehicleController>(scene);
@@ -803,14 +803,14 @@ namespace PrimerVolante.Testing.Editor
         private static void VerifyExitOverlayModels(Scene scene, MainMenuController controller, StartButton startButton)
         {
             var handbrake = FindFirst<VRHandbrake>(scene);
-            List<ControllerIllustration> illustrations = FindAll<ControllerIllustration>(scene);
-            Check(illustrations.Count == 5, $"Escena: 5 ControllerIllustration (2 del Splash y 3 de Controles) (hay {illustrations.Count})");
-            if (handbrake == null || illustrations.Count == 0) return;
+            ControllerIllustration[] illustrations = VerificationSceneUtil.AllInScene<ControllerIllustration>(scene);
+            Check(illustrations.Length == 5, $"Escena: 5 ControllerIllustration (2 del Splash y 3 de Controles) (hay {illustrations.Length})");
+            if (handbrake == null || illustrations.Length == 0) return;
 
             // Awake no corre en Edit Mode: se arman los modelos a mano.
             foreach (ControllerIllustration ill in illustrations) ill.Build();
-            Check(illustrations.TrueForAll(i => i.ControllerTransform != null), "ControllerIllustration: los 5 modelos se armaron");
-            var press = illustrations.Find(i => i.PressAnimation);
+            Check(illustrations.All(i => i.ControllerTransform != null), "ControllerIllustration: los 5 modelos se armaron");
+            var press = System.Array.Find(illustrations, i => i.PressAnimation);
             Check(press != null && press.ButtonTransform != null, "ControllerIllustration: el Splash tiene la ilustración Pulsar con su botón 3D");
 
             controller.SetPerformQuit(false);
@@ -1205,20 +1205,10 @@ namespace PrimerVolante.Testing.Editor
             return (bool)m.Invoke(shifter, new object[] { target });
         }
 
-        private static List<T> FindAll<T>(Scene scene) where T : Component
-        {
-            var result = new List<T>();
-            foreach (GameObject root in scene.GetRootGameObjects())
-            {
-                result.AddRange(root.GetComponentsInChildren<T>(true));
-            }
-            return result;
-        }
-
         private static T FindFirst<T>(Scene scene) where T : Component
         {
-            List<T> all = FindAll<T>(scene);
-            return all.Count > 0 ? all[0] : null;
+            T[] all = VerificationSceneUtil.AllInScene<T>(scene);
+            return all.Length > 0 ? all[0] : null;
         }
 
         private static GameObject FindByName(Scene scene, string name)
@@ -1232,7 +1222,7 @@ namespace PrimerVolante.Testing.Editor
 
         private static Transform FindHead(Scene scene)
         {
-            foreach (Camera cam in FindAll<Camera>(scene))
+            foreach (Camera cam in VerificationSceneUtil.AllInScene<Camera>(scene))
             {
                 if (cam.CompareTag("MainCamera") && cam.transform.parent != null) return cam.transform;
             }

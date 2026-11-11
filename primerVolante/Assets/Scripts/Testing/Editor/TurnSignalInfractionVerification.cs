@@ -992,7 +992,7 @@ namespace PrimerVolante.Testing.Editor
             if (System.IO.File.Exists(GPSNavigationSceneSetup.WRONG_WAY_DEMO_SCENE_PATH))
             {
                 bool clean = true;
-                VerificationSceneUtil.WithScene(GPSNavigationSceneSetup.WRONG_WAY_DEMO_SCENE_PATH, scene => clean = AllInScene<TurnSignalDetector>(scene).Length == 0);
+                VerificationSceneUtil.WithScene(GPSNavigationSceneSetup.WRONG_WAY_DEMO_SCENE_PATH, scene => clean = VerificationSceneUtil.AllInScene<TurnSignalDetector>(scene).Length == 0);
                 Assert(clean, "GPSWrongWayDemo no tiene TurnSignalDetector", ref total, ref passed);
             }
         }
@@ -1001,7 +1001,7 @@ namespace PrimerVolante.Testing.Editor
         {
             int layer = LayerMask.NameToLayer(RoadLaneZone.LayerName);
 
-            TurnSignalDetector[] detectors = AllInScene<TurnSignalDetector>(scene);
+            TurnSignalDetector[] detectors = VerificationSceneUtil.AllInScene<TurnSignalDetector>(scene);
             checks.Add((detectors.Length == 1, $"GPSTurnSignalDemo tiene exactamente un TurnSignalDetector ({detectors.Length})"));
             if (detectors.Length == 1)
             {
@@ -1096,7 +1096,7 @@ namespace PrimerVolante.Testing.Editor
                         EditorSceneManager.MarkSceneDirty(scene);
                         applyResult = TurnSignalSceneTool.ApplyToLoadedScene(scene);
                         removeResult = TurnSignalSceneTool.RemoveFromLoadedScene(scene);
-                        detectorsInMemory = AllInScene<TurnSignalDetector>(scene).Length;
+                        detectorsInMemory = VerificationSceneUtil.AllInScene<TurnSignalDetector>(scene).Length;
                         stillDirty = scene.isDirty;
                     });
                 }
@@ -1125,7 +1125,7 @@ namespace PrimerVolante.Testing.Editor
                 // Máscara rota a mano: la herramienta la corrige.
                 VerificationSceneUtil.WithScene(tmpScene, scene =>
                 {
-                    foreach (TurnSignalDetector d in AllInScene<TurnSignalDetector>(scene)) d.ZoneMask = 0;
+                    foreach (TurnSignalDetector d in VerificationSceneUtil.AllInScene<TurnSignalDetector>(scene)) d.ZoneMask = 0;
                     EditorSceneManager.MarkSceneDirty(scene);
                     EditorSceneManager.SaveScene(scene);
                 });
@@ -1162,7 +1162,7 @@ namespace PrimerVolante.Testing.Editor
             {
                 List<VehicleController> found = TurnSignalSceneTool.FindPlayerCars(scene);
                 c = found.Count;
-                d = AllInScene<TurnSignalDetector>(scene).Length;
+                d = VerificationSceneUtil.AllInScene<TurnSignalDetector>(scene).Length;
                 g = found.Count(v => v.GetComponents<TurnSignalDetector>().Length == 1 && v.GetComponent<TurnSignalDetector>().ZoneMask.value == 1 << layer);
             });
             cars = c;
@@ -1193,11 +1193,6 @@ namespace PrimerVolante.Testing.Editor
         {
             if (sim.Faults.Count == 0) return "0 faltas";
             return string.Join(", ", sim.Faults.Select(f => $"{f.Direction}/{f.Reason}"));
-        }
-
-        private static T[] AllInScene<T>(Scene scene) where T : Component
-        {
-            return scene.GetRootGameObjects().SelectMany(r => r.GetComponentsInChildren<T>(true)).ToArray();
         }
 
         private static void Assert(bool condition, string testName, ref int total, ref int passed)

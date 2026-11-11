@@ -9,9 +9,6 @@ EditorBuildSettings:
     path: Assets/Scenes/car09/NewMainMenu.unity
     guid: 4bab912ee9661ea4783c3e9bd53a6ffb
   - enabled: 1
-    path: Assets/Scenes/car09/MainMenu.unity
-    guid: f98ea560bf4cbf7469554bbf09d25596
-  - enabled: 1
     path: Assets/Scenes/City_Master.unity
     guid: 9a7c006bc40c5d849bda052d2e6164fa
   - enabled: 1

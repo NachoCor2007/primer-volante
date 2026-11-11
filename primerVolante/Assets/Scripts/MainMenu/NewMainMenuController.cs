@@ -99,6 +99,12 @@ namespace PrimerVolante.MainMenu
         [Header("Anclaje Estático del Jugador")]
         [SerializeField] private Transform m_XROriginTransform;
 
+        [Header("Pausa por desconexión VR")]
+        [Tooltip("Menú de pausa de la escena. Mientras está abierto por una desconexión VR (IsBlockingGameplayInput) este menú " +
+                 "ignora clics, gatillo y Escape: el CanvasGroup de la raíz del canvas queda no interactuable. " +
+                 "Si se deja vacío se busca en Awake.")]
+        [SerializeField] private InGameMenuController m_InGameMenu;
+
         // Estado interno
         private NewMenuTab m_CurrentTab = NewMenuTab.Controles;
         private int m_SelectedLessonIndex = 0;
@@ -110,6 +116,37 @@ namespace PrimerVolante.MainMenu
         private bool m_RightTriggerWasPressed = false;
         private bool m_LeftTriggerWasPressed = false;
         private float m_LastHardwareClickTime = 0f;
+
+        // Bloqueo de entrada por la pausa de conexión VR (ver ApplyInputBlock).
+        private CanvasGroup m_InteractionGroup;
+        private bool m_BlockApplied;
+        private bool m_InteractableBeforeBlock = true;
+        private bool m_BlocksRaycastsBeforeBlock = true;
+
+        /// <summary>
+        /// true mientras el menú de pausa está abierto por una desconexión VR. Es el único punto de bloqueo de la entrada de
+        /// este menú: no conoce al monitor, solo consulta <see cref="InGameMenuController.IsBlockingGameplayInput"/>.
+        /// </summary>
+        public bool InputBlocked => m_InGameMenu != null && m_InGameMenu.IsBlockingGameplayInput;
+
+        /// <summary>
+        /// CanvasGroup de la raíz del canvas (se agrega en runtime si falta; nunca uno anidado). Con <c>interactable = false</c>
+        /// ningún botón de este menú recibe clics, ni los de XRI ni los del fallback de gatillo (<c>IsInteractable()</c>).
+        /// </summary>
+        public CanvasGroup InteractionGroup
+        {
+            get
+            {
+                if (m_InteractionGroup == null)
+                {
+                    Canvas canvas = GetComponentInParent<Canvas>(true);
+                    GameObject root = canvas != null ? canvas.rootCanvas.gameObject : gameObject;
+                    m_InteractionGroup = root.GetComponent<CanvasGroup>();
+                    if (m_InteractionGroup == null) m_InteractionGroup = root.AddComponent<CanvasGroup>();
+                }
+                return m_InteractionGroup;
+            }
+        }
 
         public NewMenuTab CurrentTab => m_CurrentTab;
         public int SelectedLessonIndex => m_SelectedLessonIndex;
@@ -178,16 +215,19 @@ namespace PrimerVolante.MainMenu
         private void OnEnable()
         {
             EnableUIFarCasting(true);
+            ConnectPauseMenu();
         }
 
         private void OnDisable()
         {
             EnableUIFarCasting(false);
+            DisconnectPauseMenu();
         }
 
         private void OnDestroy()
         {
             EnableUIFarCasting(false);
+            DisconnectPauseMenu();
         }
 
         private void FindDependenciesIfNull()
@@ -195,6 +235,11 @@ namespace PrimerVolante.MainMenu
             if (m_FarCastInteractors == null || m_FarCastInteractors.Length == 0)
             {
                 m_FarCastInteractors = UnityEngine.Object.FindObjectsByType<NearFarInteractor>(FindObjectsInactive.Include);
+            }
+
+            if (m_InGameMenu == null)
+            {
+                m_InGameMenu = UnityEngine.Object.FindAnyObjectByType<InGameMenuController>(FindObjectsInactive.Include);
             }
         }
 
@@ -274,13 +319,112 @@ namespace PrimerVolante.MainMenu
             if (UnityEngine.InputSystem.Keyboard.current != null &&
                 UnityEngine.InputSystem.Keyboard.current[UnityEngine.InputSystem.Key.Escape].wasPressedThisFrame)
             {
-                if (IsExitModalOpen) CloseExitModal();
-                else OpenExitModal();
+                HandleEscapePressed();
             }
 
             // Sondeo directo de controles OpenXR / Meta Quest
             CheckHardwareTrigger(XRNode.RightHand, ref m_RightTriggerWasPressed);
             CheckHardwareTrigger(XRNode.LeftHand, ref m_LeftTriggerWasPressed);
+        }
+
+        /// <summary>
+        /// Se engancha al menú de pausa: el bloqueo de entrada se aplica en el momento en que éste abre o termina la pausa
+        /// (<see cref="InGameMenuController.GameplayInputBlockingChanged"/>), no en el próximo Update, así no queda ningún hueco
+        /// en el que un clic llegue a este menú con la simulación detenida. Comprueba también el estado actual, por si la pausa ya
+        /// estaba activa al cargar la escena. Idempotente. Lo llama OnEnable.
+        /// </summary>
+        public void ConnectPauseMenu()
+        {
+            if (m_InGameMenu == null) m_InGameMenu = UnityEngine.Object.FindAnyObjectByType<InGameMenuController>(FindObjectsInactive.Include);
+            if (m_InGameMenu == null) return;
+
+            m_InGameMenu.GameplayInputBlockingChanged -= ApplyInputBlock;
+            m_InGameMenu.GameplayInputBlockingChanged += ApplyInputBlock;
+            ApplyInputBlock(InputBlocked);
+        }
+
+        /// <summary>Se desengancha del menú de pausa y, si había un bloqueo aplicado, lo levanta. Lo llaman OnDisable y OnDestroy.</summary>
+        public void DisconnectPauseMenu()
+        {
+            if (m_InGameMenu != null) m_InGameMenu.GameplayInputBlockingChanged -= ApplyInputBlock;
+            ApplyInputBlock(false);
+        }
+
+        // Mientras hay bloqueo el CanvasGroup queda no interactuable y sin bloquear raycasts (el menú sigue visible, sin tocar alpha)
+        // y al terminar se restauran los valores previos de interactable y blocksRaycasts. Los botones de este menú dejan de recibir
+        // clics de XRI y del fallback de gatillo (IsInteractable), y el canvas ya no captura el rayo: si queda entre el rayo y el
+        // botón Reanudar (que vive en otro canvas) no lo tapa.
+        private void ApplyInputBlock(bool blocked)
+        {
+            if (blocked == m_BlockApplied) return;
+            m_BlockApplied = blocked;
+
+            CanvasGroup group = InteractionGroup;
+            if (blocked)
+            {
+                m_InteractableBeforeBlock = group.interactable;
+                m_BlocksRaycastsBeforeBlock = group.blocksRaycasts;
+                group.interactable = false;
+                group.blocksRaycasts = false;
+            }
+            else
+            {
+                group.interactable = m_InteractableBeforeBlock;
+                group.blocksRaycasts = m_BlocksRaycastsBeforeBlock;
+            }
+        }
+
+        /// <summary>
+        /// Escape abre/cierra el modal de salida. Se ignora mientras <see cref="InputBlocked"/>: es el único entry point que no
+        /// pasa por un botón y por lo tanto no lo cubre el CanvasGroup.
+        /// </summary>
+        public void HandleEscapePressed()
+        {
+            if (InputBlocked) return;
+
+            if (IsExitModalOpen) CloseExitModal();
+            else OpenExitModal();
+        }
+
+        /// <summary>
+        /// Paso de entrada de un gatillo/botón: actualiza <paramref name="wasPressed"/> siempre (también durante el bloqueo, así
+        /// un gatillo que sigue apretado al terminar la pausa no cuenta como flanco nuevo) y devuelve true solo si hay un
+        /// flanco de subida. Qué botón puede recibir el clic lo decide <see cref="TryClickButton"/>: Reanudar sí, los botones de
+        /// este menú no mientras dura la pausa.
+        /// </summary>
+        public bool ProcessTriggerEdge(bool isPressed, ref bool wasPressed)
+        {
+            bool risingEdge = isPressed && !wasPressed;
+            wasPressed = isPressed;
+            return risingEdge;
+        }
+
+        /// <summary>
+        /// Muestra de un control: con el dispositivo inválido (se cayó o parpadea) <paramref name="wasPressed"/> pasa a true, es decir
+        /// "apretado": al volver hay que soltar y apretar de nuevo para que cuente como flanco, así un parpadeo del control con el
+        /// gatillo o A apretados nunca produce un clic sin pulsación nueva. Con el dispositivo válido es <see cref="ProcessTriggerEdge"/>.
+        /// </summary>
+        public bool ProcessTriggerSample(bool deviceValid, bool isPressed, ref bool wasPressed)
+        {
+            if (!deviceValid)
+            {
+                wasPressed = true;
+                return false;
+            }
+            return ProcessTriggerEdge(isPressed, ref wasPressed);
+        }
+
+        /// <summary>
+        /// Hace clic en <paramref name="btn"/> si está activo e interactuable. <c>IsInteractable()</c> respeta los CanvasGroup
+        /// de los ancestros: con la pausa vigente rechaza los botones de este menú (CanvasGroup no interactuable) y deja pasar
+        /// el botón Reanudar del menú de pausa, que está en otro canvas (y es no interactuable mientras la conexión no vuelve).
+        /// </summary>
+        public bool TryClickButton(Button btn)
+        {
+            if (btn == null || !btn.IsInteractable() || !btn.gameObject.activeInHierarchy) return false;
+
+            btn.onClick.Invoke();
+            return true;
         }
 
         private void LateUpdate()
@@ -330,23 +474,9 @@ namespace PrimerVolante.MainMenu
         private void CheckHardwareTrigger(XRNode handNode, ref bool wasPressed)
         {
             XRInputDevice device = XRInputDevices.GetDeviceAtXRNode(handNode);
-            if (!device.isValid) return;
+            bool isPressed = device.isValid && IsTriggerPressed(device);
 
-            bool isPressed = false;
-            if (device.TryGetFeatureValue(XRCommonUsages.triggerButton, out bool tb) && tb)
-            {
-                isPressed = true;
-            }
-            else if (device.TryGetFeatureValue(XRCommonUsages.trigger, out float triggerVal) && triggerVal > 0.5f)
-            {
-                isPressed = true;
-            }
-            else if (device.TryGetFeatureValue(XRCommonUsages.primaryButton, out bool pb) && pb)
-            {
-                isPressed = true;
-            }
-
-            if (isPressed && !wasPressed)
+            if (ProcessTriggerSample(device.isValid, isPressed, ref wasPressed))
             {
                 if (Time.unscaledTime - m_LastHardwareClickTime > 0.20f)
                 {
@@ -356,7 +486,13 @@ namespace PrimerVolante.MainMenu
                     }
                 }
             }
-            wasPressed = isPressed;
+        }
+
+        private static bool IsTriggerPressed(XRInputDevice device)
+        {
+            if (device.TryGetFeatureValue(XRCommonUsages.triggerButton, out bool tb) && tb) return true;
+            if (device.TryGetFeatureValue(XRCommonUsages.trigger, out float triggerVal) && triggerVal > 0.5f) return true;
+            return device.TryGetFeatureValue(XRCommonUsages.primaryButton, out bool pb) && pb;
         }
 
         private bool TryTriggerClickOnHoveredUI(XRNode handNode)
@@ -376,12 +512,7 @@ namespace PrimerVolante.MainMenu
 
                 if (interactor.TryGetCurrentUIRaycastResult(out RaycastResult hit) && hit.isValid && hit.gameObject != null)
                 {
-                    Button btn = hit.gameObject.GetComponentInParent<Button>();
-                    if (btn != null && btn.interactable && btn.gameObject.activeInHierarchy)
-                    {
-                        btn.onClick.Invoke();
-                        return true;
-                    }
+                    if (TryClickButton(hit.gameObject.GetComponentInParent<Button>())) return true;
                 }
             }
 

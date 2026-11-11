@@ -4,8 +4,6 @@ using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
 using XRNode = UnityEngine.XR.XRNode;
-using XRInputDevice = UnityEngine.XR.InputDevice;
-using XRInputDevices = UnityEngine.XR.InputDevices;
 using XRCommonUsages = UnityEngine.XR.CommonUsages;
 
 namespace PrimerVolante.VR
@@ -32,6 +30,14 @@ namespace PrimerVolante.VR
 
         [Tooltip("Panel de calibración de la vista (sliders).")]
         [SerializeField] private GameObject m_CalibrationPanel;
+
+        [Tooltip("Muestra el botón \"Calibrar posición\" (MainPanel/Button_Calibrate) cada vez que se abre el menú. Se apaga en el " +
+                 "NewMainMenu, que no tiene auto ni asiento que calibrar: el botón queda inactivo en el menú de pausa por desconexión VR.")]
+        [SerializeField] private bool m_ShowCalibrationButton = true;
+
+        [Tooltip("Botón \"Calibrar posición\" del panel principal. Si se deja vacío se busca como MainPanel/Button_Calibrate " +
+                 "(escenas con el menú serializado antes de este campo).")]
+        [SerializeField] private GameObject m_CalibrateButton;
 
         [Tooltip("Botón Volver del panel de calibración. Se oculta cuando la calibración se abre standalone " +
                  "(OpenCalibrationStandalone), porque no hay panel principal al que volver.")]
@@ -84,7 +90,7 @@ namespace PrimerVolante.VR
         [Tooltip("Pausa también el audio del mundo (motor, viento, guiños) mientras la simulación está detenida.")]
         [SerializeField] private bool m_PauseAudio = true;
 
-        private bool m_MenuButtonWasPressed = false;
+        private XRButtonEdgeDetector m_MenuButtonEdge;
 
 
         // Aviso de la pausa por desconexión VR (TextMeshProUGUI creado por código, hijo de MainPanel) y bloqueo de Reanudar.
@@ -132,6 +138,23 @@ namespace PrimerVolante.VR
             }
         }
 
+        /// <summary>Botón "Calibrar posición" del panel principal (null si no existe). Si no está serializado se busca como MainPanel/Button_Calibrate.</summary>
+        public GameObject CalibrateButton
+        {
+            get
+            {
+                if (m_CalibrateButton == null && m_MainPanel != null)
+                {
+                    Transform t = m_MainPanel.transform.Find("Button_Calibrate");
+                    if (t != null) m_CalibrateButton = t.gameObject;
+                }
+                return m_CalibrateButton;
+            }
+        }
+
+        /// <summary>true (por defecto) si el botón "Calibrar posición" del panel principal se muestra; false lo deja inactivo cada vez que el menú se abre.</summary>
+        public bool ShowCalibrationButton => m_ShowCalibrationButton;
+
         /// <summary>true si el botón Menu del control y la tecla de teclado abren/cierran el menú.</summary>
         public bool MenuButtonEnabled => m_MenuButtonEnabled;
 
@@ -143,6 +166,13 @@ namespace PrimerVolante.VR
 
         /// <summary>Evento disparado cuando el menú in-game se cierra.</summary>
         public event System.Action MenuClosed;
+
+        /// <summary>
+        /// Evento disparado en el momento en que cambia <see cref="IsBlockingGameplayInput"/> (true al abrir el menú por una pausa
+        /// de conexión VR, false cuando termina). Permite a los menús que bloquean su entrada reaccionar de forma sincrónica, sin
+        /// esperar a su próximo Update.
+        /// </summary>
+        public event System.Action<bool> GameplayInputBlockingChanged;
 
         /// <summary>
         /// Evento disparado cuando termina la pausa por conexión VR (el jugador reanudó, o <see cref="EndConnectionPause"/>), tras
@@ -201,6 +231,9 @@ namespace PrimerVolante.VR
             {
                 m_DriverSeatFollower.CalibrationOffsetChanged += OnCalibrationOffsetChanged;
             }
+
+            // Si se reactiva con la pausa por conexión todavía vigente, vuelve a bloquear la entrada.
+            NotifyBlockingChanged();
         }
 
         private void OnDisable()
@@ -210,8 +243,38 @@ namespace PrimerVolante.VR
                 m_DriverSeatFollower.CalibrationOffsetChanged -= OnCalibrationOffsetChanged;
             }
 
+            // Un menú desactivado no puede seguir bloqueando la entrada de nadie (aunque la pausa siga marcada como vigente).
+            ReleaseBlockingNotification();
+
             // Si el menú se destruye o desactiva abierto (cambio de escena), la simulación no puede quedar congelada.
             SetSimulationPaused(false);
+        }
+
+        private void OnDestroy()
+        {
+            // Si el menú desaparece con la pausa vigente, quienes bloquean su entrada por el evento no pueden quedar bloqueados.
+            ReleaseBlockingNotification();
+        }
+
+        private bool m_LastBlocking;
+
+        // Notifica false si la última notificación fue true. Idempotente: OnDisable y OnDestroy no duplican el evento.
+        private void ReleaseBlockingNotification()
+        {
+            if (!m_LastBlocking) return;
+
+            m_LastBlocking = false;
+            GameplayInputBlockingChanged?.Invoke(false);
+        }
+
+        // Dispara GameplayInputBlockingChanged solo cuando IsBlockingGameplayInput cambió desde la última notificación.
+        private void NotifyBlockingChanged()
+        {
+            bool blocking = IsBlockingGameplayInput;
+            if (blocking == m_LastBlocking) return;
+
+            m_LastBlocking = blocking;
+            GameplayInputBlockingChanged?.Invoke(blocking);
         }
 
         /// <summary>
@@ -228,6 +291,10 @@ namespace PrimerVolante.VR
 
         private void Update()
         {
+            // Cubre que algo ajeno cierre o abra MenuRoot (SetActive) con la pausa vigente: el estado de bloqueo se re-evalúa cada
+            // frame (una comparación de bools; solo dispara el evento si cambió).
+            NotifyBlockingChanged();
+
             if (!m_MenuButtonEnabled) return;
 
             if (Keyboard.current != null && Keyboard.current[m_ToggleMenuKey].wasPressedThisFrame)
@@ -239,21 +306,15 @@ namespace PrimerVolante.VR
         }
 
         /// <summary>
-        /// Sondea el botón Menu físico del control VR vía la API legada de XR (la única que, en
-        /// este proyecto, refleja en vivo el estado de los controles OpenXR) y dispara el toggle
-        /// solo en el flanco de subida (al apretar, no mientras se mantiene apretado).
+        /// Sondea el botón Menu físico del control VR vía la API legada de XR (ver
+        /// <see cref="XRButtonEdgeDetector"/>) y dispara el toggle solo en el flanco de subida
+        /// (al apretar, no mientras se mantiene apretado).
         /// </summary>
         private void CheckMenuButtonPress()
         {
-            XRInputDevice device = XRInputDevices.GetDeviceAtXRNode(m_MenuButtonNode);
-            bool pressed = false;
-            if (device.isValid && device.TryGetFeatureValue(XRCommonUsages.menuButton, out pressed))
+            if (m_MenuButtonEdge.Poll(m_MenuButtonNode, XRCommonUsages.menuButton))
             {
-                if (pressed && !m_MenuButtonWasPressed)
-                {
-                    ToggleMenu();
-                }
-                m_MenuButtonWasPressed = pressed;
+                ToggleMenu();
             }
         }
 
@@ -286,6 +347,7 @@ namespace PrimerVolante.VR
             SetFarCastingForMenu(true);
             SetSimulationPaused(true);
             MenuOpened?.Invoke();
+            NotifyBlockingChanged();
         }
 
         /// <summary>
@@ -311,6 +373,7 @@ namespace PrimerVolante.VR
             SetSimulationPaused(false);
             if (m_CalibrationBackButton != null) m_CalibrationBackButton.SetActive(true);
             MenuClosed?.Invoke();
+            NotifyBlockingChanged();
         }
 
         /// <summary>
@@ -344,6 +407,7 @@ namespace PrimerVolante.VR
             SetSimulationPaused(true, true);
             SetNotice(notice);
             if (!wasOpen) MenuOpened?.Invoke();
+            NotifyBlockingChanged();
         }
 
         /// <summary>
@@ -407,6 +471,7 @@ namespace PrimerVolante.VR
                     break;
             }
 
+            NotifyBlockingChanged();
             ConnectionPauseEnded?.Invoke();
         }
 
@@ -508,6 +573,7 @@ namespace PrimerVolante.VR
             if (m_CalibrationBackButton != null) m_CalibrationBackButton.SetActive(false);
             SetFarCastingForMenu(true);
             MenuOpened?.Invoke();
+            NotifyBlockingChanged();
         }
 
         /// <summary>
@@ -552,7 +618,13 @@ namespace PrimerVolante.VR
         /// </summary>
         public void ShowMainPanel()
         {
-            if (m_MainPanel != null) m_MainPanel.SetActive(true);
+            if (m_MainPanel != null)
+            {
+                m_MainPanel.SetActive(true);
+                // Todos los caminos que muestran el panel principal (OpenMenu, OpenMenuWithNotice, restaurar el modo previo) pasan por acá.
+                GameObject calibrateButton = CalibrateButton;
+                if (calibrateButton != null) calibrateButton.SetActive(m_ShowCalibrationButton);
+            }
             if (m_CalibrationPanel != null) m_CalibrationPanel.SetActive(false);
         }
 

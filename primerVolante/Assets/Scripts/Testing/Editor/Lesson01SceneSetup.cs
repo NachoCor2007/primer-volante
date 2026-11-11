@@ -714,8 +714,152 @@ namespace PrimerVolante.Testing.Editor
 
             so.ApplyModifiedProperties();
 
+            // 8. Controles de minimizar / maximizar (franja inferior + botón Ocultar)
+            BuildMinimizeControls(hudPanel, fontAsset);
+
             EditorUtility.SetDirty(hudPanel);
             return hudPanel;
+        }
+
+        /// <summary>
+        /// Crea (o reconfigura, de forma idempotente) los controles para minimizar/maximizar el HUD de la lección:
+        /// la franja <c>MinimizedBar</c> anclada al borde inferior del canvas (con su texto de paso y el botón
+        /// <c>Button_Maximize</c>) y el botón <c>Button_Minimize</c> dentro de <c>StepContentPanel</c>.
+        /// También cablea <c>m_Background</c> y las referencias nuevas del <see cref="LessonHUDPanel"/>.
+        /// Lo comparten el constructor del HUD de la Lección 1 y <c>LessonHUDMinimizeSetup</c> (escenas ya armadas).
+        /// </summary>
+        public static void BuildMinimizeControls(LessonHUDPanel hud, TMP_FontAsset font)
+        {
+            if (hud == null) return;
+            Transform canvasTr = hud.transform;
+
+            Transform stepContentTr = hud.StepContentPanel != null ? hud.StepContentPanel.transform : canvasTr.Find("StepContentPanel");
+            Transform backgroundTr = canvasTr.Find("Background");
+            if (stepContentTr == null)
+            {
+                Debug.LogError("[Lesson01SceneSetup] BuildMinimizeControls: no se encontró StepContentPanel en el HUD.");
+                return;
+            }
+
+            // Franja minimizada: hija directa del canvas, anclada al borde inferior
+            Color barColor = new Color(0.08f, 0.10f, 0.14f, 0.94f);
+            Transform barTr = canvasTr.Find("MinimizedBar");
+            GameObject barObj = barTr != null ? barTr.gameObject : new GameObject("MinimizedBar");
+            if (barTr == null) barObj.transform.SetParent(canvasTr, false);
+
+            RectTransform barRect = barObj.GetComponent<RectTransform>();
+            if (barRect == null) barRect = barObj.AddComponent<RectTransform>();
+            barRect.anchorMin = new Vector2(0f, 0f);
+            barRect.anchorMax = new Vector2(1f, 0f);
+            barRect.pivot = new Vector2(0.5f, 0f);
+            barRect.anchoredPosition = Vector2.zero;
+            barRect.sizeDelta = new Vector2(0f, 44f);
+
+            Image barImage = barObj.GetComponent<Image>();
+            if (barImage == null) barImage = barObj.AddComponent<Image>();
+            barImage.color = barColor;
+
+            // Línea de acento superior (mismo azul que el HeaderBar del panel completo)
+            Transform accentTr = barObj.transform.Find("AccentLine");
+            GameObject accentObj = accentTr != null ? accentTr.gameObject : new GameObject("AccentLine");
+            if (accentTr == null) accentObj.transform.SetParent(barObj.transform, false);
+            RectTransform accentRect = accentObj.GetComponent<RectTransform>();
+            if (accentRect == null) accentRect = accentObj.AddComponent<RectTransform>();
+            accentRect.anchorMin = new Vector2(0f, 1f);
+            accentRect.anchorMax = new Vector2(1f, 1f);
+            accentRect.pivot = new Vector2(0.5f, 1f);
+            accentRect.anchoredPosition = Vector2.zero;
+            accentRect.sizeDelta = new Vector2(0f, 3f);
+            Image accentImage = accentObj.GetComponent<Image>();
+            if (accentImage == null) accentImage = accentObj.AddComponent<Image>();
+            accentImage.color = new Color(0.2f, 0.65f, 1f, 1f);
+            accentImage.raycastTarget = false;
+
+            // Texto "Paso X de Y: título" alineado a la izquierda
+            Transform stepTextTr = barObj.transform.Find("MinimizedStepText");
+            TextMeshProUGUI stepText = stepTextTr != null ? stepTextTr.GetComponent<TextMeshProUGUI>() : null;
+            if (stepText == null)
+            {
+                if (stepTextTr != null) UnityEngine.Object.DestroyImmediate(stepTextTr.gameObject);
+                stepText = CreateText("MinimizedStepText", barObj.transform, font, "Paso 1 de 1", 17f, FontStyles.Normal,
+                    Vector2.zero, Vector2.zero, new Color(0.85f, 0.85f, 0.90f, 1f));
+            }
+            RectTransform stepTextRect = stepText.rectTransform;
+            stepTextRect.anchorMin = new Vector2(0f, 0f);
+            stepTextRect.anchorMax = new Vector2(1f, 1f);
+            stepTextRect.pivot = new Vector2(0.5f, 0.5f);
+            stepTextRect.offsetMin = new Vector2(14f, 0f);
+            stepTextRect.offsetMax = new Vector2(-160f, -3f);
+            stepText.alignment = TextAlignmentOptions.MidlineLeft;
+            stepText.fontSize = 17f;
+            stepText.textWrappingMode = TextWrappingModes.NoWrap;
+            stepText.overflowMode = TextOverflowModes.Ellipsis;
+            stepText.raycastTarget = false;
+
+            // Botón "Mostrar (A)" a la derecha de la franja
+            Color maximizeColor = new Color(0.15f, 0.45f, 0.75f, 1f);
+            Button maximizeBtn = GetOrCreateSmallButton("Button_Maximize", barObj.transform, font, "Mostrar (A)", maximizeColor);
+            RectTransform maxRect = maximizeBtn.GetComponent<RectTransform>();
+            maxRect.anchorMin = new Vector2(1f, 0.5f);
+            maxRect.anchorMax = new Vector2(1f, 0.5f);
+            maxRect.pivot = new Vector2(1f, 0.5f);
+            maxRect.anchoredPosition = new Vector2(-8f, -1f);
+            maxRect.sizeDelta = new Vector2(140f, 32f);
+
+            // Botón "Ocultar (A)" en la esquina superior derecha del contenido del paso (no aparece en felicitaciones)
+            Color minimizeColor = new Color(0.22f, 0.27f, 0.36f, 1f);
+            Button minimizeBtn = GetOrCreateSmallButton("Button_Minimize", stepContentTr, font, "Ocultar (A)", minimizeColor);
+            RectTransform minRect = minimizeBtn.GetComponent<RectTransform>();
+            minRect.anchorMin = new Vector2(1f, 1f);
+            minRect.anchorMax = new Vector2(1f, 1f);
+            minRect.pivot = new Vector2(1f, 1f);
+            minRect.anchoredPosition = new Vector2(-6f, 0f);
+            minRect.sizeDelta = new Vector2(124f, 26f);
+
+            // Capa UI (el rayo del HUD está restringido a esa capa) y estado inicial: franja oculta
+            int uiLayer = LayerMask.NameToLayer("UI") >= 0 ? LayerMask.NameToLayer("UI") : 5;
+            SetLayerRecursively(barObj, uiLayer);
+            SetLayerRecursively(minimizeBtn.gameObject, uiLayer);
+            barObj.SetActive(false);
+            barObj.transform.SetAsLastSibling();
+
+            var so = new SerializedObject(hud);
+            if (backgroundTr != null) so.FindProperty("m_Background").objectReferenceValue = backgroundTr.gameObject;
+            so.FindProperty("m_MinimizedBar").objectReferenceValue = barObj;
+            so.FindProperty("m_MinimizedStepText").objectReferenceValue = stepText;
+            so.FindProperty("m_MinimizeButton").objectReferenceValue = minimizeBtn;
+            so.FindProperty("m_MaximizeButton").objectReferenceValue = maximizeBtn;            so.ApplyModifiedProperties();
+
+            EditorUtility.SetDirty(hud);
+        }
+
+        private static Button GetOrCreateSmallButton(string name, Transform parent, TMP_FontAsset font, string label, Color color)
+        {
+            Transform existing = parent.Find(name);
+            Button btn = existing != null ? existing.GetComponent<Button>() : null;
+            if (btn == null)
+            {
+                if (existing != null) UnityEngine.Object.DestroyImmediate(existing.gameObject);
+                btn = CreateButton(name, parent, font, label, Vector2.zero, new Vector2(130f, 34f), color);
+            }
+
+            Image img = btn.GetComponent<Image>();
+            img.color = color;
+            btn.targetGraphic = img;
+            ColorBlock colors = btn.colors;
+            colors.normalColor = color;
+            colors.highlightedColor = color * 1.25f;
+            colors.pressedColor = color * 0.8f;
+            colors.selectedColor = color * 1.15f;
+            btn.colors = colors;
+
+            TextMeshProUGUI tmp = btn.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (tmp != null)
+            {
+                tmp.text = label;
+                tmp.fontSize = 14f;
+            }
+            return btn;
         }
 
         private static void SetupLessonManager(Scene scene, GameObject car09, LessonDefinitionSO lessonData,

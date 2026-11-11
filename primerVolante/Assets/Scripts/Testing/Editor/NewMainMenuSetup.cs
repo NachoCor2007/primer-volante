@@ -38,14 +38,15 @@ namespace PrimerVolante.Testing.Editor
         private const string FONT_PATH = "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset";
         private const string CONTROLLER_MODEL_PATH = "Assets/Samples/XR Interaction Toolkit/3.5.1/Starter Assets/Models/UniversalController.fbx";
         private const string INPUT_ACTIONS_PATH = "Assets/Samples/XR Interaction Toolkit/3.5.1/Starter Assets/XRI Default Input Actions.inputactions";
-        private const string PLATFORM_MATERIAL_PATH = "Assets/Samples/XR Interaction Toolkit/3.5.1/Starter Assets/DemoAssets/Materials/Concrete Dark Blue.mat";
+        public const string LEGACY_PLATFORM_NAME = "Menu_FloorPlatform";
         private const string CURRICULUM_FOLDER = "Assets/Scripts/Lessons/Curriculum";
         private const int LESSON_COUNT = 6;
 
         // Dimensiones del Canvas en World Space (scale 0.001f -> 2.3m x 1.35m)
         private const float CANVAS_W = 2300f;
         private const float CANVAS_H = 1350f;
-        private static readonly Vector3 s_CanvasWorldPosition = new Vector3(0f, 1.35f, 2.3f);
+        // Posición revisada en el visor (commits dc9c19e, fe2d5ec y 97a6fa2): más cerca y más baja que la original (0, 1.35, 2.3).
+        public static readonly Vector3 CanvasWorldPosition = new Vector3(0f, 0.95f, 1.264f);
 
         // Paleta de Colores estandarizada (basada en MainMenuSetup original)
         private static readonly Color s_BgCanvasColor = new Color(0.04f, 0.05f, 0.09f, 0.98f);     // #0a0d17
@@ -90,12 +91,18 @@ namespace PrimerVolante.Testing.Editor
             Debug.Log("[NewMainMenuSetup] ¡Nueva escena NewMainMenu configurada y guardada con éxito!");
         }
 
-        public static NewMainMenuController BuildInActiveScene()
+        public static NewMainMenuController BuildInActiveScene() => BuildInActiveScene(SCENE_PATH);
+
+        /// <summary>
+        /// Construye el menú en la escena activa, que tiene que estar en <paramref name="expectedScenePath"/>. Las verificaciones
+        /// pasan la ruta de una copia temporal para probar la construcción sin tocar la escena real.
+        /// </summary>
+        public static NewMainMenuController BuildInActiveScene(string expectedScenePath)
         {
             string activePath = EditorSceneManager.GetActiveScene().path;
-            if (activePath != SCENE_PATH)
+            if (activePath != expectedScenePath)
             {
-                Debug.LogError($"[NewMainMenuSetup] La escena activa es '{activePath}', no {SCENE_PATH}. Operación cancelada.");
+                Debug.LogError($"[NewMainMenuSetup] La escena activa es '{activePath}', no {expectedScenePath}. Operación cancelada.");
                 return null;
             }
 
@@ -112,7 +119,7 @@ namespace PrimerVolante.Testing.Editor
             EnsureGroundPlatform();
 
             // 5. Garantizar EventSystem con XRUIInputModule
-            EnsureEventSystem();
+            InGameMenuSetup.EnsureEventSystem();
 
             TMP_FontAsset font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FONT_PATH);
             GameObject controllerModel = AssetDatabase.LoadAssetAtPath<GameObject>(CONTROLLER_MODEL_PATH);
@@ -120,6 +127,9 @@ namespace PrimerVolante.Testing.Editor
 
             // 5. Construir Canvas y Jerarquía Visual
             GameObject canvasObj = BuildCanvas(font, controllerModel, lessons, xrOriginObj, out NewMainMenuController controller);
+
+            // 5.b. Menú de pausa por desconexión VR, enlazado al controlador y al CanvasGroup del canvas
+            EnsurePauseMenu(canvasObj, controller);
 
             // 6. Asignar capa UI estrictamente en toda la jerarquía para compatibilidad con UIOnlyFarCasting
             int uiLayer = LayerMask.NameToLayer("UI");
@@ -175,11 +185,34 @@ namespace PrimerVolante.Testing.Editor
             GameObject oldHighlighter = GameObject.Find("MainMenu_Highlighter");
             if (oldHighlighter != null) Object.DestroyImmediate(oldHighlighter);
 
-            GameObject inGameCanvas = GameObject.Find("InGameMenu_Canvas");
-            if (inGameCanvas != null) Object.DestroyImmediate(inGameCanvas);
+            // InGameMenu_Canvas e InGameMenuController se conservan: son el menú de la pausa por desconexión VR
+            // (ver EnsurePauseMenu), no del MainMenu viejo.
+        }
 
-            GameObject inGameController = GameObject.Find("InGameMenuController");
-            if (inGameController != null) Object.DestroyImmediate(inGameController);
+        /// <summary>
+        /// Garantiza (idempotente) el menú de pausa por desconexión VR en la escena y lo enlaza al controlador del menú nuevo:
+        /// el botón Menu y Escape no lo abren (<c>m_MenuButtonEnabled = false</c>), "Calibrar posición" queda oculto
+        /// (<c>m_ShowCalibrationButton = false</c>, no hay auto ni asiento) y el canvas recibe un CanvasGroup en la raíz que el controlador
+        /// pone no interactuable mientras dura la pausa.
+        /// </summary>
+        private static void EnsurePauseMenu(GameObject canvasObj, NewMainMenuController controller)
+        {
+            InGameMenuController pauseMenu = InGameMenuSetup.EnsureInGameMenuInActiveScene();
+
+            var soMenu = new SerializedObject(pauseMenu);
+            soMenu.Update();
+            soMenu.FindProperty("m_MenuButtonEnabled").boolValue = false;
+            soMenu.FindProperty("m_ShowCalibrationButton").boolValue = false;
+            soMenu.ApplyModifiedProperties();
+            EditorUtility.SetDirty(pauseMenu);
+
+            // CanvasGroup en la raíz del canvas (el controlador lo resuelve solo desde ahí; el setup lo deja en la escena).
+            if (canvasObj.GetComponent<CanvasGroup>() == null) canvasObj.AddComponent<CanvasGroup>();
+
+            var soController = new SerializedObject(controller);
+            soController.Update();
+            soController.FindProperty("m_InGameMenu").objectReferenceValue = pauseMenu;
+            soController.ApplyModifiedProperties();
         }
 
         // ====================================================================
@@ -289,57 +322,10 @@ namespace PrimerVolante.Testing.Editor
             box.enabled = true;
             ground.layer = 0; // Default
 
-            // 2. Plataforma visual showroom bajo los pies del usuario
-            GameObject platform = GameObject.Find("Menu_FloorPlatform");
-            if (platform == null)
-            {
-                platform = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-                platform.name = "Menu_FloorPlatform";
-            }
-            platform.transform.position = new Vector3(0f, -0.05f, 0f);
-            platform.transform.rotation = Quaternion.identity;
-            platform.transform.localScale = new Vector3(14f, 0.05f, 14f);
-            platform.layer = 0; // Default
-
-            Material mat = AssetDatabase.LoadAssetAtPath<Material>(PLATFORM_MATERIAL_PATH);
-            MeshRenderer renderer = platform.GetComponent<MeshRenderer>();
-            if (renderer != null && mat != null)
-            {
-                renderer.sharedMaterial = mat;
-            }
-        }
-
-        public static void EnsureEventSystem()
-        {
-            EventSystem eventSystem = Object.FindAnyObjectByType<EventSystem>(FindObjectsInactive.Include);
-            GameObject eventSystemObj;
-            if (eventSystem == null)
-            {
-                eventSystemObj = new GameObject("EventSystem");
-                eventSystem = eventSystemObj.AddComponent<EventSystem>();
-            }
-            else
-            {
-                eventSystemObj = eventSystem.gameObject;
-            }
-
-            // Eliminar módulos de entrada incompatibles
-            var standaloneModule = eventSystemObj.GetComponent<StandaloneInputModule>();
-            if (standaloneModule != null) Object.DestroyImmediate(standaloneModule);
-
-            var inputSystemUIModule = eventSystemObj.GetComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
-            if (inputSystemUIModule != null) Object.DestroyImmediate(inputSystemUIModule);
-
-            // Asegurar y configurar XRUIInputModule
-            var xrModule = eventSystemObj.GetComponent<XRUIInputModule>();
-            if (xrModule == null) xrModule = eventSystemObj.AddComponent<XRUIInputModule>();
-
-            var so = new SerializedObject(xrModule);
-            so.Update();
-            so.FindProperty("m_EnableXRInput").boolValue = true;
-            so.FindProperty("m_EnableBuiltinActionsAsFallback").boolValue = true;
-            so.FindProperty("m_EnableMouseInput").boolValue = true;
-            so.ApplyModifiedProperties();
+            // 2. Sin plataforma visual: el disco azul de 14 m se quitó a mano de la escena (commit dc9c19e).
+            // Se borra si quedó de una versión anterior del setup, para no volver a crearlo al regenerar.
+            GameObject platform = GameObject.Find(LEGACY_PLATFORM_NAME);
+            if (platform != null) Object.DestroyImmediate(platform);
         }
 
         private static List<LessonDefinitionSO> LoadLessons()
@@ -366,7 +352,7 @@ namespace PrimerVolante.Testing.Editor
             RectTransform canvasRect = (RectTransform)canvasObj.transform;
             canvasRect.sizeDelta = new Vector2(CANVAS_W, CANVAS_H);
             canvasObj.transform.localScale = Vector3.one * 0.001f;
-            canvasObj.transform.position = s_CanvasWorldPosition;
+            canvasObj.transform.position = CanvasWorldPosition;
             canvasObj.transform.rotation = Quaternion.identity; // Mirando hacia el jugador en (0,0,0)
 
             var canvas = canvasObj.AddComponent<Canvas>();
@@ -571,7 +557,7 @@ namespace PrimerVolante.Testing.Editor
             BuildCard(cards, font, controllerModel, "Card_Trigger", "Gatillo / Trigger", "Trigger", false,
                 "Acelerar y frenar el auto progresivamente. En menús, apuntar y presionar para seleccionar.", 2800f, new Vector3(20f, 40f, 0f));
             BuildCard(cards, font, controllerModel, "Card_Menu", "Menú / Pausa", "Button_Home", false,
-                "Pausar la simulación y calibrar asiento en cualquier momento durante las lecciones.", 2800f, new Vector3(-65f, 20f, 0f));
+                "Pausar la simulación y calibrar asiento en cualquier momento. En las lecciones, el botón A del control derecho oculta o muestra el panel del paso.", 2800f, new Vector3(-65f, 20f, 0f));
 
             return panel.gameObject;
         }
