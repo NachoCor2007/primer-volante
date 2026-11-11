@@ -25,6 +25,7 @@ namespace PrimerVolante.Testing.Editor
     {
         private const string MAIN_MENU_SCENE = "Assets/Scenes/car09/NewMainMenu.unity";
         private const string HUD_SCRIPT = "Assets/Scripts/Lessons/LessonHUDPanel.cs";
+        private const string VEHICLE_SCRIPT = "Assets/Scripts/VR/VehicleController.cs";
 
         [MenuItem("Tools/Primer Volante/Verify Lesson HUD Minimize")]
         public static void RunVerification()
@@ -105,6 +106,11 @@ namespace PrimerVolante.Testing.Editor
                         $"{label}: Button_Maximize y el texto del paso están dentro de MinimizedBar", ref total, ref passed);
                     Assert(hud.Background != null && hud.Background.activeSelf && hud.Background.transform.parent == hud.transform,
                         $"{label}: Background está activo y es hijo directo del canvas", ref total, ref passed);
+
+                    SerializedProperty keyProp = new SerializedObject(hud).FindProperty("m_ToggleMinimizeKey");
+                    string keyName = keyProp.enumNames[keyProp.enumValueIndex];
+                    Assert(keyName == "O" && !VehicleControllerReadsKey(keyName),
+                        $"{label}: la tecla serializada del HUD es O y no choca con VehicleController (es {keyName})", ref total, ref passed);
                 }
                 finally
                 {
@@ -118,7 +124,11 @@ namespace PrimerVolante.Testing.Editor
         // =========================================================================
         private static void VerifyHudBehaviour(ref int total, ref int passed)
         {
-            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            // Los objetos de prueba se crean en una escena de trabajo aditiva y vacía (activa mientras corre la
+            // verificación): no se pierde ni se ensucia la escena que tenga abierta el usuario.
+            Scene previousActive = SceneManager.GetActiveScene();
+            Scene scratch = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
+            SceneManager.SetActiveScene(scratch);
 
             var created = new System.Collections.Generic.List<UnityEngine.Object>();
             try
@@ -134,9 +144,19 @@ namespace PrimerVolante.Testing.Editor
                 created.Add(step);
                 created.Add(lesson);
 
-                // Awake cablea los botones (en Edit Mode no se invoca solo)
-                Invoke(hud, "Awake");
+                // Los listeners de los botones se cablean en SetupButtons (Awake no corre en Edit Mode y, además,
+                // buscaría LessonManager/InGameMenuController en las escenas abiertas del usuario)
+                Invoke(hud, "SetupButtons");
                 hud.InGameMenuController = menu;
+
+                // La tecla configurada del HUD no puede coincidir con una tecla que lea VehicleController
+                string toggleKeyName = new SerializedObject(hud).FindProperty("m_ToggleMinimizeKey").enumNames[
+                    new SerializedObject(hud).FindProperty("m_ToggleMinimizeKey").enumValueIndex];
+                Assert(toggleKeyName == "O", $"La tecla por defecto del HUD es O (es {toggleKeyName})", ref total, ref passed);
+                Assert(VehicleControllerReadsKey("H") && !VehicleControllerReadsKey("O"),
+                    "El escaneo de VehicleController.cs detecta la tecla H (ToggleHazard) y no detecta la O", ref total, ref passed);
+                Assert(!VehicleControllerReadsKey(toggleKeyName),
+                    $"La tecla del HUD ({toggleKeyName}) no coincide con ninguna tecla que lea VehicleController", ref total, ref passed);
 
                 // 3. SetMinimized / eventos
                 Assert(!hud.IsMinimized && hud.Background.activeSelf && hud.StepContentPanel.activeSelf && !hud.MinimizedBar.activeSelf,
@@ -196,12 +216,40 @@ namespace PrimerVolante.Testing.Editor
                 int eventsBefore = 0;
                 Action<bool> counter = v => eventsBefore++;
                 hud.MinimizedChanged += counter;
+                hud.SetMinimized(true);
+                Assert(!hud.IsMinimized && eventsBefore == 0 && hud.StepContentPanel.activeSelf == false && hud.CompletionPanel.activeSelf,
+                    "Con CompletionPanel activo, SetMinimized(true) no hace nada", ref total, ref passed);
                 hud.ToggleMinimized();
                 Assert(!hud.IsMinimized && eventsBefore == 0, "Con CompletionPanel activo, ToggleMinimized no hace nada", ref total, ref passed);
                 hud.MinimizeButton.onClick.Invoke();
                 hud.MaximizeButton.onClick.Invoke();
                 Assert(!hud.IsMinimized && eventsBefore == 0, "Con CompletionPanel activo, los botones tampoco hacen nada", ref total, ref passed);
                 hud.MinimizedChanged -= counter;
+
+                // SetMinimized(false) sigue funcionando siempre, incluso con CompletionPanel activo
+                hud.DisplayStep(step, 0, 3);
+                hud.SetMinimized(true);
+                hud.CompletionPanel.SetActive(true);
+                hud.SetMinimized(false);
+                Assert(!hud.IsMinimized && hud.MinimizedBar.activeSelf == false && hud.Background.activeSelf,
+                    "Con CompletionPanel activo, SetMinimized(false) igual maximiza", ref total, ref passed);
+                hud.CompletionPanel.SetActive(false);
+
+                // Update no tira excepción con Key.None ni con una tecla fuera de rango (y corre la lectura del botón A)
+                var keySo = new SerializedObject(hud);
+                SerializedProperty keyProp = keySo.FindProperty("m_ToggleMinimizeKey");
+                int keyBefore = keyProp.intValue;
+                bool updateOk = true;
+                foreach (int badKey in new[] { 0, 9999 })
+                {
+                    keyProp.intValue = badKey;
+                    keySo.ApplyModifiedPropertiesWithoutUndo();
+                    try { Invoke(hud, "Update"); }
+                    catch (Exception ex) { updateOk = false; Debug.LogWarning($"Update con tecla {badKey} lanzó: {ex.InnerException ?? ex}"); }
+                }
+                keyProp.intValue = keyBefore;
+                keySo.ApplyModifiedPropertiesWithoutUndo();
+                Assert(updateOk, "Update no lanza excepción con Key.None ni con una tecla inválida", ref total, ref passed);
 
                 hud.DisplayStep(step, 0, 3);
                 menuRoot.SetActive(true);
@@ -224,6 +272,8 @@ namespace PrimerVolante.Testing.Editor
                 Invoke(hud, "HandleInGameMenuOpened");
                 Assert(!hud.Canvas.enabled, "Al abrir el menú de pausa el canvas del HUD se oculta", ref total, ref passed);
                 menuRoot.SetActive(false);
+                // El rayo del HUD figura como activo: SetFarCasting(true) no toca los interactors de otras escenas
+                SetPrivateField(hud, "m_FarCastingActive", true);
                 Invoke(hud, "HandleInGameMenuClosed");
                 Assert(hud.Canvas.enabled && hud.IsMinimized && !hud.StepContentPanel.activeSelf && hud.MinimizedBar.activeSelf && !hud.Background.activeSelf,
                     "Minimizado -> abrir menú -> cerrar menú: sigue minimizado (StepContentPanel inactivo, MinimizedBar activa)", ref total, ref passed);
@@ -247,6 +297,9 @@ namespace PrimerVolante.Testing.Editor
                 {
                     if (o != null) UnityEngine.Object.DestroyImmediate(o);
                 }
+
+                if (previousActive.IsValid() && previousActive.isLoaded) SceneManager.SetActiveScene(previousActive);
+                if (scratch.IsValid()) EditorSceneManager.CloseScene(scratch, true);
             }
         }
 
@@ -345,9 +398,11 @@ namespace PrimerVolante.Testing.Editor
         private static void VerifySourceRules(ref int total, ref int passed)
         {
             string hud = File.ReadAllText(HUD_SCRIPT);
-            Assert(hud.Contains("XRNode.RightHand") && hud.Contains("XRCommonUsages.primaryButton") && hud.Contains("GetDeviceAtXRNode"),
+            string edge = File.ReadAllText("Assets/Scripts/VR/XRButtonEdgeDetector.cs");
+            Assert(hud.Contains("XRNode.RightHand") && hud.Contains("XRCommonUsages.primaryButton") && hud.Contains("XRButtonEdgeDetector")
+                   && edge.Contains("GetDeviceAtXRNode"),
                 "LessonHUDPanel lee el botón A (primaryButton) del control derecho con la API legada de XR", ref total, ref passed);
-            Assert(hud.Contains("Key.H"), "LessonHUDPanel usa la tecla H por defecto", ref total, ref passed);
+            Assert(hud.Contains("Key.O"), "LessonHUDPanel usa la tecla O por defecto", ref total, ref passed);
 
             bool obsolete = false;
             foreach (string path in new[] { HUD_SCRIPT, "Assets/Scripts/Testing/Editor/LessonHUDMinimizeSetup.cs",
@@ -361,6 +416,24 @@ namespace PrimerVolante.Testing.Editor
         // =========================================================================
         // Helpers
         // =========================================================================
+        /// <summary>
+        /// true si VehicleController.cs lee la tecla (p. ej. "H" -> <c>Keyboard.current.hKey.wasPressedThisFrame</c> o
+        /// <c>isPressed</c>). Escanea el fuente: es lo que usa el bloque de teclas de depuración del Editor.
+        /// </summary>
+        private static bool VehicleControllerReadsKey(string keyName)
+        {
+            string source = File.ReadAllText(VEHICLE_SCRIPT);
+            string property = char.ToLowerInvariant(keyName[0]) + keyName.Substring(1) + "Key";
+            return System.Text.RegularExpressions.Regex.IsMatch(source, @"\." + property + @"\.(wasPressedThisFrame|isPressed|wasReleasedThisFrame)");
+        }
+
+        private static void SetPrivateField(object target, string field, object value)
+        {
+            FieldInfo f = target.GetType().GetField(field, BindingFlags.Instance | BindingFlags.NonPublic);
+            if (f == null) throw new MissingFieldException(target.GetType().Name, field);
+            f.SetValue(target, value);
+        }
+
         private static GameObject NewChild(string name, Transform parent)
         {
             var go = new GameObject(name, typeof(RectTransform));
