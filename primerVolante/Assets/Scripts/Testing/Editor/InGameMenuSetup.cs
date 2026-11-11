@@ -135,6 +135,7 @@ namespace PrimerVolante.Testing.Editor
             soMenu.FindProperty("m_HeadTransform").objectReferenceValue = headTransform;
             soMenu.FindProperty("m_DriverSeatFollower").objectReferenceValue = follower;
             soMenu.FindProperty("m_CalibrationBackButton").objectReferenceValue = backButton.gameObject;
+            soMenu.FindProperty("m_CalibrateButton").objectReferenceValue = calibrateButton.gameObject;
 
             SerializedProperty farCastProp = soMenu.FindProperty("m_FarCastInteractors");
             farCastProp.arraySize = farCastInteractors.Length;
@@ -169,6 +170,11 @@ namespace PrimerVolante.Testing.Editor
             return menuController;
         }
 
+        /// <summary>
+        /// Garantiza (idempotente) un único EventSystem con XRUIInputModule configurado para XR (entrada XR, acciones integradas
+        /// de respaldo y ratón) y sin módulos de entrada incompatibles. Lo comparten el menú in-game y NewMainMenu. La
+        /// configuración coincide con la que ya tienen serializada las escenas existentes.
+        /// </summary>
         public static void EnsureEventSystem()
         {
             EventSystem eventSystem = Object.FindAnyObjectByType<EventSystem>(FindObjectsInactive.Include);
@@ -183,16 +189,23 @@ namespace PrimerVolante.Testing.Editor
                 eventSystemObj = eventSystem.gameObject;
             }
 
-            if (eventSystemObj.GetComponent<XRUIInputModule>() == null)
-            {
-                var inputSystemUIModule = eventSystemObj.GetComponent<InputSystemUIInputModule>();
-                if (inputSystemUIModule != null) Object.DestroyImmediate(inputSystemUIModule);
+            // Eliminar módulos de entrada incompatibles
+            var standaloneModule = eventSystemObj.GetComponent<StandaloneInputModule>();
+            if (standaloneModule != null) Object.DestroyImmediate(standaloneModule);
 
-                var standaloneModule = eventSystemObj.GetComponent<StandaloneInputModule>();
-                if (standaloneModule != null) Object.DestroyImmediate(standaloneModule);
+            var inputSystemUIModule = eventSystemObj.GetComponent<InputSystemUIInputModule>();
+            if (inputSystemUIModule != null) Object.DestroyImmediate(inputSystemUIModule);
 
-                eventSystemObj.AddComponent<XRUIInputModule>();
-            }
+            // Asegurar y configurar XRUIInputModule
+            var xrModule = eventSystemObj.GetComponent<XRUIInputModule>();
+            if (xrModule == null) xrModule = eventSystemObj.AddComponent<XRUIInputModule>();
+
+            var so = new SerializedObject(xrModule);
+            so.Update();
+            so.FindProperty("m_EnableXRInput").boolValue = true;
+            so.FindProperty("m_EnableBuiltinActionsAsFallback").boolValue = true;
+            so.FindProperty("m_EnableMouseInput").boolValue = true;
+            so.ApplyModifiedProperties();
         }
 
         private static Transform FindHeadTransform(GameObject xrOriginObj)
