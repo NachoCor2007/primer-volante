@@ -444,6 +444,10 @@ namespace PrimerVolante.Lessons
 
         private void OnRestartClicked()
         {
+            // Recarga la escena (reinicia auto, NPC, semáforos y eventos guionados); sin flow manager o con una transición en
+            // curso, cae al reinicio en el lugar de la lección.
+            if (LessonSceneFlowManager.Instance != null && LessonSceneFlowManager.Instance.RestartCurrentLesson()) return;
+
             if (m_LessonManager != null && m_LessonManager.ActiveLesson != null)
             {
                 m_LessonManager.StartLesson(m_LessonManager.ActiveLesson);
