@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using PrimerVolante.Evaluation;
 using PrimerVolante.VR;
 
 namespace PrimerVolante.Lessons
@@ -179,13 +180,16 @@ namespace PrimerVolante.Lessons
         }
 
         /// <summary>
-        /// Vuelve a la escena del Menú Principal.
+        /// Vuelve a la escena del Menú Principal y vacía el repositorio de infracciones.
         /// </summary>
-        public void ReturnToMainMenu()
+        /// <returns>true si arrancó la transición; false si ya había una en curso.</returns>
+        public bool ReturnToMainMenu()
         {
-            if (m_IsTransitioning) return;
+            if (m_IsTransitioning) return false;
             string targetMenu = !string.IsNullOrEmpty(s_PreferredMainMenuScene) ? s_PreferredMainMenuScene : MAIN_MENU_SCENE;
+            ClearAllInfractionManagers();
             StartCoroutine(TransitionToSceneRoutine(targetMenu));
+            return true;
         }
 
         /// <summary>
@@ -220,15 +224,37 @@ namespace PrimerVolante.Lessons
         }
 
         /// <summary>
-        /// Reinicia la escena overlay de la lección actual.
+        /// Reinicia la escena overlay de la lección actual y vacía el repositorio de infracciones.
         /// </summary>
-        public void RestartCurrentLesson()
+        /// <returns>true si arrancó la transición; false si ya había una en curso o el overlay actual no es una lección.</returns>
+        public bool RestartCurrentLesson()
         {
-            if (m_IsTransitioning) return;
-            if (!string.IsNullOrEmpty(m_CurrentOverlayScene) && m_CurrentOverlayScene != MAIN_MENU_SCENE && m_CurrentOverlayScene != NEW_MAIN_MENU_SCENE)
+            if (m_IsTransitioning) return false;
+            if (string.IsNullOrEmpty(m_CurrentOverlayScene) || m_CurrentOverlayScene == MAIN_MENU_SCENE || m_CurrentOverlayScene == NEW_MAIN_MENU_SCENE)
             {
-                StartCoroutine(TransitionToSceneRoutine(m_CurrentOverlayScene));
+                return false;
             }
+
+            ClearAllInfractionManagers();
+            StartCoroutine(TransitionToSceneRoutine(m_CurrentOverlayScene));
+            return true;
+        }
+
+        /// <summary>
+        /// Vacía todos los <see cref="InfractionManager"/> cargados, estén habilitados o no. Es defensivo: un gestor dentro de la
+        /// escena de lección se reinicia solo con la recarga, pero uno en una escena persistente no.
+        /// </summary>
+        /// <returns>Cantidad de gestores limpiados.</returns>
+        public static int ClearAllInfractionManagers()
+        {
+            InfractionManager[] managers = UnityEngine.Object.FindObjectsByType<InfractionManager>(FindObjectsInactive.Include);
+            for (int i = 0; i < managers.Length; i++)
+            {
+                managers[i].Clear();
+            }
+
+            Debug.Log($"[LessonSceneFlowManager] Infracciones limpiadas en {managers.Length} InfractionManager.");
+            return managers.Length;
         }
 
         private IEnumerator TransitionToSceneRoutine(string targetSceneName)
