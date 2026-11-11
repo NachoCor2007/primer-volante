@@ -354,7 +354,7 @@ namespace PrimerVolante.Testing.Editor
             {
                 if (!System.IO.File.Exists(other)) continue;
                 bool clean = true;
-                VerificationSceneUtil.WithScene(other, scene => clean = AllInScene<LowBeamDetector>(scene).Length == 0);
+                VerificationSceneUtil.WithScene(other, scene => clean = VerificationSceneUtil.AllInScene<LowBeamDetector>(scene).Length == 0);
                 Assert(clean, $"14. {System.IO.Path.GetFileNameWithoutExtension(other)} no tiene LowBeamDetector", ref total, ref passed);
             }
 
@@ -367,7 +367,7 @@ namespace PrimerVolante.Testing.Editor
 
         private static void VerifyDemoScene(Scene scene, List<(bool ok, string name)> checks)
         {
-            LowBeamDetector[] detectors = AllInScene<LowBeamDetector>(scene);
+            LowBeamDetector[] detectors = VerificationSceneUtil.AllInScene<LowBeamDetector>(scene);
             checks.Add((detectors.Length == 1, $"14. GPSLowBeamDemo tiene exactamente un LowBeamDetector ({detectors.Length})"));
             if (detectors.Length != 1) return;
 
@@ -825,11 +825,6 @@ namespace PrimerVolante.Testing.Editor
         {
             if (sim.Faults.Count == 0) return "0 faltas";
             return string.Join(", ", sim.Faults.Select(f => $"{(f.AtStart ? "Arrancaste" : "Circulaste")}/{f.Mode}"));
-        }
-
-        private static T[] AllInScene<T>(Scene scene) where T : Component
-        {
-            return scene.GetRootGameObjects().SelectMany(r => r.GetComponentsInChildren<T>(true)).ToArray();
         }
 
         private static void Assert(bool condition, string testName, ref int total, ref int passed)

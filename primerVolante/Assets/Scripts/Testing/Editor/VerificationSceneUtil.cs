@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using UnityEngine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine.SceneManagement;
@@ -8,6 +10,12 @@ namespace PrimerVolante.Testing.Editor
     /// <summary>Utilidades compartidas por las verificaciones de Editor que inspeccionan escenas guardadas.</summary>
     public static class VerificationSceneUtil
     {
+        /// <summary>Todos los componentes de tipo <typeparamref name="T"/> de <paramref name="scene"/> (incluye objetos inactivos).</summary>
+        public static T[] AllInScene<T>(Scene scene) where T : Component
+        {
+            return scene.GetRootGameObjects().SelectMany(r => r.GetComponentsInChildren<T>(true)).ToArray();
+        }
+
         private const string TMP_COPY_FOLDER_PARENT = "Assets/Scenes/TestingScenes";
         private const string TMP_COPY_FOLDER_NAME = "_TmpSceneCopy";
 

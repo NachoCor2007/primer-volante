@@ -339,12 +339,12 @@ namespace PrimerVolante.Testing.Editor
                 var catalog = AssetDatabase.LoadAssetAtPath<InfractionCatalogSO>(InfractionManagerSetup.CATALOG_PATH);
                 WithScene(WrongWaySetup.SCENE_PATH, scene =>
                 {
-                    InfractionManager[] managers = AllInScene<InfractionManager>(scene);
+                    InfractionManager[] managers = VerificationSceneUtil.AllInScene<InfractionManager>(scene);
                     checks.Add((managers.Length == 1, $"CityWithWrongWay tiene exactamente un InfractionManager ({managers.Length})"));
                     checks.Add((managers.Length == 1 && managers[0].Catalog != null && managers[0].Catalog == catalog,
                         "El InfractionManager de CityWithWrongWay tiene el catálogo asignado"));
 
-                    RoadLaneDirection[] oneWay = AllInScene<RoadLaneDirection>(scene).Where(d => d.IsOneWay).ToArray();
+                    RoadLaneDirection[] oneWay = VerificationSceneUtil.AllInScene<RoadLaneDirection>(scene).Where(d => d.IsOneWay).ToArray();
                     checks.Add((oneWay.Length == WrongWaySetup.DemoPiecePositions.Length,
                         $"CityWithWrongWay tiene exactamente {WrongWaySetup.DemoPiecePositions.Length} piezas en mano única ({oneWay.Length})"));
 
@@ -371,7 +371,7 @@ namespace PrimerVolante.Testing.Editor
                         checks.Add((signs.All(s => s.GetComponentsInChildren<Collider>(true).All(c => !c.isTrigger)),
                             "Los carteles no tienen colliders trigger (son solo visuales)"));
                         checks.Add((root.GetComponentsInChildren<WrongWayExemptZone>(true).Length == 0 &&
-                                    AllInScene<WrongWayExemptZone>(scene).Length == 0,
+                                    VerificationSceneUtil.AllInScene<WrongWayExemptZone>(scene).Length == 0,
                             "CityWithWrongWay no tiene WrongWayExemptZone guardadas"));
                     }
                 });
@@ -385,7 +385,7 @@ namespace PrimerVolante.Testing.Editor
 
                 WithScene(path, scene =>
                 {
-                    int oneWay = AllInScene<RoadLaneDirection>(scene).Count(d => d.IsOneWay);
+                    int oneWay = VerificationSceneUtil.AllInScene<RoadLaneDirection>(scene).Count(d => d.IsOneWay);
                     bool hasDemo = scene.GetRootGameObjects().Any(go => go.name == WrongWaySetup.DEMO_ROOT_NAME);
                     checks.Add((oneWay == 0 && !hasDemo, $"{sceneName} no tiene piezas en mano única ni OneWayDemo ({oneWay})"));
                 });
@@ -522,11 +522,6 @@ namespace PrimerVolante.Testing.Editor
         }
 
         private static bool Near(float a, float b) => Mathf.Abs(a - b) <= k_Tolerance;
-
-        private static T[] AllInScene<T>(Scene scene) where T : Component
-        {
-            return scene.GetRootGameObjects().SelectMany(r => r.GetComponentsInChildren<T>(true)).ToArray();
-        }
 
         private static string Path(Transform t)
         {
