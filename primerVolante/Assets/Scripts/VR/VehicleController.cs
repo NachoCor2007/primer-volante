@@ -103,6 +103,12 @@ namespace PrimerVolante.VR
         private float m_CurrentSpeedMs = 0f; // m/s
         private float m_ThrottleValue = 0f;
         private float m_BrakeValue = 0f;
+
+        // Pedales retenidos tras una pausa: siguen en 0 hasta que su valor crudo baja de k_PedalReleaseThreshold, para que el gatillo
+        // con el que se tocó "Reanudar" no cuente como frenar/acelerar. Un latch por pedal.
+        private const float k_PedalReleaseThreshold = 0.05f;
+        private bool m_ThrottleLatched;
+        private bool m_BrakeLatched;
         private float m_LastLogTime = 0f;
 
         private Rigidbody m_Rigidbody;
@@ -741,16 +747,20 @@ namespace PrimerVolante.VR
 
             UpdateCranking();
 
-            m_ThrottleValue = ReadTriggerValue(m_RightTriggerAction, m_DefaultRightAction, XRNode.RightHand);
-            m_BrakeValue = ReadTriggerValue(m_LeftTriggerAction, m_DefaultLeftAction, XRNode.LeftHand);
+            // Con la simulación pausada la entrada del habitáculo está bloqueada: los pedales valen 0 y los atajos no hacen nada.
+            // Los valores crudos se siguen leyendo para saber cuándo se suelta cada gatillo.
+            bool paused = SimulationPause.IsPaused;
+
+            float rawThrottle = ReadTriggerValue(m_RightTriggerAction, m_DefaultRightAction, XRNode.RightHand);
+            float rawBrake = ReadTriggerValue(m_LeftTriggerAction, m_DefaultLeftAction, XRNode.LeftHand);
 
             // Capa de soporte Gamepad (DualShock 4 / genérico) y Teclado como testing en Editor
             if (Gamepad.current != null)
             {
-                m_ThrottleValue = Mathf.Max(m_ThrottleValue, Gamepad.current.rightTrigger.ReadValue());
-                m_BrakeValue = Mathf.Max(m_BrakeValue, Gamepad.current.leftTrigger.ReadValue());
+                rawThrottle = Mathf.Max(rawThrottle, Gamepad.current.rightTrigger.ReadValue());
+                rawBrake = Mathf.Max(rawBrake, Gamepad.current.leftTrigger.ReadValue());
 
-                if (Gamepad.current.buttonSouth.wasPressedThisFrame)
+                if (!paused && Gamepad.current.buttonSouth.wasPressedThisFrame)
                 {
                     TryToggleEngine();
                 }
@@ -760,20 +770,22 @@ namespace PrimerVolante.VR
             {
                 if (Keyboard.current.wKey.isPressed || Keyboard.current.upArrowKey.isPressed)
                 {
-                    m_ThrottleValue = Mathf.Max(m_ThrottleValue, 1f);
+                    rawThrottle = Mathf.Max(rawThrottle, 1f);
                 }
                 if (Keyboard.current.sKey.isPressed || Keyboard.current.downArrowKey.isPressed)
                 {
-                    m_BrakeValue = Mathf.Max(m_BrakeValue, 1f);
+                    rawBrake = Mathf.Max(rawBrake, 1f);
                 }
-                if (Keyboard.current.eKey.wasPressedThisFrame)
+                if (!paused && Keyboard.current.eKey.wasPressedThisFrame)
                 {
                     TryToggleEngine();
                 }
             }
 
+            ApplyPedalInput(rawThrottle, rawBrake, paused);
+
 #if UNITY_EDITOR || DEBUG
-            if (Keyboard.current != null)
+            if (!paused && Keyboard.current != null)
             {
                 if (Keyboard.current.zKey.wasPressedThisFrame)
                 {
@@ -789,7 +801,7 @@ namespace PrimerVolante.VR
                 }
             }
 
-            if (Gamepad.current != null)
+            if (!paused && Gamepad.current != null)
             {
                 if (Gamepad.current.dpad.left.wasPressedThisFrame)
                 {
@@ -822,6 +834,35 @@ namespace PrimerVolante.VR
                 }
             }
         }
+
+        // Valores de pedal efectivos a partir de los crudos. En pausa valen 0 y quedan retenidos; al salir de la pausa cada pedal
+        // sigue en 0 hasta que su valor crudo baje del umbral, y recién la siguiente presión cuenta.
+        private void ApplyPedalInput(float rawThrottle, float rawBrake, bool paused)
+        {
+            m_ThrottleValue = GatePedal(rawThrottle, paused, ref m_ThrottleLatched);
+            m_BrakeValue = GatePedal(rawBrake, paused, ref m_BrakeLatched);
+        }
+
+        private static float GatePedal(float raw, bool paused, ref bool latched)
+        {
+            if (paused)
+            {
+                latched = true;
+                return 0f;
+            }
+
+            if (latched)
+            {
+                if (raw >= k_PedalReleaseThreshold) return 0f;
+                latched = false;
+            }
+            return raw;
+        }
+
+#if UNITY_EDITOR
+        /// <summary>Solo Editor (tests): aplica el filtro de pedales (pausa + retención) a valores crudos, como lo hace Update.</summary>
+        public void ApplyPedalInputForTests(float rawThrottle, float rawBrake, bool paused) => ApplyPedalInput(rawThrottle, rawBrake, paused);
+#endif
 
         private void FixedUpdate()
         {

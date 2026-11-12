@@ -207,6 +207,13 @@ namespace PrimerVolante.VR
 
         private void Update()
         {
+            // Mientras la simulación está pausada no se procesa ninguna entrada (joystick, teclado, Gamepad).
+            if (SimulationPause.IsPaused)
+            {
+                StopMotorSound();
+                return;
+            }
+
             Vector2 inputDir = Vector2.zero;
 
             // 1. Joystick del mando VR izquierdo (analógico, con zona muerta)

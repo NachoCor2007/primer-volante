@@ -194,7 +194,7 @@ namespace PrimerVolante.VR
         private void Update()
         {
 #if UNITY_EDITOR || DEBUG
-            if (!m_IsGrabbed && Keyboard.current != null && Keyboard.current.bKey.wasPressedThisFrame)
+            if (!m_IsGrabbed && !SimulationPause.IsPaused && Keyboard.current != null && Keyboard.current.bKey.wasPressedThisFrame)
             {
                 float target = (Engagement > 0.5f) ? 0f : 1f;
                 SetEngagementImmediate(target);

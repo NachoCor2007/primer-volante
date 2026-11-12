@@ -255,7 +255,8 @@ namespace PrimerVolante.VR
 
         private void Update()
         {
-            if (m_IsGrabbed) return;
+            // Atajos de teclado/Gamepad bloqueados mientras la simulación está pausada.
+            if (m_IsGrabbed || SimulationPause.IsPaused) return;
 
             bool shiftDown = false;
             bool shiftUp = false;
