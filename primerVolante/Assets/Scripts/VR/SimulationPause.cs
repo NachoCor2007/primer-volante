@@ -20,6 +20,15 @@ namespace PrimerVolante.VR
         private static bool s_HasSnapshot;
         private static float s_SavedTimeScale = 1f;
         private static bool s_SavedAudioPause;
+        // Último estado notificado por PausedChanged: garantiza que el evento se dispare solo en las transiciones.
+        private static bool s_NotifiedPaused;
+
+        /// <summary>
+        /// Se dispara únicamente en las transiciones de la pausa: el primer <see cref="Acquire"/> (true), y el último
+        /// <see cref="Release"/> o el descarte de dueños destruidos que deja 0 dueños (false). Repetir Acquire, soltar un
+        /// dueño sin token o solapar dueños no lo dispara. Ya con <c>timeScale</c> aplicado/restaurado.
+        /// </summary>
+        public static event System.Action<bool> PausedChanged;
 
         /// <summary>true mientras algún dueño tiene el token (la simulación está congelada).</summary>
         public static bool IsPaused
@@ -64,7 +73,11 @@ namespace PrimerVolante.VR
 
         // Con "Enter Play Mode Options" sin recarga de dominio los estáticos sobreviven entre Play: se reinician aquí.
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStatics() => Clear();
+        private static void ResetStatics()
+        {
+            Clear();
+            PausedChanged = null;
+        }
 
         /// <summary>
         /// Congela la simulación para <paramref name="owner"/>. Si es el primer dueño guarda <c>timeScale</c> y el audio previos.
@@ -83,6 +96,7 @@ namespace PrimerVolante.VR
             }
             s_Owners[owner] = pauseAudio;
             Apply();
+            NotifyIfChanged();
         }
 
         /// <summary>Suelta el token de <paramref name="owner"/>. El último en soltar restaura los valores previos.</summary>
@@ -96,6 +110,7 @@ namespace PrimerVolante.VR
 
             if (s_Owners.Count == 0) Restore();
             else Apply();
+            NotifyIfChanged();
         }
 
 #if UNITY_EDITOR
@@ -107,6 +122,16 @@ namespace PrimerVolante.VR
         {
             s_Owners.Clear();
             s_HasSnapshot = false;
+            s_NotifiedPaused = false;
+        }
+
+        private static void NotifyIfChanged()
+        {
+            bool paused = s_Owners.Count > 0;
+            if (paused == s_NotifiedPaused) return;
+
+            s_NotifiedPaused = paused;
+            PausedChanged?.Invoke(paused);
         }
 
         private static void Apply()
@@ -143,6 +168,7 @@ namespace PrimerVolante.VR
             foreach (object dead in s_Buffer) s_Owners.Remove(dead);
             s_Buffer.Clear();
             if (s_Owners.Count == 0) Restore();
+            NotifyIfChanged();
         }
     }
 }
