@@ -65,6 +65,7 @@ namespace PrimerVolante.Testing.Editor
                 VerificationSceneUtil.WithSceneCopy(BEHAVIOUR_SCENE, VerifyWithoutLessonManager);
                 VerificationSceneUtil.WithSceneCopy(BEHAVIOUR_SCENE, VerifyFlowManager);
                 VerificationSceneUtil.WithSceneCopy(BEHAVIOUR_SCENE, VerifyHudFallback);
+                VerifySourceRules();
                 Check(!SimulationPause.IsPaused, "Al terminar no queda ningún dueño de la pausa de simulación");
 
                 bool stillClean = true;
@@ -230,6 +231,27 @@ namespace PrimerVolante.Testing.Editor
                 ((RectTransform)restartT).anchoredPosition = new Vector2(55f, 55f);
                 LessonPauseActionsSetup.SetupActiveScene();
                 Check(((RectTransform)restartT).anchoredPosition == LessonPauseActionsSetup.RESTART_POSITION, "El setup reubica un botón que estaba movido");
+
+                // 7. Hijos homónimos sin Button / TMP_Text: el setup los recrea y no lanza
+                Transform exitT = scene.GetRootGameObjects().SelectMany(r => r.GetComponentsInChildren<Transform>(true))
+                    .First(t => t.name == LessonPauseActionsSetup.EXIT_BUTTON);
+                Transform messageT = scene.GetRootGameObjects().SelectMany(r => r.GetComponentsInChildren<Transform>(true))
+                    .First(t => t.name == "Message" && t.parent != null && t.parent.name == LessonPauseActionsSetup.CONFIRM_PANEL);
+                UnityEngine.Object.DestroyImmediate(exitT.GetComponent<Button>());
+                UnityEngine.Object.DestroyImmediate(messageT.GetComponent<TMP_Text>());
+                LessonPauseActions repaired = null;
+                bool threw = false;
+                try { repaired = LessonPauseActionsSetup.SetupActiveScene(); }
+                catch (Exception ex) { threw = true; Debug.LogWarning($"SetupActiveScene lanzó: {ex}"); }
+                Check(!threw && repaired != null, "El setup no lanza con hijos homónimos sin Button ni TMP_Text");
+                if (repaired != null)
+                {
+                    Check(repaired.ExitButton != null && repaired.ExitButton.GetComponentInChildren<TMP_Text>(true) != null
+                          && repaired.ConfirmMessage != null && repaired.ConfirmMessage.text.Length > 0
+                          && Count(LessonPauseActionsSetup.EXIT_BUTTON) == 1
+                          && repaired.ConfirmPanel.GetComponentsInChildren<Transform>(true).Count(t => t.name == "Message") == 1,
+                        "El setup recrea el botón y el label rotos, y los vuelve a cablear sin duplicar");
+                }
             }
             finally
             {
@@ -368,8 +390,10 @@ namespace PrimerVolante.Testing.Editor
                 Check(actions.RestartButton.interactable && actions.ExitButton.interactable && menu.ResumeButton.interactable,
                     "Al terminar el bloqueo, Reiniciar y Salir vuelven a ser interactuables");
 
-                // 7. LockForTransition
+                // 7. LockForTransition (el bloqueo depende de que el flow manager esté en transición)
                 menu.CloseMenu();
+                flowGo = NewFlowManager(scene, transitioning: true);
+                LessonSceneFlowManager flow = flowGo.GetComponent<LessonSceneFlowManager>();
                 menu.OpenMenu();
                 Check(menu.IsOpen && menu.IsSimulationPaused && Time.timeScale == 0f, "Precondición: menú abierto y simulación pausada");
                 menu.LockForTransition();
@@ -407,7 +431,6 @@ namespace PrimerVolante.Testing.Editor
 
                 // 10. Confirmar con el flow manager devolviendo false
                 menu.CloseMenu();
-                flowGo = NewFlowManager(scene, transitioning: true);
                 menu.OpenMenu();
                 actions.RestartButton.onClick.Invoke();
                 actions.ConfirmButton.onClick.Invoke();
@@ -421,6 +444,56 @@ namespace PrimerVolante.Testing.Editor
                 actions.ConfirmButton.onClick.Invoke();
                 Check(!menu.IsLockedForTransition && actions.Pending == LessonPauseActions.PendingAction.None,
                     "Confirmar sin confirmación pendiente no hace nada");
+
+                // 2. El bloqueo se libera cuando la transición termina y el menú sigue vivo
+                actions.RestartButton.onClick.Invoke();
+                menu.LockForTransition();
+                actions.RefreshInteractable();
+                Check(menu.IsLockedForTransition && !actions.RestartButton.interactable && actions.ConfirmPanel.activeSelf,
+                    "Precondición: con la transición en curso el menú está bloqueado y la confirmación sigue abierta");
+                SetField(flow, "m_IsTransitioning", false);
+                Check(!menu.IsLockedForTransition, "Si la transición termina con el menú vivo, el bloqueo se libera solo");
+                actions.RefreshInteractable();
+                Check(actions.RestartButton.interactable && actions.ExitButton.interactable && actions.ConfirmButton.interactable
+                      && actions.CancelButton.interactable && menu.ResumeButton.interactable,
+                    "Liberado el bloqueo, los botones del menú vuelven a ser interactuables");
+                Check(!actions.ConfirmPanel.activeSelf && actions.MainPanel.activeSelf && actions.Pending == LessonPauseActions.PendingAction.None,
+                    "Liberado el bloqueo, la confirmación se cierra y se vuelve a MainPanel");
+                menu.CloseMenu();
+                Check(!menu.IsOpen && !menu.IsSimulationPaused && Time.timeScale == 1f, "Liberado el bloqueo, Reanudar cierra el menú y despausa");
+
+                // Sin flow manager el bloqueo no se queda colgado
+                UnityEngine.Object.DestroyImmediate(flowGo);
+                flowGo = null;
+                ResetFlowSingleton();
+                menu.OpenMenu();
+                menu.LockForTransition();
+                Check(!menu.IsLockedForTransition, "Sin flow manager el bloqueo se libera (no hay transición que lo mantenga)");
+                menu.CloseMenu();
+                Check(!menu.IsOpen && Time.timeScale == 1f, "Sin flow manager el menú puede cerrarse");
+
+                // 6. TryGetInstance no crea el singleton y el componente se comporta sin flow manager
+                Check(!LessonSceneFlowManager.TryGetInstance(out LessonSceneFlowManager none) && none == null
+                      && UnityEngine.Object.FindAnyObjectByType<LessonSceneFlowManager>() == null,
+                    "TryGetInstance sin flow manager devuelve false y no crea ningún GameObject");
+                menu.OpenMenu();
+                actions.RestartButton.onClick.Invoke();
+                actions.ConfirmButton.onClick.Invoke();
+                Check(!menu.IsLockedForTransition && actions.MainPanel.activeSelf && !actions.ConfirmPanel.activeSelf
+                      && UnityEngine.Object.FindAnyObjectByType<LessonSceneFlowManager>() == null,
+                    "Confirmar sin flow manager no bloquea el menú, vuelve a MainPanel y no crea el singleton");
+                flowGo = NewFlowManager(scene, transitioning: false);
+                Check(LessonSceneFlowManager.TryGetInstance(out LessonSceneFlowManager found) && found == flowGo.GetComponent<LessonSceneFlowManager>(),
+                    "TryGetInstance devuelve el flow manager existente");
+
+                // 5. OnDisable con la confirmación abierta restaura los paneles
+                actions.RestartButton.onClick.Invoke();
+                Check(actions.ConfirmPanel.activeSelf && !actions.MainPanel.activeSelf, "Precondición: confirmación abierta");
+                Invoke(actions, "OnDisable");
+                Check(!actions.ConfirmPanel.activeSelf && actions.MainPanel.activeSelf && actions.Pending == LessonPauseActions.PendingAction.None,
+                    "OnDisable con la confirmación abierta: ConfirmPanel se cierra y MainPanel vuelve a mostrarse");
+                Invoke(actions, "OnEnable");
+                menu.CloseMenu();
             }
             finally
             {
@@ -562,17 +635,26 @@ namespace PrimerVolante.Testing.Editor
                 manager.LessonStarted += _ => started++;
                 Check(!manager.IsLessonActive, "Precondición: la lección de prueba no empezó");
 
-                // Con el flow manager devolviendo false (transición en curso) se usa el fallback: StartLesson en el lugar
+                // Con una transición en curso no se hace nada: StartLesson en el lugar actuaría sobre la escena que se descarga
                 flowGo = NewFlowManager(scene, transitioning: true);
                 Invoke(hud, "OnRestartClicked");
-                Check(started == 1 && manager.IsLessonActive && manager.CurrentStepIndex == 0,
-                    "OnRestartClicked con el flow manager devolviendo false cae al StartLesson en el lugar");
+                Invoke(hud, "OnRestartClicked");
+                Check(started == 0 && !manager.IsLessonActive, "OnRestartClicked con una transición en curso no llama a StartLesson (ni con doble click)");
 
-                // Sin un overlay de lección, también devuelve false y cae al fallback
+                // Sin transición pero sin un overlay de lección, RestartCurrentLesson devuelve false y se cae al fallback
                 SetField(flowGo.GetComponent<LessonSceneFlowManager>(), "m_IsTransitioning", false);
                 SetField(flowGo.GetComponent<LessonSceneFlowManager>(), "m_CurrentOverlayScene", LessonSceneFlowManager.NEW_MAIN_MENU_SCENE);
                 Invoke(hud, "OnRestartClicked");
-                Check(started == 2, "OnRestartClicked con un overlay que no es lección también cae al fallback");
+                Check(started == 1 && manager.IsLessonActive && manager.CurrentStepIndex == 0,
+                    "OnRestartClicked con un overlay que no es lección cae al StartLesson en el lugar");
+
+                // Sin flow manager también se usa el fallback
+                UnityEngine.Object.DestroyImmediate(flowGo);
+                flowGo = null;
+                ResetFlowSingleton();
+                Invoke(hud, "OnRestartClicked");
+                Check(started == 2, "OnRestartClicked sin flow manager cae al StartLesson en el lugar");
+                Check(UnityEngine.Object.FindAnyObjectByType<LessonSceneFlowManager>() == null, "OnRestartClicked no creó un LessonSceneFlowManager");
             }
             finally
             {
@@ -582,6 +664,45 @@ namespace PrimerVolante.Testing.Editor
                 if (step != null) UnityEngine.Object.DestroyImmediate(step);
                 ResetFlowSingleton();
             }
+        }
+
+        // =========================================================================
+        // 1 y 4. Reglas de código de la transición (no se puede correr la corrutina real en Edit Mode)
+        // =========================================================================
+        private static void VerifySourceRules()
+        {
+            const string path = "Assets/Scripts/Lessons/LessonSceneFlowManager.cs";
+            string source = File.ReadAllText(path);
+
+            Check(!System.Text.RegularExpressions.Regex.IsMatch(source, @"new\s+WaitForSeconds\s*\(") && source.Contains("WaitForSecondsRealtime(0.2f)"),
+                "La transición no usa esperas escaladas (WaitForSeconds): con timeScale 0 se colgaría; usa WaitForSecondsRealtime");
+
+            int routine = source.IndexOf("private IEnumerator TransitionToSceneRoutine", StringComparison.Ordinal);
+            int unload = source.IndexOf("SceneManager.UnloadSceneAsync(currentScene)", routine, StringComparison.Ordinal);
+            int clear = source.IndexOf("if (clearInfractions) ClearAllInfractionManagers();", routine, StringComparison.Ordinal);
+            int load = source.IndexOf("SceneManager.LoadSceneAsync(targetSceneName", routine, StringComparison.Ordinal);
+            Check(routine > 0 && unload > routine && clear > unload && load > clear,
+                "La limpieza de infracciones ocurre en la corrutina, después de descargar el overlay y antes de cargar el destino");
+
+            string restart = MethodBody(source, "public bool RestartCurrentLesson()");
+            string menu = MethodBody(source, "public bool ReturnToMainMenu()");
+            Check(restart.Length > 0 && menu.Length > 0 && !restart.Contains("ClearAllInfractionManagers") && !menu.Contains("ClearAllInfractionManagers")
+                  && restart.Contains("TransitionToSceneRoutine(m_CurrentOverlayScene, true)") && menu.Contains(", true)"),
+                "RestartCurrentLesson y ReturnToMainMenu no limpian antes del fade: piden la limpieza a la corrutina");
+        }
+
+        private static string MethodBody(string source, string signature)
+        {
+            int start = source.IndexOf(signature, StringComparison.Ordinal);
+            if (start < 0) return "";
+            int open = source.IndexOf('{', start);
+            int depth = 0;
+            for (int i = open; i < source.Length; i++)
+            {
+                if (source[i] == '{') depth++;
+                else if (source[i] == '}' && --depth == 0) return source.Substring(open, i - open + 1);
+            }
+            return "";
         }
 
         // =========================================================================
