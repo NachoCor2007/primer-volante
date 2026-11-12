@@ -692,28 +692,10 @@ namespace PrimerVolante.VR
                 // el congelamiento si algo pisó Time.timeScale, sin perder los valores previos que guarda SimulationPause.
                 if (!m_PauseSimulation && !force) return;
                 SimulationPause.Acquire(this, m_PauseAudio || force);
-                SetNearCastingBlockedForPause(true);
             }
             else
             {
                 SimulationPause.Release(this);
-                SetNearCastingBlockedForPause(false);
-            }
-        }
-
-        /// <summary>
-        /// Mientras la simulación está pausada por este menú, las manos no pueden agarrar nada del habitáculo: apaga el near
-        /// casting de los Near-Far Interactors y suelta los agarres en curso (<see cref="NearCastingPauseBlock"/>). El rayo a
-        /// UI del menú no se toca. Va de la mano del token de <see cref="SimulationPause"/>: se pide y se libera junto con él.
-        /// </summary>
-        private void SetNearCastingBlockedForPause(bool blocked)
-        {
-            if (m_FarCastInteractors == null || m_FarCastInteractors.Length == 0) return;
-
-            for (int i = 0; i < m_FarCastInteractors.Length; i++)
-            {
-                if (blocked) NearCastingPauseBlock.Request(m_FarCastInteractors[i], this);
-                else NearCastingPauseBlock.Release(m_FarCastInteractors[i], this);
             }
         }
 
