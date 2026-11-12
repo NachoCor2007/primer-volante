@@ -47,7 +47,15 @@ namespace PrimerVolante.Testing.Editor
             {
                 foreach (string path in LessonHUDMinimizeSetup.LESSON_SCENE_PATHS)
                 {
-                    if (SetupScene(path)) ok++;
+                    // Un fallo en una escena no corta las demás
+                    try
+                    {
+                        if (SetupScene(path)) ok++;
+                    }
+                    catch (System.Exception ex)
+                    {
+                        Debug.LogError($"[LessonPauseActionsSetup] [FAIL] {path}: {ex}");
+                    }
                 }
             }
             finally
@@ -186,10 +194,15 @@ namespace PrimerVolante.Testing.Editor
         // Reutiliza el botón si ya existe (sin duplicarlo) y lo deja en la posición, tamaño y texto acordados.
         private static Button EnsureButton(Transform parent, TMP_FontAsset font, string name, string text, Vector2 position, Vector2 size)
         {
+            // Un hijo homónimo sin Button (o sin su Label) se recrea en lugar de reutilizarse
             Transform existing = parent.Find(name);
-            Button button = existing != null
-                ? existing.GetComponent<Button>()
-                : InGameMenuSetup.CreateButton(name, parent, font, text, position, size);
+            Button button = existing != null ? existing.GetComponent<Button>() : null;
+            if (button != null && button.GetComponentInChildren<TMP_Text>(true) == null) button = null;
+            if (button == null)
+            {
+                if (existing != null) Object.DestroyImmediate(existing.gameObject);
+                button = InGameMenuSetup.CreateButton(name, parent, font, text, position, size);
+            }
 
             var rect = (RectTransform)button.transform;
             rect.anchoredPosition = position;
@@ -201,10 +214,14 @@ namespace PrimerVolante.Testing.Editor
 
         private static TMP_Text EnsureLabel(Transform parent, TMP_FontAsset font, string name, string text, float fontSize, Vector2 position, Vector2 size)
         {
+            // Un hijo homónimo sin TMP_Text se recrea en lugar de reutilizarse
             Transform existing = parent.Find(name);
-            TMP_Text label = existing != null
-                ? existing.GetComponent<TMP_Text>()
-                : InGameMenuSetup.CreateLabel(name, parent, font, text, fontSize, position, size);
+            TMP_Text label = existing != null ? existing.GetComponent<TMP_Text>() : null;
+            if (label == null)
+            {
+                if (existing != null) Object.DestroyImmediate(existing.gameObject);
+                label = InGameMenuSetup.CreateLabel(name, parent, font, text, fontSize, position, size);
+            }
 
             var rect = (RectTransform)label.transform;
             rect.anchoredPosition = position;
