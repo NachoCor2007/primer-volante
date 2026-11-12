@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using PrimerVolante.Evaluation;
 using PrimerVolante.VR;
 
 namespace PrimerVolante.Lessons
@@ -62,6 +63,17 @@ namespace PrimerVolante.Lessons
                 }
                 return s_Instance;
             }
+        }
+
+        /// <summary>
+        /// Devuelve el singleton solo si ya existe (lo busca en las escenas si todavía no está cacheado); nunca crea uno. A diferencia
+        /// de <see cref="Instance"/>, sirve para código que tiene que comportarse bien sin flow manager y funciona también en Edit Mode.
+        /// </summary>
+        public static bool TryGetInstance(out LessonSceneFlowManager manager)
+        {
+            if (s_Instance == null) s_Instance = UnityEngine.Object.FindAnyObjectByType<LessonSceneFlowManager>();
+            manager = s_Instance;
+            return manager != null;
         }
 
         public bool IsTransitioning => m_IsTransitioning;
@@ -179,13 +191,15 @@ namespace PrimerVolante.Lessons
         }
 
         /// <summary>
-        /// Vuelve a la escena del Menú Principal.
+        /// Vuelve a la escena del Menú Principal y vacía el repositorio de infracciones (cuando la escena vieja ya se descargó).
         /// </summary>
-        public void ReturnToMainMenu()
+        /// <returns>true si arrancó la transición; false si ya había una en curso.</returns>
+        public bool ReturnToMainMenu()
         {
-            if (m_IsTransitioning) return;
+            if (m_IsTransitioning) return false;
             string targetMenu = !string.IsNullOrEmpty(s_PreferredMainMenuScene) ? s_PreferredMainMenuScene : MAIN_MENU_SCENE;
-            StartCoroutine(TransitionToSceneRoutine(targetMenu));
+            StartCoroutine(TransitionToSceneRoutine(targetMenu, true));
+            return true;
         }
 
         /// <summary>
@@ -220,18 +234,40 @@ namespace PrimerVolante.Lessons
         }
 
         /// <summary>
-        /// Reinicia la escena overlay de la lección actual.
+        /// Reinicia la escena overlay de la lección actual y vacía el repositorio de infracciones (cuando la escena vieja ya se descargó).
         /// </summary>
-        public void RestartCurrentLesson()
+        /// <returns>true si arrancó la transición; false si ya había una en curso o el overlay actual no es una lección.</returns>
+        public bool RestartCurrentLesson()
         {
-            if (m_IsTransitioning) return;
-            if (!string.IsNullOrEmpty(m_CurrentOverlayScene) && m_CurrentOverlayScene != MAIN_MENU_SCENE && m_CurrentOverlayScene != NEW_MAIN_MENU_SCENE)
+            if (m_IsTransitioning) return false;
+            if (string.IsNullOrEmpty(m_CurrentOverlayScene) || m_CurrentOverlayScene == MAIN_MENU_SCENE || m_CurrentOverlayScene == NEW_MAIN_MENU_SCENE)
             {
-                StartCoroutine(TransitionToSceneRoutine(m_CurrentOverlayScene));
+                return false;
             }
+
+            StartCoroutine(TransitionToSceneRoutine(m_CurrentOverlayScene, true));
+            return true;
         }
 
-        private IEnumerator TransitionToSceneRoutine(string targetSceneName)
+        /// <summary>
+        /// Vacía todos los <see cref="InfractionManager"/> cargados, estén habilitados o no. Es defensivo: un gestor dentro de la
+        /// escena de lección se reinicia solo con la recarga, pero uno en una escena persistente no.
+        /// </summary>
+        /// <returns>Cantidad de gestores limpiados.</returns>
+        public static int ClearAllInfractionManagers()
+        {
+            InfractionManager[] managers = UnityEngine.Object.FindObjectsByType<InfractionManager>(FindObjectsInactive.Include);
+            for (int i = 0; i < managers.Length; i++)
+            {
+                managers[i].Clear();
+            }
+
+            Debug.Log($"[LessonSceneFlowManager] Infracciones limpiadas en {managers.Length} InfractionManager.");
+            return managers.Length;
+        }
+
+        /// <param name="clearInfractions">true en Reiniciar y Volver al menú: vacía los InfractionManager justo tras descargar el overlay.</param>
+        private IEnumerator TransitionToSceneRoutine(string targetSceneName, bool clearInfractions = false)
         {
             m_IsTransitioning = true;
 
@@ -243,7 +279,8 @@ namespace PrimerVolante.Lessons
             }
             else
             {
-                yield return new WaitForSeconds(0.2f);
+                // En tiempo real: con el menú de pausa abierto Time.timeScale es 0 y una espera escalada no terminaría nunca.
+                yield return new WaitForSecondsRealtime(0.2f);
             }
 
             // 2. Descargar escena overlay actual (si existe y no es la ciudad)
@@ -260,6 +297,9 @@ namespace PrimerVolante.Lessons
                     }
                 }
             }
+
+            // Con la escena vieja ya descargada nadie puede registrar faltas viejas ni verla: se vacían los gestores persistentes.
+            if (clearInfractions) ClearAllInfractionManagers();
 
             // 3. Asegurar que City_Master esté cargada
             Scene cityScene = SceneManager.GetSceneByName(CITY_MASTER_SCENE);
