@@ -121,7 +121,7 @@ namespace PrimerVolante.Testing.Editor
             }
             SetObject(inGameMenu, "m_CalibrationBackButton", backButton != null ? backButton.gameObject : null);
             // La calibración standalone se ubica al noreste del frente del auto, no de la cabeza (instancia de escena, no el prefab).
-            SetObject(inGameMenu, "m_StandaloneForwardReference", car.transform);
+            SetObject(inGameMenu, "m_ForwardReference", car.transform);
 
             InteractableHighlighter highlighter = EnsureHighlighter();
 

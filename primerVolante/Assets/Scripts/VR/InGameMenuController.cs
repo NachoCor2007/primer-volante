@@ -2,6 +2,7 @@ using TMPro;
 using PrimerVolante.Lessons;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
 using XRNode = UnityEngine.XR.XRNode;
@@ -51,15 +52,17 @@ namespace PrimerVolante.VR
         [Tooltip("Distancia a la que se ubica el menú frente a la cabeza al abrirse (metros).")]
         [SerializeField] private float m_DistanceFromHead = 0.8f;
 
-        [Tooltip("Ángulo horizontal, a la derecha del frente de la cabeza, al que se ubica el panel de calibración " +
-                 "abierto standalone (grados).")]
-        [SerializeField] private float m_StandaloneYawOffsetDegrees = 45f;
+        [Tooltip("Ángulo horizontal, a la derecha del frente de la referencia (el auto), al que se ubica el menú de pausa, el aviso " +
+                 "de desconexión y el panel de calibración standalone (grados). Sin referencia solo aplica al panel standalone.")]
+        [FormerlySerializedAs("m_StandaloneYawOffsetDegrees")]
+        [SerializeField] private float m_YawOffsetDegrees = 45f;
 
-        [Tooltip("Transform cuyo frente horizontal es la referencia de los 45° del panel de calibración standalone " +
-                 "(el vehículo o el asiento): el panel queda siempre al noreste del auto, sin importar hacia dónde mire la cabeza. " +
-                 "Si se deja vacío se autodetecta el VehicleController (o el asiento del DriverSeatFollower); si no hay ninguno, " +
-                 "cae al comportamiento anterior (45° a la derecha del frente de la cabeza).")]
-        [SerializeField] private Transform m_StandaloneForwardReference;
+        [Tooltip("Transform cuyo frente horizontal es la referencia de los 45° del menú (el vehículo o el asiento): el menú queda " +
+                 "siempre a la derecha del auto, medido desde la cabeza, sin importar hacia dónde mire el jugador. " +
+                 "Si se deja vacío se busca en la escena del menú el VehicleController (o el asiento del DriverSeatFollower); si no hay " +
+                 "ninguno, el menú de pausa se ubica frente a la cabeza (0°) y el panel standalone a 45° de la cabeza.")]
+        [FormerlySerializedAs("m_StandaloneForwardReference")]
+        [SerializeField] private Transform m_ForwardReference;
 
         [Header("Entrada (VR - Botón Menu físico)")]
         [Tooltip("Si se apaga, se ignoran el botón Menu del control y la tecla de teclado (el menú de pausa no se puede abrir). " +
@@ -207,6 +210,60 @@ namespace PrimerVolante.VR
         /// <summary>true mientras el menú tiene la simulación detenida.</summary>
         public bool IsSimulationPaused => SimulationPause.Holds(this);
 
+        // Resolución perezosa de la referencia de frente. Caché privado NO serializado: el campo m_ForwardReference queda solo como
+        // override explícito del autor y resolver no modifica la escena.
+        private Transform m_ResolvedVehicle;
+        private bool m_NothingToResolve;
+        private static int s_VehicleSearchCount;
+
+        /// <summary>Cantidad de búsquedas de <see cref="VehicleController"/> hechas por todos los menús (solo para tests).</summary>
+        public static int VehicleSearchCountForTests => s_VehicleSearchCount;
+
+        /// <summary>
+        /// Transform cuyo frente horizontal ordena la pose estándar del menú (el auto). Prioridad: el override serializado
+        /// <c>m_ForwardReference</c>; el <see cref="VehicleController"/> de la escena del menú (cacheado mientras exista y esté activo, igual que lo ve la búsqueda); el asiento
+        /// del <see cref="DriverSeatFollower"/> si es de la misma escena (se lee siempre del follower, así que acompaña a
+        /// <c>SetDriverSeat</c> y, mientras el asiento sea la referencia, el auto se vuelve a buscar y se prefiere en cuanto aparece).
+        /// Solo mira la escena del propio menú. Es perezosa (también funciona en Edit Mode, donde Awake no corre) y devuelve null
+        /// real (nunca un objeto destruido) si no hay ninguno. Ese resultado se recuerda para no repetir la búsqueda en cada llamada
+        /// (NewMainMenu) hasta que aparezca un asiento en la escena o el menú se vuelva a habilitar.
+        /// </summary>
+        public Transform ForwardReference
+        {
+            get
+            {
+                if (m_ForwardReference != null) return m_ForwardReference;
+                if (m_ResolvedVehicle != null && m_ResolvedVehicle.gameObject.activeInHierarchy) return m_ResolvedVehicle;
+
+                UnityEngine.SceneManagement.Scene scene = gameObject.scene;
+                Transform seat = m_DriverSeatFollower != null ? m_DriverSeatFollower.DriverSeat : null;
+                if (seat != null && seat.gameObject.scene != scene) seat = null;
+
+                // Ya se buscó y no había nada: no se repite hasta que aparezca un asiento (o se re-habilite el menú).
+                if (m_NothingToResolve && seat == null) return null;
+
+                m_ResolvedVehicle = null;
+                s_VehicleSearchCount++;
+                foreach (VehicleController vehicle in Object.FindObjectsByType<VehicleController>())
+                {
+                    if (vehicle.gameObject.scene == scene)
+                    {
+                        m_ResolvedVehicle = vehicle.transform;
+                        break;
+                    }
+                }
+
+                if (m_ResolvedVehicle != null)
+                {
+                    m_NothingToResolve = false;
+                    return m_ResolvedVehicle;
+                }
+
+                m_NothingToResolve = seat == null;
+                return seat;
+            }
+        }
+
         private void Awake()
         {
             if (m_HeadTransform == null && Camera.main != null)
@@ -219,12 +276,8 @@ namespace PrimerVolante.VR
                 m_DriverSeatFollower = Object.FindAnyObjectByType<DriverSeatFollower>();
             }
 
-            if (m_StandaloneForwardReference == null)
-            {
-                VehicleController vehicle = Object.FindAnyObjectByType<VehicleController>();
-                if (vehicle != null) m_StandaloneForwardReference = vehicle.transform;
-                else if (m_DriverSeatFollower != null) m_StandaloneForwardReference = m_DriverSeatFollower.DriverSeat;
-            }
+            // Resuelve la referencia de frente (auto/asiento) de la escena del menú.
+            _ = ForwardReference;
 
             if (m_MenuRoot != null)
             {
@@ -251,6 +304,7 @@ namespace PrimerVolante.VR
 
         private void OnEnable()
         {
+            m_NothingToResolve = false;
             if (m_DriverSeatFollower != null)
             {
                 m_DriverSeatFollower.CalibrationOffsetChanged += OnCalibrationOffsetChanged;
@@ -366,7 +420,7 @@ namespace PrimerVolante.VR
         {
             if (m_MenuRoot == null) return;
 
-            PositionInFrontOfHead();
+            PositionAtStandardPose();
             m_MenuRoot.SetActive(true);
             m_StandaloneOpen = false;
             ShowMainPanel();
@@ -433,8 +487,8 @@ namespace PrimerVolante.VR
             if (first) CapturePreviousMode(wasOpen);
             m_OpenedByConnectionPause = true;
 
-            // Cerrado o calibración standalone: se ubica frente a la cabeza. El menú del jugador se deja donde está.
-            if (!wasOpen || (first && m_PreviousMode != PreviousMenuMode.Normal)) PositionInFrontOfHead();
+            // Cerrado o calibración standalone: se ubica en la pose estándar. El menú del jugador se deja donde está.
+            if (!wasOpen || (first && m_PreviousMode != PreviousMenuMode.Normal)) PositionAtStandardPose();
             m_MenuRoot.SetActive(true);
             m_StandaloneOpen = false;
             // El aviso vive en el panel principal: se muestra una sola vez y después solo se actualiza el texto.
@@ -452,12 +506,13 @@ namespace PrimerVolante.VR
         }
 
         /// <summary>
-        /// Vuelve a ubicar el menú de la pausa por conexión frente a la cabeza. Al recuperarse la conexión la cabeza puede estar
-        /// en otro lado (visor apoyado en la mesa), así que Reanudar tiene que quedar al alcance de nuevo.
+        /// Vuelve a ubicar el menú de la pausa por conexión en la pose estándar (ver <see cref="PositionAtStandardPose"/>). Al
+        /// recuperarse la conexión la cabeza puede estar en otro lado (visor apoyado en la mesa), así que Reanudar tiene que quedar
+        /// al alcance de nuevo.
         /// </summary>
         public void RecenterConnectionPauseMenu()
         {
-            if (IsBlockingGameplayInput) PositionInFrontOfHead();
+            if (IsBlockingGameplayInput) PositionAtStandardPose();
         }
 
         /// <summary>
@@ -512,7 +567,7 @@ namespace PrimerVolante.VR
                 case PreviousMenuMode.Standalone:
                     // La calibración standalone no pausa el tiempo: se reabre reubicada y se libera la pausa.
                     if (!IsLockedForTransition) SetSimulationPaused(false);
-                    PositionInFrontOfHead(m_StandaloneYawOffsetDegrees, m_StandaloneForwardReference);
+                    PositionInFrontOfHead(m_YawOffsetDegrees, ForwardReference);
                     ShowCalibrationPanel();
                     if (m_CalibrationBackButton != null) m_CalibrationBackButton.SetActive(false);
                     m_StandaloneOpen = true;
@@ -604,8 +659,8 @@ namespace PrimerVolante.VR
 
         /// <summary>
         /// Abre solo el panel de calibración, sin pausar el tiempo ni el audio y sin botón Volver. Lo ubica a
-        /// <c>m_StandaloneYawOffsetDegrees</c> (45°) a la derecha del frente horizontal del auto
-        /// (<c>m_StandaloneForwardReference</c>; sin referencia, de la cabeza), medido desde los ojos, a
+        /// <c>m_YawOffsetDegrees</c> (45°) a la derecha del frente horizontal del auto
+        /// (<see cref="ForwardReference"/>; sin referencia, de la cabeza), medido desde los ojos, a
         /// <c>m_DistanceFromHead</c>, a la altura de los ojos y mirando a la cabeza. Acompaña al jugador al calibrar
         /// (<see cref="DriverSeatFollower.CalibrationOffsetChanged"/>). Se cierra con <see cref="CloseMenu"/>.
         /// Lo usa el menú principal en cabina (página Calibración).
@@ -614,7 +669,7 @@ namespace PrimerVolante.VR
         {
             if (m_MenuRoot == null) return;
 
-            PositionInFrontOfHead(m_StandaloneYawOffsetDegrees, m_StandaloneForwardReference);
+            PositionInFrontOfHead(m_YawOffsetDegrees, ForwardReference);
             m_MenuRoot.SetActive(true);
             m_StandaloneOpen = true;
             ShowCalibrationPanel();
@@ -683,6 +738,19 @@ namespace PrimerVolante.VR
         {
             if (m_MainPanel != null) m_MainPanel.SetActive(false);
             if (m_CalibrationPanel != null) m_CalibrationPanel.SetActive(true);
+        }
+
+        /// <summary>
+        /// Pose estándar del menú de pausa y del aviso de desconexión. Con referencia de frente (el auto): a
+        /// <c>m_YawOffsetDegrees</c> (45°) a la derecha de su frente horizontal actual, medido desde la posición actual de los ojos,
+        /// a <c>m_DistanceFromHead</c>, a la altura de los ojos y mirando a la cabeza; la orientación de la cabeza se ignora. Sin
+        /// referencia (NewMainMenu): frente horizontal de la cabeza, a 0°.
+        /// </summary>
+        private void PositionAtStandardPose()
+        {
+            Transform reference = ForwardReference;
+            if (reference != null) PositionInFrontOfHead(m_YawOffsetDegrees, reference);
+            else PositionInFrontOfHead();
         }
 
         private void PositionInFrontOfHead(float yawOffsetDegrees = 0f, Transform forwardReference = null)
