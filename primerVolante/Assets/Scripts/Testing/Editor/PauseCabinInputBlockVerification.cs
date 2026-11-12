@@ -17,7 +17,7 @@ namespace PrimerVolante.Testing.Editor
     /// <summary>
     /// Verificación en Editor del bloqueo de la entrada del habitáculo mientras la simulación está pausada:
     /// 1. <see cref="SimulationPause.PausedChanged"/> se dispara solo en las transiciones.
-    /// 2. <see cref="NearCastingPauseBlock"/>: apaga/restaura el near casting con conteo de solicitantes y suelta el agarre en curso.
+    /// 2. <see cref="InteractorPauseBlock"/>: apaga/restaura el near casting con conteo de solicitantes y suelta el agarre en curso.
     /// 3. <see cref="InGameMenuController"/> pide y libera el bloqueo junto con su token de pausa (OpenMenu, CloseMenu, pausa por
     ///    desconexión, OnDisable) y las 6 escenas de lección tienen los interactores cableados.
     /// 4. Pedales de <see cref="VehicleController"/>: 0 en pausa y retenidos hasta soltar el gatillo, un latch por pedal.
@@ -53,6 +53,7 @@ namespace PrimerVolante.Testing.Editor
             bool audioPauseBefore = AudioListener.pause;
             Scene previousActive = SceneManager.GetActiveScene();
             Func<bool> escapeBefore = LessonActionMonitor.EscapePressedOverrideForTests;
+            bool coordinatorBefore = CabinPauseInteractionBlock.IsEnabled;
             try
             {
                 SimulationPause.ResetForTests();
@@ -61,6 +62,8 @@ namespace PrimerVolante.Testing.Editor
 
                 VerifyPausedChangedEvent();
                 VerifyNearCastingBlockHelper();
+                VerifyPokeBlockAndForcedRelease();
+                VerifyPauseDrivenBlock();
                 VerifyLessonScenesWiring();
                 VerificationSceneUtil.WithSceneCopy(LESSON_03_SCENE, VerifyMenuRequestsBlock);
                 VerificationSceneUtil.WithSceneCopy(LESSON_03_SCENE, VerifyPedals);
@@ -92,6 +95,8 @@ namespace PrimerVolante.Testing.Editor
                 Time.timeScale = timeScaleBefore;
                 AudioListener.pause = audioPauseBefore;
                 LessonActionMonitor.EscapePressedOverrideForTests = escapeBefore;
+                CabinPauseInteractionBlock.Disable();
+                if (coordinatorBefore) CabinPauseInteractionBlock.Enable();
                 if (previousActive.IsValid() && previousActive.isLoaded) SceneManager.SetActiveScene(previousActive);
             }
 
@@ -176,17 +181,19 @@ namespace PrimerVolante.Testing.Editor
         }
 
         // =========================================================================
-        // 2. NearCastingPauseBlock
+        // 2. InteractorPauseBlock
         // =========================================================================
         private sealed class InteractorRig
         {
             public GameObject Root;
             public XRInteractionManager Manager;
             public NearFarInteractor Interactor;
+            public XRPokeInteractor Poke;
             public XRSimpleInteractable Grab;
             public GameObject GrabObject;
 
-            public IXRSelectInteractor Selector => Interactor;
+            public XRBaseInteractor Hand => Interactor != null ? (XRBaseInteractor)Interactor : Poke;
+            public IXRSelectInteractor Selector => Hand;
 
             public void Destroy()
             {
@@ -220,6 +227,28 @@ namespace PrimerVolante.Testing.Editor
             return rig;
         }
 
+        // Rig con un XRPokeInteractor (controles y hand tracking también traen uno por mano).
+        private static InteractorRig NewPokeRig()
+        {
+            var rig = new InteractorRig { Root = new GameObject("TMP_PokeBlockRig") };
+            rig.Manager = rig.Root.AddComponent<XRInteractionManager>();
+
+            var pokeGo = new GameObject("TMP_PokeBlockInteractor");
+            pokeGo.transform.SetParent(rig.Root.transform);
+            rig.Poke = pokeGo.AddComponent<XRPokeInteractor>();
+            rig.Poke.interactionManager = rig.Manager;
+
+            rig.GrabObject = new GameObject("TMP_PokeBlockTarget");
+            rig.GrabObject.transform.SetParent(rig.Root.transform);
+            rig.GrabObject.AddComponent<BoxCollider>();
+            rig.Grab = rig.GrabObject.AddComponent<XRSimpleInteractable>();
+            rig.Grab.interactionManager = rig.Manager;
+
+            rig.Manager.RegisterInteractor((IXRInteractor)rig.Poke);
+            rig.Manager.RegisterInteractable((IXRInteractable)rig.Grab);
+            return rig;
+        }
+
         private static void VerifyNearCastingBlockHelper()
         {
             var requesterA = new GameObject("TMP_BlockRequesterA");
@@ -230,54 +259,54 @@ namespace PrimerVolante.Testing.Editor
                 rig = NewRig(true);
                 NearFarInteractor interactor = rig.Interactor;
 
-                NearCastingPauseBlock.Request(null, requesterA);
-                NearCastingPauseBlock.Request(interactor, null);
-                NearCastingPauseBlock.Release(null, requesterA);
-                NearCastingPauseBlock.Release(interactor, requesterA);
-                Check(NearCastingPauseBlock.Get(interactor) == null && interactor.enableNearCasting,
+                InteractorPauseBlock.Request(null, requesterA);
+                InteractorPauseBlock.Request(interactor, null);
+                InteractorPauseBlock.Release(null, requesterA);
+                InteractorPauseBlock.Release(interactor, requesterA);
+                Check(InteractorPauseBlock.Get(interactor) == null && interactor.enableNearCasting,
                     "Request/Release con null o sin componente previo no hacen nada ni lanzan");
 
-                NearCastingPauseBlock.Request(interactor, requesterA);
-                NearCastingPauseBlock block = NearCastingPauseBlock.Get(interactor);
+                InteractorPauseBlock.Request(interactor, requesterA);
+                InteractorPauseBlock block = InteractorPauseBlock.Get(interactor);
                 Check(block != null && block.IsActive && !interactor.enableNearCasting && block.hideFlags == HideFlags.DontSave,
                     "Request apaga el near casting (componente runtime DontSave)");
 
-                NearCastingPauseBlock.Request(interactor, requesterA);
+                InteractorPauseBlock.Request(interactor, requesterA);
                 Check(block.ActiveRequesterCount == 1 && !interactor.enableNearCasting, "Request repetido del mismo solicitante es idempotente");
 
-                NearCastingPauseBlock.Request(interactor, requesterB);
+                InteractorPauseBlock.Request(interactor, requesterB);
                 Check(block.ActiveRequesterCount == 2, "Dos solicitantes conviven");
-                NearCastingPauseBlock.Release(interactor, requesterA);
+                InteractorPauseBlock.Release(interactor, requesterA);
                 Check(block.IsActive && !interactor.enableNearCasting, "Al soltar uno de dos solicitantes el near casting sigue apagado");
-                NearCastingPauseBlock.Release(interactor, requesterB);
+                InteractorPauseBlock.Release(interactor, requesterB);
                 Check(!block.IsActive && interactor.enableNearCasting, "El último Release restaura el valor original (true)");
 
                 // Original false: se restaura false (no se fuerza a true)
                 interactor.enableNearCasting = false;
-                NearCastingPauseBlock.Request(interactor, requesterA);
-                NearCastingPauseBlock.Request(interactor, requesterA);
-                NearCastingPauseBlock.Release(interactor, requesterA);
+                InteractorPauseBlock.Request(interactor, requesterA);
+                InteractorPauseBlock.Request(interactor, requesterA);
+                InteractorPauseBlock.Release(interactor, requesterA);
                 Check(!interactor.enableNearCasting && !block.IsActive, "Con original false, el último Release lo deja en false");
 
                 // Un Request no pisa el original guardado
                 interactor.enableNearCasting = true;
-                NearCastingPauseBlock.Request(interactor, requesterA);
-                NearCastingPauseBlock.Request(interactor, requesterB);
-                NearCastingPauseBlock.Release(interactor, requesterA);
-                NearCastingPauseBlock.Release(interactor, requesterB);
+                InteractorPauseBlock.Request(interactor, requesterA);
+                InteractorPauseBlock.Request(interactor, requesterB);
+                InteractorPauseBlock.Release(interactor, requesterA);
+                InteractorPauseBlock.Release(interactor, requesterB);
                 Check(interactor.enableNearCasting, "Solicitudes solapadas no pierden el original (true)");
 
                 // Solicitante destruido: se poda
-                NearCastingPauseBlock.Request(interactor, requesterA);
-                NearCastingPauseBlock.Request(interactor, requesterB);
+                InteractorPauseBlock.Request(interactor, requesterA);
+                InteractorPauseBlock.Request(interactor, requesterB);
                 UnityEngine.Object.DestroyImmediate(requesterA);
                 Check(block.ActiveRequesterCount == 1, "Un solicitante destruido se poda del conteo");
-                NearCastingPauseBlock.Release(interactor, requesterB);
+                InteractorPauseBlock.Release(interactor, requesterB);
                 Check(!block.IsActive && interactor.enableNearCasting, "Con el solicitante destruido podado, el Release del otro restaura el near casting");
 
                 // Solicitante destruido sin Release: Update lo detecta y restaura
                 var lone = new GameObject("TMP_BlockRequesterLone");
-                NearCastingPauseBlock.Request(interactor, lone);
+                InteractorPauseBlock.Request(interactor, lone);
                 UnityEngine.Object.DestroyImmediate(lone);
                 Invoke(block, "Update");
                 Check(!block.IsActive && interactor.enableNearCasting, "Si el único solicitante se destruye sin liberar, Update restaura el near casting");
@@ -287,17 +316,17 @@ namespace PrimerVolante.Testing.Editor
                 rig.Grab.selectExited.AddListener(args => exits.Add(args.isCanceled));
                 rig.Manager.SelectEnter(rig.Selector, (IXRSelectInteractable)rig.Grab);
                 Check(rig.Selector.interactablesSelected.Count == 1 && rig.Grab.isSelected, "Preparación: el interactor tiene el objeto agarrado");
-                NearCastingPauseBlock.Request(interactor, requesterB);
+                InteractorPauseBlock.Request(interactor, requesterB);
                 Check(rig.Selector.interactablesSelected.Count == 0 && !rig.Grab.isSelected && exits.Count == 1 && !exits[0],
                     "Request suelta el agarre en curso (SelectExit normal, no cancelado)");
                 Check(!interactor.enableNearCasting, "Y deja el near casting apagado");
-                NearCastingPauseBlock.Release(interactor, requesterB);
+                InteractorPauseBlock.Release(interactor, requesterB);
                 Check(interactor.enableNearCasting && rig.Selector.interactablesSelected.Count == 0,
                     "Al soltar el bloqueo se restaura el near casting y no se re-agarra nada");
 
                 // Destruir el componente restaura el near casting
-                NearCastingPauseBlock.Request(interactor, requesterB);
-                Invoke(NearCastingPauseBlock.Get(interactor), "OnDestroy"); // en Edit Mode Unity no lo invoca solo
+                InteractorPauseBlock.Request(interactor, requesterB);
+                Invoke(InteractorPauseBlock.Get(interactor), "OnDestroy"); // en Edit Mode Unity no lo invoca solo
                 Check(interactor.enableNearCasting, "OnDestroy del componente con solicitantes restaura el near casting");
             }
             finally
@@ -305,6 +334,206 @@ namespace PrimerVolante.Testing.Editor
                 if (requesterA != null) UnityEngine.Object.DestroyImmediate(requesterA);
                 if (requesterB != null) UnityEngine.Object.DestroyImmediate(requesterB);
                 rig?.Destroy();
+            }
+        }
+
+        // Poke (y demás interactores que no son NearFar): se bloquea por interactionLayers del interactor; la suelta por pausa se señala.
+        private static void VerifyPokeBlockAndForcedRelease()
+        {
+            var requester = new GameObject("TMP_PokeRequester");
+            InteractorRig poke = null;
+            InteractorRig near = null;
+            try
+            {
+                poke = NewPokeRig();
+                XRPokeInteractor interactor = poke.Poke;
+                int original = interactor.interactionLayers.value;
+                int targetLayers = poke.Grab.interactionLayers.value;
+                Check(original != 0, "Preparación: el poke arranca con interactionLayers distintas de 0");
+
+                InteractorPauseBlock.Request(interactor, requester);
+                Check(interactor.interactionLayers.value == 0 && InteractorPauseBlock.Get(interactor).IsActive,
+                    "Request sobre un XRPokeInteractor pone sus interactionLayers en 0");
+                poke.Manager.SelectEnter(poke.Selector, (IXRSelectInteractable)poke.Grab);
+                Check(poke.Selector.interactablesSelected.Count == 0 && !poke.Grab.isSelected, "Con el poke bloqueado no puede seleccionar el control");
+                Check(poke.Grab.interactionLayers.value == targetLayers, "El bloqueo no toca las interactionLayers del interactable");
+                InteractorPauseBlock.Release(interactor, requester);
+                Check(interactor.interactionLayers.value == original, "El último Release restaura las interactionLayers originales del poke");
+                poke.Manager.SelectEnter(poke.Selector, (IXRSelectInteractable)poke.Grab);
+                Check(poke.Selector.interactablesSelected.Count == 1, "Restaurado, el poke vuelve a poder seleccionar");
+                poke.Manager.SelectExit(poke.Selector, (IXRSelectInteractable)poke.Grab);
+
+                // Valor original particular (no -1) y dos solicitantes
+                var second = new GameObject("TMP_PokeRequester2");
+                interactor.interactionLayers = 5;
+                InteractorPauseBlock.Request(interactor, requester);
+                InteractorPauseBlock.Request(interactor, second);
+                InteractorPauseBlock.Release(interactor, requester);
+                Check(interactor.interactionLayers.value == 0, "Con dos solicitantes, soltar uno deja el poke bloqueado");
+                InteractorPauseBlock.Release(interactor, second);
+                Check(interactor.interactionLayers.value == 5, "Un original particular (5) se restaura tal cual");
+                UnityEngine.Object.DestroyImmediate(second);
+                interactor.interactionLayers = original;
+
+                // Selección de poke en curso: se suelta, y la suelta se marca como provocada por la pausa
+                var flags = new List<bool>();
+                poke.Grab.selectExited.AddListener(args => flags.Add(InteractorPauseBlock.IsReleasingForPause));
+                poke.Manager.SelectEnter(poke.Selector, (IXRSelectInteractable)poke.Grab);
+                Check(poke.Selector.interactablesSelected.Count == 1, "Preparación: el poke tiene el control seleccionado");
+                InteractorPauseBlock.Request(interactor, requester);
+                Check(poke.Selector.interactablesSelected.Count == 0 && !poke.Grab.isSelected, "Request suelta la selección de poke en curso");
+                Check(flags.Count == 1 && flags[0] && !InteractorPauseBlock.IsReleasingForPause,
+                    "La suelta por pausa llega con IsReleasingForPause=true y el flag vuelve a false después");
+                InteractorPauseBlock.Release(interactor, requester);
+
+                flags.Clear();
+                poke.Manager.SelectEnter(poke.Selector, (IXRSelectInteractable)poke.Grab);
+                poke.Manager.SelectExit(poke.Selector, (IXRSelectInteractable)poke.Grab);
+                Check(flags.Count == 1 && !flags[0], "Una suelta normal llega con IsReleasingForPause=false");
+
+                // También en NearFar
+                near = NewRig(true);
+                flags.Clear();
+                near.Grab.selectExited.AddListener(args => flags.Add(InteractorPauseBlock.IsReleasingForPause));
+                near.Manager.SelectEnter(near.Selector, (IXRSelectInteractable)near.Grab);
+                InteractorPauseBlock.Request(near.Interactor, requester);
+                Check(flags.Count == 1 && flags[0], "La suelta de un NearFar por la pausa también se marca");
+                InteractorPauseBlock.Release(near.Interactor, requester);
+            }
+            finally
+            {
+                if (requester != null) UnityEngine.Object.DestroyImmediate(requester);
+                poke?.Destroy();
+                near?.Destroy();
+            }
+        }
+
+        // =========================================================================
+        // 2b. CabinPauseInteractionBlock: el bloqueo depende de la pausa, no del menú
+        // =========================================================================
+        private static void VerifyPauseDrivenBlock()
+        {
+            SimulationPause.ResetForTests();
+            Time.timeScale = 1f;
+            AudioListener.pause = false;
+            CabinPauseInteractionBlock.Disable();
+            InteractorRig near = null;
+            InteractorRig poke = null;
+            var ownerA = new GameObject("TMP_BlockOwnerA");
+            var ownerB = new GameObject("TMP_BlockOwnerB");
+            var ghost = new GameObject("TMP_BlockOwnerGhost");
+            try
+            {
+                near = NewRig(true);
+                poke = NewPokeRig();
+                int pokeOriginal = poke.Poke.interactionLayers.value;
+
+                bool Blocked() => !near.Interactor.enableNearCasting && poke.Poke.interactionLayers.value == 0;
+                bool Restored() => near.Interactor.enableNearCasting && poke.Poke.interactionLayers.value == pokeOriginal;
+
+                CabinPauseInteractionBlock.Enable();
+                Check(CabinPauseInteractionBlock.IsEnabled && CabinPauseInteractionBlock.BlockedCount == 0 && Restored(), "Enable sin pausa no bloquea nada");
+
+                near.Manager.SelectEnter(near.Selector, (IXRSelectInteractable)near.Grab);
+                poke.Manager.SelectEnter(poke.Selector, (IXRSelectInteractable)poke.Grab);
+                Check(near.Selector.interactablesSelected.Count == 1 && poke.Selector.interactablesSelected.Count == 1, "Preparación: NearFar y poke tienen un control seleccionado");
+
+                // Un dueño ajeno al menú (como el congelamiento propio del VRHardwareStateMonitor)
+                SimulationPause.Acquire(ownerA, true);
+                Check(Blocked() && CabinPauseInteractionBlock.BlockedCount >= 2, "Un token ajeno al menú bloquea NearFar y poke");
+                Check(near.Selector.interactablesSelected.Count == 0 && poke.Selector.interactablesSelected.Count == 0, "Y suelta las selecciones en curso de ambos");
+
+                SimulationPause.Acquire(ownerB, false);
+                Check(Blocked() && InteractorPauseBlock.Get(near.Interactor).ActiveRequesterCount == 1 && InteractorPauseBlock.Get(poke.Poke).ActiveRequesterCount == 1,
+                    "Un segundo dueño no duplica el bloqueo (un solo solicitante por interactor)");
+                SimulationPause.Release(ownerA);
+                Check(Blocked(), "Soltar un dueño con otro vigente mantiene el bloqueo");
+                SimulationPause.Release(ownerB);
+                Check(Restored() && CabinPauseInteractionBlock.BlockedCount == 0 && !InteractorPauseBlock.Get(near.Interactor).IsActive
+                      && !InteractorPauseBlock.Get(poke.Poke).IsActive, "Al soltar el último dueño se restaura todo, una sola vez");
+
+                poke.Manager.SelectEnter(poke.Selector, (IXRSelectInteractable)poke.Grab);
+                Check(poke.Selector.interactablesSelected.Count == 1, "Restaurado el poke vuelve a seleccionar");
+                poke.Manager.SelectExit(poke.Selector, (IXRSelectInteractable)poke.Grab);
+
+                // Dueño destruido sin soltar: Prune dispara PausedChanged(false) y se restaura
+                SimulationPause.Acquire(ghost, true);
+                Check(Blocked(), "Preparación: bloqueado por el dueño de prueba");
+                UnityEngine.Object.DestroyImmediate(ghost);
+                Check(!SimulationPause.IsPaused && Restored(), "Un dueño destruido sin soltar se poda y el bloqueo se restaura");
+
+                // Habilitar con la pausa ya vigente
+                SimulationPause.Acquire(ownerA, true);
+                Check(Blocked(), "Preparación: pausa vigente y bloqueo activo");
+                CabinPauseInteractionBlock.Disable();
+                Check(Restored(), "Disable libera lo bloqueado");
+                SimulationPause.Release(ownerA);
+                SimulationPause.Acquire(ownerA, true);
+                Check(Restored(), "Deshabilitado, una pausa no bloquea nada");
+                CabinPauseInteractionBlock.Enable();
+                Check(Blocked(), "Enable con la pausa ya vigente bloquea de una vez");
+                SimulationPause.Release(ownerA);
+                Check(Restored(), "Y al soltar la pausa se restaura");
+
+                VerifyBlockWithRealMonitor(near, poke, pokeOriginal);
+            }
+            finally
+            {
+                CabinPauseInteractionBlock.Disable();
+                SimulationPause.ResetForTests();
+                Time.timeScale = 1f;
+                AudioListener.pause = false;
+                near?.Destroy();
+                poke?.Destroy();
+                if (ownerA != null) UnityEngine.Object.DestroyImmediate(ownerA);
+                if (ownerB != null) UnityEngine.Object.DestroyImmediate(ownerB);
+                if (ghost != null) UnityEngine.Object.DestroyImmediate(ghost);
+            }
+        }
+
+        // La pausa por desconexión VR sin menú usable: el VRHardwareStateMonitor congela con su propio token y las manos igual se bloquean.
+        private static void VerifyBlockWithRealMonitor(InteractorRig near, InteractorRig poke, int pokeOriginal)
+        {
+            Scene scratch = UnityEditor.SceneManagement.EditorSceneManager.NewScene(UnityEditor.SceneManagement.NewSceneSetup.EmptyScene, UnityEditor.SceneManagement.NewSceneMode.Additive);
+            VRHardwareStateMonitor monitor = null;
+            try
+            {
+                VRSessionStateFeature.ResetForTests();
+                var go = new GameObject("TMP_PauseBlockMonitor");
+                SceneManager.MoveGameObjectToScene(go, scratch);
+                monitor = go.AddComponent<VRHardwareStateMonitor>();
+                monitor.Initialize(false);
+                monitor.RestrictToScene(scratch); // sin InGameMenuController en la escena
+                int[][] boot = { new[] { 0, 1 }, new[] { 1, 2 }, new[] { 2, 3 }, new[] { 3, 4 }, new[] { 4, 5 } };
+                foreach (int[] t in boot)
+                {
+                    monitor.ProcessSessionTransition(t[0], t[1]);
+                    monitor.Tick();
+                }
+
+                near.Manager.SelectEnter(near.Selector, (IXRSelectInteractable)near.Grab);
+                monitor.ProcessSessionTransition(5, 4); // pierde el foco
+                monitor.Tick();
+                Check(monitor.OwnsTimeFreeze && monitor.PauseMenu == null && Time.timeScale == 0f, "Preparación: el monitor congela por su cuenta, sin menú");
+                Check(!near.Interactor.enableNearCasting && poke.Poke.interactionLayers.value == 0 && near.Selector.interactablesSelected.Count == 0,
+                    "Pausa del monitor sin menú: NearFar y poke bloqueados y el agarre soltado");
+                monitor.ProcessSessionTransition(4, 5);
+                monitor.Tick();
+                Check(!monitor.OwnsTimeFreeze && near.Interactor.enableNearCasting && poke.Poke.interactionLayers.value == pokeOriginal,
+                    "Al reanudar el monitor sin menú se restaura el estado original");
+            }
+            finally
+            {
+                if (monitor != null)
+                {
+                    monitor.Shutdown();
+                    UnityEngine.Object.DestroyImmediate(monitor.gameObject);
+                }
+                VRSessionStateFeature.ResetForTests();
+                UnityEditor.SceneManagement.EditorSceneManager.CloseScene(scratch, true);
+                SimulationPause.ResetForTests();
+                Time.timeScale = 1f;
+                AudioListener.pause = false;
             }
         }
 
@@ -359,11 +588,35 @@ namespace PrimerVolante.Testing.Editor
             AudioListener.pause = false;
             interactors[0].enableNearCasting = true;
             interactors[1].enableNearCasting = true;
+            XRPokeInteractor[] pokes = VerificationSceneUtil.AllInScene<XRPokeInteractor>(scene);
+            var pokeOriginals = new List<int>();
+            foreach (XRPokeInteractor p in pokes) pokeOriginals.Add(p.interactionLayers.value);
+            Check(pokes.Length == 2, $"Lesson_03: el rig tiene 2 XRPokeInteractor ({pokes.Length})");
+            bool PokesBlocked() { foreach (XRPokeInteractor p in pokes) if (p.interactionLayers.value != 0) return false; return pokes.Length > 0; }
+            bool PokesRestored() { for (int i = 0; i < pokes.Length; i++) if (pokes[i].interactionLayers.value != pokeOriginals[i]) return false; return true; }
+            CabinPauseInteractionBlock.Enable();
+            var extraOwner = new GameObject("TMP_ExtraPauseOwner");
             try
             {
                 menu.OpenMenu();
+                Check(SimulationPause.IsPaused && PokesBlocked() && AllNearCasting(interactors, false),
+                    "OpenMenu: los pokes del rig también quedan bloqueados (interactionLayers en 0)");
+                menu.CloseMenu();
+                Check(PokesRestored(), "CloseMenu: los pokes recuperan sus interactionLayers originales");
+
+                // Menú y otro dueño solapados: se restaura recién cuando se suelta el último
+                menu.OpenMenu();
+                SimulationPause.Acquire(extraOwner, true);
+                menu.CloseMenu();
+                Check(SimulationPause.IsPaused && PokesBlocked() && AllNearCasting(interactors, false),
+                    "Menú cerrado con otro dueño de la pausa vigente: sigue todo bloqueado");
+                SimulationPause.Release(extraOwner);
+                Check(!SimulationPause.IsPaused && PokesRestored() && AllNearCasting(interactors, true),
+                    "Al soltar el último dueño se restaura todo, una sola vez");
+
+                menu.OpenMenu();
                 Check(SimulationPause.IsPaused && AllNearCasting(interactors, false)
-                      && NearCastingPauseBlock.Get(interactors[0]).IsActive && NearCastingPauseBlock.Get(interactors[1]).IsActive,
+                      && InteractorPauseBlock.Get(interactors[0]).IsActive && InteractorPauseBlock.Get(interactors[1]).IsActive,
                     "OpenMenu: near casting apagado en ambos interactores");
                 menu.CloseMenu();
                 Check(!SimulationPause.IsPaused && AllNearCasting(interactors, true), "CloseMenu: near casting restaurado en ambos interactores");
@@ -419,6 +672,8 @@ namespace PrimerVolante.Testing.Editor
             }
             finally
             {
+                CabinPauseInteractionBlock.Disable();
+                if (extraOwner != null) UnityEngine.Object.DestroyImmediate(extraOwner);
                 if (menu != null && menu.MenuRoot != null) menu.MenuRoot.SetActive(false);
                 SimulationPause.ResetForTests();
                 Time.timeScale = 1f;
@@ -657,10 +912,10 @@ namespace PrimerVolante.Testing.Editor
                     SetStep(rig, LessonActionType.AdjustLeftMirror);
                     SimulationPause.Acquire(owner, true);
                     Invoke(rig.Monitor, "OnMirrorAdjusted", VRSideMirrorControlPanel.MirrorSelection.Left, Vector2.up);
-                    Check(!GetFlag(rig.Monitor, "m_LeftMirrorAdjusted") && rig.Completed.Count == 0, "OnMirrorAdjusted en pausa no marca el espejo izquierdo ni completa el paso");
+                    Check(rig.Completed.Count == 0, "OnMirrorAdjusted en pausa no completa el paso (CheckActionProgress está protegido)");
                     SimulationPause.Release(owner);
                     Invoke(rig.Monitor, "OnMirrorAdjusted", VRSideMirrorControlPanel.MirrorSelection.Left, Vector2.up);
-                    Check(GetFlag(rig.Monitor, "m_LeftMirrorAdjusted") && rig.Completed.Count == 1, "Fuera de la pausa el mismo evento sí lo marca y completa el paso");
+                    Check(GetFlag(rig.Monitor, "m_LeftMirrorAdjusted") && rig.Completed.Count == 1, "Fuera de la pausa el mismo evento marca el espejo y completa el paso");
                 }
 
                 // --- OpenCalibrationMenu sigue funcionando: necesita ver el menú abierto (que pausa la simulación)
