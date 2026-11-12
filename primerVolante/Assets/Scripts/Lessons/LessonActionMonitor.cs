@@ -627,8 +627,6 @@ namespace PrimerVolante.Lessons
 
         private void OnMirrorAdjusted(VRSideMirrorControlPanel.MirrorSelection sel, Vector2 dir)
         {
-            if (IsEvaluationPaused(m_CurrentStep)) return;
-
             if (sel == VRSideMirrorControlPanel.MirrorSelection.Left)
             {
                 m_LeftMirrorAdjusted = true;
