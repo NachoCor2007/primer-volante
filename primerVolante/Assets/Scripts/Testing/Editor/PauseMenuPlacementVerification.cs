@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -30,7 +31,6 @@ namespace PrimerVolante.Testing.Editor
     {
         private const string LESSON_SCENE = "Assets/Scenes/Lessons/Lesson_01_BasicDriving.unity";
         private const string NEW_MAIN_MENU_SCENE = "Assets/Scenes/car09/NewMainMenu.unity";
-        private const string MAIN_MENU_SCENE = "Assets/Scenes/car09/MainMenu.unity";
         private const float YAW_TOLERANCE = 2f;
         private const float DISTANCE_TOLERANCE = 0.01f;
         private const BindingFlags k_Instance = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
@@ -59,7 +59,7 @@ namespace PrimerVolante.Testing.Editor
                 VerificationSceneUtil.WithSceneCopy(LESSON_SCENE, VerifyCalibrationFollowsView);
                 VerificationSceneUtil.WithSceneCopy(NEW_MAIN_MENU_SCENE, VerifyWithoutReference);
                 VerifyRenamedFields();
-                VerificationSceneUtil.WithSceneCopy(MAIN_MENU_SCENE, VerifyFormerlySerializedValue);
+                VerificationSceneUtil.WithSceneCopy(MainMenuSetup.SCENE_PATH, VerifyFormerlySerializedValue);
                 Check(!SimulationPause.IsPaused, "Al terminar no queda ningún dueño de la pausa de simulación");
             }
             catch (Exception ex)
@@ -153,7 +153,8 @@ namespace PrimerVolante.Testing.Editor
             Transform menuRoot = rig.Menu.MenuRoot.transform;
             Vector3 toMenu = menuRoot.position - rig.Head.position;
             float yaw = Vector3.SignedAngle(Flat(rig.Car.forward), Flat(toMenu), Vector3.up);
-            Check(Mathf.Abs(yaw - 45f) <= YAW_TOLERANCE, $"{label}: a 45° (±{YAW_TOLERANCE:F0}°) a la derecha del frente del auto (yaw = {yaw:F1}°)");
+            Check(Mathf.Abs(yaw - rig.YawOffset) <= YAW_TOLERANCE,
+                $"{label}: a {rig.YawOffset:F0}° (±{YAW_TOLERANCE:F0}°) a la derecha del frente del auto (yaw = {yaw:F1}°)");
             Check(Mathf.Abs(toMenu.magnitude - rig.Distance) < DISTANCE_TOLERANCE, $"{label}: a {rig.Distance:F1} m de los ojos ({toMenu.magnitude:F3} m)");
             Check(Mathf.Abs(toMenu.y) < 0.001f, $"{label}: a la altura de los ojos (dy = {toMenu.y:F4})");
             Check(Vector3.Dot(menuRoot.forward, toMenu.normalized) > 0.99f, $"{label}: el panel mira a la cabeza (misma convención que antes)");
@@ -168,7 +169,7 @@ namespace PrimerVolante.Testing.Editor
 
         private static void VerifyLazyReference(Scene scene)
         {
-            // Antes de BuildRig: leer ForwardReference cachea el resultado en el campo.
+            // Antes de BuildRig: BuildRig lee ForwardReference.
             InGameMenuController menu = VerificationSceneUtil.AllInScene<InGameMenuController>(scene).FirstOrDefault();
             Check(menu != null, "Lesson_01 (copia): hay un InGameMenuController");
             if (menu == null) return;
@@ -177,37 +178,95 @@ namespace PrimerVolante.Testing.Editor
                 "Precondición: sin Awake (Edit Mode) m_ForwardReference está vacío en la escena");
 
             VehicleController vehicle = VerificationSceneUtil.AllInScene<VehicleController>(scene).FirstOrDefault();
-            Check(vehicle != null, "La escena de la lección tiene un VehicleController");
-            if (vehicle == null) return;
+            var follower = new SerializedObject(menu).FindProperty("m_DriverSeatFollower").objectReferenceValue as DriverSeatFollower;
+            Check(vehicle != null && follower != null && follower.DriverSeat != null, "La escena de la lección tiene un VehicleController y un DriverSeatFollower con asiento");
+            if (vehicle == null || follower == null || follower.DriverSeat == null) return;
+            Transform seat = follower.DriverSeat;
 
             Transform resolved = menu.ForwardReference;
-            Check(resolved == vehicle.transform, "ForwardReference resuelve el VehicleController de la escena de la lección sin que haya corrido Awake");
+            Check(ReferenceEquals(resolved, vehicle.transform), "ForwardReference resuelve el VehicleController de la escena de la lección sin que haya corrido Awake");
+            Check(field.GetValue(menu) as Transform == null && new SerializedObject(menu).FindProperty("m_ForwardReference").objectReferenceValue == null,
+                "Resolver no escribe en el campo serializado m_ForwardReference (queda como override del autor)");
 
-            // Un auto de otra escena cargada no se toma: se borra el de la lección y se crea uno señuelo en una escena aparte.
+            // Fallback al asiento: el auto se desactiva (FindObjectsByType lo ignora) y el DriverSeat, hijo suyo y parte de un prefab, sigue vivo.
             Scene other = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
+            var temporaries = new List<GameObject>();
             try
             {
                 var decoy = new GameObject("TMP_DecoyVehicle");
                 SceneManager.MoveGameObjectToScene(decoy, other);
                 decoy.AddComponent<VehicleController>();
-                Transform seat = (new SerializedObject(menu).FindProperty("m_DriverSeatFollower").objectReferenceValue as DriverSeatFollower)?.DriverSeat;
 
+                vehicle.gameObject.SetActive(false);
+                Transform fallback = menu.ForwardReference;
+                Check(seat != null && fallback != null && ReferenceEquals(fallback, seat),
+                    "Sin VehicleController en la escena: resuelve al DriverSeat vivo del DriverSeatFollower");
+                Check(!ReferenceEquals(fallback, decoy.transform), "No se toma el VehicleController de otra escena cargada");
+
+                // El asiento del follower cambia: la referencia lo acompaña (no queda cacheado el viejo).
+                GameObject newSeat = NewSceneObject("TMP_NewSeat", scene, temporaries);
+                follower.SetDriverSeat(newSeat.transform, false);
+                Check(ReferenceEquals(menu.ForwardReference, newSeat.transform), "SetDriverSeat con otro asiento: ForwardReference pasa al asiento nuevo");
+
+                // El auto aparece después (estaba inactivo o no cargado en la primera resolución): se prefiere sobre el asiento.
+                GameObject lateVehicle = NewSceneObject("TMP_LateVehicle", scene, temporaries);
+                lateVehicle.AddComponent<VehicleController>();
+                Check(ReferenceEquals(menu.ForwardReference, lateVehicle.transform), "Si aparece el VehicleController, se prefiere sobre el asiento");
+                Transform deadVehicle = lateVehicle.transform;
+                UnityEngine.Object.DestroyImmediate(lateVehicle);
+                Check(ReferenceEquals(menu.ForwardReference, newSeat.transform) && !ReferenceEquals(menu.ForwardReference, deadVehicle),
+                    "Auto destruido: se vuelve a resolver y no queda el objeto muerto");
+
+                // Sin auto ni asiento: null real, y la búsqueda no se repite en cada llamada.
+                follower.SetDriverSeat(null, false);
+                int before = InGameMenuController.VehicleSearchCountForTests;
+                Transform none = menu.ForwardReference;
+                int afterFirst = InGameMenuController.VehicleSearchCountForTests;
+                Transform none2 = menu.ForwardReference;
+                Transform none3 = menu.ForwardReference;
+                int afterAll = InGameMenuController.VehicleSearchCountForTests;
+                Check(ReferenceEquals(none, null) && ReferenceEquals(none2, null) && ReferenceEquals(none3, null),
+                    "Sin auto ni asiento ForwardReference devuelve null real (no un objeto destruido)");
+                Check(afterFirst - before == 1 && afterAll == afterFirst,
+                    $"Sin auto ni asiento la búsqueda se hace una sola vez (primera: {afterFirst - before}, repetidas: {afterAll - afterFirst})");
+
+                // Aparece un asiento: se invalida lo recordado.
+                follower.SetDriverSeat(newSeat.transform, false);
+                Check(ReferenceEquals(menu.ForwardReference, newSeat.transform), "Tras 'no hay nada', si aparece un asiento la referencia lo resuelve");
+
+                // Al re-habilitarse el menú también se invalida.
+                follower.SetDriverSeat(null, false);
+                Check(ReferenceEquals(menu.ForwardReference, null), "Precondición: sin asiento vuelve a no haber nada");
+                typeof(InGameMenuController).GetMethod("OnEnable", k_Instance).Invoke(menu, null);
+                typeof(InGameMenuController).GetMethod("OnDisable", k_Instance).Invoke(menu, null);
+                before = InGameMenuController.VehicleSearchCountForTests;
+                Check(ReferenceEquals(menu.ForwardReference, null) && InGameMenuController.VehicleSearchCountForTests - before == 1,
+                    "Al re-habilitarse el menú se vuelve a buscar una vez");
+
+                // Override explícito del autor: gana sobre la resolución; destruido, no se devuelve el objeto muerto.
+                GameObject overrideGo = NewSceneObject("TMP_Override", scene, temporaries);
+                Transform overrideT = overrideGo.transform;
+                field.SetValue(menu, overrideT);
+                Check(ReferenceEquals(menu.ForwardReference, overrideT), "m_ForwardReference asignado en la escena gana sobre la resolución");
+                UnityEngine.Object.DestroyImmediate(overrideGo);
+                Check(!ReferenceEquals(menu.ForwardReference, overrideT) && ReferenceEquals(menu.ForwardReference, null),
+                    "Con el override destruido no se devuelve el objeto muerto");
                 field.SetValue(menu, null);
-                UnityEngine.Object.DestroyImmediate(vehicle.gameObject);
-                Transform afterDelete = menu.ForwardReference;
-                Check(afterDelete != decoy.transform, "Sin auto en la escena del menú no se toma el VehicleController de otra escena cargada");
-                Check(afterDelete == seat || afterDelete == null,
-                    $"Sin auto en la escena: resuelve al DriverSeat del DriverSeatFollower o queda en null ({(afterDelete != null ? afterDelete.name : "null")})");
-
-                // Referencia cacheada y luego destruida: se vuelve a resolver (no queda un objeto muerto).
-                field.SetValue(menu, decoy.transform);
                 UnityEngine.Object.DestroyImmediate(decoy);
-                Check(menu.ForwardReference != decoy, "Con la referencia destruida la propiedad no devuelve el objeto muerto");
             }
             finally
             {
+                foreach (GameObject go in temporaries) if (go != null) UnityEngine.Object.DestroyImmediate(go);
                 EditorSceneManager.CloseScene(other, true);
             }
+        }
+
+        private static GameObject NewSceneObject(string name, Scene scene, List<GameObject> temporaries)
+        {
+            var go = new GameObject(name);
+            SceneManager.MoveGameObjectToScene(go, scene);
+            temporaries.Add(go);
+            return go;
         }
 
         // ------------------------------------------------------------------ 2-4. OpenMenu
@@ -217,6 +276,7 @@ namespace PrimerVolante.Testing.Editor
             Rig rig = BuildRig(scene, "OpenMenu");
             if (rig == null) return;
             Check(rig.Car != null, "OpenMenu: el menú tiene el auto como referencia de frente");
+            Check(Mathf.Approximately(rig.YawOffset, 45f), $"OpenMenu: en la lección el ángulo serializado es 45° ({rig.YawOffset:F1}°)");
             if (rig.Car == null) return;
             InGameMenuController menu = rig.Menu;
             Quaternion carYaw0 = Quaternion.Euler(0f, rig.Car.eulerAngles.y, 0f);
@@ -493,7 +553,7 @@ namespace PrimerVolante.Testing.Editor
         // MainMenu.unity guarda la referencia con el nombre viejo: si se carga, FormerlySerializedAs la migró.
         private static void VerifyFormerlySerializedValue(Scene scene)
         {
-            string yamlPath = Path.Combine(Directory.GetCurrentDirectory(), MAIN_MENU_SCENE);
+            string yamlPath = Path.Combine(Directory.GetCurrentDirectory(), MainMenuSetup.SCENE_PATH);
             bool oldNameOnDisk = File.Exists(yamlPath) && File.ReadAllText(yamlPath).Contains("m_StandaloneForwardReference: {fileID:");
             InGameMenuController menu = VerificationSceneUtil.AllInScene<InGameMenuController>(scene).FirstOrDefault();
             Check(menu != null, "MainMenu (copia): hay un InGameMenuController");

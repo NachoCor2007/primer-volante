@@ -1086,6 +1086,8 @@ namespace PrimerVolante.Testing.Editor
             Check(forwardRef != null, "InGameMenuController (escena): m_ForwardReference asignado (frente del auto)");
             if (forwardRef == null) return;
             Quaternion headRotation = head.rotation;
+            bool carWasActive = forwardRef.gameObject.activeSelf;
+            var follower = so.FindProperty("m_DriverSeatFollower").objectReferenceValue;
             try
             {
                 CheckStandalonePlacement(menu, head, forwardRef, distance, "cabeza al frente");
@@ -1105,8 +1107,6 @@ namespace PrimerVolante.Testing.Editor
                 bool headUnderCar = head.IsChildOf(forwardRef);
                 Check(!headUnderCar, "La cabeza no cuelga del auto (se puede desactivar para simular la escena sin referencia)");
                 if (headUnderCar) return;
-                bool carWasActive = forwardRef.gameObject.activeSelf;
-                var follower = so.FindProperty("m_DriverSeatFollower").objectReferenceValue;
                 SetField(menu, "m_DriverSeatFollower", null);
                 SetField(menu, "m_ForwardReference", null);
                 forwardRef.gameObject.SetActive(false);
@@ -1117,12 +1117,13 @@ namespace PrimerVolante.Testing.Editor
                 Vector3 headFwd = head.forward; headFwd.y = 0f;
                 Vector3 carFwd = forwardRef.forward; carFwd.y = 0f;
                 Check(Mathf.Abs(Vector3.SignedAngle(carFwd, headFwd, Vector3.up) - 90f) < 1f, "Sin referencia: el panel acompaña a la cabeza, no al auto");
-                forwardRef.gameObject.SetActive(carWasActive);
-                SetField(menu, "m_DriverSeatFollower", follower);
-                SetField(menu, "m_ForwardReference", forwardRef);
             }
             finally
             {
+                // Se restaura siempre: una excepción no puede dejar la copia de escena sin auto, sin follower o sin referencia.
+                forwardRef.gameObject.SetActive(carWasActive);
+                SetField(menu, "m_DriverSeatFollower", follower);
+                SetField(menu, "m_ForwardReference", forwardRef);
                 head.rotation = headRotation;
                 menu.CloseMenu();
                 menu.OpenCalibrationStandalone();

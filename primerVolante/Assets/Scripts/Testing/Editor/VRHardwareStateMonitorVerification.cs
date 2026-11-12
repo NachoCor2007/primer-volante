@@ -826,8 +826,8 @@ namespace PrimerVolante.Testing.Editor
 
                 // Con el visor apoyado en la mesa, la cabeza queda lejos de donde se cortó la conexión.
                 head.position = headPosition + new Vector3(-6f, 0.5f, 25f);
-                Tr(monitor, 4, 5);
                 head.rotation = Quaternion.Euler(0f, 150f, 0f); // mirando para cualquier lado: la pose no depende de la mirada
+                Tr(monitor, 4, 5);
                 Vector3 expected = StandardPosition();
                 Check(Vector3.Distance(openedAt, expected) > 5f, "Recentrado: la posición del corte quedó lejos de la cabeza actual (precondición)");
                 Check(Vector3.Distance(menu.MenuRoot.transform.position, expected) < 0.01f,
