@@ -292,10 +292,19 @@ namespace PrimerVolante.Lessons
                 return;
             }
 
+            if (IsEvaluationPaused(m_CurrentStep)) return;
+
             if (IsConditionSatisfied(m_CurrentStep))
             {
                 TriggerActionSuccess();
             }
+        }
+
+        // Con la simulación pausada el paso no se evalúa ni acumula métricas (el progreso se retoma con el estado real al reanudar).
+        // OpenCalibrationMenu es la excepción: necesita ver el menú abierto, que es justamente lo que pausa la simulación.
+        private static bool IsEvaluationPaused(LessonStepSO step)
+        {
+            return SimulationPause.IsPaused && (step == null || step.requiredAction != LessonActionType.OpenCalibrationMenu);
         }
 
 #if UNITY_EDITOR
@@ -618,6 +627,8 @@ namespace PrimerVolante.Lessons
 
         private void OnMirrorAdjusted(VRSideMirrorControlPanel.MirrorSelection sel, Vector2 dir)
         {
+            if (IsEvaluationPaused(m_CurrentStep)) return;
+
             if (sel == VRSideMirrorControlPanel.MirrorSelection.Left)
             {
                 m_LeftMirrorAdjusted = true;
