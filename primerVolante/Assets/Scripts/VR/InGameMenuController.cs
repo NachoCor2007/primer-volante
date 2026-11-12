@@ -210,34 +210,57 @@ namespace PrimerVolante.VR
         /// <summary>true mientras el menú tiene la simulación detenida.</summary>
         public bool IsSimulationPaused => SimulationPause.Holds(this);
 
+        // Resolución perezosa de la referencia de frente. Caché privado NO serializado: el campo m_ForwardReference queda solo como
+        // override explícito del autor y resolver no modifica la escena.
+        private Transform m_ResolvedVehicle;
+        private bool m_NothingToResolve;
+        private static int s_VehicleSearchCount;
+
+        /// <summary>Cantidad de búsquedas de <see cref="VehicleController"/> hechas por todos los menús (solo para tests).</summary>
+        public static int VehicleSearchCountForTests => s_VehicleSearchCount;
+
         /// <summary>
-        /// Transform cuyo frente horizontal ordena la pose estándar del menú (el auto). Si el campo está vacío o el objeto se destruyó
-        /// se busca, solo en la escena del propio menú, el <see cref="VehicleController"/> y después el asiento del
-        /// <see cref="DriverSeatFollower"/>. Es perezosa (también funciona en Edit Mode, donde Awake no corre) y null si la escena no
-        /// tiene ninguno.
+        /// Transform cuyo frente horizontal ordena la pose estándar del menú (el auto). Prioridad: el override serializado
+        /// <c>m_ForwardReference</c>; el <see cref="VehicleController"/> de la escena del menú (cacheado mientras exista y esté activo, igual que lo ve la búsqueda); el asiento
+        /// del <see cref="DriverSeatFollower"/> si es de la misma escena (se lee siempre del follower, así que acompaña a
+        /// <c>SetDriverSeat</c> y, mientras el asiento sea la referencia, el auto se vuelve a buscar y se prefiere en cuanto aparece).
+        /// Solo mira la escena del propio menú. Es perezosa (también funciona en Edit Mode, donde Awake no corre) y devuelve null
+        /// real (nunca un objeto destruido) si no hay ninguno. Ese resultado se recuerda para no repetir la búsqueda en cada llamada
+        /// (NewMainMenu) hasta que aparezca un asiento en la escena o el menú se vuelva a habilitar.
         /// </summary>
         public Transform ForwardReference
         {
             get
             {
                 if (m_ForwardReference != null) return m_ForwardReference;
+                if (m_ResolvedVehicle != null && m_ResolvedVehicle.gameObject.activeInHierarchy) return m_ResolvedVehicle;
 
                 UnityEngine.SceneManagement.Scene scene = gameObject.scene;
+                Transform seat = m_DriverSeatFollower != null ? m_DriverSeatFollower.DriverSeat : null;
+                if (seat != null && seat.gameObject.scene != scene) seat = null;
+
+                // Ya se buscó y no había nada: no se repite hasta que aparezca un asiento (o se re-habilite el menú).
+                if (m_NothingToResolve && seat == null) return null;
+
+                m_ResolvedVehicle = null;
+                s_VehicleSearchCount++;
                 foreach (VehicleController vehicle in Object.FindObjectsByType<VehicleController>())
                 {
                     if (vehicle.gameObject.scene == scene)
                     {
-                        m_ForwardReference = vehicle.transform;
-                        return m_ForwardReference;
+                        m_ResolvedVehicle = vehicle.transform;
+                        break;
                     }
                 }
 
-                if (m_DriverSeatFollower != null && m_DriverSeatFollower.DriverSeat != null
-                    && m_DriverSeatFollower.DriverSeat.gameObject.scene == scene)
+                if (m_ResolvedVehicle != null)
                 {
-                    m_ForwardReference = m_DriverSeatFollower.DriverSeat;
+                    m_NothingToResolve = false;
+                    return m_ResolvedVehicle;
                 }
-                return m_ForwardReference;
+
+                m_NothingToResolve = seat == null;
+                return seat;
             }
         }
 
@@ -281,6 +304,7 @@ namespace PrimerVolante.VR
 
         private void OnEnable()
         {
+            m_NothingToResolve = false;
             if (m_DriverSeatFollower != null)
             {
                 m_DriverSeatFollower.CalibrationOffsetChanged += OnCalibrationOffsetChanged;
