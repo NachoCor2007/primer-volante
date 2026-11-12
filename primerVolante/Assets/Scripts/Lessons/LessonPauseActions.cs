@@ -46,6 +46,7 @@ namespace PrimerVolante.Lessons
         private PendingAction m_Pending;
         private bool m_Active;
         private bool m_Subscribed;
+        private bool m_WasLocked;
 
         public InGameMenuController Menu => m_Menu;
         public GameObject MainPanel => m_MainPanel;
@@ -92,6 +93,15 @@ namespace PrimerVolante.Lessons
         {
             Unsubscribe();
             m_Pending = PendingAction.None;
+            m_WasLocked = false;
+
+            // Sin listeners la confirmación quedaría con botones muertos y se superpondría con MainPanel al reactivarse. Si la escena se
+            // está descargando no se toca nada (los paneles se destruyen igual).
+            if (gameObject.scene.isLoaded && m_ConfirmPanel != null && m_ConfirmPanel.activeSelf)
+            {
+                m_ConfirmPanel.SetActive(false);
+                if (m_Menu != null && m_Menu.IsOpen) m_Menu.ShowMainPanel();
+            }
         }
 
         private void Update()
@@ -177,9 +187,8 @@ namespace PrimerVolante.Lessons
             if (m_Menu != null && m_Menu.IsLockedForTransition) return;
 
             PendingAction action = m_Pending;
-            LessonSceneFlowManager flow = LessonSceneFlowManager.Instance;
             bool started = false;
-            if (flow != null)
+            if (LessonSceneFlowManager.TryGetInstance(out LessonSceneFlowManager flow))
             {
                 started = action == PendingAction.Restart ? flow.RestartCurrentLesson() : flow.ReturnToMainMenu();
             }
@@ -193,7 +202,7 @@ namespace PrimerVolante.Lessons
             }
             else
             {
-                Debug.LogWarning($"[LessonPauseActions] No se pudo iniciar la transición ({action}): ya hay una en curso o la escena activa no es una lección.");
+                Debug.LogWarning($"[LessonPauseActions] No se pudo iniciar la transición ({action}): no hay LessonSceneFlowManager, ya hay una transición en curso o la escena activa no es una lección.");
                 CloseConfirmation(true);
             }
         }
@@ -227,6 +236,11 @@ namespace PrimerVolante.Lessons
         public void RefreshInteractable()
         {
             bool locked = m_Menu != null && m_Menu.IsLockedForTransition;
+
+            // La transición terminó con este menú todavía vivo (el bloqueo se liberó solo): se vuelve al panel principal.
+            if (m_WasLocked && !locked) CloseConfirmation(true);
+            m_WasLocked = locked;
+
             bool blocked = m_Menu != null && (m_Menu.IsBlockingGameplayInput || m_Menu.ResumeBlocked);
 
             if (m_RestartButton != null) m_RestartButton.interactable = !locked && !blocked;
