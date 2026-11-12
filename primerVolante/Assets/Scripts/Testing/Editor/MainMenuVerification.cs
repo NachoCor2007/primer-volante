@@ -1081,9 +1081,9 @@ namespace PrimerVolante.Testing.Editor
             Check(calibrationPanel.activeSelf && !mainPanel.activeSelf, "OpenCalibrationStandalone: solo el panel de calibración está activo");
             Check(!backButton.activeSelf, "OpenCalibrationStandalone: el botón Volver está oculto");
 
-            // El frente de referencia de los 45° es el del AUTO (m_StandaloneForwardReference), no el de la cabeza.
-            var forwardRef = so.FindProperty("m_StandaloneForwardReference").objectReferenceValue as Transform;
-            Check(forwardRef != null, "InGameMenuController (escena): m_StandaloneForwardReference asignado (frente del auto)");
+            // El frente de referencia de los 45° es el del AUTO (m_ForwardReference), no el de la cabeza.
+            var forwardRef = so.FindProperty("m_ForwardReference").objectReferenceValue as Transform;
+            Check(forwardRef != null, "InGameMenuController (escena): m_ForwardReference asignado (frente del auto)");
             if (forwardRef == null) return;
             Quaternion headRotation = head.rotation;
             try
@@ -1099,8 +1099,17 @@ namespace PrimerVolante.Testing.Editor
                     CheckStandalonePlacement(menu, head, forwardRef, distance, $"cabeza girada {turn:F0}°");
                 }
 
-                // Sin referencia: comportamiento anterior (45° a la derecha del frente de la CABEZA).
-                SetField(menu, "m_StandaloneForwardReference", null);
+                // Sin referencia: comportamiento anterior (45° a la derecha del frente de la CABEZA). La referencia se resuelve de forma
+                // perezosa en la escena del menú, así que se desactiva el auto (FindObjectsByType ignora los objetos inactivos) y se
+                // quita el DriverSeatFollower (su asiento es el segundo candidato).
+                bool headUnderCar = head.IsChildOf(forwardRef);
+                Check(!headUnderCar, "La cabeza no cuelga del auto (se puede desactivar para simular la escena sin referencia)");
+                if (headUnderCar) return;
+                bool carWasActive = forwardRef.gameObject.activeSelf;
+                var follower = so.FindProperty("m_DriverSeatFollower").objectReferenceValue;
+                SetField(menu, "m_DriverSeatFollower", null);
+                SetField(menu, "m_ForwardReference", null);
+                forwardRef.gameObject.SetActive(false);
                 head.rotation = Quaternion.Euler(0f, forwardRef.eulerAngles.y + 90f, 0f);
                 menu.CloseMenu();
                 menu.OpenCalibrationStandalone();
@@ -1108,7 +1117,9 @@ namespace PrimerVolante.Testing.Editor
                 Vector3 headFwd = head.forward; headFwd.y = 0f;
                 Vector3 carFwd = forwardRef.forward; carFwd.y = 0f;
                 Check(Mathf.Abs(Vector3.SignedAngle(carFwd, headFwd, Vector3.up) - 90f) < 1f, "Sin referencia: el panel acompaña a la cabeza, no al auto");
-                SetField(menu, "m_StandaloneForwardReference", forwardRef);
+                forwardRef.gameObject.SetActive(carWasActive);
+                SetField(menu, "m_DriverSeatFollower", follower);
+                SetField(menu, "m_ForwardReference", forwardRef);
             }
             finally
             {

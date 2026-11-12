@@ -798,14 +798,23 @@ namespace PrimerVolante.Testing.Editor
             finally { EndScenario(monitor, menu); }
         }
 
-        // 1. Al recuperar el foco el menú vuelve a ubicarse frente a la cabeza
+        // 1. Al recuperar el foco el menú vuelve a ubicarse en la pose estándar: 45° a la derecha del frente del auto, desde la cabeza actual
         private static void VerifyRecenterOnRecovery(InGameMenuController menu)
         {
             var head = new SerializedObject(menu).FindProperty("m_HeadTransform").objectReferenceValue as Transform;
             float distance = new SerializedObject(menu).FindProperty("m_DistanceFromHead").floatValue;
+            float yawOffset = new SerializedObject(menu).FindProperty("m_YawOffsetDegrees").floatValue;
             Check(head != null, "Recentrado: el menú tiene referencia a la cabeza");
-            if (head == null) return;
+            Transform car = menu.ForwardReference;
+            Check(car != null, "Recentrado: el menú resuelve el auto de la escena como referencia de frente");
+            if (head == null || car == null) return;
             Vector3 headPosition = head.position;
+            Quaternion headRotation = head.rotation;
+            Vector3 StandardPosition()
+            {
+                Vector3 carFlat = car.forward; carFlat.y = 0f; carFlat.Normalize();
+                return head.position + Quaternion.AngleAxis(yawOffset, Vector3.up) * carFlat * distance;
+            }
 
             VRHardwareStateMonitor monitor = NewMonitor();
             try
@@ -818,24 +827,25 @@ namespace PrimerVolante.Testing.Editor
                 // Con el visor apoyado en la mesa, la cabeza queda lejos de donde se cortó la conexión.
                 head.position = headPosition + new Vector3(-6f, 0.5f, 25f);
                 Tr(monitor, 4, 5);
-                Vector3 flat = head.forward; flat.y = 0f; flat.Normalize();
-                Vector3 expected = head.position + flat * distance;
+                head.rotation = Quaternion.Euler(0f, 150f, 0f); // mirando para cualquier lado: la pose no depende de la mirada
+                Vector3 expected = StandardPosition();
                 Check(Vector3.Distance(openedAt, expected) > 5f, "Recentrado: la posición del corte quedó lejos de la cabeza actual (precondición)");
                 Check(Vector3.Distance(menu.MenuRoot.transform.position, expected) < 0.01f,
-                    "Al volver a FOCUSED el menú se ubica de nuevo frente a la cabeza");
+                    "Al volver a FOCUSED el menú se ubica de nuevo a 45° del frente del auto, desde la cabeza actual");
 
                 // También al llegar a CanResume por otro motivo (control reconectado).
                 Ctl(monitor, true, true);
                 Ctl(monitor, true, false);
                 head.position = headPosition + new Vector3(3f, 0f, -8f);
+                head.rotation = Quaternion.Euler(0f, -70f, 0f);
                 Ctl(monitor, true, true);
-                flat = head.forward; flat.y = 0f; flat.Normalize();
-                Check(monitor.CanResume && Vector3.Distance(menu.MenuRoot.transform.position, head.position + flat * distance) < 0.01f,
-                    "Al llegar a CanResume el menú se vuelve a ubicar frente a la cabeza");
+                Check(monitor.CanResume && Vector3.Distance(menu.MenuRoot.transform.position, StandardPosition()) < 0.01f,
+                    "Al llegar a CanResume el menú se vuelve a ubicar a 45° del frente del auto, desde la cabeza actual");
             }
             finally
             {
                 head.position = headPosition;
+                head.rotation = headRotation;
                 EndScenario(monitor, menu);
             }
         }

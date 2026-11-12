@@ -42,6 +42,7 @@ namespace PrimerVolante.Testing.Editor
             yield return Suite("NPC", NPCVerification.RunVerification);
             yield return Suite("NPCSafetyStop", NPCSafetyStopLifecycleTests.RunAllTests);
             yield return Suite("ObstacleCollision", ObstacleCollisionVerification.RunVerification);
+            yield return Suite("PauseMenuPlacement", PauseMenuPlacementVerification.RunVerification);
             yield return Suite("ScriptedEvent", ScriptedEventTests.RunAllTests);
             yield return Suite("SideMirrorJoystick", SideMirrorJoystickVerification.RunVerification);
             yield return Suite("SoundIntegration", SoundIntegrationVerification.RunVerification);
