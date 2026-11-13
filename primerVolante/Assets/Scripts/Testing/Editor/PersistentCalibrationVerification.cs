@@ -43,8 +43,10 @@ namespace PrimerVolante.Testing.Editor
                 VerifyResetPersistsZero(created);
                 VerifyFlagOffIgnoresStore(created);
                 VerifyLoadDoesNotRaiseEvent(created);
+                VerifySaveDefersBackendWrite();
                 VerifyFlushBehavior(created);
                 VerifyUiDisableFlushes(created);
+                VerifyAwakeLoadsBeforeSeatDiscovery(created);
                 VerifyClear(created);
                 VerifySceneFlags();
                 VerifyEditModeDoesNotTouchPlayerPrefs(created);
@@ -97,6 +99,7 @@ namespace PrimerVolante.Testing.Editor
 
             // Un cambio posterior sobrescribe lo guardado.
             second.SetCalibrationAxis(0, 0.2f);
+            DriverViewCalibrationStore.Flush();
             DriverViewCalibrationStore.InvalidateCacheForTests();
             DriverViewCalibrationStore.TryLoad(out Vector3 reloaded);
             Check(Approximately(reloaded, new Vector3(0.2f, 0.1f, -0.05f)), "Lo guardado se actualiza y se relee del backend");
@@ -118,6 +121,7 @@ namespace PrimerVolante.Testing.Editor
         {
             ResetStore();
             DriverViewCalibrationStore.Save(new Vector3(0.1f, float.NaN, 0.1f));
+            DriverViewCalibrationStore.Flush();
             DriverViewCalibrationStore.InvalidateCacheForTests();
             Check(!DriverViewCalibrationStore.TryLoad(out _), "Un componente NaN guardado se ignora (TryLoad es false)");
 
@@ -126,6 +130,7 @@ namespace PrimerVolante.Testing.Editor
                 "Con NaN guardado el follower queda en offset 0");
 
             DriverViewCalibrationStore.Save(new Vector3(float.PositiveInfinity, 0f, 0f));
+            DriverViewCalibrationStore.Flush();
             DriverViewCalibrationStore.InvalidateCacheForTests();
             Check(!DriverViewCalibrationStore.TryLoad(out _), "Un componente infinito guardado se ignora");
         }
@@ -180,6 +185,22 @@ namespace PrimerVolante.Testing.Editor
             Check(events == 1, "Un cambio posterior sí dispara CalibrationOffsetChanged");
         }
 
+        private static void VerifySaveDefersBackendWrite()
+        {
+            ResetStore();
+            DriverViewCalibrationStore.Save(new Vector3(0.1f, 0.05f, -0.1f));
+            Check(DriverViewCalibrationStore.TryLoad(out _), "Tras Save, el caché devuelve el valor");
+
+            DriverViewCalibrationStore.InvalidateCacheForTests();
+            Check(!DriverViewCalibrationStore.TryLoad(out _), "Save no escribe en el backend hasta Flush (releer del backend no encuentra nada)");
+
+            DriverViewCalibrationStore.Save(new Vector3(0.1f, 0.05f, -0.1f));
+            DriverViewCalibrationStore.Flush();
+            DriverViewCalibrationStore.InvalidateCacheForTests();
+            Check(DriverViewCalibrationStore.TryLoad(out Vector3 reloaded) && Approximately(reloaded, new Vector3(0.1f, 0.05f, -0.1f)),
+                "Tras Flush, el valor está en el backend");
+        }
+
         private static void VerifyFlushBehavior(List<GameObject> created)
         {
             ResetStore();
@@ -194,29 +215,46 @@ namespace PrimerVolante.Testing.Editor
             DriverViewCalibrationStore.Flush();
             Check(DriverViewCalibrationStore.FlushCountForTests == baseline + 1, "Flush sin cambios pendientes no escribe");
 
+            // El follower ya no vuelca por su cuenta: lo hace el hook central.
             follower.SetCalibrationAxis(1, 0.05f);
             Invoke(follower, "OnDisable");
-            Check(DriverViewCalibrationStore.FlushCountForTests == baseline + 2, "OnDisable del follower hace flush");
+            Check(DriverViewCalibrationStore.FlushCountForTests == baseline + 1, "OnDisable del follower ya no hace flush (lo centraliza el store)");
+
+            DriverViewCalibrationStore.SimulateSceneUnloadedForTests();
+            Check(DriverViewCalibrationStore.FlushCountForTests == baseline + 2, "El hook de sceneUnloaded hace flush");
+            DriverViewCalibrationStore.SimulateSceneUnloadedForTests();
+            Check(DriverViewCalibrationStore.FlushCountForTests == baseline + 2, "El hook de sceneUnloaded sin pendientes no escribe");
+
+            // Hooks del flusher (la ruta de pausa, foco y cierre de la app).
+            Check(UnityEngine.Object.FindObjectsByType<DriverViewCalibrationFlusher>(FindObjectsInactive.Include).Length == 0,
+                "En Edit Mode Save no crea el flusher oculto");
+            Check(!DriverViewCalibrationStore.FlushTriggersArmedForTests, "En Edit Mode Save no arma suscripciones ni GameObjects");
+
+            var flusherObject = new GameObject("TestFlusher");
+            created.Add(flusherObject);
+            var flusher = flusherObject.AddComponent<DriverViewCalibrationFlusher>();
 
             follower.SetCalibrationAxis(1, 0.06f);
-            Invoke(follower, "OnApplicationPause", true);
-            Check(DriverViewCalibrationStore.FlushCountForTests == baseline + 3, "OnApplicationPause(true) hace flush");
+            Invoke(flusher, "OnApplicationPause", true);
+            Check(DriverViewCalibrationStore.FlushCountForTests == baseline + 3, "OnApplicationPause(true) del flusher hace flush");
 
             follower.SetCalibrationAxis(1, 0.07f);
-            Invoke(follower, "OnApplicationPause", false);
-            Invoke(follower, "OnApplicationFocus", true);
+            Invoke(flusher, "OnApplicationPause", false);
+            Invoke(flusher, "OnApplicationFocus", true);
             Check(DriverViewCalibrationStore.FlushCountForTests == baseline + 3, "Reanudar o ganar foco no hace flush");
-            Invoke(follower, "OnApplicationFocus", false);
-            Check(DriverViewCalibrationStore.FlushCountForTests == baseline + 4, "OnApplicationFocus(false) hace flush");
+            Invoke(flusher, "OnApplicationFocus", false);
+            Check(DriverViewCalibrationStore.FlushCountForTests == baseline + 4, "OnApplicationFocus(false) del flusher hace flush");
 
-            // Con el flag apagado, el follower no vuelca (el menú principal no toca lo guardado).
-            DriverViewCalibrationStore.Save(new Vector3(0.1f, 0f, 0f));
+            follower.SetCalibrationAxis(1, 0.08f);
+            Invoke(flusher, "OnApplicationQuit");
+            Check(DriverViewCalibrationStore.FlushCountForTests == baseline + 5, "OnApplicationQuit del flusher hace flush");
+
+            // Con el flag apagado, el follower no guarda: no hay nada pendiente que volcar.
             DriverSeatFollower menuFollower = BuildFollower(created);
             menuFollower.UsePersistentCalibration = false;
-            Invoke(menuFollower, "OnDisable");
-            Invoke(menuFollower, "OnApplicationPause", true);
-            Check(DriverViewCalibrationStore.FlushCountForTests == baseline + 4, "Con el flag apagado, el follower no hace flush");
-            DriverViewCalibrationStore.Flush();
+            menuFollower.SetCalibrationAxis(2, 0.1f);
+            Invoke(flusher, "OnApplicationPause", true);
+            Check(DriverViewCalibrationStore.FlushCountForTests == baseline + 5, "Con el flag apagado, el follower no deja nada pendiente");
         }
 
         private static void VerifyUiDisableFlushes(List<GameObject> created)
@@ -233,21 +271,50 @@ namespace PrimerVolante.Testing.Editor
             Invoke(ui, "OnDisable");
             Check(DriverViewCalibrationStore.FlushCountForTests == baseline + 1, "DriverViewCalibrationUI.OnDisable sin cambios pendientes no escribe");
 
-            // Si el follower no usa persistencia, el panel no vuelca.
+            // Un panel con un follower sin persistencia (menú) no deja nada pendiente: el flush sin guard es no-op.
             DriverSeatFollower menuFollower = BuildFollower(created);
             menuFollower.UsePersistentCalibration = false;
             DriverViewCalibrationUI menuUi = BuildUi(created, menuFollower);
-            DriverViewCalibrationStore.Save(new Vector3(0f, 0.1f, 0f));
-            baseline = DriverViewCalibrationStore.FlushCountForTests;
+            menuFollower.SetCalibrationAxis(1, 0.1f);
             Invoke(menuUi, "OnDisable");
-            Check(DriverViewCalibrationStore.FlushCountForTests == baseline, "Con el flag apagado, el panel no hace flush");
-            DriverViewCalibrationStore.Flush();
+            Check(DriverViewCalibrationStore.FlushCountForTests == baseline + 1, "Con el flag apagado, el panel no escribe nada");
+        }
+
+        // Con el asiento sin asignar y algo guardado, Awake carga el offset ANTES de buscar el asiento, así el snap ya lo usa.
+        private static void VerifyAwakeLoadsBeforeSeatDiscovery(List<GameObject> created)
+        {
+            ResetStore();
+            var vehicleObject = new GameObject("TestVehicle");
+            vehicleObject.AddComponent<VehicleController>();
+            var seatObject = new GameObject("DriverSeat");
+            seatObject.transform.SetParent(vehicleObject.transform, false);
+            vehicleObject.transform.SetPositionAndRotation(new Vector3(4f, 0.5f, -3f), Quaternion.Euler(0f, 70f, 0f));
+            created.Add(vehicleObject);
+
+            DriverViewCalibrationStore.Save(new Vector3(0.1f, 0.05f, -0.1f));
+
+            var originObject = new GameObject("XR Origin");
+            originObject.AddComponent<XROrigin>();
+            var follower = originObject.AddComponent<DriverSeatFollower>();
+            created.Add(originObject);
+
+            Invoke(follower, "Awake");
+            Check(follower.DriverSeat != null, "Awake encuentra el asiento (DriverSeat sin asignar)");
+            Check(Approximately(follower.CalibrationOffset, new Vector3(0.1f, 0.05f, -0.1f)), "Awake carga la calibración guardada");
+
+            if (follower.DriverSeat != null)
+            {
+                Vector3 expected = follower.DriverSeat.TransformPoint(follower.CalibrationOffset);
+                Check(Vector3.Distance(originObject.transform.position, expected) < 1e-4f,
+                    "Tras Awake, la posición del rig ya refleja el offset guardado (el snap inicial lo usó)");
+            }
         }
 
         private static void VerifyClear(List<GameObject> created)
         {
             ResetStore();
             DriverViewCalibrationStore.Save(new Vector3(0.1f, 0.1f, 0.1f));
+            DriverViewCalibrationStore.Flush();
             Check(DriverViewCalibrationStore.HasSaved, "Tras Save, HasSaved es true");
 
             DriverViewCalibrationStore.Clear();
@@ -305,8 +372,8 @@ namespace PrimerVolante.Testing.Editor
             follower.ResetCalibration();
             follower.SetCalibrationAxis(2, -0.2f);
             Invoke(follower, "OnDisable");
-            Invoke(follower, "OnApplicationPause", true);
-            Invoke(follower, "OnApplicationFocus", false);
+            DriverViewCalibrationStore.Flush();
+            DriverViewCalibrationStore.SimulateSceneUnloadedForTests();
 
             string after = SnapshotPlayerPrefs(keys);
             Check(before == after, $"En Edit Mode, cambiar el offset no escribe en PlayerPrefs (antes: {before} / después: {after})");
