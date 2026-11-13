@@ -46,14 +46,11 @@ namespace PrimerVolante.VR
 
         // Espera mínima, en frames, entre un recentrado del runtime y la recaptura: la pose tiene que reflejar el origen nuevo.
         private const int RECAPTURE_DELAY_FRAMES = 2;
-        // Cada cuántos segundos se revisa si cambió el conjunto de subsistemas de entrada XR (reinicio de la sesión VR).
-        private const float SUBSCRIPTION_REFRESH_SECONDS = 2f;
         // Si el forward horizontal de la cabeza es menor (mirando casi recto arriba/abajo), el yaw es indeterminado.
         private const float MIN_HORIZONTAL_FORWARD_SQR = 0.04f;
 
         private XROrigin m_Origin;
         private static readonly List<XRDisplaySubsystem> s_DisplaySubsystems = new();
-        private static readonly List<XRInputSubsystem> s_InputSubsystems = new();
 
         // Seam de tests: fuerza la rama VR (true) o escritorio (false). Null = comportamiento real (subsistemas de display).
         private static bool? s_VRActiveOverride;
@@ -81,9 +78,15 @@ namespace PrimerVolante.VR
         private Vector3 m_HeadOffsetCompensation; // posición horizontal de la cabeza en el espacio local del XROrigin (y = 0)
         private bool m_CapturePending = true;
         private int m_CaptureNotBeforeFrame;
-        private volatile bool m_RecenterRequested;
-        private float m_NextSubscriptionRefresh;
-        private readonly List<XRInputSubsystem> m_SubscribedSubsystems = new();
+        // Época de recaptura de HeadPoseCompensationSession que este follower ya atendió.
+        private int m_KnownRecaptureEpoch;
+
+        // Seams de tests: sin visor, la pose de cabeza de InputDevices nunca es válida y Time.frameCount no avanza en Edit Mode.
+        private static bool? s_HeadPoseValidOverride;
+        private static int? s_FrameCountOverride;
+#if UNITY_EDITOR
+        private static Action s_AfterEpochReadHookForTests;
+#endif
 
         private float m_DesktopLookPitch = 0f;
         private float m_DesktopLookYaw = 0f;
@@ -190,22 +193,35 @@ namespace PrimerVolante.VR
 
         private void OnEnable()
         {
-            // En cada escena (y al reactivar el componente) se captura de nuevo apenas el HMD esté trackeando.
-            m_CapturePending = true;
-            m_CaptureNotBeforeFrame = 0;
-            m_NextSubscriptionRefresh = 0f;
+            ResetHeadPoseCaptureState();
             Application.onBeforeRender += OnBeforeRenderHoldPose;
         }
 
         private void OnDisable()
         {
             Application.onBeforeRender -= OnBeforeRenderHoldPose;
-            UnsubscribeFromTrackingOrigin();
         }
 
-        private void OnDestroy()
+        /// <summary>
+        /// Al habilitarse (cada escena nueva, o al reactivar el componente): si la sesión ya tiene una compensación válida se
+        /// reutiliza de inmediato; si no, se captura apenas el HMD esté trackeando. Con el visor activo primero se revisan los
+        /// subsistemas de entrada (un subsistema nuevo invalida la compensación) y recién después se decide si reutilizarla; sin
+        /// visor activo se fuerza la revisión en el primer Update, que también corre antes de reutilizar.
+        /// </summary>
+        private void ResetHeadPoseCaptureState()
         {
-            UnsubscribeFromTrackingOrigin();
+            m_CapturePending = true;
+            bool vrActive = IsVRHeadsetActive();
+            if (vrActive) HeadPoseCompensationSession.RefreshSubsystems();
+            else HeadPoseCompensationSession.ForceNextRefresh();
+
+            // La época y el frame de la última invalidación salen de una sola observación. Con una invalidación reciente (ej. un
+            // recentrado durante la carga de la escena) la pose todavía puede ser anterior al recentrado: se espera el mismo retardo
+            // que a un follower vivo, contado desde que la sesión notó la invalidación.
+            int lastInvalidationFrame = HeadPoseCompensationSession.ObserveInvalidation(CurrentFrame(), out int epoch);
+            m_KnownRecaptureEpoch = epoch;
+            m_CaptureNotBeforeFrame = lastInvalidationFrame + RECAPTURE_DELAY_FRAMES;
+            if (vrActive) TryReuseSessionCompensation();
         }
 
         private void Start()
@@ -237,6 +253,37 @@ namespace PrimerVolante.VR
         }
 
         private static bool IsAppFocused() => s_AppFocusedOverride ?? Application.isFocused;
+
+        /// <summary>Seam de tests: fuerza si la pose de cabeza se considera válida para capturar. Null = la lectura real de InputDevices.</summary>
+        public static void SetHeadPoseValidOverrideForTests(bool? valid)
+        {
+            s_HeadPoseValidOverride = valid;
+        }
+
+        /// <summary>Seam de tests: fuerza el número de frame que usa la espera de recaptura. Null = <c>Time.frameCount</c>.</summary>
+        public static void SetFrameCountOverrideForTests(int? frameCount)
+        {
+            s_FrameCountOverride = frameCount;
+        }
+
+        private static int CurrentFrame() => s_FrameCountOverride ?? Time.frameCount;
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// Seam de tests (solo Editor): se invoca dentro de la captura justo después de fijar la época esperada y antes de muestrear la
+        /// cabeza, para simular una invalidación que llega durante la captura. Null = sin hook.
+        /// </summary>
+        public static void SetAfterEpochReadHookForTests(Action hook)
+        {
+            s_AfterEpochReadHookForTests = hook;
+        }
+#endif
+
+        /// <summary>Solo para tests: corre la lógica de habilitación (en Edit Mode OnEnable no se ejecuta).</summary>
+        public void RunEnableLogicForTests() => ResetHeadPoseCaptureState();
+
+        /// <summary>Solo para tests: corre una iteración de la captura/reutilización automática que hace Update.</summary>
+        public void RunHeadPoseCaptureUpdateForTests() => UpdateHeadPoseCapture();
 
         /// <summary>
         /// Seam de tests: fuerza la pose de cabeza de la API XR heredada. <paramref name="valid"/> = false simula que no hay
@@ -361,8 +408,16 @@ namespace PrimerVolante.VR
         /// el frente del asiento. Reemplaza cualquier captura anterior: la pose se mide en el espacio local del XROrigin,
         /// que no depende de dónde esté el rig ni de la compensación que ya tenía aplicada. No toca altura, pitch ni roll.
         /// Devuelve false si no hay cámara o si la cabeza mira casi vertical (yaw indeterminado); en ese caso no cambia nada.
+        /// Sin contexto de follower (llamada directa) la captura se guarda en la sesión con la época actual, leída antes de muestrear.
+        /// La captura automática de <c>Update</c> usa <see cref="CaptureHeadPose"/> con la época cuyo retardo ya esperó.
         /// </summary>
-        public bool RecenterHeadPose()
+        public bool RecenterHeadPose() => CaptureHeadPose(HeadPoseCompensationSession.Epoch);
+
+        /// <summary>
+        /// Captura y guarda en la sesión con <paramref name="expectedEpoch"/>: si la época avanzó mientras tanto el store descarta la
+        /// captura (el follower igual la usa y recaptura al notar el cambio de época).
+        /// </summary>
+        private bool CaptureHeadPose(int expectedEpoch)
         {
             if (m_Origin == null)
             {
@@ -372,6 +427,9 @@ namespace PrimerVolante.VR
             Camera head = m_Origin != null ? m_Origin.Camera : null;
             if (head == null) return false;
 
+#if UNITY_EDITOR
+            s_AfterEpochReadHookForTests?.Invoke();
+#endif
             Vector3 localForward = transform.InverseTransformDirection(head.transform.forward);
             localForward.y = 0f;
             if (localForward.sqrMagnitude < MIN_HORIZONTAL_FORWARD_SQR) return false;
@@ -379,6 +437,10 @@ namespace PrimerVolante.VR
             Vector3 localPosition = transform.InverseTransformPoint(head.transform.position);
             m_HeadOffsetCompensation = new Vector3(localPosition.x, 0f, localPosition.z);
             m_HeadYawCompensation = Mathf.Atan2(localForward.x, localForward.z) * Mathf.Rad2Deg;
+            bool stored = HeadPoseCompensationSession.Store(expectedEpoch, m_HeadYawCompensation, m_HeadOffsetCompensation);
+            Debug.Log(stored
+                ? $"[DriverSeat] Compensación de cabeza capturada: yaw={FormatAxis(m_HeadYawCompensation)}, offset=({FormatAxis(m_HeadOffsetCompensation.x)}, {FormatAxis(m_HeadOffsetCompensation.z)})"
+                : $"[DriverSeat] Compensación de cabeza capturada pero no guardada en la sesión (se invalidó durante la captura): yaw={FormatAxis(m_HeadYawCompensation)}");
 
             if (m_FollowSeat && m_DriverSeat != null)
             {
@@ -387,30 +449,58 @@ namespace PrimerVolante.VR
             return true;
         }
 
-        /// <summary>Pide recapturar la compensación en cuanto el HMD tenga una pose válida (ej. tras un recentrado).</summary>
+        /// <summary>
+        /// Pide recapturar la compensación en cuanto el HMD tenga una pose válida (ej. tras un recentrado). El pedido es de la
+        /// sesión: lo atienden todos los followers vivos y los que se creen después no reutilizan la compensación vieja.
+        /// </summary>
         public void RequestHeadPoseRecenter()
         {
-            m_RecenterRequested = true;
+            HeadPoseCompensationSession.Invalidate("RequestHeadPoseRecenter");
+        }
+
+        // Aplica la compensación de la sesión si hay una vigente (sin recaptura pendiente). Devuelve true si la aplicó.
+        private bool TryReuseSessionCompensation()
+        {
+            if (!HeadPoseCompensationSession.TryGetValid(out float yaw, out Vector3 offset)) return false;
+
+            m_HeadYawCompensation = yaw;
+            m_HeadOffsetCompensation = offset;
+            m_CapturePending = false;
+            Debug.Log($"[DriverSeat] Compensación de cabeza de la sesión reutilizada: yaw={FormatAxis(yaw)}, offset=({FormatAxis(offset.x)}, {FormatAxis(offset.z)})");
+
+            if (m_FollowSeat && m_DriverSeat != null)
+            {
+                FollowSeatPosition();
+            }
+            return true;
         }
 
         private void UpdateHeadPoseCapture()
         {
             if (!IsVRHeadsetActive()) return;
 
-            RefreshTrackingOriginSubscriptions();
+            HeadPoseCompensationSession.RefreshSubsystemsIfDue();
 
-            if (m_RecenterRequested)
+            // Una sola observación da la época y el frame de su invalidación: no se vuelve a leer la época en este camino.
+            int lastInvalidationFrame = HeadPoseCompensationSession.ObserveInvalidation(CurrentFrame(), out int epoch);
+            if (epoch != m_KnownRecaptureEpoch)
             {
-                // El runtime recentró: la pose del frame siguiente ya refleja el origen nuevo.
-                m_RecenterRequested = false;
+                // La sesión pidió recapturar (ej. el runtime recentró): la pose del frame siguiente ya refleja el origen nuevo.
+                m_KnownRecaptureEpoch = epoch;
                 m_CapturePending = true;
-                m_CaptureNotBeforeFrame = Time.frameCount + RECAPTURE_DELAY_FRAMES;
+                m_CaptureNotBeforeFrame = lastInvalidationFrame + RECAPTURE_DELAY_FRAMES;
+                Debug.Log($"[DriverSeat] Compensación de cabeza: recaptura pedida: {HeadPoseCompensationSession.LastReason}");
             }
 
-            if (!m_CapturePending || Time.frameCount < m_CaptureNotBeforeFrame) return;
+            if (!m_CapturePending) return;
+
+            // Una compensación válida de la sesión (ej. el follower se habilitó antes de resolver la rama VR) no se recaptura.
+            if (TryReuseSessionCompensation()) return;
+            if (CurrentFrame() < m_CaptureNotBeforeFrame) return;
             if (!IsHeadPoseValid()) return;
 
-            if (RecenterHeadPose())
+            // Se guarda con la época observada arriba (la del retardo que se esperó), no con una lectura nueva.
+            if (CaptureHeadPose(m_KnownRecaptureEpoch))
             {
                 m_CapturePending = false;
             }
@@ -422,6 +512,8 @@ namespace PrimerVolante.VR
         /// </summary>
         private bool IsHeadPoseValid()
         {
+            if (s_HeadPoseValidOverride.HasValue) return s_HeadPoseValidOverride.Value;
+
             InputDevice head = InputDevices.GetDeviceAtXRNode(XRNode.Head);
             if (!head.isValid) return false;
             if (head.TryGetFeatureValue(CommonUsages.isTracked, out bool tracked) && !tracked) return false;
@@ -436,55 +528,6 @@ namespace PrimerVolante.VR
             if (cam == null) return false;
             Transform camTransform = cam.transform;
             return camTransform.localPosition != Vector3.zero || camTransform.localRotation != Quaternion.identity;
-        }
-
-        // Los subsistemas pueden crearse después del arranque (o recrearse al reiniciar la sesión VR): se revisan cada tanto.
-        // Un subsistema nuevo implica un origen de tracking potencialmente nuevo, así que dispara una recaptura.
-        private void RefreshTrackingOriginSubscriptions()
-        {
-            if (Time.unscaledTime < m_NextSubscriptionRefresh) return;
-            m_NextSubscriptionRefresh = Time.unscaledTime + SUBSCRIPTION_REFRESH_SECONDS;
-
-            s_InputSubsystems.Clear();
-            SubsystemManager.GetSubsystems(s_InputSubsystems);
-
-            for (int i = m_SubscribedSubsystems.Count - 1; i >= 0; i--)
-            {
-                XRInputSubsystem known = m_SubscribedSubsystems[i];
-                if (known == null || !s_InputSubsystems.Contains(known))
-                {
-                    if (known != null) known.trackingOriginUpdated -= OnTrackingOriginUpdated;
-                    m_SubscribedSubsystems.RemoveAt(i);
-                }
-            }
-
-            for (int i = 0; i < s_InputSubsystems.Count; i++)
-            {
-                XRInputSubsystem subsystem = s_InputSubsystems[i];
-                if (m_SubscribedSubsystems.Contains(subsystem)) continue;
-
-                subsystem.trackingOriginUpdated += OnTrackingOriginUpdated;
-                m_SubscribedSubsystems.Add(subsystem);
-                m_CapturePending = true;
-            }
-        }
-
-        private void UnsubscribeFromTrackingOrigin()
-        {
-            for (int i = 0; i < m_SubscribedSubsystems.Count; i++)
-            {
-                if (m_SubscribedSubsystems[i] != null)
-                {
-                    m_SubscribedSubsystems[i].trackingOriginUpdated -= OnTrackingOriginUpdated;
-                }
-            }
-            m_SubscribedSubsystems.Clear();
-        }
-
-        // Puede llamarse desde el runtime XR: solo se marca el pedido, la recaptura ocurre en Update.
-        private void OnTrackingOriginUpdated(XRInputSubsystem subsystem)
-        {
-            m_RecenterRequested = true;
         }
 
         private void AlignCameraOffset(bool vrActive)

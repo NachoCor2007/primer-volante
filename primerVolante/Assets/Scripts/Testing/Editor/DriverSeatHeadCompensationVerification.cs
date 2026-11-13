@@ -44,6 +44,7 @@ namespace PrimerVolante.Testing.Editor
             var created = new List<GameObject>();
             try
             {
+                HeadPoseCompensationSession.ResetForTests();
                 VerifyCaptureAlignsCameraToSeat(created);
                 VerifyRecaptureConverges(created);
                 VerifyDesktopModeUnchanged(created);
@@ -57,6 +58,7 @@ namespace PrimerVolante.Testing.Editor
             }
             finally
             {
+                HeadPoseCompensationSession.ResetForTests();
                 DriverSeatFollower.SetVRActiveOverrideForTests(null);
                 DriverSeatFollower.SetTrackingOriginModeOverrideForTests(null);
                 DriverSeatFollower.SetAppFocusedOverrideForTests(null);
@@ -216,6 +218,9 @@ namespace PrimerVolante.Testing.Editor
             Check(!captured && Vector3.Distance(rig.Origin.position, posBefore) < 1e-6f && Quaternion.Angle(rig.Origin.rotation, rotBefore) < 1e-4f,
                 "Mirando recto hacia abajo (yaw indeterminado) no captura y no cambia la compensación");
 
+            // La sesión (HeadPoseCompensationSession) ya guarda la captura de arriba y un follower nuevo la reutilizaría: se la descarta
+            // para verificar solo el caso sin sesión previa.
+            HeadPoseCompensationSession.ResetForTests();
             // Update con el visor "activo" pero sin dispositivo de cabeza válido no debe capturar (pose identidad / sin tracking).
             Rig second = BuildRig(created, new Vector3(0f, 0f, 0f), Quaternion.identity);
             SetCameraPose(second, new Vector3(0.2f, 0.1f, 0.4f), Quaternion.Euler(10f, 70f, 0f));
