@@ -54,6 +54,9 @@ namespace PrimerVolante.Testing.Editor
                 VerifyResetEmptiesStore();
                 VerifyDesktopBranchIgnoresStore(created);
                 VerifyInvalidationBetweenScenesIsNotLost(created);
+                VerifyInvalidationDuringCaptureIsNotStored(created);
+                VerifyOpenXRSessionCreateInvalidates(created);
+                VerifyRefreshThrottleIsSessionWide(created);
             }
             finally
             {
@@ -61,6 +64,7 @@ namespace PrimerVolante.Testing.Editor
                 DriverSeatFollower.SetVRActiveOverrideForTests(null);
                 DriverSeatFollower.SetHeadPoseValidOverrideForTests(null);
                 DriverSeatFollower.SetFrameCountOverrideForTests(null);
+                DriverSeatFollower.SetAfterEpochReadHookForTests(null);
                 foreach (GameObject go in created)
                 {
                     if (go != null) Object.DestroyImmediate(go);
@@ -142,7 +146,8 @@ namespace PrimerVolante.Testing.Editor
             Rig b = BuildRig(created, new Vector3(30f, 0f, -8f), Quaternion.Euler(0f, 90f, 0f));
             SetHeadPose(b, new Vector3(0.2f, 0.1f, 0.4f), Quaternion.Euler(10f, 55f, 0f));
             b.Follower.RunEnableLogicForTests();
-            b.Follower.RunHeadPoseCaptureUpdateForTests(); // B se entera del mismo subsistema por primera vez
+            HeadPoseCompensationSession.RefreshSubsystems(); // B se entera del mismo subsistema por primera vez (sin el throttle)
+            b.Follower.RunHeadPoseCaptureUpdateForTests();
             b.Follower.RunHeadPoseCaptureUpdateForTests();
             DriverSeatFollower.SetFrameCountOverrideForTests(1010);
             b.Follower.RunHeadPoseCaptureUpdateForTests();
@@ -346,7 +351,8 @@ namespace PrimerVolante.Testing.Editor
             DriverSeatFollower.SetHeadPoseValidOverrideForTests(null);
         }
 
-        // Un recentrado que llega entre dos escenas (sin follower vivo) no se pierde: el follower nuevo captura en lugar de reutilizar.
+        // Un recentrado que llega entre dos escenas (sin follower vivo) no se pierde: el follower nuevo no reutiliza la compensación
+        // vieja y, como la invalidación es reciente, espera RECAPTURE_DELAY_FRAMES antes de capturar (la pose podría ser anterior).
         private static void VerifyInvalidationBetweenScenesIsNotLost(List<GameObject> created)
         {
             HeadPoseCompensationSession.ResetForTests();
@@ -361,14 +367,148 @@ namespace PrimerVolante.Testing.Editor
 
             HeadPoseCompensationSession.SimulateTrackingOriginUpdatedForTests(); // el usuario recentra en la transición
 
+            DriverSeatFollower.SetFrameCountOverrideForTests(5010);
             Rig b = BuildRig(created, new Vector3(9f, 0f, 9f), Quaternion.Euler(0f, 60f, 0f));
             SetHeadPose(b, new Vector3(-0.1f, 0.1f, 0.3f), Quaternion.Euler(10f, -20f, 0f));
             b.Follower.RunEnableLogicForTests();
             Check(!HeadPoseCompensationSession.TryGetValid(out _, out _), "Un recentrado sin follower vivo deja la compensación invalidada para el follower nuevo");
+
+            b.Follower.RunHeadPoseCaptureUpdateForTests();
+            Check(!HeadPoseCompensationSession.TryGetValid(out _, out _),
+                "El follower habilitado justo después de la invalidación no captura en el mismo frame (la pose podría ser anterior al recentrado)");
+            DriverSeatFollower.SetFrameCountOverrideForTests(5011);
+            b.Follower.RunHeadPoseCaptureUpdateForTests();
+            Check(!HeadPoseCompensationSession.TryGetValid(out _, out _), "Un frame después sigue esperando (RECAPTURE_DELAY_FRAMES = 2)");
+
+            DriverSeatFollower.SetFrameCountOverrideForTests(5012);
             b.Follower.RunHeadPoseCaptureUpdateForTests();
             bool valid = HeadPoseCompensationSession.TryGetValid(out float yaw, out _);
-            Check(valid && Mathf.Abs(yaw - (-20f)) < ANGLE_TOLERANCE, $"El follower nuevo captura con la pose actual en lugar de reutilizar la vieja (yaw {yaw:F2})");
+            Check(valid && Mathf.Abs(yaw - (-20f)) < ANGLE_TOLERANCE, $"Cumplido el retardo, el follower nuevo captura con la pose actual en lugar de reutilizar la vieja (yaw {yaw:F2})");
             AssertLooksForward(b, 0f, "Tras capturar, el follower nuevo mira al frente del asiento");
+            DriverSeatFollower.SetFrameCountOverrideForTests(null);
+        }
+
+        // Si llega una invalidación después de leer la época y antes de guardar, la captura pudo ser anterior al recentrado: no se guarda,
+        // la recaptura sigue pendiente y no se reutiliza la compensación vieja ni la captura descartada.
+        private static void VerifyInvalidationDuringCaptureIsNotStored(List<GameObject> created)
+        {
+            HeadPoseCompensationSession.ResetForTests();
+            DriverSeatFollower.SetVRActiveOverrideForTests(true);
+            DriverSeatFollower.SetHeadPoseValidOverrideForTests(true);
+            DriverSeatFollower.SetFrameCountOverrideForTests(6000);
+
+            Rig a = BuildRig(created, new Vector3(2f, 0f, 2f), Quaternion.Euler(0f, 10f, 0f));
+            SetHeadPose(a, new Vector3(0.2f, 0.1f, 0.4f), Quaternion.Euler(10f, 30f, 0f));
+            a.Follower.RunEnableLogicForTests();
+            a.Follower.RunHeadPoseCaptureUpdateForTests(); // captura inicial en la época 0
+            Check(HeadPoseCompensationSession.TryGetValid(out float firstYaw, out Vector3 firstOffset), "Captura inicial vigente en la sesión");
+
+            // Nueva captura (otra pose) durante la cual llega un recentrado.
+            SetHeadPose(a, new Vector3(-0.3f, 0.1f, 0.1f), Quaternion.Euler(0f, -50f, 0f));
+            DriverSeatFollower.SetAfterEpochReadHookForTests(() =>
+            {
+                DriverSeatFollower.SetAfterEpochReadHookForTests(null);
+                HeadPoseCompensationSession.SimulateTrackingOriginUpdatedForTests();
+            });
+            int epochBefore = HeadPoseCompensationSession.Epoch;
+            bool captured = a.Follower.RecenterHeadPose();
+
+            Check(captured && HeadPoseCompensationSession.Epoch == epochBefore + 1, "La invalidación llegó durante la captura (la época avanzó)");
+            Check(!HeadPoseCompensationSession.TryGetValid(out _, out _) && HeadPoseCompensationSession.RecapturePending,
+                "La captura tomada durante la invalidación no se marca como válida: la recaptura sigue pendiente");
+
+            // Un follower nuevo no reutiliza ni la compensación vieja ni la captura descartada.
+            Rig b = BuildRig(created, new Vector3(9f, 0f, 9f), Quaternion.Euler(0f, 60f, 0f));
+            SetHeadPose(b, new Vector3(0.2f, 0.1f, 0.4f), Quaternion.Euler(10f, 47f, 0f));
+            b.Follower.RunEnableLogicForTests();
+            Check(!HeadPoseCompensationSession.TryGetValid(out _, out _), "Un follower nuevo no reutiliza la captura descartada");
+
+            // El follower vivo atiende el cambio de época y recaptura tras el retardo; el store pasa a la captura buena.
+            a.Follower.RunHeadPoseCaptureUpdateForTests();
+            DriverSeatFollower.SetFrameCountOverrideForTests(6002);
+            a.Follower.RunHeadPoseCaptureUpdateForTests();
+            bool valid = HeadPoseCompensationSession.TryGetValid(out float yaw, out Vector3 offset);
+            Check(valid && Mathf.Abs(yaw - (-50f)) < ANGLE_TOLERANCE && Mathf.Abs(offset.x - (-0.3f)) < 1e-4f && yaw != firstYaw && offset != firstOffset,
+                $"Tras el retardo el follower vivo recaptura y recién ahí el store queda vigente (yaw {yaw:F2})");
+
+            // Store directo: una captura con una época vieja se rechaza y no pisa lo guardado.
+            HeadPoseCompensationSession.TryGetValid(out float goodYaw, out Vector3 goodOffset);
+            int staleEpoch = HeadPoseCompensationSession.Epoch;
+            HeadPoseCompensationSession.Invalidate("test");
+            bool storedStale = HeadPoseCompensationSession.Store(staleEpoch, 123f, new Vector3(9f, 0f, 9f));
+            Check(!storedStale && HeadPoseCompensationSession.RecapturePending && !HeadPoseCompensationSession.TryGetValid(out _, out _),
+                "Store con una época vieja devuelve false y deja la recaptura pendiente");
+            bool storedFresh = HeadPoseCompensationSession.Store(HeadPoseCompensationSession.Epoch, goodYaw, goodOffset);
+            Check(storedFresh && HeadPoseCompensationSession.TryGetValid(out float freshYaw, out _) && freshYaw == goodYaw,
+                "Store con la época actual guarda y limpia la recaptura pendiente");
+            DriverSeatFollower.SetAfterEpochReadHookForTests(null);
+            DriverSeatFollower.SetFrameCountOverrideForTests(null);
+        }
+
+        // Una sesión OpenXR nueva (reconexión, LOSS_PENDING y sesión nueva) invalida aunque el subsistema de entrada sea el mismo.
+        private static void VerifyOpenXRSessionCreateInvalidates(List<GameObject> created)
+        {
+            HeadPoseCompensationSession.ResetForTests();
+            VRSessionStateFeature.ResetForTests();
+            DriverSeatFollower.SetVRActiveOverrideForTests(true);
+            DriverSeatFollower.SetHeadPoseValidOverrideForTests(true);
+            DriverSeatFollower.SetFrameCountOverrideForTests(7000);
+
+            Rig a = BuildRig(created, new Vector3(1f, 0f, 1f), Quaternion.identity);
+            SetHeadPose(a, new Vector3(0.2f, 0.1f, 0.4f), Quaternion.Euler(10f, 30f, 0f));
+            a.Follower.RunEnableLogicForTests();
+            a.Follower.RunHeadPoseCaptureUpdateForTests();
+            Check(HeadPoseCompensationSession.TryGetValid(out _, out _), "Compensación vigente antes de la sesión OpenXR nueva");
+
+            int epochBefore = HeadPoseCompensationSession.Epoch;
+            VRSessionStateFeature.SimulateSessionCreate(); // mismo camino que OnSessionCreate
+            Check(HeadPoseCompensationSession.Epoch == epochBefore + 1 && !HeadPoseCompensationSession.TryGetValid(out _, out _),
+                "Crear una sesión OpenXR nueva invalida la compensación (sube la época)");
+
+            // Se recaptura con la pose nueva tras el retardo.
+            SetHeadPose(a, new Vector3(0.0f, 0.1f, 0.2f), Quaternion.Euler(0f, 100f, 0f));
+            a.Follower.RunHeadPoseCaptureUpdateForTests();
+            DriverSeatFollower.SetFrameCountOverrideForTests(7002);
+            a.Follower.RunHeadPoseCaptureUpdateForTests();
+            bool valid = HeadPoseCompensationSession.TryGetValid(out float yaw, out _);
+            Check(valid && Mathf.Abs(yaw - 100f) < ANGLE_TOLERANCE, $"Tras la sesión nueva el follower recaptura con la pose actual (yaw {yaw:F2})");
+
+            VRSessionStateFeature.ResetForTests();
+            DriverSeatFollower.SetFrameCountOverrideForTests(null);
+        }
+
+        // Un solo throttle para toda la sesión: varios followers no multiplican las revisiones de subsistemas.
+        private static void VerifyRefreshThrottleIsSessionWide(List<GameObject> created)
+        {
+            HeadPoseCompensationSession.ResetForTests();
+            DriverSeatFollower.SetVRActiveOverrideForTests(true);
+            DriverSeatFollower.SetHeadPoseValidOverrideForTests(true);
+            DriverSeatFollower.SetFrameCountOverrideForTests(8000);
+            HeadPoseCompensationSession.SetTimeOverrideForTests(100f);
+            var first = new object();
+            HeadPoseCompensationSession.SetSubsystemKeysOverrideForTests(new[] { first });
+
+            Rig a = BuildRig(created, new Vector3(1f, 0f, 1f), Quaternion.identity);
+            SetHeadPose(a, new Vector3(0.2f, 0.1f, 0.4f), Quaternion.Euler(10f, 30f, 0f));
+            a.Follower.RunEnableLogicForTests();
+            a.Follower.RunHeadPoseCaptureUpdateForTests(); // revisa (primera vez) y captura
+            Check(HeadPoseCompensationSession.TryGetValid(out _, out _), "Con la sesión recién revisada hay una compensación vigente");
+
+            // Aparece un subsistema nuevo, pero otro follower llama dentro de la ventana de 2 s: no se revisa de nuevo.
+            HeadPoseCompensationSession.SetSubsystemKeysOverrideForTests(new[] { first, new object() });
+            Rig b = BuildRig(created, new Vector3(5f, 0f, 5f), Quaternion.identity);
+            SetHeadPose(b, new Vector3(0.2f, 0.1f, 0.4f), Quaternion.Euler(10f, 30f, 0f));
+            b.Follower.RunEnableLogicForTests();
+            HeadPoseCompensationSession.SetTimeOverrideForTests(101f);
+            b.Follower.RunHeadPoseCaptureUpdateForTests();
+            Check(HeadPoseCompensationSession.TryGetValid(out _, out _), "Dentro de la ventana de 2 s otro follower no vuelve a revisar los subsistemas (un solo throttle)");
+
+            HeadPoseCompensationSession.SetTimeOverrideForTests(102.5f);
+            b.Follower.RunHeadPoseCaptureUpdateForTests();
+            Check(!HeadPoseCompensationSession.TryGetValid(out _, out _), "Pasada la ventana la revisión corre y el subsistema nuevo invalida la compensación");
+
+            HeadPoseCompensationSession.SetTimeOverrideForTests(null);
+            HeadPoseCompensationSession.SetSubsystemKeysOverrideForTests(null);
             DriverSeatFollower.SetFrameCountOverrideForTests(null);
         }
 
