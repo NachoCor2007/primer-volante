@@ -84,7 +84,9 @@ namespace PrimerVolante.VR
         // Seams de tests: sin visor, la pose de cabeza de InputDevices nunca es válida y Time.frameCount no avanza en Edit Mode.
         private static bool? s_HeadPoseValidOverride;
         private static int? s_FrameCountOverride;
+#if UNITY_EDITOR
         private static Action s_AfterEpochReadHookForTests;
+#endif
 
         private float m_DesktopLookPitch = 0f;
         private float m_DesktopLookYaw = 0f;
@@ -201,18 +203,25 @@ namespace PrimerVolante.VR
         }
 
         /// <summary>
-        /// Al habilitarse (cada escena nueva, o al reactivar el componente): si la sesión ya tiene una compensación vigente se
-        /// reutiliza de inmediato; si no, se captura apenas el HMD esté trackeando.
+        /// Al habilitarse (cada escena nueva, o al reactivar el componente): si la sesión ya tiene una compensación válida se
+        /// reutiliza de inmediato; si no, se captura apenas el HMD esté trackeando. Con el visor activo primero se revisan los
+        /// subsistemas de entrada (un subsistema nuevo invalida la compensación) y recién después se decide si reutilizarla; sin
+        /// visor activo se fuerza la revisión en el primer Update, que también corre antes de reutilizar.
         /// </summary>
         private void ResetHeadPoseCaptureState()
         {
             m_CapturePending = true;
-            m_KnownRecaptureEpoch = HeadPoseCompensationSession.Epoch;
-            // Con una invalidación reciente (ej. un recentrado durante la carga de la escena) la pose todavía puede ser anterior al
-            // recentrado: se espera el mismo retardo que a un follower vivo, contado desde que la sesión notó la invalidación.
-            int lastInvalidationFrame = HeadPoseCompensationSession.ObserveInvalidation(CurrentFrame());
-            m_CaptureNotBeforeFrame = HeadPoseCompensationSession.RecapturePending ? lastInvalidationFrame + RECAPTURE_DELAY_FRAMES : 0;
-            if (IsVRHeadsetActive()) TryReuseSessionCompensation();
+            bool vrActive = IsVRHeadsetActive();
+            if (vrActive) HeadPoseCompensationSession.RefreshSubsystems();
+            else HeadPoseCompensationSession.ForceNextRefresh();
+
+            // La época y el frame de la última invalidación salen de una sola observación. Con una invalidación reciente (ej. un
+            // recentrado durante la carga de la escena) la pose todavía puede ser anterior al recentrado: se espera el mismo retardo
+            // que a un follower vivo, contado desde que la sesión notó la invalidación.
+            int lastInvalidationFrame = HeadPoseCompensationSession.ObserveInvalidation(CurrentFrame(), out int epoch);
+            m_KnownRecaptureEpoch = epoch;
+            m_CaptureNotBeforeFrame = lastInvalidationFrame + RECAPTURE_DELAY_FRAMES;
+            if (vrActive) TryReuseSessionCompensation();
         }
 
         private void Start()
@@ -259,14 +268,16 @@ namespace PrimerVolante.VR
 
         private static int CurrentFrame() => s_FrameCountOverride ?? Time.frameCount;
 
+#if UNITY_EDITOR
         /// <summary>
-        /// Seam de tests: se invoca dentro de <see cref="RecenterHeadPose"/> justo después de leer la época de la sesión y antes de
-        /// muestrear la cabeza, para simular una invalidación que llega durante la captura. Null = sin hook.
+        /// Seam de tests (solo Editor): se invoca dentro de la captura justo después de fijar la época esperada y antes de muestrear la
+        /// cabeza, para simular una invalidación que llega durante la captura. Null = sin hook.
         /// </summary>
         public static void SetAfterEpochReadHookForTests(Action hook)
         {
             s_AfterEpochReadHookForTests = hook;
         }
+#endif
 
         /// <summary>Solo para tests: corre la lógica de habilitación (en Edit Mode OnEnable no se ejecuta).</summary>
         public void RunEnableLogicForTests() => ResetHeadPoseCaptureState();
@@ -397,8 +408,16 @@ namespace PrimerVolante.VR
         /// el frente del asiento. Reemplaza cualquier captura anterior: la pose se mide en el espacio local del XROrigin,
         /// que no depende de dónde esté el rig ni de la compensación que ya tenía aplicada. No toca altura, pitch ni roll.
         /// Devuelve false si no hay cámara o si la cabeza mira casi vertical (yaw indeterminado); en ese caso no cambia nada.
+        /// Sin contexto de follower (llamada directa) la captura se guarda en la sesión con la época actual, leída antes de muestrear.
+        /// La captura automática de <c>Update</c> usa <see cref="CaptureHeadPose"/> con la época cuyo retardo ya esperó.
         /// </summary>
-        public bool RecenterHeadPose()
+        public bool RecenterHeadPose() => CaptureHeadPose(HeadPoseCompensationSession.Epoch);
+
+        /// <summary>
+        /// Captura y guarda en la sesión con <paramref name="expectedEpoch"/>: si la época avanzó mientras tanto el store descarta la
+        /// captura (el follower igual la usa y recaptura al notar el cambio de época).
+        /// </summary>
+        private bool CaptureHeadPose(int expectedEpoch)
         {
             if (m_Origin == null)
             {
@@ -408,9 +427,9 @@ namespace PrimerVolante.VR
             Camera head = m_Origin != null ? m_Origin.Camera : null;
             if (head == null) return false;
 
-            // La época se lee ANTES de muestrear la cabeza: si llega una invalidación mientras se mide, el store descarta la captura.
-            int expectedEpoch = HeadPoseCompensationSession.Epoch;
+#if UNITY_EDITOR
             s_AfterEpochReadHookForTests?.Invoke();
+#endif
             Vector3 localForward = transform.InverseTransformDirection(head.transform.forward);
             localForward.y = 0f;
             if (localForward.sqrMagnitude < MIN_HORIZONTAL_FORWARD_SQR) return false;
@@ -462,8 +481,8 @@ namespace PrimerVolante.VR
 
             HeadPoseCompensationSession.RefreshSubsystemsIfDue();
 
-            int lastInvalidationFrame = HeadPoseCompensationSession.ObserveInvalidation(CurrentFrame());
-            int epoch = HeadPoseCompensationSession.Epoch;
+            // Una sola observación da la época y el frame de su invalidación: no se vuelve a leer la época en este camino.
+            int lastInvalidationFrame = HeadPoseCompensationSession.ObserveInvalidation(CurrentFrame(), out int epoch);
             if (epoch != m_KnownRecaptureEpoch)
             {
                 // La sesión pidió recapturar (ej. el runtime recentró): la pose del frame siguiente ya refleja el origen nuevo.
@@ -473,13 +492,15 @@ namespace PrimerVolante.VR
                 Debug.Log($"[DriverSeat] Compensación de cabeza: recaptura pedida: {HeadPoseCompensationSession.LastReason}");
             }
 
-            if (!m_CapturePending || CurrentFrame() < m_CaptureNotBeforeFrame) return;
+            if (!m_CapturePending) return;
 
-            // Una compensación vigente de la sesión (ej. el follower se habilitó antes de resolver la rama VR) no se recaptura.
+            // Una compensación válida de la sesión (ej. el follower se habilitó antes de resolver la rama VR) no se recaptura.
             if (TryReuseSessionCompensation()) return;
+            if (CurrentFrame() < m_CaptureNotBeforeFrame) return;
             if (!IsHeadPoseValid()) return;
 
-            if (RecenterHeadPose())
+            // Se guarda con la época observada arriba (la del retardo que se esperó), no con una lectura nueva.
+            if (CaptureHeadPose(m_KnownRecaptureEpoch))
             {
                 m_CapturePending = false;
             }

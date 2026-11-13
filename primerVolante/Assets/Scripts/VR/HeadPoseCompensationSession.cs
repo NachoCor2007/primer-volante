@@ -33,10 +33,9 @@ namespace PrimerVolante.VR
         // Época en la que se tomó la compensación guardada.
         private static int s_StoredEpoch;
 
-        // Época de "recaptura pedida": sube con cada invalidación. Los followers comparan contra la que conocen.
+        // Época de "recaptura pedida": sube con cada invalidación. Los followers comparan contra la que conocen. La compensación
+        // guardada es válida solo mientras s_StoredEpoch == s_Epoch: no hay ningún otro flag de validez.
         private static int s_Epoch;
-        // Hay una invalidación sin capturar desde entonces: la compensación guardada ya no es de fiar.
-        private static volatile bool s_RecapturePending;
         private static volatile string s_LastReason = string.Empty;
 
         // Frame (del main thread) en que se observó por primera vez la última invalidación: el callback del runtime solo sube la
@@ -79,7 +78,6 @@ namespace PrimerVolante.VR
             s_Epoch = 0;
             s_ObservedEpoch = 0;
             s_LastInvalidationFrame = 0;
-            s_RecapturePending = false;
             s_LastReason = string.Empty;
         }
 
@@ -89,29 +87,26 @@ namespace PrimerVolante.VR
         /// <summary>Contador que sube cada vez que hay que recapturar. Se puede leer desde cualquier hilo.</summary>
         public static int Epoch => Volatile.Read(ref s_Epoch);
 
-        /// <summary>Hay una invalidación sin capturar desde entonces (la compensación guardada, si la hay, no se reutiliza).</summary>
-        public static bool RecapturePending => s_RecapturePending;
-
         /// <summary>Motivo de la última invalidación (para el log).</summary>
         public static string LastReason => s_LastReason;
 
         /// <summary>
-        /// Devuelve la compensación de la sesión si hay una vigente: capturada en la época actual y sin ninguna recaptura pendiente
-        /// desde entonces.
+        /// Devuelve la compensación de la sesión si es válida: hay una capturada y su época es la actual (nada la invalidó desde
+        /// entonces). La validez depende solo de la época.
         /// </summary>
         public static bool TryGetValid(out float yaw, out Vector3 offset)
         {
             yaw = s_Yaw;
             offset = s_Offset;
-            return s_HasCompensation && !s_RecapturePending && s_StoredEpoch == Epoch;
+            return s_HasCompensation && s_StoredEpoch == Epoch;
         }
 
         /// <summary>
-        /// Guarda una captura exitosa como la compensación vigente de la sesión. <paramref name="expectedEpoch"/> es la
-        /// <see cref="Epoch"/> que leyó quien capturó ANTES de muestrear la pose de la cabeza. Si la época ya avanzó (llegó una
-        /// invalidación entre la lectura y este guardado) la pose pudo ser anterior al recentrado: la captura se descarta (no se guarda
-        /// nada y la recaptura pendiente sigue) y devuelve false. El follower que capturó igual la usa en su rig y recaptura al notar
-        /// el cambio de época.
+        /// Guarda una captura exitosa como la compensación de la sesión. <paramref name="expectedEpoch"/> es la época cuyo retardo
+        /// esperó quien capturó (la que observó antes de muestrear la cabeza). Si la época ya avanzó (llegó una invalidación entre la
+        /// observación y este guardado) la pose pudo ser anterior al recentrado: la captura se descarta (no se guarda nada) y devuelve
+        /// false. El follower que capturó igual la usa en su rig y recaptura al notar el cambio de época. Si la invalidación llega
+        /// justo después del chequeo, la captura queda guardada con una época vieja y <see cref="TryGetValid"/> la rechaza.
         /// </summary>
         public static bool Store(int expectedEpoch, float yaw, Vector3 offset)
         {
@@ -121,29 +116,26 @@ namespace PrimerVolante.VR
             s_Offset = offset;
             s_StoredEpoch = expectedEpoch;
             s_HasCompensation = true;
-            s_RecapturePending = false;
-            // Una invalidación que llegue justo después del chequeo deja pending = true y una época nueva: TryGetValid compara
-            // s_StoredEpoch con la época actual, así que esta captura tampoco se reutiliza.
             return true;
         }
 
         /// <summary>
         /// Invalida la compensación: los followers vivos recapturan y los nuevos no la reutilizan hasta que alguien capture.
-        /// Se puede llamar desde cualquier hilo (solo sube la época y marca el pedido).
+        /// Se puede llamar desde cualquier hilo (solo sube la época).
         /// </summary>
         public static void Invalidate(string reason)
         {
             s_LastReason = reason;
-            s_RecapturePending = true;
             Interlocked.Increment(ref s_Epoch);
         }
 
         /// <summary>
         /// Main thread. Si la época cambió desde la última observación, fija <paramref name="currentFrame"/> como el frame de la última
         /// invalidación. Devuelve ese frame: ninguna captura es válida antes de él + <c>RECAPTURE_DELAY_FRAMES</c> (la pose tiene que
-        /// reflejar el origen nuevo).
+        /// reflejar el origen nuevo). <paramref name="observedEpoch"/> es la época a la que corresponde ese frame: quien decida capturar
+        /// tiene que usar esa misma época (no volver a leer <see cref="Epoch"/>) para comparar y para guardar.
         /// </summary>
-        public static int ObserveInvalidation(int currentFrame)
+        public static int ObserveInvalidation(int currentFrame, out int observedEpoch)
         {
             int epoch = Epoch;
             if (epoch != s_ObservedEpoch)
@@ -151,6 +143,7 @@ namespace PrimerVolante.VR
                 s_ObservedEpoch = epoch;
                 s_LastInvalidationFrame = currentFrame;
             }
+            observedEpoch = s_ObservedEpoch;
             return s_LastInvalidationFrame;
         }
 
@@ -162,17 +155,24 @@ namespace PrimerVolante.VR
         {
             float now = s_TimeOverride ?? Time.unscaledTime;
             if (now < s_NextRefreshTime) return;
-            s_NextRefreshTime = now + SUBSCRIPTION_REFRESH_SECONDS;
             RefreshSubsystems();
         }
 
         /// <summary>
-        /// Revisa ya el conjunto de subsistemas de entrada XR (pueden crearse después del arranque o recrearse al reiniciar la sesión VR).
-        /// Se suscribe a <c>trackingOriginUpdated</c> de los nuevos. Un subsistema que la sesión no conocía implica un origen de
-        /// tracking potencialmente nuevo, así que invalida si ya había una compensación; uno ya conocido no invalida.
+        /// Hace que la próxima <see cref="RefreshSubsystemsIfDue"/> revise sin esperar la ventana. Lo usa un follower que se habilita
+        /// cuando todavía no hay visor activo, para que la primera revisión ocurra antes de reutilizar la compensación.
+        /// </summary>
+        public static void ForceNextRefresh() => s_NextRefreshTime = 0f;
+
+        /// <summary>
+        /// Revisa ya el conjunto de subsistemas de entrada XR (pueden crearse después del arranque o recrearse al reiniciar la sesión VR)
+        /// y reinicia la ventana del throttle. Se suscribe a <c>trackingOriginUpdated</c> de los nuevos. Un subsistema que la sesión no
+        /// conocía implica un origen de tracking potencialmente nuevo, así que invalida si ya había una compensación; uno ya conocido
+        /// no invalida.
         /// </summary>
         public static void RefreshSubsystems()
         {
+            s_NextRefreshTime = (s_TimeOverride ?? Time.unscaledTime) + SUBSCRIPTION_REFRESH_SECONDS;
             s_CurrentKeys.Clear();
             if (s_SubsystemKeysOverride != null)
             {
