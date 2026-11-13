@@ -21,7 +21,7 @@ namespace PrimerVolante.Testing.Editor
     /// Batería de verificación automatizada para el nuevo menú principal NewMainMenu.
     /// Valida:
     /// - Ausencia total de Car09 o vehículos en la escena (menú limpio sin obstrucciones de cabina).
-    /// - XR Origin centrado en (0,0,0) sin DriverSeatFollower y con InputActionManager configurado.
+    /// - XR Origin en (0,0,0) con DriverSeatFollower anclado a MenuViewpoint y con InputActionManager configurado.
     /// - Canvas en World Space con worldCamera asignada y TrackedDeviceGraphicRaycaster único.
     /// - RaycastTargets disciplinados (fondos y textos en false, botones en true).
     /// - Navegación entre solapas, currículum de 6 lecciones con botón "COMENZAR LECCIÓN",
@@ -159,13 +159,14 @@ namespace PrimerVolante.Testing.Editor
             GameObject car09Obj = GameObject.Find("Car09");
             Check(car09Obj == null, "No existe el GameObject Car09 en la escena");
 
-            // 2. XR Origin (XR Rig) centrado y sin DriverSeatFollower
+            // 2. XR Origin (XR Rig) centrado y con DriverSeatFollower anclado a MenuViewpoint (detalle en MenuHeadPoseVerification)
             GameObject xrOriginObj = GameObject.Find("XR Origin (XR Rig)");
             Check(xrOriginObj != null, "Existe el GameObject XR Origin (XR Rig)");
             if (xrOriginObj != null)
             {
                 DriverSeatFollower follower = xrOriginObj.GetComponent<DriverSeatFollower>();
-                Check(follower == null, "XR Origin no tiene DriverSeatFollower (no intenta seguir un auto inexistente)");
+                Check(follower != null && follower.enabled && follower.DriverSeat != null && follower.DriverSeat.name == NewMainMenuSetup.MENU_VIEWPOINT_NAME,
+                    "XR Origin tiene DriverSeatFollower anclado a MenuViewpoint (compensa la pose de la cabeza, no sigue un auto)");
                 Check(xrOriginObj.transform.position == Vector3.zero, "XR Origin está centrado en el origen Vector3.zero");
 
                 var inputMgr = xrOriginObj.GetComponent<InputActionManager>();
@@ -251,7 +252,7 @@ namespace PrimerVolante.Testing.Editor
 
             Check(controller.XROriginTransform != null, "NewMainMenuController tiene asignado m_XROriginTransform para anclaje estático");
             controller.LockPlayerStationary();
-            Check(controller.XROriginTransform != null && controller.XROriginTransform.position == Vector3.zero, "LockPlayerStationary mantiene el rig anclado en Vector3.zero");
+            Check(controller.XROriginTransform != null && controller.XROriginTransform.position == Vector3.zero, "LockPlayerStationary deja el rig en MenuViewpoint = Vector3.zero (sin VR)");
 
             Check(controller.Lessons.Count == 6, "NewMainMenuController tiene cargadas las 6 lecciones del currículum");
             Check(controller.Circuits.Count >= 3, "NewMainMenuController tiene configurados al menos 3 circuitos integradores");

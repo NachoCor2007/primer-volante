@@ -20,7 +20,7 @@ namespace PrimerVolante.Testing.Editor
     /// Herramienta de Editor para la construcción automatizada, limpia e idempotente de la escena NewMainMenu:
     /// - Duplica la base de MainMenu o Lesson_01 a NewMainMenu.unity (si no existe).
     /// - Elimina completamente Car09, vehículos y controladores obsoletos de la cabina.
-    /// - Configura XR Origin (XR Rig) centrado en (0,0,0) sin DriverSeatFollower y con InputActionManager activo.
+    /// - Configura XR Origin (XR Rig) en (0,0,0) con DriverSeatFollower anclado a MenuViewpoint y con InputActionManager activo.
     /// - Construye NewMainMenu_Canvas en World Space con TrackedDeviceGraphicRaycaster calibrado y sin GraphicRaycaster conflictivo.
     /// - Implementa el diseño ortogonal por solapas con tarjetas de controles 3D (ControllerIllustration),
     ///   currículum de lecciones con botón "Comenzar Lección", circuitos integradores con botón "Iniciar Recorrido",
@@ -39,6 +39,9 @@ namespace PrimerVolante.Testing.Editor
         private const string CONTROLLER_MODEL_PATH = "Assets/Samples/XR Interaction Toolkit/3.5.1/Starter Assets/Models/UniversalController.fbx";
         private const string INPUT_ACTIONS_PATH = "Assets/Samples/XR Interaction Toolkit/3.5.1/Starter Assets/XRI Default Input Actions.inputactions";
         public const string LEGACY_PLATFORM_NAME = "Menu_FloorPlatform";
+        public const string MENU_VIEWPOINT_NAME = "MenuViewpoint";
+        // Superficie del suelo del menú (cara superior de Ground_MainMenu): donde quedan los pies del jugador con tracking Floor.
+        public const float MENU_FLOOR_Y = 0f;
         private const string CURRICULUM_FOLDER = "Assets/Scripts/Lessons/Curriculum";
         private const int LESSON_COUNT = 6;
 
@@ -229,9 +232,9 @@ namespace PrimerVolante.Testing.Editor
 
             if (xrOriginObj != null)
             {
-                // Remover DriverSeatFollower: no hay asiento ni auto en el menú principal estático
-                DriverSeatFollower follower = xrOriginObj.GetComponent<DriverSeatFollower>();
-                if (follower != null) Object.DestroyImmediate(follower);
+                // DriverSeatFollower con MenuViewpoint como anclaje fijo (no hay auto ni asiento): compensa la pose de la cabeza
+                // para que el jugador aparezca sobre el menú sin importar el origen de tracking del visor.
+                EnsureMenuViewpointAndFollower(xrOriginObj);
 
                 // Centrar el Rig en el origen del mundo
                 xrOriginObj.transform.position = Vector3.zero;
@@ -298,6 +301,63 @@ namespace PrimerVolante.Testing.Editor
             }
 
             return xrOriginObj;
+        }
+
+        /// <summary>
+        /// Garantiza (idempotente) el anclaje <see cref="MENU_VIEWPOINT_NAME"/> en la raíz de la escena, a la altura del suelo del menú
+        /// (<see cref="MENU_FLOOR_Y"/>) y mirando a +Z hacia el canvas, y el <see cref="DriverSeatFollower"/> del XR Origin con ese anclaje
+        /// como asiento, siguiéndolo y con la calibración en cero. No duplica ninguno de los dos si ya existen.
+        /// </summary>
+        public static DriverSeatFollower EnsureMenuViewpointAndFollower(GameObject xrOriginObj)
+        {
+            GameObject viewpoint = null;
+            foreach (GameObject root in xrOriginObj.scene.GetRootGameObjects())
+            {
+                if (root.name == MENU_VIEWPOINT_NAME)
+                {
+                    viewpoint = root;
+                    break;
+                }
+            }
+            if (viewpoint == null)
+            {
+                viewpoint = new GameObject(MENU_VIEWPOINT_NAME);
+                SceneManager.MoveGameObjectToScene(viewpoint, xrOriginObj.scene);
+            }
+            viewpoint.transform.SetPositionAndRotation(new Vector3(0f, MENU_FLOOR_Y, 0f), Quaternion.identity);
+            viewpoint.transform.localScale = Vector3.one;
+
+            DriverSeatFollower follower = xrOriginObj.GetComponent<DriverSeatFollower>();
+            if (follower == null) follower = xrOriginObj.AddComponent<DriverSeatFollower>();
+
+            var so = new SerializedObject(follower);
+            so.Update();
+            so.FindProperty("m_DriverSeat").objectReferenceValue = viewpoint.transform;
+            so.FindProperty("m_FollowSeat").boolValue = true;
+            so.FindProperty("m_CalibrationOffset").vector3Value = Vector3.zero;
+            so.ApplyModifiedProperties();
+            follower.enabled = true;
+            EditorUtility.SetDirty(follower);
+
+            // El menú de pausa de la escena (si ya existe) usa el asiento del follower como referencia de frente.
+            Scene scene = xrOriginObj.scene;
+            foreach (InGameMenuController menu in VerificationSceneUtil.AllInScene<InGameMenuController>(scene))
+            {
+                var soMenu = new SerializedObject(menu);
+                soMenu.Update();
+                soMenu.FindProperty("m_DriverSeatFollower").objectReferenceValue = follower;
+                soMenu.ApplyModifiedProperties();
+                EditorUtility.SetDirty(menu);
+            }
+            foreach (DriverViewCalibrationUI calibration in VerificationSceneUtil.AllInScene<DriverViewCalibrationUI>(scene))
+            {
+                var soCalibration = new SerializedObject(calibration);
+                soCalibration.Update();
+                soCalibration.FindProperty("m_DriverSeatFollower").objectReferenceValue = follower;
+                soCalibration.ApplyModifiedProperties();
+                EditorUtility.SetDirty(calibration);
+            }
+            return follower;
         }
 
         // ====================================================================
