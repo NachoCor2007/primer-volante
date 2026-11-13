@@ -31,6 +31,7 @@ namespace PrimerVolante.Testing.Editor
         {
             s_Passed = 0;
             s_Total = 0;
+            HeadPoseCompensationSession.ResetForTests(); // la compensación de la sesión es estática: que no se filtre desde otra suite
 
             Debug.Log("=========================================================");
             Debug.Log("INICIANDO VERIFICACION DE LA POSE DE CABEZA EN EL MENU PRINCIPAL (NewMainMenu + DriverSeatFollower)");
@@ -73,6 +74,7 @@ namespace PrimerVolante.Testing.Editor
 
         private static void ResetOverrides()
         {
+            HeadPoseCompensationSession.ResetForTests();
             DriverSeatFollower.SetVRActiveOverrideForTests(null);
             DriverSeatFollower.SetTrackingOriginModeOverrideForTests(null);
             DriverSeatFollower.SetAppFocusedOverrideForTests(null);
