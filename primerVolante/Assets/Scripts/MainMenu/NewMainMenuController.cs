@@ -93,6 +93,8 @@ namespace PrimerVolante.MainMenu
         [SerializeField] private NearFarInteractor[] m_FarCastInteractors;
 
         [Header("Anclaje Estático del Jugador")]
+        [Tooltip("XR Origin del menú. Si tiene DriverSeatFollower (con MenuViewpoint como asiento), el follower lo coloca y " +
+                 "compensa la pose de la cabeza; si no, este controlador lo fija en (0, 0, 0).")]
         [SerializeField] private Transform m_XROriginTransform;
 
         [Header("Pausa por desconexión VR")]
@@ -102,6 +104,8 @@ namespace PrimerVolante.MainMenu
         [SerializeField] private InGameMenuController m_InGameMenu;
 
         // Estado interno
+        // Follower del XR Origin (se cachea al resolver m_XROriginTransform); null = el controlador fija el rig en cero.
+        private DriverSeatFollower m_SeatFollower;
         private NewMenuTab m_CurrentTab = NewMenuTab.Controles;
         private int m_SelectedLessonIndex = 0;
         private int m_SelectedCircuitIndex = 0;
@@ -151,6 +155,10 @@ namespace PrimerVolante.MainMenu
         public IReadOnlyList<LessonDefinitionSO> Lessons => m_Lessons;
         public IReadOnlyList<CircuitDefinition> Circuits => m_Circuits;
         public Transform XROriginTransform => m_XROriginTransform;
+
+        // El follower coloca el rig solo si está habilitado, sigue su asiento y tiene un anclaje; si no, el rig se fija en cero.
+        private bool SeatFollowerPlacesRig =>
+            m_SeatFollower != null && m_SeatFollower.isActiveAndEnabled && m_SeatFollower.FollowSeat && m_SeatFollower.DriverSeat != null;
 
         public event Action<NewMenuTab> OnTabChanged;
         public event Action<int> OnLessonSelected;
@@ -419,7 +427,11 @@ namespace PrimerVolante.MainMenu
 
         private void LateUpdate()
         {
-            // Garantizar que la base del visor se mantenga firmemente anclada al centro de la escena
+            // Con un DriverSeatFollower que puede mover el rig, lo coloca él sobre su anclaje (MenuViewpoint), con la compensación de
+            // la pose de la cabeza; fijarlo acá en cero la pisaría y no habría dependencia del orden de ejecución entre scripts.
+            if (SeatFollowerPlacesRig) return;
+
+            // Sin follower (fallback): garantizar que la base del visor se mantenga firmemente anclada al centro de la escena
             // sin caer al vacío por gravedad física ni derivar por controles de locomoción
             if (m_XROriginTransform != null)
             {
@@ -456,8 +468,17 @@ namespace PrimerVolante.MainMenu
                     provider.enabled = false;
                 }
 
-                m_XROriginTransform.position = Vector3.zero;
-                m_XROriginTransform.rotation = Quaternion.identity;
+                m_SeatFollower = m_XROriginTransform.GetComponent<DriverSeatFollower>();
+                if (SeatFollowerPlacesRig)
+                {
+                    // El follower lleva el rig al anclaje del menú (MenuViewpoint) con la compensación de la cabeza.
+                    m_SeatFollower.SnapToSeat();
+                }
+                else
+                {
+                    m_XROriginTransform.position = Vector3.zero;
+                    m_XROriginTransform.rotation = Quaternion.identity;
+                }
             }
         }
 

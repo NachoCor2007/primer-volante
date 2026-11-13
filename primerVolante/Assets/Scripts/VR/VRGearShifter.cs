@@ -239,6 +239,14 @@ namespace PrimerVolante.VR
             float currentAngle = GetCurrentAngle();
             GearState targetGear = GetClosestGear(currentAngle);
 
+            // La suelta la provocó la pausa (no el jugador): vuelve al cambio que estaba puesto, sin encastrar en el más cercano.
+            if (InteractorPauseBlock.IsReleasingForPause)
+            {
+                if (m_SnapRoutine != null) StopCoroutine(m_SnapRoutine);
+                m_SnapRoutine = StartCoroutine(SnapToGear(currentGear));
+                return;
+            }
+
             // GetClosestGear no conoce las restricciones: justo en la frontera entre dos cambios
             // puede desempatar hacia el lado bloqueado. Si el cambio elegido exige cruzar un tope
             // actualmente cerrado, nos quedamos en el cambio actual (rebote) en vez de cruzarlo.
@@ -255,7 +263,8 @@ namespace PrimerVolante.VR
 
         private void Update()
         {
-            if (m_IsGrabbed) return;
+            // Atajos de teclado/Gamepad bloqueados mientras la simulación está pausada.
+            if (m_IsGrabbed || SimulationPause.IsPaused) return;
 
             bool shiftDown = false;
             bool shiftUp = false;

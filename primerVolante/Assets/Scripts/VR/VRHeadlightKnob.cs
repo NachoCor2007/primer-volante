@@ -187,7 +187,8 @@ namespace PrimerVolante.VR
         /// </summary>
         private void HandleDebugInputs()
         {
-            if (m_IsGrabbed) return;
+            // Atajos bloqueados mientras la simulación está pausada.
+            if (m_IsGrabbed || SimulationPause.IsPaused) return;
 
             // Teclado: tecla L cicla Off -> Position -> LowBeam -> HighBeam -> Off
             if (Keyboard.current != null && Keyboard.current.lKey.wasPressedThisFrame)

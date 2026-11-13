@@ -23,7 +23,8 @@ namespace PrimerVolante.Testing.Editor
     /// 5.  OpenMenuWithNotice (cerrado, menú del jugador abierto, calibración standalone abierta).
     /// 6.  RecenterConnectionPauseMenu durante y fuera de la pausa.
     /// 7.  La calibración con el menú abierto traslada el canvas el mismo delta de mundo que la vista.
-    /// 8.  Sin referencia (NewMainMenu): frente de la cabeza a 0°, como antes.
+    /// 8.  NewMainMenu: MenuViewpoint (el asiento de su DriverSeatFollower) es la referencia de frente, y sin asiento el menú
+    ///     queda al frente de la cabeza a 0°, como antes.
     /// 9.  Campos renombrados (FormerlySerializedAs): el valor se preserva desde las escenas.
     /// Todo sobre copias temporales de las escenas (<see cref="VerificationSceneUtil.WithSceneCopy"/>).
     /// </summary>
@@ -57,6 +58,7 @@ namespace PrimerVolante.Testing.Editor
                 VerificationSceneUtil.WithSceneCopy(LESSON_SCENE, VerifyOpenMenuWithNotice);
                 VerificationSceneUtil.WithSceneCopy(LESSON_SCENE, VerifyRecenter);
                 VerificationSceneUtil.WithSceneCopy(LESSON_SCENE, VerifyCalibrationFollowsView);
+                VerificationSceneUtil.WithSceneCopy(NEW_MAIN_MENU_SCENE, VerifyMenuViewpointReference);
                 VerificationSceneUtil.WithSceneCopy(NEW_MAIN_MENU_SCENE, VerifyWithoutReference);
                 VerifyRenamedFields();
                 VerificationSceneUtil.WithSceneCopy(MainMenuSetup.SCENE_PATH, VerifyFormerlySerializedValue);
@@ -491,12 +493,55 @@ namespace PrimerVolante.Testing.Editor
 
         // ------------------------------------------------------------------ 8. sin referencia
 
-        private static void VerifyWithoutReference(Scene scene)
+        // NewMainMenu tiene un DriverSeatFollower anclado a MenuViewpoint: la pausa queda a 45° a la derecha de su frente (+Z).
+        private static void VerifyMenuViewpointReference(Scene scene)
         {
-            Rig rig = BuildRig(scene, "NewMainMenu (copia)");
+            Rig rig = BuildRig(scene, "NewMainMenu con MenuViewpoint (copia)");
             if (rig == null) return;
             InGameMenuController menu = rig.Menu;
-            Check(rig.Car == null, "NewMainMenu: no hay auto ni asiento, la referencia de frente queda en null");
+            Check(rig.Car != null && rig.Car.name == NewMainMenuSetup.MENU_VIEWPOINT_NAME,
+                "NewMainMenu: la referencia de frente del menú de pausa es MenuViewpoint");
+            if (rig.Car == null)
+            {
+                Reset(rig);
+                return;
+            }
+
+            try
+            {
+                foreach (float yaw in new[] { 0f, 90f, -130f })
+                {
+                    menu.CloseMenu();
+                    rig.Head.rotation = Quaternion.Euler(15f, yaw, 0f);
+                    rig.Head.position = rig.HeadPosition + new Vector3(yaw * 0.01f, 0f, 0.4f);
+                    menu.OpenMenuWithNotice("test");
+                    // rig.Car es MenuViewpoint: frente +Z, a 45° a la derecha, a la distancia y altura de los ojos, mirando a la cabeza.
+                    CheckStandardPose(rig, $"MenuViewpoint (cabeza girada {yaw:F0}°)");
+                    Check(Vector3.Distance(menu.MenuRoot.transform.position, ExpectedPosition(rig)) < DISTANCE_TOLERANCE,
+                        $"MenuViewpoint (cabeza girada {yaw:F0}°): ignora la orientación de la cabeza");
+                    menu.EndConnectionPause();
+                }
+            }
+            finally
+            {
+                menu.EndConnectionPause();
+                menu.CloseMenu();
+                Reset(rig);
+            }
+        }
+
+        // Sin asiento (follower sin anclaje) la pausa vuelve a ponerse al frente de la cabeza.
+        private static void VerifyWithoutReference(Scene scene)
+        {
+            foreach (DriverSeatFollower follower in VerificationSceneUtil.AllInScene<DriverSeatFollower>(scene))
+            {
+                follower.SetDriverSeat(null, false);
+            }
+
+            Rig rig = BuildRig(scene, "NewMainMenu sin asiento (copia)");
+            if (rig == null) return;
+            InGameMenuController menu = rig.Menu;
+            Check(rig.Car == null, "NewMainMenu sin asiento: la referencia de frente queda en null");
 
             try
             {

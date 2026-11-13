@@ -307,7 +307,7 @@ namespace PrimerVolante.VR
         {
             EnsureHierarchyAndLocalTransform();
 
-            if (m_EnableKeyboardDebug)
+            if (m_EnableKeyboardDebug && !SimulationPause.IsPaused)
             {
                 ProcessKeyboardInput();
             }
