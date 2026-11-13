@@ -59,7 +59,10 @@ namespace PrimerVolante.Lessons
         SecureBay90,                   // Paso 5: Asegurar en batería 90° (P y freno de mano)
         ParkParallelAngle45,            // Paso 6: Inclinación a 45° en reversa con volante a la derecha
         ParkParallelRight,              // Paso 7: Quiebre a la izquierda y alineación en recuadro paralelo
-        SecureParkDeactivateHazards     // Paso 8: Finalizar, apagar balizas, Parking y freno de mano
+        SecureParkDeactivateHazards,    // Paso 8: Finalizar, apagar balizas, Parking y freno de mano
+
+        // Circuitos e Integradores Urbanos
+        CompleteCircuitNavigation = 63  // Navegación guiada por GPS y detención/estacionamiento en la meta
     }
 
     /// <summary>

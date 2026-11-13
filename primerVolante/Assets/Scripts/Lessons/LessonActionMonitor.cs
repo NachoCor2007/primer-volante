@@ -591,12 +591,22 @@ namespace PrimerVolante.Lessons
                            Lesson06ParkingController.Instance.IsParallelAngle45Positioned;
 
                 case LessonActionType.ParkParallelRight:
-                    return Lesson06ParkingController.Instance != null &&
-                           Lesson06ParkingController.Instance.IsParallelPositioned;
+                    if (Lesson06ParkingController.Instance != null)
+                        return Lesson06ParkingController.Instance.IsParallelPositioned;
+                    if (Circuit01Controller.Instance != null)
+                        return Circuit01Controller.Instance.IsFinished;
+                    ParkingZoneTrigger pz = UnityEngine.Object.FindAnyObjectByType<ParkingZoneTrigger>();
+                    return pz != null && (pz.IsVehicleParkedProperly || pz.IsVehiclePositionedProperly);
 
                 case LessonActionType.SecureParkDeactivateHazards:
                     return Lesson06ParkingController.Instance != null &&
                            Lesson06ParkingController.Instance.IsVehicleSecured;
+
+                case LessonActionType.CompleteCircuitNavigation:
+                    if (Circuit01Controller.Instance != null)
+                        return Circuit01Controller.Instance.IsFinished;
+                    ParkingZoneTrigger pzt = UnityEngine.Object.FindAnyObjectByType<ParkingZoneTrigger>();
+                    return pzt != null && (pzt.IsVehicleParkedProperly || pzt.IsVehiclePositionedProperly);
 
                 default:
                     return false;
