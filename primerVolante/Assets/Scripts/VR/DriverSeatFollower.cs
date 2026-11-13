@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using UnityEngine;
 using UnityEngine.XR;
 using Unity.XR.CoreUtils;
@@ -39,6 +40,9 @@ namespace PrimerVolante.VR
 
         [Tooltip("Límite máximo (derecha, arriba, adelante) del desplazamiento de calibración, en metros locales al asiento.")]
         [SerializeField] private Vector3 m_CalibrationLimitsMax = new Vector3(0.25f, 0.20f, 0.25f);
+
+        [Tooltip("Si se activa, la calibración se carga de PlayerPrefs al iniciar y se guarda cada vez que cambia (una sola calibración global entre escenas y sesiones). El menú principal lo apaga porque no tiene asiento.")]
+        [SerializeField] private bool m_UsePersistentCalibration = true;
 
         // Espera mínima, en frames, entre un recentrado del runtime y la recaptura: la pose tiene que reflejar el origen nuevo.
         private const int RECAPTURE_DELAY_FRAMES = 2;
@@ -142,6 +146,20 @@ namespace PrimerVolante.VR
 
         public Vector3 CalibrationLimitsMax => m_CalibrationLimitsMax;
 
+        /// <summary>Si este follower carga y guarda la calibración en PlayerPrefs (ver <see cref="IsPersistentCalibrationActive"/>).</summary>
+        public bool UsePersistentCalibration
+        {
+            get => m_UsePersistentCalibration;
+            set => m_UsePersistentCalibration = value;
+        }
+
+        /// <summary>
+        /// La persistencia está en uso: el flag está encendido y estamos en Play Mode (o en un test con el backend en memoria).
+        /// En Edit Mode real no se carga ni se guarda nada, para no ensuciar los PlayerPrefs del Editor.
+        /// </summary>
+        public bool IsPersistentCalibrationActive =>
+            m_UsePersistentCalibration && (Application.isPlaying || DriverViewCalibrationStore.IsInMemoryBackendActive);
+
         private void Awake()
         {
             m_Origin = GetComponent<XROrigin>();
@@ -149,6 +167,35 @@ namespace PrimerVolante.VR
             {
                 AutoDiscoverDriverSeat();
             }
+            LoadPersistentCalibration();
+        }
+
+        /// <summary>
+        /// Aplica la calibración guardada, recortada a los límites. Asigna el campo directamente, sin disparar
+        /// <see cref="CalibrationOffsetChanged"/> (se llama en Awake: sin suscriptores y con el rig sin posicionar).
+        /// Devuelve true si había algo guardado y se aplicó.
+        /// </summary>
+        public bool LoadPersistentCalibration()
+        {
+            if (!IsPersistentCalibrationActive) return false;
+            if (!DriverViewCalibrationStore.TryLoad(out Vector3 saved)) return false;
+
+            m_CalibrationOffset = ClampToLimits(saved);
+            Debug.Log($"[DriverSeat] Calibración guardada aplicada: ({FormatAxis(m_CalibrationOffset.x)}, {FormatAxis(m_CalibrationOffset.y)}, {FormatAxis(m_CalibrationOffset.z)})");
+            return true;
+        }
+
+        private static string FormatAxis(float value) => value.ToString("F3", CultureInfo.InvariantCulture);
+
+        // En el Quest la app puede morir sin pasar por OnApplicationQuit: se vuelca al perder foco o pausar.
+        private void OnApplicationPause(bool paused)
+        {
+            if (paused && IsPersistentCalibrationActive) DriverViewCalibrationStore.Flush();
+        }
+
+        private void OnApplicationFocus(bool hasFocus)
+        {
+            if (!hasFocus && IsPersistentCalibrationActive) DriverViewCalibrationStore.Flush();
         }
 
         private void OnEnable()
@@ -164,6 +211,7 @@ namespace PrimerVolante.VR
         {
             Application.onBeforeRender -= OnBeforeRenderHoldPose;
             UnsubscribeFromTrackingOrigin();
+            if (IsPersistentCalibrationActive) DriverViewCalibrationStore.Flush();
         }
 
         private void OnDestroy()
@@ -726,6 +774,7 @@ namespace PrimerVolante.VR
             }
 
             m_CalibrationOffset = newOffset;
+            if (IsPersistentCalibrationActive) DriverViewCalibrationStore.Save(m_CalibrationOffset);
             CalibrationOffsetChanged?.Invoke(worldDelta);
         }
 
