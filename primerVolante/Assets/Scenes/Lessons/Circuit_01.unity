@@ -26249,7 +26249,7 @@ MonoBehaviour:
   m_VehicleController: {fileID: 35780140}
   m_HUDPanel: {fileID: 1963091738}
   m_FinishZone: {fileID: 2109059379}
-  m_AutoStartEngine: 1
+  m_AutoStartEngine: 0
 --- !u!1001 &2072408989
 PrefabInstance:
   m_ObjectHideFlags: 0

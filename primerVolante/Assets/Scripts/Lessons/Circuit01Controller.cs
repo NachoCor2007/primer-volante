@@ -32,8 +32,8 @@ namespace PrimerVolante.Lessons
         [SerializeField] private ParkingZoneTrigger m_FinishZone;
 
         [Header("Configuración Inicial")]
-        [Tooltip("Asegurar que el motor esté en marcha al iniciar el circuito.")]
-        [SerializeField] private bool m_AutoStartEngine = true;
+        [Tooltip("Encender el motor automáticamente al iniciar el circuito. Apagado por defecto: el alumno arranca el auto.")]
+        [SerializeField] private bool m_AutoStartEngine = false;
 
         public static Circuit01Controller Instance => s_Instance;
         public LessonManager LessonManager => m_LessonManager;
@@ -106,7 +106,7 @@ namespace PrimerVolante.Lessons
         {
             AutoDiscoverReferences();
 
-            // Garantizar motor en marcha para iniciar la conducción fluida del circuito
+            // Opcional: encender el motor al iniciar (desactivado por defecto, el auto arranca apagado)
             if (m_AutoStartEngine && m_VehicleController != null && !m_VehicleController.IsEngineRunning)
             {
                 m_VehicleController.SetEngineRunning(true);
