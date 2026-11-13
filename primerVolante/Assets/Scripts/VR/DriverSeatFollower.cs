@@ -163,11 +163,12 @@ namespace PrimerVolante.VR
         private void Awake()
         {
             m_Origin = GetComponent<XROrigin>();
+            // Primero la calibración guardada: AutoDiscoverDriverSeat hace un snap al asiento que ya tiene que usar el offset.
+            LoadPersistentCalibration();
             if (m_DriverSeat == null)
             {
                 AutoDiscoverDriverSeat();
             }
-            LoadPersistentCalibration();
         }
 
         /// <summary>
@@ -187,17 +188,6 @@ namespace PrimerVolante.VR
 
         private static string FormatAxis(float value) => value.ToString("F3", CultureInfo.InvariantCulture);
 
-        // En el Quest la app puede morir sin pasar por OnApplicationQuit: se vuelca al perder foco o pausar.
-        private void OnApplicationPause(bool paused)
-        {
-            if (paused && IsPersistentCalibrationActive) DriverViewCalibrationStore.Flush();
-        }
-
-        private void OnApplicationFocus(bool hasFocus)
-        {
-            if (!hasFocus && IsPersistentCalibrationActive) DriverViewCalibrationStore.Flush();
-        }
-
         private void OnEnable()
         {
             // En cada escena (y al reactivar el componente) se captura de nuevo apenas el HMD esté trackeando.
@@ -211,7 +201,6 @@ namespace PrimerVolante.VR
         {
             Application.onBeforeRender -= OnBeforeRenderHoldPose;
             UnsubscribeFromTrackingOrigin();
-            if (IsPersistentCalibrationActive) DriverViewCalibrationStore.Flush();
         }
 
         private void OnDestroy()
