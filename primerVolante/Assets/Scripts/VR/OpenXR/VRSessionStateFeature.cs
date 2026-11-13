@@ -89,7 +89,17 @@ namespace PrimerVolante.VR
         }
 
         // Una sesión nueva arranca de cero: lo que quedó de la anterior (p. ej. LOSS_PENDING) ya no vale.
-        protected override void OnSessionCreate(ulong xrSession) => Interlocked.Exchange(ref s_CurrentState, STATE_UNKNOWN);
+        protected override void OnSessionCreate(ulong xrSession) => RecordSessionCreate();
+
+        // Camino común del callback real y de SimulateSessionCreate (tests).
+        private static void RecordSessionCreate()
+        {
+            Interlocked.Exchange(ref s_CurrentState, STATE_UNKNOWN);
+            // Una sesión nueva puede traer un origen de tracking distinto aunque el subsistema de entrada sea el mismo (reconexión
+            // de Quest Link, LOSS_PENDING seguido de una sesión nueva): la compensación de cabeza de la sesión de la app ya no vale.
+            // Invalidate es thread-safe (solo sube una época), así que sirve aunque el callback llegue fuera del main thread.
+            HeadPoseCompensationSession.Invalidate("se creó una sesión OpenXR nueva");
+        }
 
         protected override void OnSessionStateChange(int oldState, int newState) => RecordStateChange(oldState, newState);
 
@@ -126,6 +136,9 @@ namespace PrimerVolante.VR
 
         /// <summary>Solo Editor (tests): recorre el mismo camino que <c>OnSessionExiting</c>.</summary>
         public static void SimulateExiting() => RecordExiting();
+
+        /// <summary>Solo Editor (tests): recorre el mismo camino que <c>OnSessionCreate</c>.</summary>
+        public static void SimulateSessionCreate() => RecordSessionCreate();
 
         /// <summary>Solo Editor (tests): vuelve al estado inicial (sin sesión, cola vacía).</summary>
         public static void ResetForTests() => ResetState();
