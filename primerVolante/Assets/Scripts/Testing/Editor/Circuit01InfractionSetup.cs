@@ -57,9 +57,9 @@ namespace PrimerVolante.Testing.Editor
                 return false;
             }
 
-            // 2. Abrir la escena Circuit_01 si no está activa
-            Scene scene = SceneManager.GetActiveScene();
-            if (scene.name != "Circuit_01" && !scene.path.Contains("Circuit_01"))
+            // 2. Obtener la escena Circuit_01 si ya está cargada
+            Scene scene = SceneManager.GetSceneByName("Circuit_01");
+            if (!scene.IsValid() || !scene.isLoaded)
             {
                 scene = EditorSceneManager.OpenScene(TARGET_SCENE_PATH, OpenSceneMode.Single);
             }
@@ -223,8 +223,8 @@ namespace PrimerVolante.Testing.Editor
         [MenuItem("Tools/Primer Volante/Circuit 01/Verify Infractions in Circuit 01")]
         public static bool RunVerification()
         {
-            Scene scene = SceneManager.GetActiveScene();
-            if (scene.name != "Circuit_01" && !scene.path.Contains("Circuit_01"))
+            Scene scene = SceneManager.GetSceneByName("Circuit_01");
+            if (!scene.IsValid() || !scene.isLoaded)
             {
                 scene = EditorSceneManager.OpenScene(TARGET_SCENE_PATH, OpenSceneMode.Single);
             }
