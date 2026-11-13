@@ -65,6 +65,19 @@ namespace PrimerVolante.Testing.Editor
             Debug.Log("=================================================================");
         }
 
+        [MenuItem("Tools/Primer Volante/Circuit 01/Inspect All NPC Paths")]
+        public static void InspectAllNPCPaths()
+        {
+            var followers = UnityEngine.Object.FindObjectsByType<NPCPathFollower>(FindObjectsSortMode.None);
+            Debug.Log($"=== NPC PATH FOLLOWER INSPECTION ({followers.Length} followers found) ===");
+            foreach (var f in followers)
+            {
+                var pathName = f.Path != null ? f.Path.gameObject.name : "NULL";
+                var sceneName = f.gameObject.scene.name;
+                Debug.Log($"NPC: '{f.gameObject.name}' in Scene: '{sceneName}' -> Path: '{pathName}', CruiseSpeed: {f.CruiseSpeed}, Playing: {f.IsPlaying}");
+            }
+        }
+
         // ==============================================================================================
         // PASO 1: AUTOS ESTACIONADOS EN EL PLAYÓN INICIAL
         // ==============================================================================================
