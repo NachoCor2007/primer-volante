@@ -335,6 +335,8 @@ namespace PrimerVolante.Testing.Editor
             so.FindProperty("m_DriverSeat").objectReferenceValue = viewpoint.transform;
             so.FindProperty("m_FollowSeat").boolValue = true;
             so.FindProperty("m_CalibrationOffset").vector3Value = Vector3.zero;
+            // El menú no tiene asiento: el anclaje es fijo y lo guardado de la calibración no debe mover la vista.
+            so.FindProperty("m_UsePersistentCalibration").boolValue = false;
             so.ApplyModifiedProperties();
             follower.enabled = true;
             EditorUtility.SetDirty(follower);
