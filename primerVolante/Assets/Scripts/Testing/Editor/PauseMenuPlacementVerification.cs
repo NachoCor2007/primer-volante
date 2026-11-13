@@ -515,12 +515,10 @@ namespace PrimerVolante.Testing.Editor
                     rig.Head.rotation = Quaternion.Euler(15f, yaw, 0f);
                     rig.Head.position = rig.HeadPosition + new Vector3(yaw * 0.01f, 0f, 0.4f);
                     menu.OpenMenuWithNotice("test");
-                    Vector3 toMenu = menu.MenuRoot.transform.position - rig.Head.position;
-                    float angle = Vector3.SignedAngle(Flat(rig.Car.forward), Flat(toMenu), Vector3.up);
-                    Check(Mathf.Abs(angle - rig.YawOffset) <= YAW_TOLERANCE,
-                        $"MenuViewpoint (cabeza girada {yaw:F0}°): el menú queda a {rig.YawOffset:F0}° a la derecha de +Z (yaw = {angle:F1}°)");
+                    // rig.Car es MenuViewpoint: frente +Z, a 45° a la derecha, a la distancia y altura de los ojos, mirando a la cabeza.
+                    CheckStandardPose(rig, $"MenuViewpoint (cabeza girada {yaw:F0}°)");
                     Check(Vector3.Distance(menu.MenuRoot.transform.position, ExpectedPosition(rig)) < DISTANCE_TOLERANCE,
-                        $"MenuViewpoint (cabeza girada {yaw:F0}°): a {rig.Distance:F1} m de la cabeza, ignorando su orientación");
+                        $"MenuViewpoint (cabeza girada {yaw:F0}°): ignora la orientación de la cabeza");
                     menu.EndConnectionPause();
                 }
             }
