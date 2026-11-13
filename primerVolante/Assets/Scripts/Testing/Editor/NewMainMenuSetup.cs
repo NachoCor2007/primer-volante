@@ -338,25 +338,6 @@ namespace PrimerVolante.Testing.Editor
             so.ApplyModifiedProperties();
             follower.enabled = true;
             EditorUtility.SetDirty(follower);
-
-            // El menú de pausa de la escena (si ya existe) usa el asiento del follower como referencia de frente.
-            Scene scene = xrOriginObj.scene;
-            foreach (InGameMenuController menu in VerificationSceneUtil.AllInScene<InGameMenuController>(scene))
-            {
-                var soMenu = new SerializedObject(menu);
-                soMenu.Update();
-                soMenu.FindProperty("m_DriverSeatFollower").objectReferenceValue = follower;
-                soMenu.ApplyModifiedProperties();
-                EditorUtility.SetDirty(menu);
-            }
-            foreach (DriverViewCalibrationUI calibration in VerificationSceneUtil.AllInScene<DriverViewCalibrationUI>(scene))
-            {
-                var soCalibration = new SerializedObject(calibration);
-                soCalibration.Update();
-                soCalibration.FindProperty("m_DriverSeatFollower").objectReferenceValue = follower;
-                soCalibration.ApplyModifiedProperties();
-                EditorUtility.SetDirty(calibration);
-            }
             return follower;
         }
 
@@ -365,12 +346,11 @@ namespace PrimerVolante.Testing.Editor
         // ====================================================================
         private static void EnsureGroundPlatform()
         {
-            // 1. Collider de piso físico centrado en el origen (superficie superior en y = 0)
+            // 1. Collider de piso físico centrado en el origen (superficie superior en y = MENU_FLOOR_Y)
             GameObject ground = GameObject.Find("Ground_FallbackCollider");
             if (ground == null) ground = GameObject.Find("Ground_MainMenu");
             if (ground == null) ground = new GameObject("Ground_MainMenu");
             ground.name = "Ground_MainMenu";
-            ground.transform.position = new Vector3(0f, -0.5f, 0f);
             ground.transform.rotation = Quaternion.identity;
             ground.transform.localScale = Vector3.one;
 
@@ -378,6 +358,8 @@ namespace PrimerVolante.Testing.Editor
             if (box == null) box = ground.AddComponent<BoxCollider>();
             box.center = Vector3.zero;
             box.size = new Vector3(200f, 1f, 200f);
+            // La cara superior del collider queda en MENU_FLOOR_Y (el centro del collider está en el origen del objeto).
+            ground.transform.position = new Vector3(0f, MENU_FLOOR_Y - box.size.y * 0.5f, 0f);
             box.isTrigger = false;
             box.enabled = true;
             ground.layer = 0; // Default
