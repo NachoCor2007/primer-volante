@@ -10253,6 +10253,7 @@ MonoBehaviour:
   m_CalibrationOffset: {x: 0, y: 0, z: 0}
   m_CalibrationLimitsMin: {x: -0.25, y: -0.15, z: -0.25}
   m_CalibrationLimitsMax: {x: 0.25, y: 0.2, z: 0.25}
+  m_UsePersistentCalibration: 0
 --- !u!1 &1605045261
 GameObject:
   m_ObjectHideFlags: 0

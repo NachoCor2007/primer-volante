@@ -47,6 +47,9 @@ namespace PrimerVolante.VR
             if (m_LateralSlider != null) m_LateralSlider.onValueChanged.RemoveListener(OnLateralChanged);
             if (m_HeightSlider != null) m_HeightSlider.onValueChanged.RemoveListener(OnHeightChanged);
             if (m_DepthSlider != null) m_DepthSlider.onValueChanged.RemoveListener(OnDepthChanged);
+
+            // Al cerrar el panel se vuelca a disco lo que dejaron los sliders (Save solo marca pendiente; sin pendientes es no-op).
+            DriverViewCalibrationStore.Flush();
         }
 
         private void ConfigureSliderRanges()

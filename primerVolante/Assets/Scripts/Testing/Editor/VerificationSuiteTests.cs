@@ -45,6 +45,7 @@ namespace PrimerVolante.Testing.Editor
             yield return Suite("ObstacleCollision", ObstacleCollisionVerification.RunVerification);
             yield return Suite("PauseCabinInputBlock", PauseCabinInputBlockVerification.RunVerification);
             yield return Suite("PauseMenuPlacement", PauseMenuPlacementVerification.RunVerification);
+            yield return Suite("PersistentCalibration", PersistentCalibrationVerification.RunVerification);
             yield return Suite("ScriptedEvent", ScriptedEventTests.RunAllTests);
             yield return Suite("SideMirrorJoystick", SideMirrorJoystickVerification.RunVerification);
             yield return Suite("SoundIntegration", SoundIntegrationVerification.RunVerification);
