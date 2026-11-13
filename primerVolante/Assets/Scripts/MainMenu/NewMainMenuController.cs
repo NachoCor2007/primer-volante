@@ -156,6 +156,10 @@ namespace PrimerVolante.MainMenu
         public IReadOnlyList<CircuitDefinition> Circuits => m_Circuits;
         public Transform XROriginTransform => m_XROriginTransform;
 
+        // El follower coloca el rig solo si está habilitado, sigue su asiento y tiene un anclaje; si no, el rig se fija en cero.
+        private bool SeatFollowerPlacesRig =>
+            m_SeatFollower != null && m_SeatFollower.isActiveAndEnabled && m_SeatFollower.FollowSeat && m_SeatFollower.DriverSeat != null;
+
         public event Action<NewMenuTab> OnTabChanged;
         public event Action<int> OnLessonSelected;
         public event Action<int> OnCircuitSelected;
@@ -423,9 +427,9 @@ namespace PrimerVolante.MainMenu
 
         private void LateUpdate()
         {
-            // Con DriverSeatFollower el rig lo coloca el follower sobre su anclaje (MenuViewpoint), con la compensación de la pose
-            // de la cabeza; fijarlo acá en cero la pisaría y no habría dependencia del orden de ejecución entre scripts.
-            if (m_SeatFollower != null) return;
+            // Con un DriverSeatFollower que puede mover el rig, lo coloca él sobre su anclaje (MenuViewpoint), con la compensación de
+            // la pose de la cabeza; fijarlo acá en cero la pisaría y no habría dependencia del orden de ejecución entre scripts.
+            if (SeatFollowerPlacesRig) return;
 
             // Sin follower (fallback): garantizar que la base del visor se mantenga firmemente anclada al centro de la escena
             // sin caer al vacío por gravedad física ni derivar por controles de locomoción
@@ -465,7 +469,7 @@ namespace PrimerVolante.MainMenu
                 }
 
                 m_SeatFollower = m_XROriginTransform.GetComponent<DriverSeatFollower>();
-                if (m_SeatFollower != null)
+                if (SeatFollowerPlacesRig)
                 {
                     // El follower lleva el rig al anclaje del menú (MenuViewpoint) con la compensación de la cabeza.
                     m_SeatFollower.SnapToSeat();

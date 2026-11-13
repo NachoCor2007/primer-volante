@@ -133,6 +133,7 @@ namespace PrimerVolante.Testing.Editor
             VerifyPauseMenuConfiguration(rig);
             VerifyVRHeadPoseCompensation(rig);
             VerifyLockPlayerStationaryWithFollower(rig);
+            VerifyFallbackWhenFollowerCannotMoveRig(rig);
             VerifyFallbackWithoutFollower();
             VerifyDesktopMode(rig);
             VerifySetupIsIdempotent(scene);
@@ -276,6 +277,48 @@ namespace PrimerVolante.Testing.Editor
             }
         }
 
+        // Un follower que no puede mover el rig (deshabilitado, sin seguir el asiento o sin anclaje) no debe dejar el rig suelto:
+        // el controlador vuelve a fijarlo en (0, 0, 0).
+        private static void VerifyFallbackWhenFollowerCannotMoveRig(MenuRig rig)
+        {
+            DriverSeatFollower.SetVRActiveOverrideForTests(false);
+            rig.Controller.LockPlayerStationary(); // cachea el follower
+
+            void ExpectRigAtZero(string label)
+            {
+                rig.Origin.SetPositionAndRotation(new Vector3(3f, 1f, -2f), Quaternion.Euler(0f, 50f, 0f));
+                InvokeLateUpdate(rig.Controller);
+                Check(rig.Origin.position == Vector3.zero && rig.Origin.rotation == Quaternion.identity,
+                    $"{label}: el LateUpdate del controlador deja el rig en (0, 0, 0) con rotación identidad");
+
+                rig.Origin.SetPositionAndRotation(new Vector3(-4f, 2f, 5f), Quaternion.Euler(0f, 160f, 0f));
+                rig.Controller.LockPlayerStationary();
+                Check(rig.Origin.position == Vector3.zero && rig.Origin.rotation == Quaternion.identity,
+                    $"{label}: LockPlayerStationary deja el rig en (0, 0, 0) con rotación identidad");
+            }
+
+            rig.Follower.enabled = false;
+            ExpectRigAtZero("Follower deshabilitado");
+            rig.Follower.enabled = true;
+
+            rig.Follower.FollowSeat = false;
+            ExpectRigAtZero("Follower con FollowSeat = false");
+            rig.Follower.FollowSeat = true;
+
+            rig.Follower.SetDriverSeat(null, false);
+            ExpectRigAtZero("Follower sin DriverSeat (falta MenuViewpoint)");
+            rig.Follower.SetDriverSeat(rig.Viewpoint, true);
+
+            // Con el follower restablecido, el controlador vuelve a dejarle el rig.
+            rig.Origin.SetPositionAndRotation(new Vector3(8f, 0f, 8f), Quaternion.identity);
+            DriverSeatFollower.SetVRActiveOverrideForTests(true);
+            SetHeadPose(rig, new Vector3(0.3f, 1.6f, -0.4f), Quaternion.Euler(0f, 30f, 0f));
+            rig.Follower.RecenterHeadPose();
+            InvokeLateUpdate(rig.Controller);
+            Check(rig.Origin.position.sqrMagnitude > 1e-4f && HorizontalDistance(rig.Camera.position, rig.Viewpoint.position) < POSITION_TOLERANCE,
+                "Con el follower restablecido, el LateUpdate del controlador vuelve a no fijar el rig");
+        }
+
         private static void VerifyDesktopMode(MenuRig rig)
         {
             DriverSeatFollower.SetVRActiveOverrideForTests(false);
@@ -287,11 +330,18 @@ namespace PrimerVolante.Testing.Editor
 
             Check(Vector3.Distance(rig.Origin.position, rig.Viewpoint.position) < 1e-4f && Quaternion.Angle(rig.Origin.rotation, rig.Viewpoint.rotation) < 1e-3f,
                 "Escritorio: el rig queda en MenuViewpoint con su rotación, sin compensación");
-            Check(Mathf.Abs(rig.CameraOffset.localPosition.y - 1.36f) < 0.01f,
-                $"Escritorio: el Camera Offset queda en y = 1,36 (actual: {rig.CameraOffset.localPosition.y:F4})");
-            Check(Vector3.Distance(rig.Camera.position, new Vector3(0f, rig.CameraOffset.localPosition.y, 0f)) < 1e-3f
+
+            // Misma regla que el follower: CameraYOffset, o 1,36144 si vale menos de 0,001.
+            float cameraYOffset = rig.OriginObject.GetComponent<XROrigin>().CameraYOffset;
+            float expectedHeight = cameraYOffset > 0.001f ? cameraYOffset : 1.36144f;
+            Check(Mathf.Abs(rig.CameraOffset.localPosition.y - expectedHeight) < 1e-3f,
+                $"Escritorio: el Camera Offset queda en la altura de los ojos {expectedHeight:F4} (actual: {rig.CameraOffset.localPosition.y:F4})");
+
+            // El mirar con mouse o gamepad rota el Camera Offset: se descarta esa rotación para no depender de la entrada.
+            rig.CameraOffset.localRotation = Quaternion.identity;
+            Check(Vector3.Distance(rig.Camera.position, new Vector3(0f, expectedHeight, 0f)) < 1e-3f
                     && Vector3.Angle(HorizontalForward(rig.Camera), Vector3.forward) < ANGLE_TOLERANCE,
-                "Escritorio: la cámara queda en (0, 1,36, 0) mirando a +Z, como antes");
+                $"Escritorio: la cámara queda en (0, {expectedHeight:F2}, 0) mirando a +Z, como antes");
         }
 
         // Correr el setup dos veces sobre la copia no duplica MenuViewpoint ni el follower, y deja el menú de pausa enlazado.
