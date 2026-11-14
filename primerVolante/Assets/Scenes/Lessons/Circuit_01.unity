@@ -757,6 +757,81 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9c0ae4980b4e6694a8e03a4119ce0fdd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.VR.VehicleController
+--- !u!1 &47808966
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 47808967}
+  - component: {fileID: 47808969}
+  - component: {fileID: 47808968}
+  m_Layer: 0
+  m_Name: StopLine_Avenue0_Z120
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &47808967
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 47808966}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 3.75, y: 1, z: 112.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1222116003}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &47808968
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 47808966}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2426f400a0b6ede4eb5d79f8b26d537f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.RedLightViolationDetector
+  m_TrafficLight: {fileID: 0}
+  m_TrafficLightName: Props_Traffic Signal_big (37)
+  m_VehicleTag: 
+  m_CheckVehicleController: 1
+  m_CooldownDuration: 3
+  m_LogEvents: 0
+  onViolationDetectedEvent:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!65 &47808969
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 47808966}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 7.5, y: 2, z: 0.8}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &56336693
 GameObject:
   m_ObjectHideFlags: 0
@@ -867,7 +942,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 56336693}
-  m_Mesh: {fileID: 1071388104}
+  m_Mesh: {fileID: 116556515}
 --- !u!1001 &73273473
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -982,6 +1057,81 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1 &98907776
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 98907777}
+  - component: {fileID: 98907779}
+  - component: {fileID: 98907778}
+  m_Layer: 0
+  m_Name: StopLine_Street60_X0
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &98907777
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 98907776}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 7.5, y: 1, z: 63.75}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1222116003}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &98907778
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 98907776}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2426f400a0b6ede4eb5d79f8b26d537f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.RedLightViolationDetector
+  m_TrafficLight: {fileID: 0}
+  m_TrafficLightName: Props_Traffic Signal_big (1)
+  m_VehicleTag: 
+  m_CheckVehicleController: 1
+  m_CooldownDuration: 3
+  m_LogEvents: 0
+  onViolationDetectedEvent:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!65 &98907779
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 98907776}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.8, y: 2, z: 7.5}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1001 &107288707
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1181,6 +1331,185 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 115578162}
   m_CullTransparentMesh: 1
+--- !u!43 &116556515
+Mesh:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: ParkingAuraPerimeter_Mesh
+  serializedVersion: 12
+  m_SubMeshes:
+  - serializedVersion: 2
+    firstByte: 0
+    indexCount: 144
+    topology: 0
+    baseVertex: 0
+    firstVertex: 0
+    vertexCount: 48
+    localAABB:
+      m_Center: {x: 0, y: 0.32, z: 0}
+      m_Extent: {x: 1.62, y: 0.3, z: 3.12}
+  m_Shapes:
+    vertices: []
+    shapes: []
+    channels: []
+    fullWeights: []
+  m_BindPose: []
+  m_BoneNameHashes: 
+  m_RootBoneNameHash: 0
+  m_BonesAABB: []
+  m_VariableBoneCountWeights:
+    m_Data: 
+  m_MeshCompression: 0
+  m_IsReadable: 1
+  m_KeepVertices: 0
+  m_KeepIndices: 0
+  m_IndexFormat: 0
+  m_IndexBuffer: 00000200010002000300010000000100020002000100030004000600050006000700050004000500060006000500070008000a0009000a000b000900080009000a000a0009000b000c000e000d000e000f000d000c000d000e000e000d000f0010001200110012001300110010001100120012001100130014001600150016001700150014001500160016001500170018001a0019001a001b001900180019001a001a0019001b001c001e001d001e001f001d001c001d001e001e001d001f0020002200210022002300210020002100220022002100230024002600250026002700250024002500260026002500270028002a0029002a002b002900280029002a002a0029002b002c002e002d002e002f002d002c002d002e002e002d002f00y
+  m_VertexData:
+    serializedVersion: 3
+    m_VertexCount: 48
+    m_Channels:
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 3
+    - stream: 0
+      offset: 12
+      format: 0
+      dimension: 3
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 24
+      format: 0
+      dimension: 2
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    m_DataSize: 1536
+    _typelessdata: 0000c0bf0ad7a33c000040c000000000000000000000000000000000000000000000c0bf0ad7a33c000040400000000000000000000000000000803f000000000000c0bf52b81e3f000040c0000000000000000000000000000000000000803f0000c0bf52b81e3f000040400000000000000000000000000000803f0000803f0000c0bf0ad7a33c0000404000000000000000000000000000000000000000000000c03f0ad7a33c000040400000000000000000000000000000803f000000000000c0bf52b81e3f00004040000000000000000000000000000000000000803f0000c03f52b81e3f000040400000000000000000000000000000803f0000803f0000c03f0ad7a33c0000404000000000000000000000000000000000000000000000c03f0ad7a33c000040c00000000000000000000000000000803f000000000000c03f52b81e3f00004040000000000000000000000000000000000000803f0000c03f52b81e3f000040c00000000000000000000000000000803f0000803f0000c03f0ad7a33c000040c000000000000000000000000000000000000000000000c0bf0ad7a33c000040c00000000000000000000000000000803f000000000000c03f52b81e3f000040c0000000000000000000000000000000000000803f0000c0bf52b81e3f000040c00000000000000000000000000000803f0000803f295ccfbf0ad7a33c000040c00000000000000000000000000000000000000000d7a3b0bf0ad7a33c000040c00000000000000000000000000000803f00000000295ccfbf52b81e3f000040c0000000000000000000000000000000000000803fd7a3b0bf52b81e3f000040c00000000000000000000000000000803f0000803f0000c0bf0ad7a33c14ae47c000000000000000000000000000000000000000000000c0bf0ad7a33cec5138c00000000000000000000000000000803f000000000000c0bf52b81e3f14ae47c0000000000000000000000000000000000000803f0000c0bf52b81e3fec5138c00000000000000000000000000000803f0000803f295ccfbf0ad7a33c000040400000000000000000000000000000000000000000d7a3b0bf0ad7a33c000040400000000000000000000000000000803f00000000295ccfbf52b81e3f00004040000000000000000000000000000000000000803fd7a3b0bf52b81e3f000040400000000000000000000000000000803f0000803f0000c0bf0ad7a33cec51384000000000000000000000000000000000000000000000c0bf0ad7a33c14ae47400000000000000000000000000000803f000000000000c0bf52b81e3fec513840000000000000000000000000000000000000803f0000c0bf52b81e3f14ae47400000000000000000000000000000803f0000803fd7a3b03f0ad7a33c000040400000000000000000000000000000000000000000295ccf3f0ad7a33c000040400000000000000000000000000000803f00000000d7a3b03f52b81e3f00004040000000000000000000000000000000000000803f295ccf3f52b81e3f000040400000000000000000000000000000803f0000803f0000c03f0ad7a33cec51384000000000000000000000000000000000000000000000c03f0ad7a33c14ae47400000000000000000000000000000803f000000000000c03f52b81e3fec513840000000000000000000000000000000000000803f0000c03f52b81e3f14ae47400000000000000000000000000000803f0000803fd7a3b03f0ad7a33c000040c00000000000000000000000000000000000000000295ccf3f0ad7a33c000040c00000000000000000000000000000803f00000000d7a3b03f52b81e3f000040c0000000000000000000000000000000000000803f295ccf3f52b81e3f000040c00000000000000000000000000000803f0000803f0000c03f0ad7a33c14ae47c000000000000000000000000000000000000000000000c03f0ad7a33cec5138c00000000000000000000000000000803f000000000000c03f52b81e3f14ae47c0000000000000000000000000000000000000803f0000c03f52b81e3fec5138c00000000000000000000000000000803f0000803f
+  m_CompressedMesh:
+    m_Vertices:
+      m_NumItems: 0
+      m_Range: 0
+      m_Start: 0
+      m_Data: 
+      m_BitSize: 0
+    m_UV:
+      m_NumItems: 0
+      m_Range: 0
+      m_Start: 0
+      m_Data: 
+      m_BitSize: 0
+    m_Normals:
+      m_NumItems: 0
+      m_Range: 0
+      m_Start: 0
+      m_Data: 
+      m_BitSize: 0
+    m_Tangents:
+      m_NumItems: 0
+      m_Range: 0
+      m_Start: 0
+      m_Data: 
+      m_BitSize: 0
+    m_Weights:
+      m_NumItems: 0
+      m_Data: 
+      m_BitSize: 0
+    m_NormalSigns:
+      m_NumItems: 0
+      m_Data: 
+      m_BitSize: 0
+    m_TangentSigns:
+      m_NumItems: 0
+      m_Data: 
+      m_BitSize: 0
+    m_FloatColors:
+      m_NumItems: 0
+      m_Range: 0
+      m_Start: 0
+      m_Data: 
+      m_BitSize: 0
+    m_BoneIndices:
+      m_NumItems: 0
+      m_Data: 
+      m_BitSize: 0
+    m_Triangles:
+      m_NumItems: 0
+      m_Data: 
+      m_BitSize: 0
+    m_UVInfo: 0
+  m_LocalAABB:
+    m_Center: {x: 0, y: 0.32, z: 0}
+    m_Extent: {x: 1.62, y: 0.3, z: 3.12}
+  m_CookingOptions: 30
+  m_PreBakeConvexCollisionMesh: 0
+  m_PreBakeTriangleCollisionMesh: 0
+  m_BakedConvexCollisionMesh: 
+  m_BakedTriangleCollisionMesh: 
+  'm_MeshMetrics[0]': 1
+  'm_MeshMetrics[1]': 1
+  m_MeshOptimizationFlags: 1
+  m_StreamData:
+    serializedVersion: 2
+    offset: 0
+    size: 0
+    path: 
+  m_MeshLodInfo:
+    serializedVersion: 2
+    m_LodSelectionCurve:
+      serializedVersion: 1
+      m_LodSlope: 0
+      m_LodBias: 0
+    m_NumLevels: 1
+    m_SubMeshes:
+    - serializedVersion: 2
+      m_Levels:
+      - serializedVersion: 1
+        m_IndexStart: 0
+        m_IndexCount: 0
 --- !u!1 &117017031
 GameObject:
   m_ObjectHideFlags: 0
@@ -2495,6 +2824,81 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 400000, guid: 52f3bf47c9c62af4588469ff668b805c, type: 3}
   m_PrefabInstance: {fileID: 235426693}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &244606189
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 244606190}
+  - component: {fileID: 244606192}
+  - component: {fileID: 244606191}
+  m_Layer: 0
+  m_Name: StopLine_Street160_X120
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &244606190
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 244606189}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 112.5, y: 1, z: 156.25}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1222116003}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &244606191
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 244606189}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2426f400a0b6ede4eb5d79f8b26d537f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.RedLightViolationDetector
+  m_TrafficLight: {fileID: 0}
+  m_TrafficLightName: Props_Traffic Signal_big (46)
+  m_VehicleTag: 
+  m_CheckVehicleController: 1
+  m_CooldownDuration: 3
+  m_LogEvents: 0
+  onViolationDetectedEvent:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!65 &244606192
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 244606189}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.8, y: 2, z: 7.5}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &258942769
 GameObject:
   m_ObjectHideFlags: 0
@@ -6018,6 +6422,81 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &679184861
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 679184862}
+  - component: {fileID: 679184864}
+  - component: {fileID: 679184863}
+  m_Layer: 0
+  m_Name: StopLine_Street60_X60
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &679184862
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 679184861}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 67.5, y: 1, z: 63.75}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1222116003}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &679184863
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 679184861}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2426f400a0b6ede4eb5d79f8b26d537f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.RedLightViolationDetector
+  m_TrafficLight: {fileID: 0}
+  m_TrafficLightName: Props_Traffic Signal_big (4)
+  m_VehicleTag: 
+  m_CheckVehicleController: 1
+  m_CooldownDuration: 3
+  m_LogEvents: 0
+  onViolationDetectedEvent:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!65 &679184864
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 679184861}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.8, y: 2, z: 7.5}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &686530649 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1717954561962503725, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
@@ -6368,6 +6847,81 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 709559260}
   m_CullTransparentMesh: 1
+--- !u!1 &722920149
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 722920150}
+  - component: {fileID: 722920152}
+  - component: {fileID: 722920151}
+  m_Layer: 0
+  m_Name: StopLine_Street0_X120
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &722920150
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 722920149}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 127.5, y: 1, z: 3.75}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1222116003}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &722920151
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 722920149}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2426f400a0b6ede4eb5d79f8b26d537f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.RedLightViolationDetector
+  m_TrafficLight: {fileID: 0}
+  m_TrafficLightName: Props_Traffic Signal_small (3)
+  m_VehicleTag: 
+  m_CheckVehicleController: 1
+  m_CooldownDuration: 3
+  m_LogEvents: 0
+  onViolationDetectedEvent:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!65 &722920152
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 722920149}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.8, y: 2, z: 7.5}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &743209004
 GameObject:
   m_ObjectHideFlags: 0
@@ -6558,7 +7112,6 @@ Transform:
   m_Children:
   - {fileID: 1143839841}
   - {fileID: 25379163}
-  - {fileID: 1623433382}
   - {fileID: 1043993873}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -8649,6 +9202,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.Circuit01PedestrianCrossingEvent
   m_TrafficLight: {fileID: 0}
+  m_TrafficLightName: Props_Traffic Signal_big (8)
   m_Pedestrian: {fileID: 25379162}
   m_RedLightDetector: {fileID: 1623433380}
   m_PedestrianStartDelay: 1
@@ -9092,185 +9646,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 25a07ef133a37d140a87cdf1f1c75fdf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!43 &1071388104
-Mesh:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: ParkingAuraPerimeter_Mesh
-  serializedVersion: 12
-  m_SubMeshes:
-  - serializedVersion: 2
-    firstByte: 0
-    indexCount: 144
-    topology: 0
-    baseVertex: 0
-    firstVertex: 0
-    vertexCount: 48
-    localAABB:
-      m_Center: {x: 0, y: 0.32, z: 0}
-      m_Extent: {x: 1.62, y: 0.3, z: 3.12}
-  m_Shapes:
-    vertices: []
-    shapes: []
-    channels: []
-    fullWeights: []
-  m_BindPose: []
-  m_BoneNameHashes: 
-  m_RootBoneNameHash: 0
-  m_BonesAABB: []
-  m_VariableBoneCountWeights:
-    m_Data: 
-  m_MeshCompression: 0
-  m_IsReadable: 1
-  m_KeepVertices: 0
-  m_KeepIndices: 0
-  m_IndexFormat: 0
-  m_IndexBuffer: 00000200010002000300010000000100020002000100030004000600050006000700050004000500060006000500070008000a0009000a000b000900080009000a000a0009000b000c000e000d000e000f000d000c000d000e000e000d000f0010001200110012001300110010001100120012001100130014001600150016001700150014001500160016001500170018001a0019001a001b001900180019001a001a0019001b001c001e001d001e001f001d001c001d001e001e001d001f0020002200210022002300210020002100220022002100230024002600250026002700250024002500260026002500270028002a0029002a002b002900280029002a002a0029002b002c002e002d002e002f002d002c002d002e002e002d002f00y
-  m_VertexData:
-    serializedVersion: 3
-    m_VertexCount: 48
-    m_Channels:
-    - stream: 0
-      offset: 0
-      format: 0
-      dimension: 3
-    - stream: 0
-      offset: 12
-      format: 0
-      dimension: 3
-    - stream: 0
-      offset: 0
-      format: 0
-      dimension: 0
-    - stream: 0
-      offset: 0
-      format: 0
-      dimension: 0
-    - stream: 0
-      offset: 24
-      format: 0
-      dimension: 2
-    - stream: 0
-      offset: 0
-      format: 0
-      dimension: 0
-    - stream: 0
-      offset: 0
-      format: 0
-      dimension: 0
-    - stream: 0
-      offset: 0
-      format: 0
-      dimension: 0
-    - stream: 0
-      offset: 0
-      format: 0
-      dimension: 0
-    - stream: 0
-      offset: 0
-      format: 0
-      dimension: 0
-    - stream: 0
-      offset: 0
-      format: 0
-      dimension: 0
-    - stream: 0
-      offset: 0
-      format: 0
-      dimension: 0
-    - stream: 0
-      offset: 0
-      format: 0
-      dimension: 0
-    - stream: 0
-      offset: 0
-      format: 0
-      dimension: 0
-    m_DataSize: 1536
-    _typelessdata: 0000c0bf0ad7a33c000040c000000000000000000000000000000000000000000000c0bf0ad7a33c000040400000000000000000000000000000803f000000000000c0bf52b81e3f000040c0000000000000000000000000000000000000803f0000c0bf52b81e3f000040400000000000000000000000000000803f0000803f0000c0bf0ad7a33c0000404000000000000000000000000000000000000000000000c03f0ad7a33c000040400000000000000000000000000000803f000000000000c0bf52b81e3f00004040000000000000000000000000000000000000803f0000c03f52b81e3f000040400000000000000000000000000000803f0000803f0000c03f0ad7a33c0000404000000000000000000000000000000000000000000000c03f0ad7a33c000040c00000000000000000000000000000803f000000000000c03f52b81e3f00004040000000000000000000000000000000000000803f0000c03f52b81e3f000040c00000000000000000000000000000803f0000803f0000c03f0ad7a33c000040c000000000000000000000000000000000000000000000c0bf0ad7a33c000040c00000000000000000000000000000803f000000000000c03f52b81e3f000040c0000000000000000000000000000000000000803f0000c0bf52b81e3f000040c00000000000000000000000000000803f0000803f295ccfbf0ad7a33c000040c00000000000000000000000000000000000000000d7a3b0bf0ad7a33c000040c00000000000000000000000000000803f00000000295ccfbf52b81e3f000040c0000000000000000000000000000000000000803fd7a3b0bf52b81e3f000040c00000000000000000000000000000803f0000803f0000c0bf0ad7a33c14ae47c000000000000000000000000000000000000000000000c0bf0ad7a33cec5138c00000000000000000000000000000803f000000000000c0bf52b81e3f14ae47c0000000000000000000000000000000000000803f0000c0bf52b81e3fec5138c00000000000000000000000000000803f0000803f295ccfbf0ad7a33c000040400000000000000000000000000000000000000000d7a3b0bf0ad7a33c000040400000000000000000000000000000803f00000000295ccfbf52b81e3f00004040000000000000000000000000000000000000803fd7a3b0bf52b81e3f000040400000000000000000000000000000803f0000803f0000c0bf0ad7a33cec51384000000000000000000000000000000000000000000000c0bf0ad7a33c14ae47400000000000000000000000000000803f000000000000c0bf52b81e3fec513840000000000000000000000000000000000000803f0000c0bf52b81e3f14ae47400000000000000000000000000000803f0000803fd7a3b03f0ad7a33c000040400000000000000000000000000000000000000000295ccf3f0ad7a33c000040400000000000000000000000000000803f00000000d7a3b03f52b81e3f00004040000000000000000000000000000000000000803f295ccf3f52b81e3f000040400000000000000000000000000000803f0000803f0000c03f0ad7a33cec51384000000000000000000000000000000000000000000000c03f0ad7a33c14ae47400000000000000000000000000000803f000000000000c03f52b81e3fec513840000000000000000000000000000000000000803f0000c03f52b81e3f14ae47400000000000000000000000000000803f0000803fd7a3b03f0ad7a33c000040c00000000000000000000000000000000000000000295ccf3f0ad7a33c000040c00000000000000000000000000000803f00000000d7a3b03f52b81e3f000040c0000000000000000000000000000000000000803f295ccf3f52b81e3f000040c00000000000000000000000000000803f0000803f0000c03f0ad7a33c14ae47c000000000000000000000000000000000000000000000c03f0ad7a33cec5138c00000000000000000000000000000803f000000000000c03f52b81e3f14ae47c0000000000000000000000000000000000000803f0000c03f52b81e3fec5138c00000000000000000000000000000803f0000803f
-  m_CompressedMesh:
-    m_Vertices:
-      m_NumItems: 0
-      m_Range: 0
-      m_Start: 0
-      m_Data: 
-      m_BitSize: 0
-    m_UV:
-      m_NumItems: 0
-      m_Range: 0
-      m_Start: 0
-      m_Data: 
-      m_BitSize: 0
-    m_Normals:
-      m_NumItems: 0
-      m_Range: 0
-      m_Start: 0
-      m_Data: 
-      m_BitSize: 0
-    m_Tangents:
-      m_NumItems: 0
-      m_Range: 0
-      m_Start: 0
-      m_Data: 
-      m_BitSize: 0
-    m_Weights:
-      m_NumItems: 0
-      m_Data: 
-      m_BitSize: 0
-    m_NormalSigns:
-      m_NumItems: 0
-      m_Data: 
-      m_BitSize: 0
-    m_TangentSigns:
-      m_NumItems: 0
-      m_Data: 
-      m_BitSize: 0
-    m_FloatColors:
-      m_NumItems: 0
-      m_Range: 0
-      m_Start: 0
-      m_Data: 
-      m_BitSize: 0
-    m_BoneIndices:
-      m_NumItems: 0
-      m_Data: 
-      m_BitSize: 0
-    m_Triangles:
-      m_NumItems: 0
-      m_Data: 
-      m_BitSize: 0
-    m_UVInfo: 0
-  m_LocalAABB:
-    m_Center: {x: 0, y: 0.32, z: 0}
-    m_Extent: {x: 1.62, y: 0.3, z: 3.12}
-  m_CookingOptions: 30
-  m_PreBakeConvexCollisionMesh: 0
-  m_PreBakeTriangleCollisionMesh: 0
-  m_BakedConvexCollisionMesh: 
-  m_BakedTriangleCollisionMesh: 
-  'm_MeshMetrics[0]': 1
-  'm_MeshMetrics[1]': 1
-  m_MeshOptimizationFlags: 1
-  m_StreamData:
-    serializedVersion: 2
-    offset: 0
-    size: 0
-    path: 
-  m_MeshLodInfo:
-    serializedVersion: 2
-    m_LodSelectionCurve:
-      serializedVersion: 1
-      m_LodSlope: 0
-      m_LodBias: 0
-    m_NumLevels: 1
-    m_SubMeshes:
-    - serializedVersion: 2
-      m_Levels:
-      - serializedVersion: 1
-        m_IndexStart: 0
-        m_IndexCount: 0
 --- !u!1 &1081319479
 GameObject:
   m_ObjectHideFlags: 0
@@ -10630,6 +11005,46 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 400000, guid: 52f3bf47c9c62af4588469ff668b805c, type: 3}
   m_PrefabInstance: {fileID: 1221601987}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1222116002
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1222116003}
+  m_Layer: 0
+  m_Name: Traffic_StopLines
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1222116003
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1222116002}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1696005854}
+  - {fileID: 1703907777}
+  - {fileID: 722920150}
+  - {fileID: 1623433382}
+  - {fileID: 679184862}
+  - {fileID: 98907777}
+  - {fileID: 47808967}
+  - {fileID: 1445640328}
+  - {fileID: 244606190}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1232994126
 GameObject:
   m_ObjectHideFlags: 0
@@ -12795,6 +13210,81 @@ MonoBehaviour:
   m_ConfirmButton: {fileID: 1476769065}
   m_ConfirmButtonLabel: {fileID: 1350363787}
   m_CancelButton: {fileID: 915156490}
+--- !u!1 &1445640327
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1445640328}
+  - component: {fileID: 1445640330}
+  - component: {fileID: 1445640329}
+  m_Layer: 0
+  m_Name: StopLine_Avenue0_Z160
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1445640328
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1445640327}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 3.75, y: 1, z: 152.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1222116003}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1445640329
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1445640327}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2426f400a0b6ede4eb5d79f8b26d537f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.RedLightViolationDetector
+  m_TrafficLight: {fileID: 0}
+  m_TrafficLightName: Props_Traffic Signal_big (40)
+  m_VehicleTag: 
+  m_CheckVehicleController: 1
+  m_CooldownDuration: 3
+  m_LogEvents: 0
+  onViolationDetectedEvent:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!65 &1445640330
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1445640327}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 7.5, y: 2, z: 0.8}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &1459807219
 GameObject:
   m_ObjectHideFlags: 0
@@ -14656,6 +15146,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.RedLightViolationDetector
   m_TrafficLight: {fileID: 0}
+  m_TrafficLightName: Props_Traffic Signal_big (8)
   m_VehicleTag: 
   m_CheckVehicleController: 1
   m_CooldownDuration: 3
@@ -14682,7 +15173,7 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 7.5, y: 2, z: 0.5}
+  m_Size: {x: 7.5, y: 2, z: 0.8}
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!4 &1623433382
 Transform:
@@ -14692,12 +15183,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1623433379}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 123.5, y: 0.05, z: 51.5}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 123.75, y: 1, z: 51.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 849289922}
+  m_Father: {fileID: 1222116003}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1628643673
 GameObject:
@@ -15377,6 +15868,81 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1677870188}
   m_CullTransparentMesh: 1
+--- !u!1 &1696005853
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1696005854}
+  - component: {fileID: 1696005856}
+  - component: {fileID: 1696005855}
+  m_Layer: 0
+  m_Name: StopLine_Avenue240_Z60
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1696005854
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1696005853}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 236.25, y: 1, z: 67.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1222116003}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1696005855
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1696005853}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2426f400a0b6ede4eb5d79f8b26d537f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.RedLightViolationDetector
+  m_TrafficLight: {fileID: 0}
+  m_TrafficLightName: Props_Traffic Signal_big (16)
+  m_VehicleTag: 
+  m_CheckVehicleController: 1
+  m_CooldownDuration: 3
+  m_LogEvents: 0
+  onViolationDetectedEvent:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!65 &1696005856
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1696005853}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 7.5, y: 2, z: 0.8}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!28 &1697490610
 Texture2D:
   m_ObjectHideFlags: 0
@@ -15423,6 +15989,81 @@ Texture2D:
     offset: 0
     size: 0
     path: 
+--- !u!1 &1703907776
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1703907777}
+  - component: {fileID: 1703907779}
+  - component: {fileID: 1703907778}
+  m_Layer: 0
+  m_Name: StopLine_Street0_X180
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1703907777
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1703907776}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 187.5, y: 1, z: 3.75}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1222116003}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1703907778
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1703907776}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2426f400a0b6ede4eb5d79f8b26d537f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Environment.RedLightViolationDetector
+  m_TrafficLight: {fileID: 0}
+  m_TrafficLightName: Props_Traffic Signal_small (8)
+  m_VehicleTag: 
+  m_CheckVehicleController: 1
+  m_CooldownDuration: 3
+  m_LogEvents: 0
+  onViolationDetectedEvent:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!65 &1703907779
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1703907776}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.8, y: 2, z: 7.5}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &1704015169
 GameObject:
   m_ObjectHideFlags: 0
@@ -26942,3 +27583,4 @@ SceneRoots:
   - {fileID: 877652959}
   - {fileID: 258942770}
   - {fileID: 849289922}
+  - {fileID: 1222116003}

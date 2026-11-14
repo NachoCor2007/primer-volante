@@ -143,14 +143,17 @@ namespace PrimerVolante.Testing.Editor
             EnsureStartParkingExemptZone(scene, laneLayer);
             EnsureFinishParkingExemptZone(scene, laneLayer);
 
-            // 6. Verificar y asegurar feedback diegético en Car09
+            // 6. Configurar Líneas de Detención y Detectores de Semáforo en Rojo (RedLightViolationDetector)
+            Circuit01TrafficStopLineSetup.SetupStopLines();
+
+            // 7. Verificar y asegurar feedback diegético en Car09
             DashboardUIController dash = car09.GetComponentInChildren<DashboardUIController>(true);
             ConsoleAlertDisplay alertDisplay = car09.GetComponentInChildren<ConsoleAlertDisplay>(true);
             VehicleInfractionAudio audio = car09.GetComponentInChildren<VehicleInfractionAudio>(true);
 
             Debug.Log($"[Circuit01InfractionSetup] ℹ️ Feedback Diegético: DashboardUIController={dash != null}, ConsoleAlertDisplay={alertDisplay != null}, VehicleInfractionAudio={audio != null}");
 
-            // 7. Guardar cambios
+            // 8. Guardar cambios
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
 
@@ -295,7 +298,13 @@ namespace PrimerVolante.Testing.Editor
                 if (finishExempt.GetComponent<TurnSignalExemptZone>() == null) failures.Add("Zona exenta de llegada sin TurnSignalExemptZone.");
             }
 
-            // 4. Reporte
+            // 4. Líneas de detención de semáforo
+            if (!Circuit01TrafficStopLineSetup.VerifyStopLines())
+            {
+                failures.Add("Falló la verificación de las líneas de detención de semáforo (RedLightViolationDetector).");
+            }
+
+            // 5. Reporte
             if (failures.Count > 0)
             {
                 Debug.LogError($"[Circuit01InfractionSetup] ❌ Verificación falló con {failures.Count} errores:\n - " + string.Join("\n - ", failures));
