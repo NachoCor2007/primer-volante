@@ -278,9 +278,14 @@ namespace PrimerVolante.Testing.Editor
 
             startZone = startObj.GetComponent<ParkingZoneTrigger>();
             if (startZone == null) startZone = startObj.AddComponent<ParkingZoneTrigger>();
-            startZone.MaxAllowedSpeedKmh = 1.5f;
-            startZone.MaxAllowedHeadingAngle = 30f;
-            startZone.RequireSecurePark = false;
+            var soStart = new SerializedObject(startZone);
+            SerializedProperty propStartType = soStart.FindProperty("m_StationType");
+            if (propStartType != null) propStartType.enumValueIndex = (int)ParkingStationType.ParallelRight;
+            SerializedProperty propStartSpeed = soStart.FindProperty("m_MaxStopSpeedKmh");
+            if (propStartSpeed != null) propStartSpeed.floatValue = 1.5f;
+            SerializedProperty propStartAngle = soStart.FindProperty("m_MaxAlignmentAngleDeg");
+            if (propStartAngle != null) propStartAngle.floatValue = 30f;
+            soStart.ApplyModifiedProperties();
 
             startHighlight = EnsureGroundVisual(startObj.transform, "GroundVisual_StartYellow", new Vector3(4.0f, 6.0f, 1f), yellowMat);
 
@@ -303,9 +308,14 @@ namespace PrimerVolante.Testing.Editor
 
             forwardZone = forwardObj.GetComponent<ParkingZoneTrigger>();
             if (forwardZone == null) forwardZone = forwardObj.AddComponent<ParkingZoneTrigger>();
-            forwardZone.MaxAllowedSpeedKmh = 1.5f;
-            forwardZone.MaxAllowedHeadingAngle = 35f;
-            forwardZone.RequireSecurePark = false;
+            var soForward = new SerializedObject(forwardZone);
+            SerializedProperty propForwardType = soForward.FindProperty("m_StationType");
+            if (propForwardType != null) propForwardType.enumValueIndex = (int)ParkingStationType.ParallelRight;
+            SerializedProperty propForwardSpeed = soForward.FindProperty("m_MaxStopSpeedKmh");
+            if (propForwardSpeed != null) propForwardSpeed.floatValue = 1.5f;
+            SerializedProperty propForwardAngle = soForward.FindProperty("m_MaxAlignmentAngleDeg");
+            if (propForwardAngle != null) propForwardAngle.floatValue = 35f;
+            soForward.ApplyModifiedProperties();
 
             forwardHighlight = EnsureGroundVisual(forwardObj.transform, "GroundVisual_ForwardYellow", new Vector3(4.2f, 6.0f, 1f), yellowMat);
 
