@@ -21,8 +21,46 @@ namespace PrimerVolante.Testing.Editor
     /// - Ensambla el Lesson07BarrierManeuversController en la escena.
     /// - Cumple estrictamente la regla de cero APIs obsoletas (AGENTS.md).
     /// </summary>
+    [InitializeOnLoad]
     public static class Lesson07BarrierManeuversSetup
     {
+        static Lesson07BarrierManeuversSetup()
+        {
+            EditorApplication.delayCall += AutoSetupIfMissing;
+            EditorSceneManager.sceneOpened += HandleSceneOpened;
+            EditorApplication.playModeStateChanged += HandlePlayModeStateChanged;
+        }
+
+        private static void HandlePlayModeStateChanged(PlayModeStateChange state)
+        {
+            if (state == PlayModeStateChange.EnteredEditMode)
+            {
+                EditorApplication.delayCall += AutoSetupIfMissing;
+            }
+        }
+
+        private static void HandleSceneOpened(Scene scene, OpenSceneMode mode)
+        {
+            if (scene.IsValid() && scene.path == TARGET_SCENE_PATH)
+            {
+                AutoSetupIfMissing();
+            }
+        }
+
+        private static void AutoSetupIfMissing()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode) return;
+
+            Scene scene = SceneManager.GetActiveScene();
+            if (scene.IsValid() && scene.path == TARGET_SCENE_PATH)
+            {
+                if (GameObject.Find(SLALOM_ROOT_NAME) == null)
+                {
+                    Debug.Log("[Lesson07BarrierManeuversSetup] 🔄 Auto-ejecutando SetupLesson07() en escena activa...");
+                    SetupLesson07();
+                }
+            }
+        }
         public const string ORIGINAL_SCENE_PATH = "Assets/Scenes/Lessons/Lesson_01_BasicDriving.unity";
         public const string TARGET_SCENE_DIR = "Assets/Scenes/Lessons";
         public const string TARGET_SCENE_PATH = "Assets/Scenes/Lessons/Lesson_07_BarrierManeuvers.unity";

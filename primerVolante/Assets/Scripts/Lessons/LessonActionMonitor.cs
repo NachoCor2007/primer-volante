@@ -484,10 +484,14 @@ namespace PrimerVolante.Lessons
                     return false;
 
                 case LessonActionType.ShiftToDrive:
-                    return m_VehicleController != null && (m_VehicleController.CurrentGear == GearState.Drive || m_VehicleController.CurrentGear == GearState.D);
+                    return m_VehicleController != null &&
+                           (m_VehicleController.CurrentGear == GearState.Drive || m_VehicleController.CurrentGear == GearState.D) &&
+                           m_VehicleController.HandbrakeEngagement <= 0.15f;
 
                 case LessonActionType.ShiftToReverse:
-                    return m_VehicleController != null && (m_VehicleController.CurrentGear == GearState.Reverse || m_VehicleController.CurrentGear == GearState.R);
+                    return m_VehicleController != null &&
+                           (m_VehicleController.CurrentGear == GearState.Reverse || m_VehicleController.CurrentGear == GearState.R) &&
+                           m_VehicleController.HandbrakeEngagement <= 0.15f;
 
                 case LessonActionType.ShiftToPark:
                     return m_VehicleController != null && (m_VehicleController.CurrentGear == GearState.Park || m_VehicleController.CurrentGear == GearState.P);

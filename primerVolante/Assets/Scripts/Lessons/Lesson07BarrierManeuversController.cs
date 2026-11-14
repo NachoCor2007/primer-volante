@@ -43,7 +43,23 @@ namespace PrimerVolante.Lessons
         [Header("Estadísticas de Lección")]
         [SerializeField] private int m_BarrierCollisions = 0;
 
-        public static Lesson07BarrierManeuversController Instance => s_Instance;
+        public static Lesson07BarrierManeuversController Instance
+        {
+            get
+            {
+                if (s_Instance == null)
+                {
+                    s_Instance = UnityEngine.Object.FindAnyObjectByType<Lesson07BarrierManeuversController>();
+                    if (s_Instance == null)
+                    {
+                        GameObject go = new GameObject("Lesson07_Controller");
+                        s_Instance = go.AddComponent<Lesson07BarrierManeuversController>();
+                    }
+                }
+                return s_Instance;
+            }
+        }
+
         public LessonManager LessonManager => m_LessonManager;
         public VehicleController Vehicle => m_VehicleController;
         public ParkingZoneTrigger StartZone => m_StartZone;
@@ -69,7 +85,7 @@ namespace PrimerVolante.Lessons
                 }
 
                 bool isInside = m_ForwardFinishZone.IsVehicleInside;
-                bool isStopped = m_VehicleController.CurrentSpeedKmh <= 1.2f;
+                bool isStopped = m_VehicleController.CurrentSpeedKmh <= 1.5f;
                 return isInside && isStopped;
             }
         }
@@ -93,7 +109,7 @@ namespace PrimerVolante.Lessons
                 }
 
                 bool isInside = m_StartZone.IsVehicleInside;
-                bool isStopped = m_VehicleController.CurrentSpeedKmh <= 1.2f;
+                bool isStopped = m_VehicleController.CurrentSpeedKmh <= 1.5f;
                 return isInside && isStopped;
             }
         }
@@ -101,18 +117,163 @@ namespace PrimerVolante.Lessons
         private void Awake()
         {
             s_Instance = this;
+            EnsureBarriersAndZones();
             AutoDiscoverReferences();
+            UpdateHighlightsForStep(0);
         }
 
         private void OnEnable()
         {
             s_Instance = this;
+            EnsureBarriersAndZones();
+            AutoDiscoverReferences();
             SubscribeToBarriers();
+            UpdateHighlightsForStep(0);
 
             if (m_LessonManager != null)
             {
+                m_LessonManager.StepChanged -= HandleStepChanged;
                 m_LessonManager.StepChanged += HandleStepChanged;
             }
+        }
+
+        /// <summary>
+        /// Asegura que las vallas y las dársenas amarilla existan en la escena tanto en Editor como en Runtime.
+        /// </summary>
+        public void EnsureBarriersAndZones()
+        {
+            // 1. Dársena de Inicio / Retorno (Z ≈ 95.0, X = 63.5)
+            if (m_StartZone == null)
+            {
+                GameObject szObj = GameObject.Find("ParkingZone_Start");
+                if (szObj == null)
+                {
+                    szObj = new GameObject("ParkingZone_Start");
+                    szObj.transform.position = new Vector3(63.5f, 0.05f, 95.0f);
+                    szObj.transform.rotation = Quaternion.identity;
+                    BoxCollider col = szObj.AddComponent<BoxCollider>();
+                    col.isTrigger = true;
+                    col.center = Vector3.zero;
+                    col.size = new Vector3(4.2f, 2.0f, 6.5f);
+                    m_StartZone = szObj.AddComponent<ParkingZoneTrigger>();
+                    m_StartZone.StationType = ParkingStationType.ParallelRight;
+
+                    m_StartZoneHighlight = CreateGroundVisual(szObj.transform, "GroundVisual_StartYellow", new Vector3(4.0f, 6.0f, 1f));
+                }
+                else
+                {
+                    m_StartZone = szObj.GetComponent<ParkingZoneTrigger>();
+                    Transform gv = szObj.transform.Find("GroundVisual_StartYellow");
+                    if (gv != null) m_StartZoneHighlight = gv.gameObject;
+                }
+            }
+
+            // 2. Dársena de Llegada hacia Adelante (Z ≈ 155.0, X = 60.0)
+            if (m_ForwardFinishZone == null)
+            {
+                GameObject fzObj = GameObject.Find("ParkingZone_ForwardFinish");
+                if (fzObj == null)
+                {
+                    fzObj = new GameObject("ParkingZone_ForwardFinish");
+                    fzObj.transform.position = new Vector3(60.0f, 0.05f, 155.0f);
+                    fzObj.transform.rotation = Quaternion.identity;
+                    BoxCollider col = fzObj.AddComponent<BoxCollider>();
+                    col.isTrigger = true;
+                    col.center = Vector3.zero;
+                    col.size = new Vector3(4.5f, 2.0f, 6.5f);
+                    m_ForwardFinishZone = fzObj.AddComponent<ParkingZoneTrigger>();
+                    m_ForwardFinishZone.StationType = ParkingStationType.ParallelRight;
+
+                    m_ForwardZoneHighlight = CreateGroundVisual(fzObj.transform, "GroundVisual_ForwardYellow", new Vector3(4.2f, 6.0f, 1f));
+                }
+                else
+                {
+                    m_ForwardFinishZone = fzObj.GetComponent<ParkingZoneTrigger>();
+                    Transform gv = fzObj.transform.Find("GroundVisual_ForwardYellow");
+                    if (gv != null) m_ForwardZoneHighlight = gv.gameObject;
+                }
+            }
+
+            // 3. Vallas de Slalom en zig-zag alternado
+            if (m_SlalomBarriers == null || m_SlalomBarriers.Count == 0)
+            {
+                GameObject root = GameObject.Find("Slalom_Barriers");
+                if (root == null)
+                {
+                    root = new GameObject("Slalom_Barriers");
+                    GameObject barrierPrefab = null;
+                    GameObject conePrefab = null;
+#if UNITY_EDITOR
+                    barrierPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Environment/LessonBarrier.prefab");
+                    conePrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/SimplePoly City - Low Poly Assets/Prefab/Props/Props_Traffic cone.prefab");
+#endif
+                    var slalomSpecs = new (string name, Vector3 pos, float yaw, Vector3 coneOffset)[]
+                    {
+                        ("Slalom_Barrier_01_Left", new Vector3(56.2f, 0f, 108.0f), 0f, new Vector3(2.0f, 0f, 0f)),
+                        ("Slalom_Barrier_02_Right", new Vector3(63.8f, 0f, 120.0f), 0f, new Vector3(-2.0f, 0f, 0f)),
+                        ("Slalom_Barrier_03_Left", new Vector3(56.2f, 0f, 132.0f), 0f, new Vector3(2.0f, 0f, 0f)),
+                        ("Slalom_Barrier_04_Right", new Vector3(63.8f, 0f, 144.0f), 0f, new Vector3(-2.0f, 0f, 0f))
+                    };
+
+                    m_SlalomBarriers = new List<LessonBarrier>();
+                    foreach (var spec in slalomSpecs)
+                    {
+                        GameObject bObj = null;
+                        if (barrierPrefab != null)
+                        {
+                            bObj = Instantiate(barrierPrefab, root.transform);
+                        }
+                        else
+                        {
+                            bObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                            bObj.transform.localScale = new Vector3(3.6f, 1f, 0.4f);
+                            bObj.transform.SetParent(root.transform);
+                        }
+
+                        bObj.name = spec.name;
+                        bObj.transform.position = spec.pos;
+                        bObj.transform.rotation = Quaternion.Euler(0f, spec.yaw, 0f);
+
+                        if (conePrefab != null)
+                        {
+                            GameObject cone = Instantiate(conePrefab, bObj.transform);
+                            cone.name = "Cone_Tip";
+                            cone.transform.localPosition = spec.coneOffset;
+                            cone.transform.localRotation = Quaternion.identity;
+                        }
+
+                        LessonBarrier lb = bObj.GetComponentInChildren<LessonBarrier>(true);
+                        if (lb != null) m_SlalomBarriers.Add(lb);
+                    }
+                }
+                else
+                {
+                    m_SlalomBarriers = new List<LessonBarrier>(root.GetComponentsInChildren<LessonBarrier>(true));
+                }
+            }
+        }
+
+        private GameObject CreateGroundVisual(Transform parent, string name, Vector3 scale)
+        {
+            GameObject quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            quad.name = name;
+            quad.transform.SetParent(parent, false);
+            quad.transform.localPosition = new Vector3(0f, 0.02f, 0f);
+            quad.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            quad.transform.localScale = scale;
+
+            Collider c = quad.GetComponent<Collider>();
+            if (c != null) Destroy(c);
+
+#if UNITY_EDITOR
+            Material yellowMat = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>("Assets/Environment/Materials/M_Parking_YellowZone.mat");
+            if (yellowMat != null)
+            {
+                MeshRenderer mr = quad.GetComponent<MeshRenderer>();
+                if (mr != null) mr.sharedMaterial = yellowMat;
+            }
+#endif
+            return quad;
         }
 
         private void OnDisable()
