@@ -111,7 +111,7 @@ namespace PrimerVolante.Lessons
 
             if (m_LessonManager != null)
             {
-                m_LessonManager.OnStepStarted += HandleStepStarted;
+                m_LessonManager.StepChanged += HandleStepChanged;
             }
         }
 
@@ -121,11 +121,11 @@ namespace PrimerVolante.Lessons
 
             if (m_LessonManager != null)
             {
-                m_LessonManager.OnStepStarted -= HandleStepStarted;
+                m_LessonManager.StepChanged -= HandleStepChanged;
             }
         }
 
-        private void HandleStepStarted(LessonStepSO step, int stepIndex)
+        private void HandleStepChanged(LessonStepSO step, int stepIndex, int totalSteps)
         {
             UpdateHighlightsForStep(stepIndex);
         }
