@@ -128,61 +128,69 @@ namespace PrimerVolante.Testing.Editor
 
             var steps = new List<LessonStepSO>
             {
-                // Paso 1: Técnica y Agarre del Volante
+                // Paso 1: Comprobación y Giro del Volante
                 CreateOrUpdateStep("Lesson07_Step01_SteeringGripTechnique",
-                    "Técnica de Agarre del Volante",
-                    "Para un control seguro y preciso, coloca tus manos en posición '9 y 15' (o '10 y 10'). Mantén los codos relajados y gira de forma fluida acompañando el movimiento con ambas manos sin cruzarlas bruscamente.",
-                    LessonStepCompletionMode.ManualContinue,
-                    LessonActionType.None,
-                    CockpitControlFlags.SteeringWheel),
+                    "Comprobación y Giro del Volante",
+                    "Gira el volante con fluidez hacia ambos lados (derecha e izquierda) para comprobar su recorrido y la respuesta del vehículo antes de iniciar la marcha.",
+                    LessonStepCompletionMode.ActionRequired,
+                    LessonActionType.RotateSteeringWheel,
+                    CockpitControlFlags.SteeringWheel,
+                    "SteeringWheel_Pivot",
+                    20f),
 
-                // Paso 2: Puesta en marcha
+                // Paso 2: Encendido del Motor
                 CreateOrUpdateStep("Lesson07_Step02_StartAndDrive",
-                    "Puesta en Marcha",
-                    "Arranca el motor con el botón START, pisa el freno para colocar la palanca de cambios en Drive (D) y baja el freno de mano.",
+                    "Encendido del Motor",
+                    "Presiona el botón START para encender el motor del vehículo.",
+                    LessonStepCompletionMode.ActionRequired,
+                    LessonActionType.StartEngine,
+                    CockpitControlFlags.All,
+                    "StartButton"),
+
+                // Paso 3: Puesta en Marcha (Drive)
+                CreateOrUpdateStep("Lesson07_Step03_ForwardSlalom",
+                    "Puesta en Marcha (Drive)",
+                    "Pisa y mantén presionado el pedal de freno, coloca la palanca de cambios en Drive (D) y baja el freno de mano.",
                     LessonStepCompletionMode.ActionRequired,
                     LessonActionType.ShiftToDrive,
-                    CockpitControlFlags.All),
+                    CockpitControlFlags.All,
+                    "VRGearShifter"),
 
-                // Paso 3: Slalom hacia adelante entre vallas
-                CreateOrUpdateStep("Lesson07_Step03_ForwardSlalom",
+                // Paso 4: Slalom hacia Adelante entre Vallas
+                CreateOrUpdateStep("Lesson07_Step04_StopAndShiftReverse",
                     "Slalom hacia Adelante entre Vallas",
-                    "Avanza a velocidad baja y constante (10-15 km/h). Anticipa cada curva mirando hacia la siguiente valla y no a la trompa del auto. Esquiva en zig-zag con giros progresivos de volante hasta detenerte en la dársena amarilla final.",
+                    "Avanza a velocidad moderada (10-15 km/h) esquivando las vallas en zig-zag con giros progresivos de volante. Al finalizar, detén el vehículo por completo dentro de la dársena amarilla.",
                     LessonStepCompletionMode.ActionRequired,
                     LessonActionType.SlalomForwardComplete,
-                    CockpitControlFlags.All),
+                    CockpitControlFlags.All,
+                    "ParkingZone_ForwardFinish"),
 
-                // Paso 4: Detención y cambio a reversa
-                CreateOrUpdateStep("Lesson07_Step04_StopAndShiftReverse",
+                // Paso 5: Detención y Cambio a Reversa
+                CreateOrUpdateStep("Lesson07_Step05_MirrorHalfCarRule",
                     "Detención y Cambio a Reversa",
-                    "¡Excelente slalom hacia adelante! Detén el auto por completo dentro de la dársena amarilla. Pisa el freno y coloca la palanca de cambios en Reversa (R).",
+                    "¡Excelente slalom hacia adelante! Detén el auto por completo en la dársena. Pisa el freno y coloca la palanca de cambios en Reversa (R).",
                     LessonStepCompletionMode.ActionRequired,
                     LessonActionType.ShiftToReverse,
-                    CockpitControlFlags.All),
+                    CockpitControlFlags.All,
+                    "VRGearShifter"),
 
-                // Paso 5: La técnica de espejos: regla del medio auto
-                CreateOrUpdateStep("Lesson07_Step05_MirrorHalfCarRule",
-                    "Técnica de Espejos: La Regla del Medio Auto",
-                    "Al retroceder en zig-zag, observa con atención el espejo retrovisor lateral del lado del obstáculo. Cuando veas en el espejo que ya pasó aproximadamente medio auto de la valla, invierte inmediatamente el sentido del volante para enderezarlo y esquivar la siguiente valla sin rozar.",
-                    LessonStepCompletionMode.ManualContinue,
-                    LessonActionType.None,
-                    CockpitControlFlags.All),
-
-                // Paso 6: Slalom en reversa con espejos
+                // Paso 6: Slalom en Reversa con Espejos
                 CreateOrUpdateStep("Lesson07_Step06_ReverseSlalom",
                     "Slalom en Reversa con Espejos",
-                    "Retrocede despacio aplicando la regla del medio auto en cada espejo retrovisor lateral. Invierte el giro del volante en cada valla al superar la mitad del vehículo hasta llegar a la dársena de inicio.",
+                    "Retrocede despacio aplicando la regla del medio auto: observa con atención el espejo del lado de la valla y, cuando veas que pasó la mitad del auto, invierte el volante para esquivar la siguiente hasta detenerte en la dársena de inicio.",
                     LessonStepCompletionMode.ActionRequired,
                     LessonActionType.SlalomReverseComplete,
-                    CockpitControlFlags.All),
+                    CockpitControlFlags.All,
+                    "ParkingZone_Start"),
 
-                // Paso 7: Asegurar el vehículo
+                // Paso 7: Asegurar el Vehículo
                 CreateOrUpdateStep("Lesson07_Step07_SecureVehicle",
                     "Asegurar el Vehículo",
                     "Detén la marcha, coloca la palanca de cambios en Parking (P) y acciona el freno de mano hacia arriba para finalizar la lección exitosamente.",
                     LessonStepCompletionMode.ActionRequired,
                     LessonActionType.SecureStopAndPark,
-                    CockpitControlFlags.All)
+                    CockpitControlFlags.All,
+                    "VRGearShifter")
             };
 
             LessonDefinitionSO lesson = AssetDatabase.LoadAssetAtPath<LessonDefinitionSO>(LESSON_07_PATH);
@@ -199,12 +207,13 @@ namespace PrimerVolante.Testing.Editor
             EditorUtility.SetDirty(lesson);
             AssetDatabase.SaveAssets();
 
-            Debug.Log($"[Lesson07BarrierManeuversSetup] 📋 LessonData_07 actualizado con {steps.Count} pasos didácticos.");
+            Debug.Log($"[Lesson07BarrierManeuversSetup] 📋 LessonData_07 actualizado con {steps.Count} pasos didácticos automáticos.");
             return lesson;
         }
 
         private static LessonStepSO CreateOrUpdateStep(string assetName, string title, string instruction,
-            LessonStepCompletionMode mode, LessonActionType action, CockpitControlFlags controls)
+            LessonStepCompletionMode mode, LessonActionType action, CockpitControlFlags controls,
+            string highlightTarget = "", float numericParam = 0f)
         {
             string path = $"{STEPS_DIR}/{assetName}.asset";
             LessonStepSO step = AssetDatabase.LoadAssetAtPath<LessonStepSO>(path);
@@ -219,6 +228,8 @@ namespace PrimerVolante.Testing.Editor
             step.completionMode = mode;
             step.requiredAction = action;
             step.allowedControls = controls;
+            step.highlightTargetName = highlightTarget;
+            step.actionNumericParameter = numericParam;
             step.ambienceIntensity = AmbienceIntensityOverride.Normal;
 
             EditorUtility.SetDirty(step);

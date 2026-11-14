@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
   m_Name: Lesson07_Step05_MirrorHalfCarRule
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
-  stepTitle: "T\xE9cnica de Espejos: La Regla del Medio Auto"
-  instructionText: "Al retroceder en zig-zag, observa con atenci\xF3n el espejo retrovisor lateral del lado del obst\xE1culo. Cuando veas en el espejo que ya pas\xF3 aproximadamente medio auto de la valla, invierte inmediatamente el sentido del volante para enderezarlo y esquivar la siguiente valla sin rozar."
-  completionMode: 0
-  requiredAction: 0
+  stepTitle: "Detenci\xF3n y Cambio a Reversa"
+  instructionText: "\xA1Excelente slalom hacia adelante! Det\xE9n el auto por completo en la d\xE1rsena. Pisa el freno y coloca la palanca de cambios en Reversa (R)."
+  completionMode: 1
+  requiredAction: 12
   actionNumericParameter: 0
   allowedControls: -1
-  highlightTargetName: 
+  highlightTargetName: VRGearShifter
   ambienceIntensity: 2

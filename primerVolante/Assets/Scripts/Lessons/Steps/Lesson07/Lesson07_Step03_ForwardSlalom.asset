@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
   m_Name: Lesson07_Step03_ForwardSlalom
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
-  stepTitle: "Slalom hacia Adelante entre Vallas"
-  instructionText: "Avanza a velocidad baja y constante (10-15 km/h). Anticipa cada curva mirando hacia la siguiente valla y no a la trompa del auto. Esquiva en zig-zag con giros progresivos de volante hasta detenerte en la d\xE1rsena amarilla final."
+  stepTitle: "Puesta en Marcha (Drive)"
+  instructionText: "Pisa y mant\xE9n presionado el pedal de freno, coloca la palanca de cambios en Drive (D) y baja el freno de mano."
   completionMode: 1
-  requiredAction: 64
+  requiredAction: 11
   actionNumericParameter: 0
   allowedControls: -1
-  highlightTargetName: ParkingZone_ForwardFinish
+  highlightTargetName: VRGearShifter
   ambienceIntensity: 2

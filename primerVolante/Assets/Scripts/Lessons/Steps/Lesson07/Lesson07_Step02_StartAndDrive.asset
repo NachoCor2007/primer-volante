@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
   m_Name: Lesson07_Step02_StartAndDrive
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
-  stepTitle: "Puesta en Marcha"
-  instructionText: "Arranca el motor con el bot\xF3n START, pisa el freno para colocar la palanca de cambios en Drive (D) y baja el freno de mano."
+  stepTitle: "Encendido del Motor"
+  instructionText: "Presiona el bot\xF3n START para encender el motor del veh\xEDculo."
   completionMode: 1
-  requiredAction: 11
+  requiredAction: 8
   actionNumericParameter: 0
   allowedControls: -1
-  highlightTargetName: VRGearShifter
+  highlightTargetName: StartButton
   ambienceIntensity: 2

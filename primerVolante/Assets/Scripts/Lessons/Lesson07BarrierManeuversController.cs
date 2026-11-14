@@ -135,15 +135,15 @@ namespace PrimerVolante.Lessons
         /// </summary>
         public void UpdateHighlightsForStep(int stepIndex)
         {
-            // Pasos 0 a 2 (hacia adelante): Resaltar la dársena frontal objetivo
-            // Pasos 3 a 5 (reversa): Resaltar la dársena de retorno inicial
+            // Pasos 0 a 3 (hacia adelante: volante, motor, drive, slalom adelante): Resaltar dársena frontal objetivo
+            // Pasos 4 a 6 (en reversa: poner marcha atrás, slalom reversa, asegurar auto): Resaltar dársena de retorno inicial
             if (m_ForwardZoneHighlight != null)
             {
-                m_ForwardZoneHighlight.SetActive(stepIndex <= 2);
+                m_ForwardZoneHighlight.SetActive(stepIndex <= 3);
             }
             if (m_StartZoneHighlight != null)
             {
-                m_StartZoneHighlight.SetActive(stepIndex >= 3);
+                m_StartZoneHighlight.SetActive(stepIndex >= 4);
             }
         }
 

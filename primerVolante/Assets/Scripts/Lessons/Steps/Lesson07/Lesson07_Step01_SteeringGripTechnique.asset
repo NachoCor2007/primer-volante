@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
   m_Name: Lesson07_Step01_SteeringGripTechnique
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
-  stepTitle: "T\xE9cnica de Agarre del Volante"
-  instructionText: "Para un control seguro y preciso, coloca tus manos en posici\xF3n '9 y 15' (o '10 y 10'). Mant\xE9n los codos relajados y gira de forma fluida acompa\xF1ando el movimiento con ambas manos sin cruzarlas bruscamente."
-  completionMode: 0
-  requiredAction: 0
-  actionNumericParameter: 0
+  stepTitle: "Comprobaci\xF3n y Giro del Volante"
+  instructionText: "Gira el volante con fluidez hacia ambos lados (derecha e izquierda) para comprobar su recorrido y la respuesta del veh\xEDculo antes de iniciar la marcha."
+  completionMode: 1
+  requiredAction: 2
+  actionNumericParameter: 20
   allowedControls: 1
   highlightTargetName: SteeringWheel_Pivot
   ambienceIntensity: 2
