@@ -28,6 +28,7 @@ namespace PrimerVolante.Testing.Editor
             yield return Suite("EnvironmentAudio", EnvironmentAudioVerification.RunVerification);
             yield return Suite("GPSNavigation", () => GPSNavigationVerification.RunVerification());
             yield return Suite("HapticsIntegration", HapticsIntegrationVerification.RunVerification);
+            yield return Suite("HeadlightKnobIcons", HeadlightKnobIconsVerification.RunVerification);
             yield return Suite("HeadPoseSession", HeadPoseSessionVerification.RunVerification);
             yield return Suite("InfractionManager", InfractionManagerVerification.RunVerification);
             yield return Suite("InfractionWarning", InfractionWarningVerification.RunVerification);
