@@ -61,6 +61,10 @@ namespace PrimerVolante.Lessons
         ParkParallelRight,              // Paso 7: Quiebre a la izquierda y alineación en recuadro paralelo
         SecureParkDeactivateHazards,    // Paso 8: Finalizar, apagar balizas, Parking y freno de mano
 
+        // Lección 7: Maniobras y Dominio del Volante con Vallas (Slalom y Reversa con Espejos)
+        SlalomForwardComplete = 64,     // Paso 3: Entrada y detención en dársena final del slalom hacia adelante
+        SlalomReverseComplete = 65,     // Paso 6: Entrada y detención en dársena inicial del slalom en reversa
+
         // Circuitos e Integradores Urbanos
         CompleteCircuitNavigation = 63  // Navegación guiada por GPS y detención/estacionamiento en la meta
     }

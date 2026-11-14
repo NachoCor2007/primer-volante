@@ -1,0 +1,22 @@
+﻿%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
+  m_Name: Lesson07_Step06_ReverseSlalom
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
+  stepTitle: "Slalom en Reversa con Espejos"
+  instructionText: "Retrocede despacio aplicando la regla del medio auto en cada espejo retrovisor lateral. Invierte el giro del volante en cada valla al superar la mitad del veh\xEDculo hasta llegar a la d\xE1rsena de inicio."
+  completionMode: 1
+  requiredAction: 65
+  actionNumericParameter: 0
+  allowedControls: -1
+  highlightTargetName: ParkingZone_Start
+  ambienceIntensity: 2

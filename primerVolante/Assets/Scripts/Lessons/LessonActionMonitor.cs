@@ -608,6 +608,14 @@ namespace PrimerVolante.Lessons
                     ParkingZoneTrigger pzt = UnityEngine.Object.FindAnyObjectByType<ParkingZoneTrigger>();
                     return pzt != null && (pzt.IsVehicleParkedProperly || pzt.IsVehiclePositionedProperly);
 
+                case LessonActionType.SlalomForwardComplete:
+                    return Lesson07BarrierManeuversController.Instance != null &&
+                           Lesson07BarrierManeuversController.Instance.IsForwardSlalomComplete;
+
+                case LessonActionType.SlalomReverseComplete:
+                    return Lesson07BarrierManeuversController.Instance != null &&
+                           Lesson07BarrierManeuversController.Instance.IsReverseSlalomComplete;
+
                 default:
                     return false;
             }

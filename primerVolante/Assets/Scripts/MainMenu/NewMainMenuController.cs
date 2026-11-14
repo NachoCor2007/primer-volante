@@ -195,7 +195,7 @@ namespace PrimerVolante.MainMenu
             if (m_Lessons == null || m_Lessons.Count == 0)
             {
                 m_Lessons = new List<LessonDefinitionSO>();
-                for (int i = 1; i <= 6; i++)
+                for (int i = 1; i <= 7; i++)
                 {
                     var lesson = UnityEditor.AssetDatabase.LoadAssetAtPath<LessonDefinitionSO>($"Assets/Scripts/Lessons/Curriculum/LessonData_{i:00}.asset");
                     if (lesson != null) m_Lessons.Add(lesson);
