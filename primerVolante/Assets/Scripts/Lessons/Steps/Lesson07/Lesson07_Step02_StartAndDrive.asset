@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
   m_Name: Lesson07_Step02_StartAndDrive
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
-  stepTitle: "Encendido del Motor"
+  stepTitle: Encendido del Motor
   instructionText: "Presiona el bot\xF3n START para encender el motor del veh\xEDculo."
   completionMode: 1
   requiredAction: 8

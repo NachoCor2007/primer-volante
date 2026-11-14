@@ -17,7 +17,7 @@ namespace PrimerVolante.Testing.Editor
     /// - Clona de forma segura Lesson_01_BasicDriving.unity a Assets/Scenes/Lessons/Lesson_07_BarrierManeuvers.unity.
     /// - Genera los ScriptableObjects didácticos (LessonData_07.asset y los 7 pasos).
     /// - Construye el circuito de slalom con vallas alternadas (LessonBarrier.prefab) y conos de advertencia.
-    /// - Configura las dársenas de inicio (Z ≈ 95) y de llegada (Z ≈ 155) con recuadros amarillos en el piso.
+    /// - Configura las dársenas de inicio (Z ≈ 14.3) y de llegada (Z ≈ 84) con recuadros amarillos en el piso.
     /// - Ensambla el Lesson07BarrierManeuversController en la escena.
     /// - Cumple estrictamente la regla de cero APIs obsoletas (AGENTS.md).
     /// </summary>
@@ -54,7 +54,9 @@ namespace PrimerVolante.Testing.Editor
             Scene scene = SceneManager.GetActiveScene();
             if (scene.IsValid() && scene.path == TARGET_SCENE_PATH)
             {
-                if (GameObject.Find(SLALOM_ROOT_NAME) == null)
+                GameObject startZone = GameObject.Find(START_ZONE_NAME);
+                bool needsUpdate = startZone == null || startZone.transform.position.z > 50f || GameObject.Find(SLALOM_ROOT_NAME) == null;
+                if (needsUpdate)
                 {
                     Debug.Log("[Lesson07BarrierManeuversSetup] 🔄 Auto-ejecutando SetupLesson07() en escena activa...");
                     SetupLesson07();
@@ -105,11 +107,11 @@ namespace PrimerVolante.Testing.Editor
                 return;
             }
 
-            // 4. Asegurar Car09 y sus componentes de cabina
+            // 4. Asegurar Car09 y sus componentes de cabina (posición inicial al inicio de la calle)
             GameObject car09 = GameObject.Find("Car09");
             if (car09 != null)
             {
-                car09.transform.position = new Vector3(63.5f, 0.02f, 95.0f);
+                car09.transform.position = new Vector3(63.5f, 0.02f, 14.3f);
                 car09.transform.rotation = Quaternion.identity;
                 EditorUtility.SetDirty(car09);
             }
@@ -122,7 +124,8 @@ namespace PrimerVolante.Testing.Editor
                 if (lessonMgr != null)
                 {
                     var soMgr = new SerializedObject(lessonMgr);
-                    soMgr.FindProperty("m_CurrentLesson").objectReferenceValue = lessonData;
+                    SerializedProperty activeProp = soMgr.FindProperty("m_ActiveLesson");
+                    if (activeProp != null) activeProp.objectReferenceValue = lessonData;
                     soMgr.ApplyModifiedProperties();
                     EditorUtility.SetDirty(lessonMgr);
                 }
@@ -308,7 +311,7 @@ namespace PrimerVolante.Testing.Editor
         {
             Material yellowMat = AssetDatabase.LoadAssetAtPath<Material>(YELLOW_MATERIAL_PATH);
 
-            // 1. Dársena de Inicio / Retorno en Reversa (Z ≈ 95.0, X = 63.5)
+            // 1. Dársena de Inicio / Retorno en Reversa (Z ≈ 14.3, X = 63.5)
             GameObject startObj = GameObject.Find(START_ZONE_NAME);
             if (startObj == null)
             {
@@ -316,7 +319,7 @@ namespace PrimerVolante.Testing.Editor
                 Undo.RegisterCreatedObjectUndo(startObj, "Create Start Parking Zone");
                 SceneManager.MoveGameObjectToScene(startObj, scene);
             }
-            startObj.transform.position = new Vector3(63.5f, 0.05f, 95.0f);
+            startObj.transform.position = new Vector3(63.5f, 0.05f, 14.3f);
             startObj.transform.rotation = Quaternion.identity;
 
             BoxCollider startBox = startObj.GetComponent<BoxCollider>();
@@ -338,7 +341,7 @@ namespace PrimerVolante.Testing.Editor
 
             startHighlight = EnsureGroundVisual(startObj.transform, "GroundVisual_StartYellow", new Vector3(4.0f, 6.0f, 1f), yellowMat);
 
-            // 2. Dársena de Llegada del Slalom hacia Adelante (Z ≈ 155.0, X = 60.0)
+            // 2. Dársena de Llegada del Slalom hacia Adelante (Z ≈ 84.0, X = 60.0)
             GameObject forwardObj = GameObject.Find(FORWARD_FINISH_ZONE_NAME);
             if (forwardObj == null)
             {
@@ -346,14 +349,14 @@ namespace PrimerVolante.Testing.Editor
                 Undo.RegisterCreatedObjectUndo(forwardObj, "Create Forward Finish Parking Zone");
                 SceneManager.MoveGameObjectToScene(forwardObj, scene);
             }
-            forwardObj.transform.position = new Vector3(60.0f, 0.05f, 155.0f);
+            forwardObj.transform.position = new Vector3(60.0f, 0.05f, 84.0f);
             forwardObj.transform.rotation = Quaternion.identity;
 
             BoxCollider forwardBox = forwardObj.GetComponent<BoxCollider>();
             if (forwardBox == null) forwardBox = forwardObj.AddComponent<BoxCollider>();
             forwardBox.isTrigger = true;
             forwardBox.center = Vector3.zero;
-            forwardBox.size = new Vector3(4.5f, 2.0f, 6.5f);
+            forwardBox.size = new Vector3(5.0f, 2.0f, 7.0f);
 
             forwardZone = forwardObj.GetComponent<ParkingZoneTrigger>();
             if (forwardZone == null) forwardZone = forwardObj.AddComponent<ParkingZoneTrigger>();
@@ -366,7 +369,7 @@ namespace PrimerVolante.Testing.Editor
             if (propForwardAngle != null) propForwardAngle.floatValue = 35f;
             soForward.ApplyModifiedProperties();
 
-            forwardHighlight = EnsureGroundVisual(forwardObj.transform, "GroundVisual_ForwardYellow", new Vector3(4.2f, 6.0f, 1f), yellowMat);
+            forwardHighlight = EnsureGroundVisual(forwardObj.transform, "GroundVisual_ForwardYellow", new Vector3(4.5f, 6.5f, 1f), yellowMat);
 
             EditorUtility.SetDirty(startZone);
             EditorUtility.SetDirty(forwardZone);
@@ -426,22 +429,22 @@ namespace PrimerVolante.Testing.Editor
             var barrierList = new List<LessonBarrier>();
 
             // Especificaciones del circuito de slalom en zig-zag:
-            // Calle entre Z=95 y Z=155. Centro de calzada en X=60. Cordones en X=53 y X=67.
-            // Alternamos valla izquierda (bloquea X ~ 54..58, paso abierto a la derecha X ~ 61..66)
-            // y valla derecha (bloquea X ~ 62..66, paso abierto a la izquierda X ~ 54..59).
+            // Calle recta de asfalto entre Z=14.3 y Z=84.0. Centro de calzada en X=60. Cordones en X=53 y X=67.
+            // Alternamos valla izquierda (bloquea X ~ 54..58, paso abierto a la derecha X ~ 59..66)
+            // y valla derecha (bloquea X ~ 62..66, paso abierto a la izquierda X ~ 54..61).
             var slalomSpecs = new (string name, Vector3 pos, float yaw, Vector3 coneOffset)[]
             {
-                // Valla 1: Izquierda en Z=108 (obliga a abrirse a la derecha)
-                ("Slalom_Barrier_01_Left", new Vector3(56.2f, 0f, 108.0f), 0f, new Vector3(2.0f, 0f, 0f)),
+                // Valla 1: Izquierda en Z=28 (obliga a abrirse a la derecha en carril derecho)
+                ("Slalom_Barrier_01_Left", new Vector3(56.5f, 0f, 28.0f), 0f, new Vector3(2.0f, 0f, 0f)),
 
-                // Valla 2: Derecha en Z=120 (obliga a abrirse a la izquierda)
-                ("Slalom_Barrier_02_Right", new Vector3(63.8f, 0f, 120.0f), 0f, new Vector3(-2.0f, 0f, 0f)),
+                // Valla 2: Derecha en Z=42 (obliga a abrirse a la izquierda en carril izquierdo)
+                ("Slalom_Barrier_02_Right", new Vector3(63.5f, 0f, 42.0f), 0f, new Vector3(-2.0f, 0f, 0f)),
 
-                // Valla 3: Izquierda en Z=132 (obliga a abrirse a la derecha)
-                ("Slalom_Barrier_03_Left", new Vector3(56.2f, 0f, 132.0f), 0f, new Vector3(2.0f, 0f, 0f)),
+                // Valla 3: Izquierda en Z=56 (obliga a abrirse a la derecha en carril derecho)
+                ("Slalom_Barrier_03_Left", new Vector3(56.5f, 0f, 56.0f), 0f, new Vector3(2.0f, 0f, 0f)),
 
-                // Valla 4: Derecha en Z=144 (obliga a abrirse a la izquierda)
-                ("Slalom_Barrier_04_Right", new Vector3(63.8f, 0f, 144.0f), 0f, new Vector3(-2.0f, 0f, 0f))
+                // Valla 4: Derecha en Z=70 (obliga a abrirse a la izquierda hacia la dársena de meta)
+                ("Slalom_Barrier_04_Right", new Vector3(63.5f, 0f, 70.0f), 0f, new Vector3(-2.0f, 0f, 0f))
             };
 
             foreach (var spec in slalomSpecs)
