@@ -7,7 +7,9 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.XR.Interaction.Toolkit;
+using UnityEngine.XR.Interaction.Toolkit.Filtering;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
+using UnityEngine.XR.Interaction.Toolkit.Samples.StarterAssets;
 using PrimerVolante.VR;
 
 namespace PrimerVolante.Testing.Editor
@@ -602,20 +604,20 @@ namespace PrimerVolante.Testing.Editor
             baseMesh.name = "Panel_Base";
             baseMesh.transform.SetParent(panelObj.transform, false);
             baseMesh.transform.localPosition = Vector3.zero;
-            baseMesh.transform.localScale = new Vector3(0.075f, 0.015f, 0.13f);
+            baseMesh.transform.localScale = PANEL_BASE_SIZE;
             baseMesh.GetComponent<Renderer>().sharedMaterial = panelBaseMat;
             UnityEngine.Object.DestroyImmediate(baseMesh.GetComponent<Collider>());
 
             TMP_FontAsset font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FONT_PATH);
 
             // 1. Selector de 3 posiciones: [ Left | OFF | Right ]
-            float selZ = 0.035f;
-            float btnY = 0.011f;
-            Vector3 selSize = new Vector3(0.018f, 0.010f, 0.018f);
+            float selZ = SELECTOR_REST_Z;
+            float btnY = SELECTOR_REST_Y;
+            Vector3 selSize = SELECTOR_SIZE;
 
-            var (btnLeft, rendLeft) = CreateButton(panelObj.transform, "Btn_Select_Left", new Vector3(-0.022f, btnY, selZ), selSize, btnMat, "L", font);
+            var (btnLeft, rendLeft) = CreateButton(panelObj.transform, "Btn_Select_Left", new Vector3(-SELECTOR_SPACING_X, btnY, selZ), selSize, btnMat, "L", font);
             var (btnOff, rendOff) = CreateButton(panelObj.transform, "Btn_Select_Off", new Vector3(0f, btnY, selZ), selSize, btnMat, "OFF", font, fontSize: 0.18f);
-            var (btnRight, rendRight) = CreateButton(panelObj.transform, "Btn_Select_Right", new Vector3(0.022f, btnY, selZ), selSize, btnMat, "R", font);
+            var (btnRight, rendRight) = CreateButton(panelObj.transform, "Btn_Select_Right", new Vector3(SELECTOR_SPACING_X, btnY, selZ), selSize, btnMat, "R", font);
 
             AudioSource audio = panelObj.AddComponent<AudioSource>();
             audio.playOnAwake = false;
@@ -652,28 +654,87 @@ namespace PrimerVolante.Testing.Editor
             return panelComp;
         }
 
-        private static (XRSimpleInteractable interactable, Renderer renderer) CreateButton(
+        /// <summary>
+        /// Recorrido (en metros de mundo) que se hunden los botones del selector al presionarlos con el dedo,
+        /// igual que StartButton y HazardButton.
+        /// </summary>
+        public const float SELECTOR_PRESS_TRAVEL = 0.003f;
+
+        // Geometría del selector en el panel de la puerta: posición de REPOSO del botón (centro del Visual) y tamaño.
+        internal const float SELECTOR_REST_Y = 0.011f;
+        internal const float SELECTOR_REST_Z = 0.035f;
+        internal const float SELECTOR_SPACING_X = 0.028f;
+        internal static readonly Vector3 SELECTOR_SIZE = new Vector3(0.022f, 0.010f, 0.022f);
+
+        // Placa base del panel: 90 mm de ancho para que los 3 botones de 22 mm, separados 6 mm, dejen 6 mm de margen al borde.
+        internal static readonly Vector3 PANEL_BASE_SIZE = new Vector3(0.09f, 0.015f, 0.13f);
+
+        /// <summary>
+        /// Comprueba que un botón del selector se puede configurar con poke. Falla si la capa Poke no existe
+        /// (la máscara sería 0 y el bloqueo por lección y CockpitControlLockManager quedarían mal) o si la escala
+        /// acumulada no es 1: XRPokeFollowAffordance.OnValidate mide m_MaxDistance en espacio mundo y en runtime
+        /// lo mide en el espacio local de la raíz, y solo coinciden con escala 1.
+        /// </summary>
+        internal static bool TryValidateSelectorPoke(Vector3 lossyScale, int pokeLayerMask, out string error)
+        {
+            if (pokeLayerMask == 0)
+            {
+                error = "La capa de interacción 'Poke' no existe o se renombró (InteractionLayerMask.GetMask(\"Poke\") = 0). " +
+                        "Hay que crearla en Project Settings > XR Interaction Toolkit antes de configurar el selector.";
+                return false;
+            }
+            if ((lossyScale - Vector3.one).sqrMagnitude > 1e-6f)
+            {
+                error = $"La raíz del botón tiene escala acumulada {lossyScale} y XRPokeFollowAffordance solo es consistente con escala (1,1,1): " +
+                        "OnValidate mide m_MaxDistance en espacio mundo y el runtime en espacio local. Hay que usar un padre sin escala.";
+                return false;
+            }
+            error = null;
+            return true;
+        }
+
+        /// <summary>
+        /// Crea un botón del selector con la estructura poke: la raíz lleva el collider, el XRSimpleInteractable
+        /// (solo capa Poke), el XRPokeFilter y el XRPokeFollowAffordance; el hijo "Visual" lleva el mesh y la etiqueta
+        /// y es el que se hunde. Devuelve el interactable de la raíz y el renderer de "Visual" (el indicador de color).
+        /// <paramref name="localPos"/> es la posición de REPOSO del botón. El padre debe tener escala acumulada 1; si no
+        /// (o si falta la capa Poke) lanza <see cref="InvalidOperationException"/> sin crear nada.
+        /// </summary>
+        internal static (XRSimpleInteractable interactable, Renderer renderer) CreateButton(
             Transform parent, string name, Vector3 localPos, Vector3 size, Material mat, string label, TMP_FontAsset font, float fontSize = 0.25f)
         {
-            GameObject btnObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            btnObj.name = name;
+            if (!TryValidateSelectorPoke(parent.lossyScale, InteractionLayerMask.GetMask("Poke"), out string error))
+            {
+                throw new InvalidOperationException($"[VehicleMirrorSetupEditor] {name}: {error}");
+            }
+
+            GameObject btnObj = new GameObject(name);
             btnObj.transform.SetParent(parent, false);
-            btnObj.transform.localPosition = localPos;
-            btnObj.transform.localScale = size;
+            // La raíz es el pivote con el botón hundido: queda SELECTOR_PRESS_TRAVEL por debajo de la posición de reposo
+            // pedida, y el Visual (en reposo) vuelve a ocupar localPos. Con escala 1 el espacio local del padre es el mundo.
+            btnObj.transform.localPosition = localPos - Vector3.up * SELECTOR_PRESS_TRAVEL;
 
-            Renderer rend = btnObj.GetComponent<Renderer>();
-            rend.sharedMaterial = mat;
-
-            BoxCollider col = btnObj.GetComponent<BoxCollider>();
-            if (col == null) col = btnObj.AddComponent<BoxCollider>();
+            BoxCollider col = btnObj.AddComponent<BoxCollider>();
+            col.size = size;
             col.isTrigger = false;
 
             XRSimpleInteractable interactable = btnObj.AddComponent<XRSimpleInteractable>();
 
+            GameObject visual = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            visual.name = "Visual";
+            UnityEngine.Object.DestroyImmediate(visual.GetComponent<Collider>());
+            visual.transform.SetParent(btnObj.transform, false);
+            visual.transform.localScale = size;
+
+            Renderer rend = visual.GetComponent<Renderer>();
+            rend.sharedMaterial = mat;
+
+            ConfigureSelectorPoke(btnObj, visual.transform);
+
             if (!string.IsNullOrEmpty(label))
             {
                 GameObject textObj = new GameObject("Label");
-                textObj.transform.SetParent(btnObj.transform, false);
+                textObj.transform.SetParent(visual.transform, false);
                 textObj.transform.localPosition = new Vector3(0f, 0.52f, 0f);
                 textObj.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
                 textObj.transform.localScale = new Vector3(1f / size.x, 1f / size.z, 1f);
@@ -688,6 +749,69 @@ namespace PrimerVolante.Testing.Editor
             }
 
             return (interactable, rend);
+        }
+
+        /// <summary>
+        /// Configura un botón del selector para accionarse solo con el dedo (poke), como StartButton y HazardButton:
+        /// interactionLayers = Poke, XRPokeFilter (dedo entrando por la cara +Y, umbral de ángulo 45) y
+        /// XRPokeFollowAffordance que hunde el hijo <paramref name="visual"/> unos milímetros y lo devuelve.
+        /// Requiere que la raíz ya tenga BoxCollider y XRSimpleInteractable. Es idempotente. Si no se puede configurar
+        /// (capa Poke inexistente o escala acumulada distinta de 1) loguea el error y no toca el botón.
+        /// </summary>
+        public static bool ConfigureSelectorPoke(GameObject buttonRoot, Transform visual)
+        {
+            if (TryConfigureSelectorPoke(buttonRoot, visual, out string error)) return true;
+            Debug.LogError($"[VehicleMirrorSetupEditor] {buttonRoot.name}: {error}", buttonRoot);
+            return false;
+        }
+
+        /// <summary>Igual que <see cref="ConfigureSelectorPoke"/> pero devuelve el error en vez de loguearlo.</summary>
+        internal static bool TryConfigureSelectorPoke(GameObject buttonRoot, Transform visual, out string error)
+        {
+            int pokeMask = InteractionLayerMask.GetMask("Poke");
+            if (!TryValidateSelectorPoke(buttonRoot.transform.lossyScale, pokeMask, out error)) return false;
+
+            var interactable = buttonRoot.GetComponent<XRSimpleInteractable>();
+            var collider = buttonRoot.GetComponent<BoxCollider>();
+
+            // Solo la capa Poke: el grip del NearFarInteractor (capa Default) ya no lo selecciona.
+            var soInteractable = new SerializedObject(interactable);
+            soInteractable.FindProperty("m_InteractionLayers.m_Bits").intValue = pokeMask;
+            soInteractable.ApplyModifiedPropertiesWithoutUndo();
+
+            var filter = buttonRoot.GetComponent<XRPokeFilter>();
+            if (filter == null) filter = buttonRoot.AddComponent<XRPokeFilter>();
+            var soFilter = new SerializedObject(filter);
+            soFilter.FindProperty("m_Interactable").objectReferenceValue = interactable;
+            soFilter.FindProperty("m_PokeCollider").objectReferenceValue = collider;
+            soFilter.FindProperty("m_PokeConfiguration.m_UseConstant").boolValue = true;
+            soFilter.FindProperty("m_PokeConfiguration.m_ConstantValue.m_PokeDirection").enumValueIndex = (int)PokeAxis.NegativeY;
+            soFilter.FindProperty("m_PokeConfiguration.m_ConstantValue.m_InteractionDepthOffset").floatValue = 0f;
+            soFilter.FindProperty("m_PokeConfiguration.m_ConstantValue.m_EnablePokeAngleThreshold").boolValue = true;
+            soFilter.FindProperty("m_PokeConfiguration.m_ConstantValue.m_PokeAngleThreshold").floatValue = 45f;
+            soFilter.ApplyModifiedPropertiesWithoutUndo();
+
+            var follow = buttonRoot.GetComponent<XRPokeFollowAffordance>();
+            if (follow == null) follow = buttonRoot.AddComponent<XRPokeFollowAffordance>();
+            var soFollow = new SerializedObject(follow);
+            soFollow.FindProperty("m_PokeFollowTransform").objectReferenceValue = visual;
+            soFollow.FindProperty("m_SmoothingSpeed").floatValue = 16f;
+            soFollow.FindProperty("m_ReturnToInitialPosition").boolValue = true;
+            soFollow.FindProperty("m_ApplyIfChildIsTarget").boolValue = true;
+            soFollow.FindProperty("m_ClampToMaxDistance").boolValue = true;
+            // Campo oculto que OnValidate completaría solo; se asigna explícito para no depender de que OnValidate corra.
+            soFollow.FindProperty("m_PokeFilter").objectReferenceValue = filter;
+            // Con escala acumulada 1 (validada arriba) el espacio local de la raíz y el mundo coinciden.
+            soFollow.FindProperty("m_MaxDistance").floatValue = SELECTOR_PRESS_TRAVEL;
+            soFollow.ApplyModifiedPropertiesWithoutUndo();
+
+            // El pivote de la raíz es la posición con el botón hundido; el reposo del Visual (y el collider que lo
+            // cubre) está m_MaxDistance por encima, sobre +Y. XRPokeFollowAffordance.OnValidate mueve el Visual a
+            // raíz.position + raíz.up * m_MaxDistance (espacio mundo): con escala 1 es exactamente esta posición local.
+            Vector3 rest = Vector3.up * SELECTOR_PRESS_TRAVEL;
+            visual.localPosition = rest;
+            collider.center = rest;
+            return true;
         }
 
         private static void EnsureAssetDirectories()

@@ -73,7 +73,20 @@ namespace PrimerVolante.VR
         /// Ángulos locales de la perilla indexados por el valor entero de <see cref="HeadlightMode"/>
         /// (Off, Position, LowBeam, HighBeam). Única fuente de verdad para la cantidad de modos.
         /// </summary>
-        private float[] AngleTable => new float[] { m_OffAngle, m_PositionAngle, m_LowBeamAngle, m_HighBeamAngle };
+        private float[] AngleTable
+        {
+            get
+            {
+                // Buffer reutilizado: se consulta varias veces por frame mientras la perilla está agarrada.
+                m_AngleBuffer[0] = m_OffAngle;
+                m_AngleBuffer[1] = m_PositionAngle;
+                m_AngleBuffer[2] = m_LowBeamAngle;
+                m_AngleBuffer[3] = m_HighBeamAngle;
+                return m_AngleBuffer;
+            }
+        }
+
+        private readonly float[] m_AngleBuffer = new float[4];
 
         /// <summary>
         /// Indica si la perilla está actualmente sostenida por un interactor VR.
@@ -90,8 +103,8 @@ namespace PrimerVolante.VR
 
         private float m_CurrentAngle = 0f;
         private float m_GrabStartAngle = 0f;
-        private float m_GrabStartHandAngle = 0f;
-        private float m_GrabStartRoll = 0f;
+        /// <summary>Rotación de la mano al agarrar, expresada en el marco del auto (ver <see cref="HandRotationInCarFrame"/>).</summary>
+        private Quaternion m_GrabStartHandRotation = Quaternion.identity;
         private bool m_HasRotatedWhileGrabbed = false;
 
         private void Awake()
@@ -284,8 +297,7 @@ namespace PrimerVolante.VR
             var interactor = args.interactorObject;
             if (interactor != null)
             {
-                m_GrabStartHandAngle = CalculateHandAngle(interactor.transform.position);
-                m_GrabStartRoll = GetControllerRoll(interactor.transform);
+                m_GrabStartHandRotation = HandRotationInCarFrame(interactor.transform);
             }
         }
 
@@ -311,25 +323,59 @@ namespace PrimerVolante.VR
             CycleMode();
         }
 
+        /// <summary>
+        /// Signo que convierte el twist de la muñeca (rotación positiva alrededor del forward del control)
+        /// en ángulo de la perilla. En Unity una rotación positiva alrededor del forward del control es
+        /// antihoraria vista desde atrás (desde el conductor); la perilla gira horario (visto desde el conductor)
+        /// con ángulo positivo porque su eje de giro apunta hacia el conductor. Por eso el signo es -1:
+        /// muñeca en sentido horario => ángulo creciente => Off hacia Altas.
+        /// </summary>
+        public const float TwistToKnobSign = -1f;
+
+        /// <summary>
+        /// Twist en grados [-180, 180] de la rotación relativa entre <paramref name="start"/> y <paramref name="current"/>
+        /// alrededor del eje forward local del control (descomposición swing-twist). Ignora por completo la posición
+        /// de la mano y el swing (inclinación) del control.
+        /// </summary>
+        public static float ComputeTwistDegrees(Quaternion start, Quaternion current)
+        {
+            Quaternion delta = Quaternion.Inverse(start) * current;
+            float twist = 2f * Mathf.Atan2(delta.z, delta.w) * Mathf.Rad2Deg;
+            return Mathf.DeltaAngle(0f, twist);
+        }
+
+        /// <summary>
+        /// Ángulo de la perilla (sin clamp) para un agarre iniciado en <paramref name="grabStartAngle"/> y una muñeca
+        /// que giró <paramref name="twistDegrees"/> (ver <see cref="ComputeTwistDegrees"/>). Relación 1:1.
+        /// </summary>
+        public static float KnobAngleFromTwist(float grabStartAngle, float twistDegrees)
+        {
+            return grabStartAngle + TwistToKnobSign * twistDegrees;
+        }
+
+        /// <summary>
+        /// Rotación de la mano relativa al padre de la perilla (el auto). Así, si el auto gira o se inclina
+        /// mientras la perilla está agarrada, ese movimiento no se lee como giro de muñeca.
+        /// </summary>
+        private Quaternion HandRotationInCarFrame(Transform hand)
+        {
+            Transform frame = m_OriginalParent != null ? m_OriginalParent : transform.parent;
+            return frame != null ? Quaternion.Inverse(frame.rotation) * hand.rotation : hand.rotation;
+        }
+
         private void UpdateRotationFromHand(Transform interactorTransform)
         {
-            float currentHandAngle = CalculateHandAngle(interactorTransform.position);
-            float deltaHand = Mathf.DeltaAngle(m_GrabStartHandAngle, currentHandAngle);
+            float twist = ComputeTwistDegrees(m_GrabStartHandRotation, HandRotationInCarFrame(interactorTransform));
+            float rawAngle = KnobAngleFromTwist(m_GrabStartAngle, twist);
 
-            float currentRoll = GetControllerRoll(interactorTransform);
-            float deltaRoll = Mathf.DeltaAngle(m_GrabStartRoll, currentRoll);
-
-            // Escoge el delta dominante entre giro de muñeca (roll) y traslación angular de mano
-            float angleDelta = (Mathf.Abs(deltaRoll) > Mathf.Abs(deltaHand)) ? deltaRoll : deltaHand;
-
-            if (Mathf.Abs(angleDelta) > 3f)
+            if (Mathf.Abs(rawAngle - m_GrabStartAngle) > 3f)
             {
                 m_HasRotatedWhileGrabbed = true;
             }
 
             float minAngle = Mathf.Min(AngleTable);
             float maxAngle = Mathf.Max(AngleTable);
-            float newAngle = Mathf.Clamp(m_GrabStartAngle + angleDelta, minAngle - 10f, maxAngle + 10f);
+            float newAngle = Mathf.Clamp(rawAngle, minAngle - 10f, maxAngle + 10f);
             m_CurrentAngle = newAngle;
             ApplyRotation(m_CurrentAngle);
 
@@ -341,59 +387,6 @@ namespace PrimerVolante.VR
                 OnModeChanged?.Invoke(m_CurrentMode);
                 ModeChanged?.Invoke(m_CurrentMode);
             }
-        }
-
-        private float GetControllerRoll(Transform interactorTransform)
-        {
-            Transform parentT = transform.parent != null ? transform.parent : m_OriginalParent;
-            Vector3 worldAxis = parentT != null
-                ? (parentT.rotation * m_InitialLocalRotation * m_RotationAxis.normalized)
-                : (transform.rotation * m_RotationAxis.normalized);
-
-            Vector3 reference = Vector3.up;
-            if (Mathf.Abs(Vector3.Dot(reference, worldAxis)) > 0.9f)
-            {
-                reference = Vector3.forward;
-            }
-
-            Vector3 projectedReference = Vector3.ProjectOnPlane(reference, worldAxis).normalized;
-            Vector3 projectedCurrent = Vector3.ProjectOnPlane(interactorTransform.up, worldAxis).normalized;
-
-            return Vector3.SignedAngle(projectedReference, projectedCurrent, worldAxis);
-        }
-
-        private float CalculateHandAngle(Vector3 handWorldPos)
-        {
-            Transform parentT = transform.parent != null ? transform.parent : m_OriginalParent;
-            Vector3 localHandPos;
-
-            if (parentT != null)
-            {
-                localHandPos = parentT.InverseTransformPoint(handWorldPos) - transform.localPosition;
-            }
-            else
-            {
-                localHandPos = handWorldPos - transform.position;
-            }
-
-            // Proyectar sobre el plano perpendicular a m_RotationAxis
-            Vector3 axis = m_RotationAxis.normalized;
-            Vector3 projected = Vector3.ProjectOnPlane(localHandPos, axis);
-
-            if (projected.sqrMagnitude < 0.0001f)
-                return 0f;
-
-            Vector3 referenceRight = Vector3.Cross(axis, Vector3.up);
-            if (referenceRight.sqrMagnitude < 0.001f)
-                referenceRight = Vector3.Cross(axis, Vector3.forward);
-            referenceRight.Normalize();
-
-            Vector3 referenceUp = Vector3.Cross(referenceRight, axis).normalized;
-
-            float x = Vector3.Dot(projected, referenceRight);
-            float y = Vector3.Dot(projected, referenceUp);
-
-            return Mathf.Atan2(x, y) * Mathf.Rad2Deg;
         }
 
         private IEnumerator SnapToAngle(float targetAngle)
@@ -428,7 +421,10 @@ namespace PrimerVolante.VR
             }
         }
 
-        private float GetAngleForMode(HeadlightMode mode)
+        /// <summary>
+        /// Ángulo local de la perilla en el que queda el modo indicado.
+        /// </summary>
+        public float GetAngleForMode(HeadlightMode mode)
         {
             float[] angles = AngleTable;
             int index = (int)mode;
