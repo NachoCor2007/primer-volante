@@ -135,6 +135,16 @@ namespace PrimerVolante.Testing.Editor
             }
             Assert(overrides == 0, $"Los botones del selector no tienen overrides en una instancia limpia (encontrados {overrides})");
 
+            // Placa base: ancho del generador y los 3 botones entran con margen al borde
+            Transform panelBase = panel.transform.Find("Panel_Base");
+            Assert(panelBase != null && Approx(panelBase.localScale, VehicleMirrorSetupEditor.PANEL_BASE_SIZE),
+                $"Panel_Base con escala {VehicleMirrorSetupEditor.PANEL_BASE_SIZE} (actual {(panelBase != null ? panelBase.localScale.ToString() : "sin Panel_Base")})");
+            float outerEdge = VehicleMirrorSetupEditor.SELECTOR_SPACING_X + VehicleMirrorSetupEditor.SELECTOR_SIZE.x * 0.5f;
+            Assert(outerEdge < VehicleMirrorSetupEditor.PANEL_BASE_SIZE.x * 0.5f,
+                $"Los botones de los extremos entran en el ancho de Panel_Base (borde {outerEdge:F4} < {VehicleMirrorSetupEditor.PANEL_BASE_SIZE.x * 0.5f:F4})");
+            Assert(VehicleMirrorSetupEditor.SELECTOR_SPACING_X > VehicleMirrorSetupEditor.SELECTOR_SIZE.x,
+                "Los botones del selector no se superponen");
+
             for (int i = 0; i < SELECTORS.Length; i++)
             {
                 string name = SELECTORS[i];
@@ -191,6 +201,9 @@ namespace PrimerVolante.Testing.Editor
                 Transform label = visual.Find("Label");
                 Assert(label != null && label.GetComponent<TextMeshPro>() != null,
                     $"{name}: Label (TextMeshPro) es hijo de Visual");
+                Vector3 size = VehicleMirrorSetupEditor.SELECTOR_SIZE;
+                Assert(label != null && Approx(label.localScale, new Vector3(1f / size.x, 1f / size.z, 1f)),
+                    $"{name}: Label con escala inversa al tamaño del botón (actual {(label != null ? label.localScale.ToString() : "sin Label")})");
                 Assert(btn.Find("Label") == null, $"{name}: Label ya no es hijo directo de la raíz");
 
                 // Affordance
@@ -430,7 +443,7 @@ namespace PrimerVolante.Testing.Editor
                 Assert(btn.localScale == Vector3.one && btn.GetComponent<Renderer>() == null,
                     "CreateButton: raíz con escala 1 y sin renderer");
                 var collider = btn.GetComponent<BoxCollider>();
-                Assert(collider != null && Approx(collider.size, size), "CreateButton: BoxCollider de size (0.018, 0.010, 0.018)");
+                Assert(collider != null && Approx(collider.size, size), $"CreateButton: BoxCollider de size {size}");
                 Assert(interactable.interactionLayers.value == InteractionLayerMask.GetMask("Poke"),
                     "CreateButton: interactionLayers = solo Poke");
 

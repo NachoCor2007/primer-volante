@@ -604,7 +604,7 @@ namespace PrimerVolante.Testing.Editor
             baseMesh.name = "Panel_Base";
             baseMesh.transform.SetParent(panelObj.transform, false);
             baseMesh.transform.localPosition = Vector3.zero;
-            baseMesh.transform.localScale = new Vector3(0.075f, 0.015f, 0.13f);
+            baseMesh.transform.localScale = PANEL_BASE_SIZE;
             baseMesh.GetComponent<Renderer>().sharedMaterial = panelBaseMat;
             UnityEngine.Object.DestroyImmediate(baseMesh.GetComponent<Collider>());
 
@@ -663,8 +663,11 @@ namespace PrimerVolante.Testing.Editor
         // Geometría del selector en el panel de la puerta: posición de REPOSO del botón (centro del Visual) y tamaño.
         internal const float SELECTOR_REST_Y = 0.011f;
         internal const float SELECTOR_REST_Z = 0.035f;
-        internal const float SELECTOR_SPACING_X = 0.022f;
-        internal static readonly Vector3 SELECTOR_SIZE = new Vector3(0.018f, 0.010f, 0.018f);
+        internal const float SELECTOR_SPACING_X = 0.028f;
+        internal static readonly Vector3 SELECTOR_SIZE = new Vector3(0.022f, 0.010f, 0.022f);
+
+        // Placa base del panel: 90 mm de ancho para que los 3 botones de 22 mm, separados 6 mm, dejen 6 mm de margen al borde.
+        internal static readonly Vector3 PANEL_BASE_SIZE = new Vector3(0.09f, 0.015f, 0.13f);
 
         /// <summary>
         /// Comprueba que un botón del selector se puede configurar con poke. Falla si la capa Poke no existe
