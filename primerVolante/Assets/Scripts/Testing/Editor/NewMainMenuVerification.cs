@@ -255,7 +255,7 @@ namespace PrimerVolante.Testing.Editor
             Check(controller.XROriginTransform != null && controller.XROriginTransform.position == Vector3.zero, "LockPlayerStationary deja el rig en MenuViewpoint = Vector3.zero (sin VR)");
 
             Check(controller.Lessons.Count == 6, "NewMainMenuController tiene cargadas las 6 lecciones del currículum");
-            Check(controller.Circuits.Count >= 3, "NewMainMenuController tiene configurados al menos 3 circuitos integradores");
+            Check(controller.Circuits.Count >= 1, "NewMainMenuController tiene configurado el circuito integrador");
             Check(controller.CurrentTab == NewMenuTab.Controles, "La solapa inicial por defecto es 'Controles y Mandos'");
 
             // 7.b. Botón Salir en columna izquierda (Sidebar)

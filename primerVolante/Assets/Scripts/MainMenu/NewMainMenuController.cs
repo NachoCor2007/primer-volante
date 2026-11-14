@@ -260,23 +260,9 @@ namespace PrimerVolante.MainMenu
                 new CircuitDefinition
                 {
                     circuitId = "CIRCUIT_01",
-                    title = "Circuito Integrador 1: Tráfico y Señales",
-                    description = "Recorrido integral por el casco urbano con intersecciones reguladas por semáforos, señales reglamentarias y evaluación en tiempo real de infracciones.",
-                    sceneName = "Lesson_05_TurnIntersections"
-                },
-                new CircuitDefinition
-                {
-                    circuitId = "CIRCUIT_02",
-                    title = "Circuito Integrador 2: Maniobras y Parking",
-                    description = "Práctica integral que combina desplazamiento seguro por calles urbanas y maniobras de estacionamiento en dársena a 45° y en paralelo.",
-                    sceneName = "Lesson_06_ParkingManeuvers"
-                },
-                new CircuitDefinition
-                {
-                    circuitId = "CIRCUIT_CITY",
-                    title = "Práctica Libre: Ciudad Completa",
-                    description = "Manejo libre e independiente a lo largo de todo el mapa de la ciudad. Ideal para familiarizarse con el comportamiento dinámico del vehículo.",
-                    sceneName = "City_Master"
+                    title = "Circuito 1: Navegación Urbana y Tráfico",
+                    description = "Recorrido urbano integral guiado por pantalla GPS a través de las calles e intersecciones de la ciudad, respetando las normas de tránsito hasta estacionar en la dársena de meta.",
+                    sceneName = "Circuit_01"
                 }
             };
         }
@@ -725,7 +711,14 @@ namespace PrimerVolante.MainMenu
 
             if (!string.IsNullOrEmpty(circuit.sceneName))
             {
-                UnityEngine.SceneManagement.SceneManager.LoadScene(circuit.sceneName);
+                if (PrimerVolante.Lessons.LessonSceneFlowManager.Instance != null)
+                {
+                    PrimerVolante.Lessons.LessonSceneFlowManager.Instance.LoadCircuit(circuit.sceneName);
+                }
+                else
+                {
+                    UnityEngine.SceneManagement.SceneManager.LoadScene(circuit.sceneName);
+                }
             }
         }
 

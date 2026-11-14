@@ -742,9 +742,7 @@ namespace PrimerVolante.Testing.Editor
             layout.childForceExpandHeight = false;
             container = itemsBox;
 
-            CreateLessonCardButton("CircuitItem_0", itemsBox, font, "Circuito Integrador 1: Tráfico y Señales", 125f);
-            CreateLessonCardButton("CircuitItem_1", itemsBox, font, "Circuito Integrador 2: Maniobras y Parking", 125f);
-            CreateLessonCardButton("CircuitItem_2", itemsBox, font, "Práctica Libre: Ciudad Completa", 125f);
+            CreateLessonCardButton("CircuitItem_0", itemsBox, font, "Circuito 1: Navegación Urbana y Tráfico", 125f);
 
             // Columna Derecha: Detalle del circuito
             RectTransform detailCol = CreateRect("CircuitDetailColumn", panel);

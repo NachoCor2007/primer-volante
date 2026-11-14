@@ -41,7 +41,8 @@ namespace PrimerVolante.Lessons
             { "LESSON_03", "Lesson_03_LightingSignals" },
             { "LESSON_04", "Lesson_04_DrivingManeuvers" },
             { "LESSON_05", "Lesson_05_TurnIntersections" },
-            { "LESSON_06", "Lesson_06_ParkingManeuvers" }
+            { "LESSON_06", "Lesson_06_ParkingManeuvers" },
+            { "CIRCUIT_01", "Circuit_01" }
         };
 
         private string m_CurrentOverlayScene = "";
@@ -187,6 +188,25 @@ namespace PrimerVolante.Lessons
             else
             {
                 Debug.LogWarning($"[LessonSceneFlowManager] No hay escena mapeada para {lessonId}.");
+            }
+        }
+
+        /// <summary>
+        /// Carga un circuito urbano asegurando que City_Master esté cargada de fondo con transición VR.
+        /// </summary>
+        public void LoadCircuit(string sceneNameOrId)
+        {
+            if (m_IsTransitioning) return;
+
+            if (LessonScenes.TryGetValue(sceneNameOrId, out string targetScene))
+            {
+                HasActivatedLesson = true;
+                StartCoroutine(TransitionToSceneRoutine(targetScene));
+            }
+            else
+            {
+                HasActivatedLesson = true;
+                StartCoroutine(TransitionToSceneRoutine(sceneNameOrId));
             }
         }
 
