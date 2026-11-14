@@ -73,7 +73,20 @@ namespace PrimerVolante.VR
         /// Ángulos locales de la perilla indexados por el valor entero de <see cref="HeadlightMode"/>
         /// (Off, Position, LowBeam, HighBeam). Única fuente de verdad para la cantidad de modos.
         /// </summary>
-        private float[] AngleTable => new float[] { m_OffAngle, m_PositionAngle, m_LowBeamAngle, m_HighBeamAngle };
+        private float[] AngleTable
+        {
+            get
+            {
+                // Buffer reutilizado: se consulta varias veces por frame mientras la perilla está agarrada.
+                m_AngleBuffer[0] = m_OffAngle;
+                m_AngleBuffer[1] = m_PositionAngle;
+                m_AngleBuffer[2] = m_LowBeamAngle;
+                m_AngleBuffer[3] = m_HighBeamAngle;
+                return m_AngleBuffer;
+            }
+        }
+
+        private readonly float[] m_AngleBuffer = new float[4];
 
         /// <summary>
         /// Indica si la perilla está actualmente sostenida por un interactor VR.
@@ -90,6 +103,7 @@ namespace PrimerVolante.VR
 
         private float m_CurrentAngle = 0f;
         private float m_GrabStartAngle = 0f;
+        /// <summary>Rotación de la mano al agarrar, expresada en el marco del auto (ver <see cref="HandRotationInCarFrame"/>).</summary>
         private Quaternion m_GrabStartHandRotation = Quaternion.identity;
         private bool m_HasRotatedWhileGrabbed = false;
 
@@ -283,7 +297,7 @@ namespace PrimerVolante.VR
             var interactor = args.interactorObject;
             if (interactor != null)
             {
-                m_GrabStartHandRotation = interactor.transform.rotation;
+                m_GrabStartHandRotation = HandRotationInCarFrame(interactor.transform);
             }
         }
 
@@ -339,9 +353,19 @@ namespace PrimerVolante.VR
             return grabStartAngle + TwistToKnobSign * twistDegrees;
         }
 
+        /// <summary>
+        /// Rotación de la mano relativa al padre de la perilla (el auto). Así, si el auto gira o se inclina
+        /// mientras la perilla está agarrada, ese movimiento no se lee como giro de muñeca.
+        /// </summary>
+        private Quaternion HandRotationInCarFrame(Transform hand)
+        {
+            Transform frame = m_OriginalParent != null ? m_OriginalParent : transform.parent;
+            return frame != null ? Quaternion.Inverse(frame.rotation) * hand.rotation : hand.rotation;
+        }
+
         private void UpdateRotationFromHand(Transform interactorTransform)
         {
-            float twist = ComputeTwistDegrees(m_GrabStartHandRotation, interactorTransform.rotation);
+            float twist = ComputeTwistDegrees(m_GrabStartHandRotation, HandRotationInCarFrame(interactorTransform));
             float rawAngle = KnobAngleFromTwist(m_GrabStartAngle, twist);
 
             if (Mathf.Abs(rawAngle - m_GrabStartAngle) > 3f)

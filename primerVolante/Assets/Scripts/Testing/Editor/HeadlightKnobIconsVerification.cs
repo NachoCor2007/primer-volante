@@ -193,8 +193,11 @@ namespace PrimerVolante.Testing.Editor
                 Action<HeadlightMode> handler = m => { events++; last = m; };
                 script.ModeChanged += handler;
 
+                // m_GrabStartHandRotation se guarda en el marco del auto (como lo hace OnGrab).
+                Quaternion startInCar = Quaternion.Inverse(car.rotation) * start;
+
                 script.SetMode(HeadlightMode.Off, false);
-                startRot.SetValue(script, start);
+                startRot.SetValue(script, startInCar);
                 startAngle.SetValue(script, script.GetAngleForMode(HeadlightMode.Off));
 
                 // Muñeca horaria 90 grados, mano en una posición cualquiera => Altas
@@ -210,7 +213,7 @@ namespace PrimerVolante.Testing.Editor
                 Assert(Near((float)curAngle.GetValue(script), angleA), "El ángulo no depende de la posición de la mano, solo de la rotación de la muñeca");
 
                 // Traslación pura sin rotar => sin cambio de ángulo
-                startRot.SetValue(script, start);
+                startRot.SetValue(script, startInCar);
                 startAngle.SetValue(script, script.GetAngleForMode(HeadlightMode.Position));
                 script.SetMode(HeadlightMode.Position, false);
                 hand.transform.SetPositionAndRotation(car.position + new Vector3(0.4f, 0.4f, 0.4f), start);
@@ -218,7 +221,7 @@ namespace PrimerVolante.Testing.Editor
                 Assert(Near((float)curAngle.GetValue(script), script.GetAngleForMode(HeadlightMode.Position)),
                     "Mover la mano sin rotar la muñeca no cambia el ángulo");
 
-                // Antihorario 30 grados desde Posición (-15): clamp inferior a min - 10 = -55 recién con más giro
+                // Antihorario 150 grados desde Posición (-15) => -165 sin clamp: se limita a min - 10 = -55
                 hand.transform.SetPositionAndRotation(car.position, Quaternion.AngleAxis(150f, f) * start);
                 update.Invoke(script, new object[] { hand.transform });
                 float clampedLow = (float)curAngle.GetValue(script);
@@ -228,6 +231,42 @@ namespace PrimerVolante.Testing.Editor
                 update.Invoke(script, new object[] { hand.transform });
                 float clampedHigh = (float)curAngle.GetValue(script);
                 Assert(Near(clampedHigh, 55f), $"El ángulo se limita a max + 10 grados (obtenido {clampedHigh:F1})");
+
+                // El auto gira mientras la perilla está agarrada con el control inclinado: la mano acompaña al auto
+                // sin girar la muñeca => el ángulo no cambia (la rotación se mide en el marco del auto).
+                Quaternion carRotBefore = car.rotation;
+                try
+                {
+                    Quaternion pitched = Quaternion.LookRotation(Quaternion.AngleAxis(35f, car.right) * f, car.up);
+                    script.SetMode(HeadlightMode.Position, false);
+                    startRot.SetValue(script, Quaternion.Inverse(car.rotation) * pitched);
+                    startAngle.SetValue(script, script.GetAngleForMode(HeadlightMode.Position));
+                    events = 0;
+
+                    foreach (Quaternion carTurn in new[] { Quaternion.Euler(0f, 90f, 0f), Quaternion.Euler(8f, -60f, 12f) })
+                    {
+                        car.rotation = carTurn * carRotBefore;
+                        hand.transform.rotation = carTurn * pitched;
+                        update.Invoke(script, new object[] { hand.transform });
+                        Assert(Near((float)curAngle.GetValue(script), script.GetAngleForMode(HeadlightMode.Position)) && script.CurrentMode == HeadlightMode.Position,
+                            $"Girar o inclinar el auto con la perilla agarrada (control inclinado) no cambia el ángulo (obtenido {(float)curAngle.GetValue(script):F2})");
+                    }
+                    Assert(events == 0, "Girar el auto con la perilla agarrada no emite ModeChanged");
+
+                    // Con el auto girado, un giro real de muñeca sigue funcionando
+                    Quaternion carTurned = Quaternion.Euler(0f, 90f, 0f);
+                    car.rotation = carTurned * carRotBefore;
+                    Vector3 fTurned = car.forward;
+                    hand.transform.rotation = Quaternion.AngleAxis(-30f, fTurned) * (carTurned * pitched);
+                    update.Invoke(script, new object[] { hand.transform });
+                    float turnedAngle = (float)curAngle.GetValue(script);
+                    Assert(turnedAngle > script.GetAngleForMode(HeadlightMode.Position) + 15f,
+                        $"Con el auto girado, la muñeca en sentido horario sigue llevando hacia Altas (obtenido {turnedAngle:F2})");
+                }
+                finally
+                {
+                    car.rotation = carRotBefore;
+                }
 
                 script.ModeChanged -= handler;
                 script.SetMode(HeadlightMode.Off, false);
@@ -478,6 +517,10 @@ namespace PrimerVolante.Testing.Editor
             onDisable.Invoke(comp, null);
             script.SetMode(HeadlightMode.LowBeam, false);
             Assert(images[3].color.a > 0.99f, "Tras OnDisable ya no reacciona a ModeChanged (sin fugas de suscripción)");
+            onEnable.Invoke(comp, null);
+            Assert(images[2].color.a > 0.99f && images[3].color.a < 0.99f,
+                "Al rehabilitarse, los íconos se resincronizan con el modo que cambió mientras estaban deshabilitados");
+            onDisable.Invoke(comp, null);
             script.SetMode(HeadlightMode.Off, false);
             comp.Refresh(HeadlightMode.Off);
         }

@@ -33,7 +33,10 @@ namespace PrimerVolante.VR
 
         private void OnEnable()
         {
-            if (m_Knob != null) m_Knob.ModeChanged += Refresh;
+            if (m_Knob == null) return;
+            m_Knob.ModeChanged += Refresh;
+            // Resincronizar: el modo pudo cambiar mientras el componente estaba deshabilitado.
+            Refresh(m_Knob.CurrentMode);
         }
 
         private void OnDisable()
