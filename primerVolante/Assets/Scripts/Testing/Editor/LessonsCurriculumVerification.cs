@@ -341,7 +341,8 @@ namespace PrimerVolante.Testing.Editor
             Assert(hud.NextLessonButton != null, "HUD debe tener asignado NextLessonButton", ref total, ref passed);
 
             // El currículum son las lecciones con escena propia en el flujo (LESSON_01..06), en orden.
-            int expectedLessons = LessonSceneFlowManager.LessonScenes.Count;
+            // Los circuitos (CIRCUIT_XX) también tienen escena en el flujo pero no forman parte del currículum.
+            int expectedLessons = LessonSceneFlowManager.LessonScenes.Keys.Count(k => k.StartsWith("LESSON_"));
             bool curriculumInOrder = manager.Curriculum != null && manager.Curriculum.Count == expectedLessons;
             for (int i = 0; curriculumInOrder && i < expectedLessons; i++)
             {

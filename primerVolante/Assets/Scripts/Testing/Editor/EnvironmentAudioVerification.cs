@@ -462,10 +462,15 @@ namespace PrimerVolante.Testing.Editor
             Assert(step.ambienceIntensity == AmbienceIntensityOverride.Unchanged, "LessonStepSO: ambienceIntensity por defecto = Unchanged", ref total, ref passed);
             Object.DestroyImmediate(step);
 
-            string[] guids = AssetDatabase.FindAssets("t:LessonStepSO");
-            int changed = guids.Select(AssetDatabase.GUIDToAssetPath).Select(AssetDatabase.LoadAssetAtPath<LessonStepSO>)
+            // Las lecciones básicas (Steps/LessonXX) mantienen el ambiente calmo; los circuitos (Steps/CircuitXX)
+            // pueden subir la intensidad para meter más presión, así que quedan fuera de esta regla.
+            string[] lessonStepPaths = AssetDatabase.FindAssets("t:LessonStepSO")
+                .Select(AssetDatabase.GUIDToAssetPath)
+                .Where(p => Regex.IsMatch(p, @"/Steps/Lesson\d+/"))
+                .ToArray();
+            int changed = lessonStepPaths.Select(AssetDatabase.LoadAssetAtPath<LessonStepSO>)
                 .Count(s => s != null && s.ambienceIntensity != AmbienceIntensityOverride.Unchanged);
-            Assert(guids.Length > 0 && changed == 0, $"Los {guids.Length} pasos de lección existentes quedan en Unchanged", ref total, ref passed);
+            Assert(lessonStepPaths.Length > 0 && changed == 0, $"Los {lessonStepPaths.Length} pasos de las lecciones básicas quedan en Unchanged", ref total, ref passed);
         }
 
         // ---------------------------------------------------------------- Voces
