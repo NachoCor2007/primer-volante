@@ -19,6 +19,9 @@ namespace PrimerVolante.Lessons
         [Tooltip("Semáforo que controla el carril de aproximación del jugador.")]
         [SerializeField] private TrafficLightController m_TrafficLight;
 
+        [Tooltip("Nombre del GameObject del semáforo para resolución dinámica en runtime.")]
+        [SerializeField] private string m_TrafficLightName = "Props_Traffic Signal_big (8)";
+
         [Tooltip("Peatón NPC que cruzará la senda.")]
         [SerializeField] private NPCPathFollower m_Pedestrian;
 
@@ -38,6 +41,27 @@ namespace PrimerVolante.Lessons
         public bool IsEventTriggered => m_EventTriggered;
         public bool IsEventCompleted => m_EventCompleted;
 
+        private void Awake()
+        {
+            EnsureReferences();
+        }
+
+        private void EnsureReferences()
+        {
+            if (m_TrafficLight == null && !string.IsNullOrEmpty(m_TrafficLightName))
+            {
+                GameObject go = GameObject.Find(m_TrafficLightName);
+                if (go != null)
+                {
+                    m_TrafficLight = go.GetComponent<TrafficLightController>();
+                }
+            }
+            if (m_RedLightDetector == null)
+            {
+                m_RedLightDetector = UnityEngine.Object.FindAnyObjectByType<RedLightViolationDetector>();
+            }
+        }
+
         private void OnTriggerEnter(Collider other)
         {
             if (m_EventTriggered) return;
@@ -52,6 +76,7 @@ namespace PrimerVolante.Lessons
         public void TriggerEvent()
         {
             if (m_EventTriggered) return;
+            EnsureReferences();
             m_EventTriggered = true;
             StartCoroutine(CrossingSequenceRoutine());
         }

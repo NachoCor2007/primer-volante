@@ -22,6 +22,9 @@ namespace PrimerVolante.Environment
         [Tooltip("Controlador del semáforo asignado a este carril o cruce.")]
         [SerializeField] private TrafficLightController m_TrafficLight;
 
+        [Tooltip("Nombre del GameObject del semáforo para resolución dinámica en runtime (crucial para escenas aditivas como City_Master).")]
+        [SerializeField] private string m_TrafficLightName = "";
+
         [Header("Filtros de Vehículo")]
         [Tooltip("Tag opcional de vehículo permitido para disparar la infracción (ej. 'Player'). Si está vacío, solo busca VehicleController.")]
         [SerializeField] private string m_VehicleTag = "";
@@ -60,6 +63,13 @@ namespace PrimerVolante.Environment
             set => m_TrafficLight = value;
         }
 
+        /// <summary>Nombre del GameObject del semáforo en la escena.</summary>
+        public string TrafficLightName
+        {
+            get => m_TrafficLightName;
+            set => m_TrafficLightName = value;
+        }
+
         /// <summary>Duración del período de cooldown antirrebote.</summary>
         public float CooldownDuration
         {
@@ -96,6 +106,12 @@ namespace PrimerVolante.Environment
         private void Awake()
         {
             EnsureTriggerCollider();
+            EnsureTrafficLightReference();
+        }
+
+        private void Start()
+        {
+            EnsureTrafficLightReference();
         }
 
         private void OnValidate()
@@ -126,6 +142,7 @@ namespace PrimerVolante.Environment
             }
 
             // 1. Verificar si el semáforo está presente y en Rojo
+            EnsureTrafficLightReference();
             if (m_TrafficLight == null || !m_TrafficLight.IsRed)
             {
                 return false;
@@ -180,6 +197,43 @@ namespace PrimerVolante.Environment
 
         #region Métodos Privados
 
+        public void EnsureTrafficLightReference()
+        {
+            if (m_TrafficLight != null)
+            {
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(m_TrafficLightName))
+            {
+                GameObject go = GameObject.Find(m_TrafficLightName);
+                if (go != null)
+                {
+                    m_TrafficLight = go.GetComponent<TrafficLightController>();
+                    if (m_TrafficLight != null)
+                    {
+                        return;
+                    }
+                }
+            }
+
+            // Búsqueda espacial del semáforo más cercano dentro de un radio de 25m
+            var allLights = UnityEngine.Object.FindObjectsByType<TrafficLightController>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            TrafficLightController closest = null;
+            float minDistSq = 25f * 25f;
+            Vector3 myPos = transform.position;
+            foreach (var l in allLights)
+            {
+                float dSq = (l.transform.position - myPos).sqrMagnitude;
+                if (dSq < minDistSq)
+                {
+                    minDistSq = dSq;
+                    closest = l;
+                }
+            }
+            m_TrafficLight = closest;
+        }
+
         private void EnsureTriggerCollider()
         {
             Collider col = GetComponent<Collider>();
@@ -229,6 +283,24 @@ namespace PrimerVolante.Environment
             }
 #endif
             return Time.time;
+        }
+
+        private void OnDrawGizmos()
+        {
+            BoxCollider box = GetComponent<BoxCollider>();
+            if (box == null) return;
+
+            bool isRed = (m_TrafficLight != null && m_TrafficLight.IsRed);
+            Gizmos.color = isRed
+                ? new Color(1f, 0.1f, 0.1f, 0.40f)
+                : new Color(1f, 0.4f, 0.4f, 0.20f);
+
+            Matrix4x4 oldMat = Gizmos.matrix;
+            Gizmos.matrix = transform.localToWorldMatrix;
+            Gizmos.DrawCube(box.center, box.size);
+            Gizmos.color = isRed ? Color.red : new Color(1f, 0.2f, 0.2f, 0.8f);
+            Gizmos.DrawWireCube(box.center, box.size);
+            Gizmos.matrix = oldMat;
         }
 
         #endregion
