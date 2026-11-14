@@ -40,6 +40,7 @@ namespace PrimerVolante.Testing.Editor
             yield return Suite("LowBeamInfraction", LowBeamInfractionVerification.RunVerification);
             yield return Suite("MainMenu", MainMenuVerification.RunVerification);
             yield return Suite("MenuHeadPose", MenuHeadPoseVerification.RunVerification);
+            yield return Suite("MirrorSelectorPoke", MirrorSelectorPokeVerification.RunVerification);
             yield return Suite("NewMainMenu", NewMainMenuVerification.RunVerification);
             yield return Suite("NPC", NPCVerification.RunVerification);
             yield return Suite("NPCSafetyStop", NPCSafetyStopLifecycleTests.RunAllTests);
