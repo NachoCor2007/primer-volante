@@ -47,11 +47,11 @@ Cuando esté acordado, guardalo en memoria (`project_<nombre>.md`, mismo estilo 
 El subagente **no ve esta conversación**: el prompt tiene que ser autocontenido. Las reglas generales (APIs obsoletas, autoría de commits, formato del reporte) ya están en el agente `implementador-unity`; no las repitas. Estructura:
 
 1. **Objetivo**: qué se implementa y por qué, en 2-4 líneas.
-2. **Contexto del código**: archivos, clases y sistemas existentes relevantes (con rutas), y patrones a seguir.
+2. **Contexto del código**: archivos, clases y sistemas existentes relevantes (con rutas), y patrones a seguir. Pasale lo que ya investigaste para que no tenga que re-explorar: firmas de los métodos que va a llamar o modificar, nombres exactos de GameObjects/componentes en la escena, y la verificación existente que conviene usar de modelo.
 3. **Diseño acordado**: detalle de cada pieza. Incluí las decisiones que tomó el usuario, para que el subagente no las vuelva a discutir.
 4. **Escena nueva**: los cambios van en una escena nueva. Indicá la escena base a duplicar, el nombre y la ruta de la nueva (ej. `Assets/Scenes/car09/CityWith<Feature>.unity`). Preguntá al usuario si no está claro cuál es la base.
-5. **Tools y skills a usar**: lista concreta de qué usar y para qué. El Unity CLI va siempre primero, con las operaciones concretas que va a necesitar (duplicar la escena base, crear GameObjects y componentes, asignar referencias, verificar compilación, probar en Play Mode). Después, el resto (ej. "las indicaciones de Play Mode driving tests para probar manejando con un Gamepad virtual"). El objetivo es que el subagente no tenga que pensar qué herramientas usar.
-6. **Tests**: qué tiene que verificar la clase `<Feature>Verification` (casos concretos), qué escenarios de Play Mode hay que correr y qué se espera ver en la consola, y qué verificaciones existentes correr para descartar regresiones.
+5. **Tools y skills a usar**: lista concreta de qué usar y para qué. El Unity CLI va siempre primero, con las operaciones concretas que va a necesitar (duplicar la escena base, crear GameObjects y componentes, asignar referencias). Para compilar, verificar y Play Mode, nombrá los comandos de `python tools/unity/pvu.py` (`compile`, `menu`, `tests`, `scenario`); el agente ya conoce el helper, no hace falta explicarlo. Después, el resto de skills/tools que apliquen. El objetivo es que el subagente no tenga que pensar qué herramientas usar.
+6. **Tests**: qué tiene que verificar la clase `<Feature>Verification` (casos concretos) y su nombre en `VerificationSuiteTests`. Play Mode **solo si la feature depende de manejar o de la física**: describí cada escenario (pose inicial, entradas, qué `[TEST]` se espera) partiendo de `tools/unity/templates/DrivingScenario.cs`, y limitalos a los imprescindibles. Listá por nombre las suites existentes a correr como regresión (`pvu.py tests A B C`); la suite completa se corre una sola vez al final.
 7. **Criterios de aceptación** y **fuera de alcance**.
 8. **Git**: rama en la que trabajar, y si tiene que commitear o no (preguntale al usuario si no lo dijo).
 
@@ -68,7 +68,9 @@ Cuando termine:
 La revisión la hacés vos, no el subagente, para que el código lo revise alguien distinto de quien lo escribió:
 1. Corré la skill `code-review` con nivel `high` sobre los cambios del subagente.
 2. Mostrale los hallazgos al usuario y acordá cuáles corregir.
-3. Mandale las correcciones al mismo subagente con `SendMessage`, así conserva su contexto. Pedile que vuelva a correr los tests afectados.
-4. Repetí la revisión si las correcciones fueron grandes.
+3. Aplicá las correcciones según su tamaño (relanzar el subagente cuesta ~40 min por la recompilación y los tests completos):
+   - **Chicas** (pocas líneas, sin tocar escenas ni diseño): corregilas vos en esta sesión, `python tools/unity/pvu.py compile` y `pvu.py tests <suites afectadas>`.
+   - **Grandes** (cambios en escenas/prefabs, varios archivos o lógica nueva): mandáselas al mismo subagente con `SendMessage`, así conserva su contexto, y pedile que corra solo los tests afectados.
+4. Repetí la revisión solo si las correcciones fueron grandes.
 
 Al final, actualizá la memoria del diseño (ej. "implementado AAAA-MM-DD en la rama X, revisado").
