@@ -267,6 +267,17 @@ namespace PrimerVolante.Testing.Editor
                 Assert(hud.CompletionTitleText().text == "Circuito completado con faltas graves"
                        && hud.CompletionDescriptionText().text.Contains("con 2 faltas graves.") && !hud.CompletionDescriptionText().text.Contains(" y 0"),
                     "Solo graves: '2 faltas graves' sin mencionar leves", ref total, ref passed);
+                Assert(!hud.CompletionDescriptionText().text.Contains("Felicitaciones"),
+                    "Con faltas graves y sin lección siguiente no felicita por completar el curso", ref total, ref passed);
+
+                // --- DisplayCompletion repetido con el resumen abierto: el resumen se cierra y el canvas vuelve a su tamaño
+                manager.Clear();
+                ReportCrash(manager, "23");
+                hud.DisplayCompletion(circuit);
+                hud.DisplayCompletion(plain);
+                Assert(!hud.IsInfractionSummaryVisible && !hud.InfractionSummaryPanel.activeSelf && hud.CompletionPanel.activeSelf
+                       && rect.sizeDelta == originalSize && rect.localPosition == originalLocalPos,
+                    "DisplayCompletion con el resumen abierto lo cierra y restaura el canvas", ref total, ref passed);
 
                 // --- Sin faltas
                 manager.Clear();
@@ -276,8 +287,8 @@ namespace PrimerVolante.Testing.Editor
                     "Sin faltas: el resumen muestra el mensaje positivo", ref total, ref passed);
                 hud.InfractionSummaryContinueButton.onClick.Invoke();
                 Assert(hud.CompletionTitleText().text == "¡Excelente Trabajo!"
-                       && hud.CompletionDescriptionText().text == "Has completado satisfactoriamente la Circuito de prueba.\n¡Felicitaciones por completar el curso de manejo en Primer Volante!",
-                    "Sin faltas: la felicitación conserva el texto actual", ref total, ref passed);
+                       && hud.CompletionDescriptionText().text == "Completaste el Circuito de prueba sin faltas.\n¡Felicitaciones por completar el curso de manejo en Primer Volante!",
+                    "Sin faltas: felicitación con '¡Excelente Trabajo!' y 'el' circuito (no 'la')", ref total, ref passed);
 
                 // --- Lección sin flag: comportamiento anterior intacto
                 ReportCrash(manager, "23");

@@ -886,6 +886,8 @@ namespace PrimerVolante.Lessons
             }
 
             m_WarningActive = false;
+            // Si el resumen ya estaba abierto (DisplayCompletion repetido) se cierra y el canvas vuelve a su tamaño
+            HideInfractionSummary();
             m_InfractionSummary = null;
             m_PendingCompletionLesson = null;
 
@@ -939,7 +941,8 @@ namespace PrimerVolante.Lessons
         private string GetTimesSymbol()
         {
             TMP_FontAsset font = m_InfractionSummaryListText != null ? m_InfractionSummaryListText.font : null;
-            return font != null && font.HasCharacter('\u00D7', true) ? "\u00D7" : "x";
+            // tryAddCharacter: el atlas din\u00E1mico de fallback puede no tener el glifo todav\u00EDa (build nueva o atlas limpio)
+            return font != null && font.HasCharacter('\u00D7', true, true) ? "\u00D7" : "x";
         }
 
         private void ScrollSummaryToTop()
@@ -1086,28 +1089,48 @@ namespace PrimerVolante.Lessons
                 }
             }
 
-            string closingLine = hasNextLesson
-                ? "¿Deseas continuar a la siguiente lección o repetir la actual?"
-                : "¡Felicitaciones por completar el curso de manejo en Primer Volante!";
+            string lessonTitle = lesson != null ? lesson.lessonTitle : string.Empty;
+            const string courseFinishedLine = "¡Felicitaciones por completar el curso de manejo en Primer Volante!";
             string title = "¡Excelente Trabajo!";
-            string description = $"Has completado satisfactoriamente la {lesson.lessonTitle}.\n{closingLine}";
+            string description;
 
-            // Solo con resumen de faltas (m_InfractionSummary es null en el resto de las lecciones) el texto se ajusta a las faltas
+            // Solo con resumen de faltas (m_InfractionSummary es null en el resto de las lecciones) el texto se ajusta a las
+            // faltas y va en voseo, como las descripciones de las infracciones. El resto de las lecciones conserva su texto.
             InfractionSummary summary = m_InfractionSummary;
-            if (summary != null && summary.MajorCount > 0)
+            if (summary == null)
             {
-                title = "Circuito completado con faltas graves";
-                string minors = summary.MinorCount > 0
-                    ? $" y {summary.MinorCount} {Plural(summary.MinorCount, "leve", "leves")}"
-                    : string.Empty;
-                description = $"Completaste el {lesson.lessonTitle} con {summary.MajorCount} {Plural(summary.MajorCount, "falta grave", "faltas graves")}{minors}. " +
-                              $"Repetí el circuito para corregirlas.\n{closingLine}";
+                string closingLine = hasNextLesson
+                    ? "¿Deseas continuar a la siguiente lección o repetir la actual?"
+                    : courseFinishedLine;
+                description = $"Has completado satisfactoriamente la {lessonTitle}.\n{closingLine}";
             }
-            else if (summary != null && summary.MinorCount > 0)
+            else
             {
-                title = "Circuito completado";
-                description = $"Completaste el {lesson.lessonTitle} con {summary.MinorCount} {Plural(summary.MinorCount, "falta leve", "faltas leves")}. " +
-                              $"Tené en cuenta el resumen para mejorar.\n{closingLine}";
+                string closingLine = hasNextLesson
+                    ? "¿Querés seguir con la siguiente lección o repetir esta?"
+                    : courseFinishedLine;
+
+                if (summary.MajorCount > 0)
+                {
+                    title = "Circuito completado con faltas graves";
+                    string minors = summary.MinorCount > 0
+                        ? $" y {summary.MinorCount} {Plural(summary.MinorCount, "leve", "leves")}"
+                        : string.Empty;
+                    description = $"Completaste el {lessonTitle} con {summary.MajorCount} {Plural(summary.MajorCount, "falta grave", "faltas graves")}{minors}. " +
+                                  "Repetí el circuito para corregirlas.";
+                    // Con faltas graves no se felicita por terminar el curso: solo se ofrece seguir si hay otra lección
+                    if (hasNextLesson) description += $"\n{closingLine}";
+                }
+                else if (summary.MinorCount > 0)
+                {
+                    title = "Circuito completado";
+                    description = $"Completaste el {lessonTitle} con {summary.MinorCount} {Plural(summary.MinorCount, "falta leve", "faltas leves")}. " +
+                                  $"Tené en cuenta el resumen para mejorar.\n{closingLine}";
+                }
+                else
+                {
+                    description = $"Completaste el {lessonTitle} sin faltas.\n{closingLine}";
+                }
             }
 
             if (m_CompletionTitleText != null) m_CompletionTitleText.text = title;
