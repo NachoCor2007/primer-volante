@@ -42,6 +42,7 @@ namespace PrimerVolante.Lessons
             { "LESSON_04", "Lesson_04_DrivingManeuvers" },
             { "LESSON_05", "Lesson_05_TurnIntersections" },
             { "LESSON_06", "Lesson_06_ParkingManeuvers" },
+            { "LESSON_07", "Lesson_07_BarrierManeuvers" },
             { "CIRCUIT_01", "Circuit_01" }
         };
 

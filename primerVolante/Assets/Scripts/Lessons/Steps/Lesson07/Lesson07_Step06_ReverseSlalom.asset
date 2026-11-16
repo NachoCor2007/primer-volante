@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
+  m_Name: Lesson07_Step06_ReverseSlalom
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
+  stepTitle: Slalom en Reversa con Espejos
+  instructionText: "Retrocede despacio (5-10 km/h) aplicando la regla del medio auto: observa con atenci\xF3n el espejo del lado del cono y, cuando veas que pas\xF3 la mitad del auto, invierte el volante para esquivar el siguiente por el lado libre de cada valla. Det\xE9n el auto con el auto completo dentro del recuadro amarillo de inicio."
+  completionMode: 1
+  requiredAction: 65
+  actionNumericParameter: 0
+  allowedControls: -1
+  highlightTargetName: 
+  ambienceIntensity: 0

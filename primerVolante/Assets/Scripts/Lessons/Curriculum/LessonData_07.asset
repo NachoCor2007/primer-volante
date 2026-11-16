@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ddb44700c534d9e49b589a387f99012f, type: 3}
+  m_Name: LessonData_07
+  m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonDefinitionSO
+  lessonId: LESSON_07
+  lessonTitle: "Lecci\xF3n 7: Dominio del Volante y Slalom entre Conos"
+  steps:
+  - {fileID: 11400000, guid: 7a070001000000000000000000000001, type: 2}
+  - {fileID: 11400000, guid: 7a070002000000000000000000000002, type: 2}
+  - {fileID: 11400000, guid: 7a070003000000000000000000000003, type: 2}
+  - {fileID: 11400000, guid: 7a070004000000000000000000000004, type: 2}
+  - {fileID: 11400000, guid: 7a070005000000000000000000000005, type: 2}
+  - {fileID: 11400000, guid: 7a070006000000000000000000000006, type: 2}
+  - {fileID: 11400000, guid: 7a070007000000000000000000000007, type: 2}

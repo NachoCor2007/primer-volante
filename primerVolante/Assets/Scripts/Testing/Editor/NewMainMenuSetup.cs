@@ -43,7 +43,7 @@ namespace PrimerVolante.Testing.Editor
         // Superficie del suelo del menú (cara superior de Ground_MainMenu): donde quedan los pies del jugador con tracking Floor.
         public const float MENU_FLOOR_Y = 0f;
         private const string CURRICULUM_FOLDER = "Assets/Scripts/Lessons/Curriculum";
-        private const int LESSON_COUNT = 6;
+        private const int LESSON_COUNT = 7;
 
         // Dimensiones del Canvas en World Space (scale 0.001f -> 2.3m x 1.35m)
         private const float CANVAS_W = 2300f;

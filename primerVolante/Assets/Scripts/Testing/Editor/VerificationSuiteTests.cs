@@ -34,6 +34,7 @@ namespace PrimerVolante.Testing.Editor
             yield return Suite("InfractionWarning", InfractionWarningVerification.RunVerification);
             yield return Suite("InteractableHighlighter", InteractableHighlighterVerification.RunVerification);
             yield return Suite("Lesson01", () => Lesson01Verification.RunVerification());
+            yield return Suite("Lesson07Slalom", Lesson07SlalomVerification.RunVerification);
             yield return Suite("LessonBoundary", LessonBoundaryVerification.RunVerification);
             yield return Suite("LessonHUDMinimize", LessonHUDMinimizeVerification.RunVerification);
             yield return Suite("LessonPauseActions", LessonPauseActionsVerification.RunVerification);

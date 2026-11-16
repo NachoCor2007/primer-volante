@@ -69,7 +69,6 @@ namespace PrimerVolante.UI
         // Estado interno
         private float m_CurrentYaw = 0f;
         private float m_RenderTimer = 0f;
-        private bool m_IsInitialized = false;
 
         public Camera TopDownCamera => m_TopDownCamera;
         public RenderTexture MapRenderTexture => m_MapRenderTexture;
@@ -103,8 +102,6 @@ namespace PrimerVolante.UI
                 m_CurrentYaw = m_VehicleTransform.eulerAngles.y;
                 SyncCameraImmediate();
             }
-
-            m_IsInitialized = true;
         }
 
         private void OnDestroy()

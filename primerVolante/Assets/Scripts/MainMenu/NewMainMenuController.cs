@@ -55,6 +55,9 @@ namespace PrimerVolante.MainMenu
         [SerializeField] private Button m_TabBtnCredits;
         [SerializeField] private Button m_BtnExit;
 
+        [Tooltip("Muestra la solapa 'Calibración de Asiento' en la barra lateral (oculta por defecto).")]
+        [SerializeField] private bool m_ShowCalibrationTab = false;
+
         [Header("Colores de Solapas")]
         [SerializeField] private Color m_ActiveTabColor = new Color(0.15f, 0.42f, 0.90f, 1f);   // Azul #266be6
         [SerializeField] private Color m_InactiveTabColor = new Color(0.10f, 0.12f, 0.18f, 1f); // Slate oscuro #1a1f2e
@@ -195,7 +198,7 @@ namespace PrimerVolante.MainMenu
             if (m_Lessons == null || m_Lessons.Count == 0)
             {
                 m_Lessons = new List<LessonDefinitionSO>();
-                for (int i = 1; i <= 6; i++)
+                for (int i = 1; i <= 7; i++)
                 {
                     var lesson = UnityEditor.AssetDatabase.LoadAssetAtPath<LessonDefinitionSO>($"Assets/Scripts/Lessons/Curriculum/LessonData_{i:00}.asset");
                     if (lesson != null) m_Lessons.Add(lesson);
@@ -528,6 +531,20 @@ namespace PrimerVolante.MainMenu
             if (m_TabBtnCredits != null) m_TabBtnCredits.onClick.AddListener(() => SelectTab(NewMenuTab.Creditos));
 
             if (m_BtnExit != null) m_BtnExit.onClick.AddListener(OpenExitModal);
+
+            ApplyTabVisibility();
+        }
+
+        /// <summary>Muestra la solapa de calibración del asiento solo si está habilitada.</summary>
+        public bool ShowCalibrationTab => m_ShowCalibrationTab;
+
+        /// <summary>
+        /// Oculta o muestra la solapa "Calibración de Asiento" según <see cref="ShowCalibrationTab"/>. La barra lateral
+        /// tiene un VerticalLayoutGroup, así que las demás solapas se reacomodan solas.
+        /// </summary>
+        public void ApplyTabVisibility()
+        {
+            if (m_TabBtnCalibration != null) m_TabBtnCalibration.gameObject.SetActive(m_ShowCalibrationTab);
         }
 
         public void SelectTab(NewMenuTab tab)
@@ -571,9 +588,7 @@ namespace PrimerVolante.MainMenu
         {
             if (m_LessonItemsContainer == null) return;
 
-            m_LessonCardButtons.Clear();
-            var buttons = m_LessonItemsContainer.GetComponentsInChildren<Button>(true);
-            m_LessonCardButtons.AddRange(buttons);
+            EnsureLessonCards();
 
             for (int i = 0; i < m_LessonCardButtons.Count; i++)
             {
@@ -589,6 +604,51 @@ namespace PrimerVolante.MainMenu
             }
 
             SelectLesson(0);
+        }
+
+        /// <summary>Tarjetas de la lista de lecciones, una por lección de <see cref="Lessons"/>.</summary>
+        public IReadOnlyList<Button> LessonCardButtons => m_LessonCardButtons;
+
+        /// <summary>
+        /// Deja una tarjeta por lección en la lista: las tarjetas vienen prearmadas en la escena, así que si hay más
+        /// lecciones que tarjetas se clona la última para cada lección faltante, y las tarjetas sobrantes se ocultan.
+        /// Cada tarjeta muestra el título de su lección. No agrega listeners.
+        /// </summary>
+        public void EnsureLessonCards()
+        {
+            m_LessonCardButtons.Clear();
+            if (m_LessonItemsContainer == null) return;
+
+            var existing = new List<Button>();
+            for (int i = 0; i < m_LessonItemsContainer.childCount; i++)
+            {
+                Button b = m_LessonItemsContainer.GetChild(i).GetComponent<Button>();
+                if (b != null) existing.Add(b);
+            }
+
+            int lessonCount = m_Lessons != null ? m_Lessons.Count : 0;
+            if (existing.Count > 0)
+            {
+                Button template = existing[existing.Count - 1];
+                for (int i = existing.Count; i < lessonCount; i++)
+                {
+                    Button clone = Instantiate(template, m_LessonItemsContainer);
+                    clone.name = $"LessonItem_{i}";
+                    existing.Add(clone);
+                }
+            }
+
+            for (int i = 0; i < existing.Count; i++)
+            {
+                // El índice de la tarjeta es el de la lección (SelectLesson(i)), así que no se saltean entradas nulas.
+                bool used = i < lessonCount;
+                existing[i].gameObject.SetActive(used);
+                if (!used) continue;
+
+                var label = existing[i].GetComponentInChildren<TextMeshProUGUI>(true);
+                if (label != null && m_Lessons[i] != null) label.text = m_Lessons[i].lessonTitle;
+                m_LessonCardButtons.Add(existing[i]);
+            }
         }
 
         public void SelectLesson(int index)
