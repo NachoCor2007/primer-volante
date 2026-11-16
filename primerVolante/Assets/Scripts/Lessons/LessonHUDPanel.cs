@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
+using PrimerVolante.Evaluation;
 using PrimerVolante.VR;
 using XRCommonUsages = UnityEngine.XR.CommonUsages;
 using XRNode = UnityEngine.XR.XRNode;
@@ -70,6 +72,28 @@ namespace PrimerVolante.Lessons
         [Tooltip("Texto dentro del botón Siguiente Lección.")]
         [SerializeField] private TextMeshProUGUI m_NextLessonButtonText;
 
+        [Header("Resumen de Faltas (circuitos)")]
+        [Tooltip("Página mostrada antes de las felicitaciones en las lecciones con showInfractionSummary.")]
+        [SerializeField] private GameObject m_InfractionSummaryPanel;
+
+        [Tooltip("Título de la página de resumen de faltas.")]
+        [SerializeField] private TextMeshProUGUI m_InfractionSummaryTitleText;
+
+        [Tooltip("Línea de conteos (ej. 'Graves: 1 · Leves: 2').")]
+        [SerializeField] private TextMeshProUGUI m_InfractionSummaryCountsText;
+
+        [Tooltip("Lista de faltas (rich text), dentro del ScrollRect.")]
+        [SerializeField] private TextMeshProUGUI m_InfractionSummaryListText;
+
+        [Tooltip("ScrollRect vertical que contiene la lista de faltas.")]
+        [SerializeField] private ScrollRect m_InfractionSummaryScrollRect;
+
+        [Tooltip("Botón que pasa del resumen al panel de felicitaciones.")]
+        [SerializeField] private Button m_InfractionSummaryContinueButton;
+
+        [Tooltip("Tamaño del canvas mientras se ve el resumen. Crece hacia arriba: el borde inferior no se mueve.")]
+        [SerializeField] private Vector2 m_InfractionSummaryCanvasSize = new Vector2(600f, 440f);
+
         [Header("Interacción VR (Raycast / Far Casting)")]
         [Tooltip("Near-Far Interactors de las manos VR a los que se les habilita el rayo a distancia " +
                  "mientras se interactúa con el HUD de la lección. El rayo queda restringido a la capa UI " +
@@ -118,6 +142,14 @@ namespace PrimerVolante.Lessons
         private XRButtonEdgeDetector m_MinimizeButtonEdge;
         private static Sprite s_HollowBorderSprite;
 
+        // Resumen de faltas: snapshot al terminar la lección, lección pendiente de felicitar y geometría original del canvas.
+        private bool m_InfractionSummaryVisible;
+        private InfractionSummary m_InfractionSummary;
+        private LessonDefinitionSO m_PendingCompletionLesson;
+        private bool m_CanvasExpanded;
+        private Vector2 m_SavedSizeDelta;
+        private Vector3 m_SavedLocalPosition;
+
         // Propiedades públicas para acceso e inspección en tests
         public TextMeshProUGUI LessonTitleText => m_LessonTitleText;
         public TextMeshProUGUI StepProgressText => m_StepProgressText;
@@ -151,6 +183,16 @@ namespace PrimerVolante.Lessons
         public TextMeshProUGUI MinimizedStepText => m_MinimizedStepText;
         public Button MinimizeButton => m_MinimizeButton;
         public Button MaximizeButton => m_MaximizeButton;
+        public GameObject InfractionSummaryPanel => m_InfractionSummaryPanel;
+        public TextMeshProUGUI InfractionSummaryTitleText => m_InfractionSummaryTitleText;
+        public TextMeshProUGUI InfractionSummaryCountsText => m_InfractionSummaryCountsText;
+        public TextMeshProUGUI InfractionSummaryListText => m_InfractionSummaryListText;
+        public ScrollRect InfractionSummaryScrollRect => m_InfractionSummaryScrollRect;
+        public Button InfractionSummaryContinueButton => m_InfractionSummaryContinueButton;
+        public Vector2 InfractionSummaryCanvasSize => m_InfractionSummaryCanvasSize;
+
+        /// <summary>true mientras se ve la página de resumen de faltas (antes de las felicitaciones).</summary>
+        public bool IsInfractionSummaryVisible => m_InfractionSummaryVisible;
 
         /// <summary>true mientras el panel está reducido a la franja inferior.</summary>
         public bool IsMinimized => m_IsMinimized;
@@ -317,6 +359,12 @@ namespace PrimerVolante.Lessons
                 m_NextLessonButton.onClick.AddListener(OnNextLessonClicked);
             }
 
+            if (m_InfractionSummaryContinueButton != null)
+            {
+                m_InfractionSummaryContinueButton.onClick.RemoveAllListeners();
+                m_InfractionSummaryContinueButton.onClick.AddListener(OnInfractionSummaryContinueClicked);
+            }
+
             if (m_MinimizeButton != null)
             {
                 m_MinimizeButton.onClick.RemoveAllListeners();
@@ -332,12 +380,13 @@ namespace PrimerVolante.Lessons
 
         /// <summary>
         /// true si el usuario puede minimizar/maximizar el panel: no con el menú de pausa abierto
-        /// ni con el panel de felicitaciones visible.
+        /// ni con el panel de felicitaciones o el resumen de faltas visibles.
         /// </summary>
         private bool CanToggleMinimized()
         {
             if (m_InGameMenuController != null && m_InGameMenuController.IsOpen) return false;
             if (m_CompletionPanel != null && m_CompletionPanel.activeSelf) return false;
+            if (m_InfractionSummaryVisible) return false;
             return true;
         }
 
@@ -364,12 +413,12 @@ namespace PrimerVolante.Lessons
         /// <summary>
         /// Minimiza el panel a una franja fina en su borde inferior, o lo restaura. El canvas y el rayo VR siguen
         /// activos para poder usar la franja. Dispara <see cref="MinimizedChanged"/> solo si el estado cambia.
-        /// Minimizar no hace nada con el panel de felicitaciones visible; maximizar funciona siempre.
+        /// Minimizar no hace nada con el panel de felicitaciones o el resumen de faltas visibles; maximizar funciona siempre.
         /// </summary>
         public void SetMinimized(bool minimized)
         {
             if (m_IsMinimized == minimized) return;
-            if (minimized && m_CompletionPanel != null && m_CompletionPanel.activeSelf) return;
+            if (minimized && ((m_CompletionPanel != null && m_CompletionPanel.activeSelf) || m_InfractionSummaryVisible)) return;
             m_IsMinimized = minimized;
             ApplyMinimizedState();
             MinimizedChanged?.Invoke(m_IsMinimized);
@@ -389,7 +438,7 @@ namespace PrimerVolante.Lessons
                 if (m_MinimizedBar != null) m_MinimizedBar.SetActive(false);
                 if (m_Background != null) m_Background.SetActive(true);
 
-                bool completionVisible = m_CompletionPanel != null && m_CompletionPanel.activeSelf;
+                bool completionVisible = (m_CompletionPanel != null && m_CompletionPanel.activeSelf) || m_InfractionSummaryVisible;
                 if (m_StepContentPanel != null) m_StepContentPanel.SetActive(!completionVisible);
 
                 // El glow solo vuelve si había un feedback o una advertencia activos
@@ -495,6 +544,9 @@ namespace PrimerVolante.Lessons
             }
 
             m_WarningActive = false;
+            HideInfractionSummary();
+            m_InfractionSummary = null;
+            m_PendingCompletionLesson = null;
             if (m_CompletionPanel != null) m_CompletionPanel.SetActive(false);
             if (m_StepContentPanel != null) m_StepContentPanel.SetActive(true);
             // Un paso nuevo es información nueva: se maximiza solo
@@ -833,8 +885,135 @@ namespace PrimerVolante.Lessons
                 m_AudioSource.Stop();
             }
 
-            // El fin de la lección es información nueva: se maximiza solo (antes de mostrar el panel de felicitaciones)
             m_WarningActive = false;
+            // Si el resumen ya estaba abierto (DisplayCompletion repetido) se cierra y el canvas vuelve a su tamaño
+            HideInfractionSummary();
+            m_InfractionSummary = null;
+            m_PendingCompletionLesson = null;
+
+            // Circuitos: primero el resumen de faltas (sobre un snapshot del registro) y recién con Continuar las felicitaciones.
+            if (lesson != null && lesson.showInfractionSummary)
+            {
+                IInfractionLog log = InfractionReporting.Log;
+                if (log != null && m_InfractionSummaryPanel != null)
+                {
+                    ShowInfractionSummary(lesson, log);
+                    return;
+                }
+
+                Debug.LogWarning($"[LessonHUDPanel] '{lesson.lessonId}' pide el resumen de faltas pero no hay " +
+                                 (log == null ? "InfractionManager habilitado" : "página de resumen en el HUD") +
+                                 ": va directo a las felicitaciones.");
+            }
+
+            ShowCompletionPanel(lesson);
+        }
+
+        /// <summary>
+        /// Muestra la página de resumen de faltas con un snapshot del registro: lo que se registre después no la cambia.
+        /// </summary>
+        private void ShowInfractionSummary(LessonDefinitionSO lesson, IInfractionLog log)
+        {
+            var snapshot = new List<InfractionRecord>(log.Records);
+            m_InfractionSummary = InfractionSummaryBuilder.Build(snapshot);
+            m_PendingCompletionLesson = lesson;
+
+            if (m_InfractionSummaryTitleText != null) m_InfractionSummaryTitleText.text = "Resumen de faltas";
+            if (m_InfractionSummaryCountsText != null) m_InfractionSummaryCountsText.text = InfractionSummaryBuilder.BuildCountsText(m_InfractionSummary);
+            if (m_InfractionSummaryListText != null)
+            {
+                m_InfractionSummaryListText.text = InfractionSummaryBuilder.BuildText(m_InfractionSummary, GetTimesSymbol());
+            }
+
+            // El fin de la lección es información nueva: se maximiza solo
+            SetMinimized(false);
+            if (m_StepContentPanel != null) m_StepContentPanel.SetActive(false);
+            if (m_CompletionPanel != null) m_CompletionPanel.SetActive(false);
+
+            m_InfractionSummaryVisible = true;
+            m_InfractionSummaryPanel.SetActive(true);
+            ExpandCanvasForSummary();
+            ScrollSummaryToTop();
+            SetFarCasting(true);
+        }
+
+        // El signo de repetición es "×" si la fuente de la lista tiene el glifo; si no, la letra x.
+        private string GetTimesSymbol()
+        {
+            TMP_FontAsset font = m_InfractionSummaryListText != null ? m_InfractionSummaryListText.font : null;
+            // tryAddCharacter: el atlas din\u00E1mico de fallback puede no tener el glifo todav\u00EDa (build nueva o atlas limpio)
+            return font != null && font.HasCharacter('\u00D7', true, true) ? "\u00D7" : "x";
+        }
+
+        private void ScrollSummaryToTop()
+        {
+            if (m_InfractionSummaryScrollRect == null) return;
+
+            RectTransform content = m_InfractionSummaryScrollRect.content;
+            if (content != null)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(content);
+                // Content anclado arriba: y = 0 es "arriba del todo" (verticalNormalizedPosition no sirve si el contenido entra entero)
+                content.anchoredPosition = new Vector2(content.anchoredPosition.x, 0f);
+            }
+            m_InfractionSummaryScrollRect.StopMovement();
+            m_InfractionSummaryScrollRect.verticalNormalizedPosition = 1f;
+        }
+
+        /// <summary>
+        /// Agranda el canvas hasta <c>m_InfractionSummaryCanvasSize</c> manteniendo fijos en el mundo el borde inferior y
+        /// el centro horizontal. El canvas cuelga del auto y su posición está en metros del padre, no en unidades del
+        /// canvas: el desplazamiento se calcula en espacio local del canvas y se pasa al padre con su rotación y escala.
+        /// </summary>
+        private void ExpandCanvasForSummary()
+        {
+            if (m_CanvasExpanded) return;
+            if (!(transform is RectTransform rect)) return;
+
+            m_SavedSizeDelta = rect.sizeDelta;
+            m_SavedLocalPosition = rect.localPosition;
+            m_CanvasExpanded = true;
+
+            Vector2 delta = m_InfractionSummaryCanvasSize - rect.rect.size;
+            rect.sizeDelta += delta;
+            var shift = new Vector3((rect.pivot.x - 0.5f) * delta.x * rect.localScale.x, rect.pivot.y * delta.y * rect.localScale.y, 0f);
+            rect.localPosition = m_SavedLocalPosition + rect.localRotation * shift;
+        }
+
+        private void RestoreCanvasSize()
+        {
+            if (!m_CanvasExpanded) return;
+            m_CanvasExpanded = false;
+
+            if (transform is RectTransform rect)
+            {
+                rect.sizeDelta = m_SavedSizeDelta;
+                rect.localPosition = m_SavedLocalPosition;
+            }
+        }
+
+        private void HideInfractionSummary()
+        {
+            m_InfractionSummaryVisible = false;
+            if (m_InfractionSummaryPanel != null) m_InfractionSummaryPanel.SetActive(false);
+            RestoreCanvasSize();
+        }
+
+        private void OnInfractionSummaryContinueClicked()
+        {
+            if (!m_InfractionSummaryVisible) return;
+
+            LessonDefinitionSO lesson = m_PendingCompletionLesson;
+            HideInfractionSummary();
+            m_PendingCompletionLesson = null;
+            ShowCompletionPanel(lesson);
+        }
+
+        private static string Plural(int count, string singular, string plural) => count == 1 ? singular : plural;
+
+        private void ShowCompletionPanel(LessonDefinitionSO lesson)
+        {
+            // El fin de la lección es información nueva: se maximiza solo (antes de mostrar el panel de felicitaciones)
             SetMinimized(false);
 
             if (m_StepContentPanel != null) m_StepContentPanel.SetActive(false);
@@ -910,22 +1089,52 @@ namespace PrimerVolante.Lessons
                 }
             }
 
-            if (m_CompletionTitleText != null)
-            {
-                m_CompletionTitleText.text = "¡Excelente Trabajo!";
-            }
+            string lessonTitle = lesson != null ? lesson.lessonTitle : string.Empty;
+            const string courseFinishedLine = "¡Felicitaciones por completar el curso de manejo en Primer Volante!";
+            string title = "¡Excelente Trabajo!";
+            string description;
 
-            if (m_CompletionDescriptionText != null)
+            // Solo con resumen de faltas (m_InfractionSummary es null en el resto de las lecciones) el texto se ajusta a las
+            // faltas y va en voseo, como las descripciones de las infracciones. El resto de las lecciones conserva su texto.
+            InfractionSummary summary = m_InfractionSummary;
+            if (summary == null)
             {
-                if (hasNextLesson)
+                string closingLine = hasNextLesson
+                    ? "¿Deseas continuar a la siguiente lección o repetir la actual?"
+                    : courseFinishedLine;
+                description = $"Has completado satisfactoriamente la {lessonTitle}.\n{closingLine}";
+            }
+            else
+            {
+                string closingLine = hasNextLesson
+                    ? "¿Querés seguir con la siguiente lección o repetir esta?"
+                    : courseFinishedLine;
+
+                if (summary.MajorCount > 0)
                 {
-                    m_CompletionDescriptionText.text = $"Has completado satisfactoriamente la {lesson.lessonTitle}.\n¿Deseas continuar a la siguiente lección o repetir la actual?";
+                    title = "Circuito completado con faltas graves";
+                    string minors = summary.MinorCount > 0
+                        ? $" y {summary.MinorCount} {Plural(summary.MinorCount, "leve", "leves")}"
+                        : string.Empty;
+                    description = $"Completaste el {lessonTitle} con {summary.MajorCount} {Plural(summary.MajorCount, "falta grave", "faltas graves")}{minors}. " +
+                                  "Repetí el circuito para corregirlas.";
+                    // Con faltas graves no se felicita por terminar el curso: solo se ofrece seguir si hay otra lección
+                    if (hasNextLesson) description += $"\n{closingLine}";
+                }
+                else if (summary.MinorCount > 0)
+                {
+                    title = "Circuito completado";
+                    description = $"Completaste el {lessonTitle} con {summary.MinorCount} {Plural(summary.MinorCount, "falta leve", "faltas leves")}. " +
+                                  $"Tené en cuenta el resumen para mejorar.\n{closingLine}";
                 }
                 else
                 {
-                    m_CompletionDescriptionText.text = $"Has completado satisfactoriamente la {lesson.lessonTitle}.\n¡Felicitaciones por completar el curso de manejo en Primer Volante!";
+                    description = $"Completaste el {lessonTitle} sin faltas.\n{closingLine}";
                 }
             }
+
+            if (m_CompletionTitleText != null) m_CompletionTitleText.text = title;
+            if (m_CompletionDescriptionText != null) m_CompletionDescriptionText.text = description;
 
             SetFarCasting(true);
         }

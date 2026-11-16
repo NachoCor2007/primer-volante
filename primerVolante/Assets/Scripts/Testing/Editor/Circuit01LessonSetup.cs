@@ -156,6 +156,7 @@ namespace PrimerVolante.Testing.Editor
             lesson.lessonId = "CIRCUIT_01";
             lesson.lessonTitle = "Circuito Urbano 1: Tráfico y Navegación GPS";
             lesson.steps = new List<LessonStepSO> { step1 };
+            lesson.showInfractionSummary = true;
             EditorUtility.SetDirty(lesson);
 
             AssetDatabase.SaveAssets();

@@ -18,5 +18,8 @@ namespace PrimerVolante.Lessons
 
         [Tooltip("Lista ordenada de pasos que componen la lección.")]
         public List<LessonStepSO> steps = new List<LessonStepSO>();
+
+        [Tooltip("Al terminar, mostrar el resumen de faltas antes del panel de felicitaciones. Para circuitos.")]
+        public bool showInfractionSummary;
     }
 }

@@ -337,7 +337,7 @@ namespace PrimerVolante.Testing.Editor
         /// (Editor recién abierto) NewScene aditivo falla: se ofrece guardar y se cae a NewScene Single
         /// (<paramref name="replacedUserScenes"/> = true). Devuelve false si el usuario cancela.
         /// </summary>
-        private static bool TryCreateScratchScene(out Scene scratch, out bool replacedUserScenes)
+        internal static bool TryCreateScratchScene(out Scene scratch, out bool replacedUserScenes)
         {
             replacedUserScenes = false;
             scratch = default;

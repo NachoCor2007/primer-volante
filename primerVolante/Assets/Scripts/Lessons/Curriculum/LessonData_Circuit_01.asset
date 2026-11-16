@@ -16,3 +16,4 @@ MonoBehaviour:
   lessonTitle: "Circuito Urbano 1: Tr\xE1fico y Navegaci\xF3n GPS"
   steps:
   - {fileID: 11400000, guid: 6a73b7c632d8a4647a8a9eaa1e663fe4, type: 2}
+  showInfractionSummary: 1
