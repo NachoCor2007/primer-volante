@@ -47,9 +47,12 @@ namespace PrimerVolante.Testing.Editor
             VerifySteps(ref total, ref passed);
             VerifyFindDeepLogsNothing(ref total, ref passed);
 
-            if (scene.IsValid())
+            if (scene.IsValid() && scene.isLoaded)
             {
                 VerifyNoAutoCreate(ref total, ref passed);
+
+                // Se vuelve a abrir la escena guardada: descarta lo que movió la verificación (el auto, el controlador).
+                EditorSceneManager.OpenScene(Lesson07BarrierManeuversSetup.TARGET_SCENE_PATH, OpenSceneMode.Single);
             }
 
             Debug.Log("=========================================================");
@@ -144,15 +147,31 @@ namespace PrimerVolante.Testing.Editor
                 float freeGap = passRight ? rightInner - 60f : 60f - leftInner;
                 Assert(freeGap >= 3.5f, $"{name}: el lado libre deja >= 3.5 m hasta la pared (deja {freeGap:F2} m)", ref total, ref passed);
 
-                // Cubre desde la pared: la pieza exterior queda pegada a la pared del lado cerrado.
-                float wallX = passRight ? 55.5f : 64.5f;
-                bool touchesWall = false;
+                // Arranca pegada a la pared, sin superponerse con ella: ni los sólidos ni los AlertTrigger de la pared.
+                float wallX = passRight ? Lesson07BarrierManeuversSetup.CORRIDOR_LEFT_X : Lesson07BarrierManeuversSetup.CORRIDOR_RIGHT_X;
+                Transform wall = corridor != null ? corridor.Find(passRight ? "Wall_Left" : "Wall_Right") : null;
+                float nearestEdge = float.PositiveInfinity;
                 foreach (BoxCollider b in solids)
                 {
-                    float edge = passRight ? b.bounds.min.x : b.bounds.max.x;
-                    if (Mathf.Abs(edge - wallX) <= 0.2f) touchesWall = true;
+                    nearestEdge = Mathf.Min(nearestEdge, passRight ? b.bounds.min.x - wallX : wallX - b.bounds.max.x);
                 }
-                Assert(touchesWall, $"{name}: arranca en la pared del corredor (X={wallX})", ref total, ref passed);
+                Assert(nearestEdge >= 0.12f && nearestEdge <= 0.6f, $"{name}: arranca junto a la pared, afuera de su sólido (a {nearestEdge:F2} m del eje)", ref total, ref passed);
+
+                bool solidOverlap = false, triggerOverlap = false;
+                if (wall != null)
+                {
+                    foreach (BoxCollider piece in group.GetComponentsInChildren<BoxCollider>(true))
+                    {
+                        foreach (BoxCollider w in wall.GetComponentsInChildren<BoxCollider>(true))
+                        {
+                            if (piece.isTrigger != w.isTrigger) continue;
+                            if (!piece.bounds.Intersects(w.bounds)) continue;
+                            if (piece.isTrigger) triggerOverlap = true; else solidOverlap = true;
+                        }
+                    }
+                }
+                Assert(!solidOverlap, $"{name}: los sólidos no se superponen con la pared", ref total, ref passed);
+                Assert(!triggerOverlap, $"{name}: los AlertTrigger no se superponen con los de la pared", ref total, ref passed);
             }
         }
 
@@ -193,14 +212,15 @@ namespace PrimerVolante.Testing.Editor
                 {
                     case "Wall_Left":
                     case "Wall_Right":
-                        float wallX = name == "Wall_Left" ? 55.5f : 64.5f;
+                        float wallX = name == "Wall_Left" ? Lesson07BarrierManeuversSetup.CORRIDOR_LEFT_X : Lesson07BarrierManeuversSetup.CORRIDOR_RIGHT_X;
+                        Assert(Mathf.Abs(wallX - (name == "Wall_Left" ? 55f : 65f)) < 0.001f, $"{name} configurada en X={(name == "Wall_Left" ? 55 : 65)}", ref total, ref passed);
                         Assert(Mathf.Abs((minX + maxX) * 0.5f - wallX) <= 0.1f, $"{name} en X≈{wallX}", ref total, ref passed);
                         Assert(minZ <= 8.2f && minZ >= 7.8f && maxZ >= 89.8f && maxZ <= 90.2f, $"{name} cubre Z 8..90 ({minZ:F2}..{maxZ:F2})", ref total, ref passed);
                         break;
                     default:
                         float capZ = name == "Cap_South" ? 8f : 90f;
                         Assert(Mathf.Abs((minZ + maxZ) * 0.5f - capZ) <= 0.1f, $"{name} en Z≈{capZ}", ref total, ref passed);
-                        Assert(minX <= 55.7f && maxX >= 64.3f, $"{name} cierra de pared a pared ({minX:F2}..{maxX:F2})", ref total, ref passed);
+                        Assert(minX <= 55.3f && maxX >= 64.7f, $"{name} cierra de pared a pared ({minX:F2}..{maxX:F2})", ref total, ref passed);
                         break;
                 }
             }
@@ -213,6 +233,23 @@ namespace PrimerVolante.Testing.Editor
             VerifyZone(Lesson07BarrierManeuversSetup.START_ZONE_NAME, new Vector3(62.4f, 0.05f, 14.3f), "GroundVisual_StartYellow", ref total, ref passed);
             VerifyZone(Lesson07BarrierManeuversSetup.FORWARD_FINISH_ZONE_NAME, new Vector3(57.6f, 0.05f, 84f), "GroundVisual_ForwardYellow", ref total, ref passed);
 
+            // Ningún AlertTrigger de la pista (paredes ni transversales) se mete en los recuadros amarillos.
+            Transform course = Course;
+            foreach (string zoneName in new[] { Lesson07BarrierManeuversSetup.START_ZONE_NAME, Lesson07BarrierManeuversSetup.FORWARD_FINISH_ZONE_NAME })
+            {
+                BoxCollider zoneBox = GameObject.Find(zoneName)?.GetComponent<BoxCollider>();
+                int overlapping = 0;
+                if (course != null && zoneBox != null)
+                {
+                    foreach (LessonBarrier barrier in course.GetComponentsInChildren<LessonBarrier>(true))
+                    {
+                        BoxCollider alert = barrier.GetComponent<BoxCollider>();
+                        if (alert != null && Overlaps2D(alert.bounds, zoneBox.bounds)) overlapping++;
+                    }
+                }
+                Assert(zoneBox != null && overlapping == 0, $"Ningún AlertTrigger de la pista se superpone con {zoneName} ({overlapping})", ref total, ref passed);
+            }
+
             var car = Object.FindAnyObjectByType<VehicleController>();
             var start = GameObject.Find(Lesson07BarrierManeuversSetup.START_ZONE_NAME)?.GetComponent<ParkingZoneTrigger>();
             Assert(car != null && start != null && start.IsVehicleFullyInside(car, 0.25f), "Car09 arranca completo dentro de ParkingZone_Start", ref total, ref passed);
@@ -222,6 +259,12 @@ namespace PrimerVolante.Testing.Editor
                        Mathf.Abs(Quaternion.Angle(car.transform.rotation, Quaternion.identity)) <= 0.5f,
                     $"Car09 en (62.4, y, 14.3) con yaw 0 (está en {car.transform.position})", ref total, ref passed);
             }
+        }
+
+        // Intersección en el plano XZ (la altura de los triggers no importa).
+        private static bool Overlaps2D(Bounds a, Bounds b)
+        {
+            return a.min.x < b.max.x && a.max.x > b.min.x && a.min.z < b.max.z && a.max.z > b.min.z;
         }
 
         private static void VerifyZone(string zoneName, Vector3 center, string visualName, ref int total, ref int passed)
@@ -314,22 +357,25 @@ namespace PrimerVolante.Testing.Editor
 
         private static void VerifyNoAutoCreate(ref int total, ref int passed)
         {
-            // Escena sin controlador: Instance debe devolver null y no crear un GameObject.
-            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            // Sin controlador activo en la escena, Instance debe devolver null y no crear un GameObject.
+            var ctrl = Object.FindAnyObjectByType<Lesson07BarrierManeuversController>();
+            if (ctrl == null) return;
+
+            int controllersBefore = Object.FindObjectsByType<Lesson07BarrierManeuversController>(FindObjectsInactive.Include).Length;
+            ctrl.gameObject.SetActive(false);
             typeof(Lesson07BarrierManeuversController).GetField("s_Instance", BindingFlags.NonPublic | BindingFlags.Static)?.SetValue(null, null);
 
-            Lesson07BarrierManeuversController instance = Lesson07BarrierManeuversController.Instance;
-            Assert(instance == null, "Instance sin controlador en la escena devuelve null", ref total, ref passed);
-            Assert(GameObject.Find("Lesson07_Controller") == null, "Instance no crea un GameObject Lesson07_Controller", ref total, ref passed);
-            Assert(Object.FindAnyObjectByType<Lesson07BarrierManeuversController>() == null, "No quedó ningún controlador en la escena", ref total, ref passed);
-
-            var go = new GameObject("TMP_Lesson07");
-            var withoutZones = go.AddComponent<Lesson07BarrierManeuversController>();
-            Assert(!withoutZones.IsForwardSlalomComplete && !withoutZones.IsReverseSlalomComplete,
-                "Sin recuadros ni auto, el slalom no se da por completo", ref total, ref passed);
-            Object.DestroyImmediate(go);
-
-            EditorSceneManager.OpenScene(Lesson07BarrierManeuversSetup.TARGET_SCENE_PATH, OpenSceneMode.Single);
+            try
+            {
+                Lesson07BarrierManeuversController instance = Lesson07BarrierManeuversController.Instance;
+                Assert(instance == null, "Instance sin controlador activo en la escena devuelve null", ref total, ref passed);
+                Assert(Object.FindObjectsByType<Lesson07BarrierManeuversController>(FindObjectsInactive.Include).Length == controllersBefore,
+                    "Instance no crea ningún controlador nuevo", ref total, ref passed);
+            }
+            finally
+            {
+                ctrl.gameObject.SetActive(true);
+            }
         }
 
         // --- Finalización geométrica ---------------------------------------------------------------------------------
@@ -370,12 +416,52 @@ namespace PrimerVolante.Testing.Editor
                 Place(car, new Vector3(62.4f, y, 18.5f), 0f);
                 Assert(!ctrl.IsReverseSlalomComplete, "A medio entrar al recuadro de inicio: IsReverseSlalomComplete es false", ref total, ref passed);
 
-                Assert(ctrl.ForwardFinishZone.IsVehicleInside == false, "El resultado no depende de IsVehicleInside (eventos de trigger)", ref total, ref passed);
+                // Independencia de los triggers: con el estado de trigger forzado a "adentro" y el auto afuera no completa;
+                // con el estado en "afuera" y el auto completo adentro sí.
+                FieldInfo inside = typeof(ParkingZoneTrigger).GetField("m_IsVehicleInside", BindingFlags.NonPublic | BindingFlags.Instance);
+                FieldInfo current = typeof(ParkingZoneTrigger).GetField("m_CurrentVehicle", BindingFlags.NonPublic | BindingFlags.Instance);
+                Assert(inside != null && current != null, "ParkingZoneTrigger expone m_IsVehicleInside / m_CurrentVehicle para la prueba", ref total, ref passed);
+                if (inside != null && current != null)
+                {
+                    ParkingZoneTrigger forwardZone = ctrl.ForwardFinishZone;
+                    inside.SetValue(forwardZone, true);
+                    current.SetValue(forwardZone, car);
+                    Place(car, new Vector3(60f, y, 50f), 0f);
+                    Assert(forwardZone.IsVehicleInside && !ctrl.IsForwardSlalomComplete,
+                        "Con m_IsVehicleInside forzado a true y el auto afuera, IsForwardSlalomComplete sigue false", ref total, ref passed);
+
+                    inside.SetValue(forwardZone, false);
+                    current.SetValue(forwardZone, null);
+                    Place(car, new Vector3(57.6f, y, 84f), 0f);
+                    Assert(!forwardZone.IsVehicleInside && ctrl.IsForwardSlalomComplete,
+                        "Con m_IsVehicleInside en false y el auto completo adentro, IsForwardSlalomComplete es true", ref total, ref passed);
+                }
+
+                // Pegado al borde exterior de cada recuadro: completa y ningún AlertTrigger de la pista toca al auto.
+                BoxCollider carBox = car.GetComponent<BoxCollider>();
+                Place(car, new Vector3(63.2f, y, 14.3f), 0f);
+                Assert(ctrl.IsReverseSlalomComplete, "Pegado al borde derecho del recuadro de inicio (X=63.2) completa", ref total, ref passed);
+                Assert(!TouchesAnyAlertTrigger(carBox), "Pegado al borde derecho del recuadro de inicio no toca ningún AlertTrigger", ref total, ref passed);
+                Place(car, new Vector3(56.8f, y, 84f), 0f);
+                Assert(ctrl.IsForwardSlalomComplete, "Pegado al borde izquierdo del recuadro final (X=56.8) completa", ref total, ref passed);
+                Assert(!TouchesAnyAlertTrigger(carBox), "Pegado al borde izquierdo del recuadro final no toca ningún AlertTrigger", ref total, ref passed);
             }
             finally
             {
                 Place(car, originalPos, originalRot.eulerAngles.y);
             }
+        }
+
+        private static bool TouchesAnyAlertTrigger(BoxCollider carBox)
+        {
+            Transform course = Course;
+            if (course == null || carBox == null) return true;
+            foreach (LessonBarrier barrier in course.GetComponentsInChildren<LessonBarrier>(true))
+            {
+                BoxCollider alert = barrier.GetComponent<BoxCollider>();
+                if (alert != null && Overlaps2D(alert.bounds, carBox.bounds)) return true;
+            }
+            return false;
         }
 
         private static void Place(VehicleController car, Vector3 position, float yaw)
