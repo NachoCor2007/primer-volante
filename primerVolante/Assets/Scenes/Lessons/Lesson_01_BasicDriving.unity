@@ -10231,6 +10231,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 2db03edfab6d12f4a8deda70f71d6d04, type: 2}
   - {fileID: 11400000, guid: 8e6fca73c780cdd45be4b31de322dade, type: 2}
   - {fileID: 11400000, guid: 74fc19b2356e5eb48a94a28e40e9d6c4, type: 2}
+  - {fileID: 11400000, guid: 7a070000000000000000000000000000, type: 2}
   m_AutoStartOnStart: 1
   m_LockManager: {fileID: 1890263279}
   m_Highlighter: {fileID: 1890263278}

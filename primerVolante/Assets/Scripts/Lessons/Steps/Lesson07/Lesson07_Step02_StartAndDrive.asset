@@ -19,4 +19,4 @@ MonoBehaviour:
   actionNumericParameter: 0
   allowedControls: -1
   highlightTargetName: StartButton
-  ambienceIntensity: 2
+  ambienceIntensity: 0

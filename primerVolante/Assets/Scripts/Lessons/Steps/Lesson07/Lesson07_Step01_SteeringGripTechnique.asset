@@ -19,4 +19,4 @@ MonoBehaviour:
   actionNumericParameter: 20
   allowedControls: 1
   highlightTargetName: SteeringWheel_Pivot
-  ambienceIntensity: 2
+  ambienceIntensity: 0

@@ -294,7 +294,8 @@ namespace PrimerVolante.Testing.Editor
             step.allowedControls = controls;
             step.highlightTargetName = highlightTarget;
             step.actionNumericParameter = numericParam;
-            step.ambienceIntensity = AmbienceIntensityOverride.Normal;
+            // Las lecciones básicas mantienen el ambiente calmo de la escena (EnvironmentAudioVerification).
+            step.ambienceIntensity = AmbienceIntensityOverride.Unchanged;
 
             EditorUtility.SetDirty(step);
             return step;
