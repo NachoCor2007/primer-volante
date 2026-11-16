@@ -256,6 +256,18 @@ namespace PrimerVolante.Testing.Editor
 
             int expectedLessons = LessonSceneFlowManager.LessonScenes.Keys.Count(k => k.StartsWith("LESSON_"));
             Check(controller.Lessons.Count == expectedLessons, $"NewMainMenuController tiene cargadas las {expectedLessons} lecciones del currículum (tiene {controller.Lessons.Count})");
+            // Una tarjeta visible por lección (las faltantes se clonan), con el título de su lección.
+            controller.EnsureLessonCards();
+            bool cardsMatch = controller.LessonCardButtons.Count == controller.Lessons.Count;
+            for (int i = 0; cardsMatch && i < controller.LessonCardButtons.Count; i++)
+            {
+                Button card = controller.LessonCardButtons[i];
+                TextMeshProUGUI cardText = card.GetComponentInChildren<TextMeshProUGUI>(true);
+                cardsMatch = card.gameObject.activeSelf && cardText != null && controller.Lessons[i] != null &&
+                             cardText.text == controller.Lessons[i].lessonTitle;
+            }
+            Check(cardsMatch, $"La lista muestra una tarjeta por lección con su título ({controller.LessonCardButtons.Count} tarjetas, {controller.Lessons.Count} lecciones)");
+
             Check(controller.Circuits.Count >= 1, "NewMainMenuController tiene configurado el circuito integrador");
             Check(controller.CurrentTab == NewMenuTab.Controles, "La solapa inicial por defecto es 'Controles y Mandos'");
 

@@ -588,9 +588,7 @@ namespace PrimerVolante.MainMenu
         {
             if (m_LessonItemsContainer == null) return;
 
-            m_LessonCardButtons.Clear();
-            var buttons = m_LessonItemsContainer.GetComponentsInChildren<Button>(true);
-            m_LessonCardButtons.AddRange(buttons);
+            EnsureLessonCards();
 
             for (int i = 0; i < m_LessonCardButtons.Count; i++)
             {
@@ -606,6 +604,51 @@ namespace PrimerVolante.MainMenu
             }
 
             SelectLesson(0);
+        }
+
+        /// <summary>Tarjetas de la lista de lecciones, una por lección de <see cref="Lessons"/>.</summary>
+        public IReadOnlyList<Button> LessonCardButtons => m_LessonCardButtons;
+
+        /// <summary>
+        /// Deja una tarjeta por lección en la lista: las tarjetas vienen prearmadas en la escena, así que si hay más
+        /// lecciones que tarjetas se clona la última para cada lección faltante, y las tarjetas sobrantes se ocultan.
+        /// Cada tarjeta muestra el título de su lección. No agrega listeners.
+        /// </summary>
+        public void EnsureLessonCards()
+        {
+            m_LessonCardButtons.Clear();
+            if (m_LessonItemsContainer == null) return;
+
+            var existing = new List<Button>();
+            for (int i = 0; i < m_LessonItemsContainer.childCount; i++)
+            {
+                Button b = m_LessonItemsContainer.GetChild(i).GetComponent<Button>();
+                if (b != null) existing.Add(b);
+            }
+
+            int lessonCount = m_Lessons != null ? m_Lessons.Count : 0;
+            if (existing.Count > 0)
+            {
+                Button template = existing[existing.Count - 1];
+                for (int i = existing.Count; i < lessonCount; i++)
+                {
+                    Button clone = Instantiate(template, m_LessonItemsContainer);
+                    clone.name = $"LessonItem_{i}";
+                    existing.Add(clone);
+                }
+            }
+
+            for (int i = 0; i < existing.Count; i++)
+            {
+                // El índice de la tarjeta es el de la lección (SelectLesson(i)), así que no se saltean entradas nulas.
+                bool used = i < lessonCount;
+                existing[i].gameObject.SetActive(used);
+                if (!used) continue;
+
+                var label = existing[i].GetComponentInChildren<TextMeshProUGUI>(true);
+                if (label != null && m_Lessons[i] != null) label.text = m_Lessons[i].lessonTitle;
+                m_LessonCardButtons.Add(existing[i]);
+            }
         }
 
         public void SelectLesson(int index)
