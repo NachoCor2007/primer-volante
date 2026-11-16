@@ -652,7 +652,7 @@ namespace PrimerVolante.Lessons
         private static Transform FindDeep(Transform parent, string name)
         {
             if (parent == null) return null;
-            if (parent.name == name || parent.name.Equals(name, StringComparison.OrdinalIgnoreCase) || parent.CompareTag(name))
+            if (parent.name == name || parent.name.Equals(name, StringComparison.OrdinalIgnoreCase))
             {
                 return parent;
             }
