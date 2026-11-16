@@ -951,7 +951,7 @@ namespace PrimerVolante.Testing.Editor
             return cam != null ? cam.transform : null;
         }
 
-        private static void SetLayerRecursively(GameObject obj, int layer)
+        internal static void SetLayerRecursively(GameObject obj, int layer)
         {
             if (obj == null) return;
             obj.layer = layer;
@@ -965,7 +965,7 @@ namespace PrimerVolante.Testing.Editor
         // Helpers de Construcción de UI
         // =========================================================================
 
-        private static TextMeshProUGUI CreateText(string name, Transform parent, TMP_FontAsset fontAsset,
+        internal static TextMeshProUGUI CreateText(string name, Transform parent, TMP_FontAsset fontAsset,
             string content, float fontSize, FontStyles style, Vector2 anchoredPosition, Vector2 sizeDelta, Color color)
         {
             GameObject textObj = new GameObject(name);
@@ -989,7 +989,7 @@ namespace PrimerVolante.Testing.Editor
             return tmp;
         }
 
-        private static Button CreateButton(string name, Transform parent, TMP_FontAsset fontAsset,
+        internal static Button CreateButton(string name, Transform parent, TMP_FontAsset fontAsset,
             string labelText, Vector2 anchoredPosition, Vector2 sizeDelta, Color bgColor)
         {
             GameObject btnObj = new GameObject(name);
