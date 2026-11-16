@@ -86,8 +86,8 @@ namespace PrimerVolante.Testing.Editor
         // Geometría de la pista (mundo). La calzada va de X 53.05 a 66.95 con el eje en X=60.
         public const float CONE_X = 60f;
         public static readonly float[] ConeZs = { 24f, 34f, 44f, 54f, 64f, 74f };
-        public const float CORRIDOR_LEFT_X = 55.5f;
-        public const float CORRIDOR_RIGHT_X = 64.5f;
+        public const float CORRIDOR_LEFT_X = 55f;
+        public const float CORRIDOR_RIGHT_X = 65f;
         public const float CORRIDOR_START_Z = 8f;
         public const float CORRIDOR_END_Z = 90f;
         public const float CONE_CLEARANCE = 0.3f;     // hueco entre el extremo de la valla transversal y el eje del cono
@@ -169,6 +169,8 @@ namespace PrimerVolante.Testing.Editor
             // 10. Asegurar escena en EditorBuildSettings
             EnsureSceneInBuildSettings();
 
+            // Las operaciones de Undo pendientes volverían a marcar la escena como sucia después de guardarla.
+            Undo.FlushUndoRecordObjects();
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
 
@@ -427,6 +429,19 @@ namespace PrimerVolante.Testing.Editor
             Undo.RegisterCreatedObjectUndo(root, "Create Slalom Course");
             SceneManager.MoveGameObjectToScene(root, scene);
 
+            // Corredor: cuatro tramos (dos paredes y dos tapas) con LessonBoundary, cada uno con su spline recta.
+            var corridorGo = new GameObject(CORRIDOR_NAME);
+            corridorGo.transform.SetParent(root.transform, false);
+            Transform corridor = corridorGo.transform;
+            AddBoundary(corridor, "Wall_Left", barrierPrefab, new Vector3(CORRIDOR_LEFT_X, 0f, CORRIDOR_START_Z), new Vector3(CORRIDOR_LEFT_X, 0f, CORRIDOR_END_Z), boundaries);
+            AddBoundary(corridor, "Wall_Right", barrierPrefab, new Vector3(CORRIDOR_RIGHT_X, 0f, CORRIDOR_START_Z), new Vector3(CORRIDOR_RIGHT_X, 0f, CORRIDOR_END_Z), boundaries);
+            AddBoundary(corridor, "Cap_South", barrierPrefab, new Vector3(CORRIDOR_LEFT_X, 0f, CORRIDOR_START_Z), new Vector3(CORRIDOR_RIGHT_X, 0f, CORRIDOR_START_Z), boundaries);
+            AddBoundary(corridor, "Cap_North", barrierPrefab, new Vector3(CORRIDOR_LEFT_X, 0f, CORRIDOR_END_Z), new Vector3(CORRIDOR_RIGHT_X, 0f, CORRIDOR_END_Z), boundaries);
+
+            // Las piezas transversales arrancan donde termina el AlertTrigger de la pared, para que ni sus sólidos ni sus
+            // AlertTrigger se superpongan con los de la pared (un roce cerca de la pared no dispara las dos a la vez).
+            float wallTriggerHalf = MeasureAlertTriggerHalfThickness(corridor.Find("Wall_Left"));
+
             // Conos sobre el eje de la calzada y vallas transversales que cierran el lado opuesto al de paso:
             // cono 1 se pasa por la derecha (valla desde la pared izquierda), cono 2 por la izquierda, y así.
             for (int i = 0; i < ConeZs.Length; i++)
@@ -441,7 +456,7 @@ namespace PrimerVolante.Testing.Editor
 
                 bool passRight = i % 2 == 0;
                 string side = passRight ? "Left" : "Right";
-                float wallX = passRight ? CORRIDOR_LEFT_X : CORRIDOR_RIGHT_X;
+                float wallX = passRight ? CORRIDOR_LEFT_X + wallTriggerHalf + 0.01f : CORRIDOR_RIGHT_X - wallTriggerHalf - 0.01f;
                 float endX = passRight ? CONE_X - CONE_CLEARANCE : CONE_X + CONE_CLEARANCE;
 
                 var group = new GameObject($"Transverse_{i + 1:00}_{side}");
@@ -473,15 +488,22 @@ namespace PrimerVolante.Testing.Editor
                 }
             }
 
-            // Corredor: cuatro tramos (dos paredes y dos tapas) con LessonBoundary, cada uno con su spline recta.
-            var corridor = new GameObject(CORRIDOR_NAME);
-            corridor.transform.SetParent(root.transform, false);
-            AddBoundary(corridor.transform, "Wall_Left", barrierPrefab, new Vector3(CORRIDOR_LEFT_X, 0f, CORRIDOR_START_Z), new Vector3(CORRIDOR_LEFT_X, 0f, CORRIDOR_END_Z), boundaries);
-            AddBoundary(corridor.transform, "Wall_Right", barrierPrefab, new Vector3(CORRIDOR_RIGHT_X, 0f, CORRIDOR_START_Z), new Vector3(CORRIDOR_RIGHT_X, 0f, CORRIDOR_END_Z), boundaries);
-            AddBoundary(corridor.transform, "Cap_South", barrierPrefab, new Vector3(CORRIDOR_LEFT_X, 0f, CORRIDOR_START_Z), new Vector3(CORRIDOR_RIGHT_X, 0f, CORRIDOR_START_Z), boundaries);
-            AddBoundary(corridor.transform, "Cap_North", barrierPrefab, new Vector3(CORRIDOR_LEFT_X, 0f, CORRIDOR_END_Z), new Vector3(CORRIDOR_RIGHT_X, 0f, CORRIDOR_END_Z), boundaries);
-
             Debug.Log($"[Lesson07BarrierManeuversSetup] 🚧 Pista: {cones.Count} conos, {transverse.Count} piezas transversales, {boundaries.Count} tramos de corredor.");
+        }
+
+        // Mitad del espesor (en X) del AlertTrigger de las vallas de una pared recta a lo largo de Z.
+        private static float MeasureAlertTriggerHalfThickness(Transform wall)
+        {
+            if (wall != null)
+            {
+                foreach (BoxCollider b in wall.GetComponentsInChildren<BoxCollider>(true))
+                {
+                    if (b.isTrigger) return b.bounds.size.x * 0.5f;
+                }
+            }
+
+            Debug.LogError("[Lesson07BarrierManeuversSetup] ❌ No se pudo medir el AlertTrigger de la pared");
+            return 0.4f;
         }
 
         private static void AddBoundary(Transform parent, string boundaryName, GameObject barrierPrefab, Vector3 from, Vector3 to, List<LessonBoundary> boundaries)
