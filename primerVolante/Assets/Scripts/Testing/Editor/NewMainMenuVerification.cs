@@ -254,7 +254,8 @@ namespace PrimerVolante.Testing.Editor
             controller.LockPlayerStationary();
             Check(controller.XROriginTransform != null && controller.XROriginTransform.position == Vector3.zero, "LockPlayerStationary deja el rig en MenuViewpoint = Vector3.zero (sin VR)");
 
-            Check(controller.Lessons.Count == 6, "NewMainMenuController tiene cargadas las 6 lecciones del currículum");
+            int expectedLessons = LessonSceneFlowManager.LessonScenes.Keys.Count(k => k.StartsWith("LESSON_"));
+            Check(controller.Lessons.Count == expectedLessons, $"NewMainMenuController tiene cargadas las {expectedLessons} lecciones del currículum (tiene {controller.Lessons.Count})");
             Check(controller.Circuits.Count >= 1, "NewMainMenuController tiene configurado el circuito integrador");
             Check(controller.CurrentTab == NewMenuTab.Controles, "La solapa inicial por defecto es 'Controles y Mandos'");
 
@@ -267,6 +268,20 @@ namespace PrimerVolante.Testing.Editor
                 Check(rt.rect.width > 200f || (rt.anchorMax.x - rt.anchorMin.x > 0.5f), "Btn_Exit tiene ancho completo en la columna (no se comprime verticalmente)");
                 TextMeshProUGUI txt = btnExit.GetComponentInChildren<TextMeshProUGUI>();
                 Check(txt != null && txt.text.Contains("SALIR"), "Btn_Exit tiene texto legible 'SALIR DEL SIMULADOR'");
+            }
+
+            // 7.c. Solapa de calibración del asiento oculta por defecto
+            Check(!controller.ShowCalibrationTab, "La solapa 'Calibración de Asiento' está deshabilitada por defecto");
+            Button tabCalib = null;
+            foreach (Button b in canvasObj.GetComponentsInChildren<Button>(true))
+            {
+                if (b.name == "Tab_Calibracion") { tabCalib = b; break; }
+            }
+            Check(tabCalib != null, "Existe el botón Tab_Calibracion en la barra lateral");
+            if (tabCalib != null)
+            {
+                controller.ApplyTabVisibility();
+                Check(!tabCalib.gameObject.activeSelf, "ApplyTabVisibility oculta la solapa 'Calibración de Asiento'");
             }
 
             // 8. Test de Navegación por Solapas

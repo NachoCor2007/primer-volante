@@ -55,6 +55,9 @@ namespace PrimerVolante.MainMenu
         [SerializeField] private Button m_TabBtnCredits;
         [SerializeField] private Button m_BtnExit;
 
+        [Tooltip("Muestra la solapa 'Calibración de Asiento' en la barra lateral (oculta por defecto).")]
+        [SerializeField] private bool m_ShowCalibrationTab = false;
+
         [Header("Colores de Solapas")]
         [SerializeField] private Color m_ActiveTabColor = new Color(0.15f, 0.42f, 0.90f, 1f);   // Azul #266be6
         [SerializeField] private Color m_InactiveTabColor = new Color(0.10f, 0.12f, 0.18f, 1f); // Slate oscuro #1a1f2e
@@ -528,6 +531,20 @@ namespace PrimerVolante.MainMenu
             if (m_TabBtnCredits != null) m_TabBtnCredits.onClick.AddListener(() => SelectTab(NewMenuTab.Creditos));
 
             if (m_BtnExit != null) m_BtnExit.onClick.AddListener(OpenExitModal);
+
+            ApplyTabVisibility();
+        }
+
+        /// <summary>Muestra la solapa de calibración del asiento solo si está habilitada.</summary>
+        public bool ShowCalibrationTab => m_ShowCalibrationTab;
+
+        /// <summary>
+        /// Oculta o muestra la solapa "Calibración de Asiento" según <see cref="ShowCalibrationTab"/>. La barra lateral
+        /// tiene un VerticalLayoutGroup, así que las demás solapas se reacomodan solas.
+        /// </summary>
+        public void ApplyTabVisibility()
+        {
+            if (m_TabBtnCalibration != null) m_TabBtnCalibration.gameObject.SetActive(m_ShowCalibrationTab);
         }
 
         public void SelectTab(NewMenuTab tab)
