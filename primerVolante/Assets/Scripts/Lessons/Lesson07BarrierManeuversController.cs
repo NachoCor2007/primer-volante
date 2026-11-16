@@ -116,16 +116,19 @@ namespace PrimerVolante.Lessons
         /// El auto está completo dentro del recuadro final (con margen) y detenido. Es geométrico: no depende de
         /// los eventos de trigger ni de la orientación o la marcha.
         /// </summary>
-        public bool IsForwardSlalomComplete => IsCompleteIn(m_ForwardFinishZone);
+        public bool IsForwardSlalomComplete => IsCompleteIn(forward: true);
 
         /// <summary>El auto está completo dentro del recuadro de inicio (con margen) y detenido.</summary>
-        public bool IsReverseSlalomComplete => IsCompleteIn(m_StartZone);
+        public bool IsReverseSlalomComplete => IsCompleteIn(forward: false);
 
-        private bool IsCompleteIn(ParkingZoneTrigger zone)
+        private bool IsCompleteIn(bool forward)
         {
+            ParkingZoneTrigger zone = forward ? m_ForwardFinishZone : m_StartZone;
             if (zone == null || m_VehicleController == null)
             {
                 AutoDiscoverReferences();
+                // Se relee el campo: AutoDiscoverReferences completa los campos, no la variable local.
+                zone = forward ? m_ForwardFinishZone : m_StartZone;
                 if (zone == null || m_VehicleController == null) return false;
             }
 
@@ -209,6 +212,9 @@ namespace PrimerVolante.Lessons
         private void ShowTouchWarning(string message)
         {
             if (m_HUDPanel == null) return;
+            // Fuera de la lección (antes de empezar o ya completada) el toque se cuenta pero no se muestra:
+            // RestoreStepInstruction no podría limpiar el aviso y quedaría fijo en el HUD.
+            if (m_LessonManager == null || !m_LessonManager.IsLessonActive || m_LessonManager.IsLessonCompleted) return;
 
             m_PositionWarningShown = false;
             m_HUDPanel.ShowStepWarning(message);
@@ -220,6 +226,9 @@ namespace PrimerVolante.Lessons
         {
             if (m_HUDPanel == null || m_LessonManager == null) return;
             if (!m_LessonManager.IsLessonActive || m_LessonManager.IsLessonCompleted) return;
+            // Mientras el paso se completa, DisplayStep cortaría el feedback de éxito; el cambio de paso ya
+            // vuelve a mostrar el HUD limpio.
+            if (m_LessonManager.ActionMonitor != null && m_LessonManager.ActionMonitor.IsCompletingStep) return;
 
             LessonStepSO step = m_LessonManager.CurrentStep;
             if (step == null || m_LessonManager.ActiveLesson == null) return;
@@ -323,7 +332,7 @@ namespace PrimerVolante.Lessons
             bool needsWarning = false;
             bool overlapsIncomplete = stepActive && stopped &&
                                       !zone.IsVehicleFullyInside(m_VehicleController, ZoneMarginTolerance) &&
-                                      OverlapsZone(zone, m_VehicleController);
+                                      OverlapsZone(GetCachedBox(zone), GetCachedCarBox());
             if (overlapsIncomplete)
             {
                 m_StoppedSeconds += Time.deltaTime;
@@ -350,6 +359,34 @@ namespace PrimerVolante.Lessons
             }
         }
 
+        // Colliders cacheados para el chequeo por frame (se resuelven una vez; se invalidan si cambia la referencia).
+        private BoxCollider m_CachedStartBox;
+        private BoxCollider m_CachedFinishBox;
+        private BoxCollider m_CachedCarBox;
+        private VehicleController m_CachedCarOwner;
+
+        private BoxCollider GetCachedBox(ParkingZoneTrigger zone)
+        {
+            if (zone == m_StartZone)
+            {
+                if (m_CachedStartBox == null || m_CachedStartBox.gameObject != zone.gameObject) m_CachedStartBox = zone.GetComponent<BoxCollider>();
+                return m_CachedStartBox;
+            }
+            if (m_CachedFinishBox == null || m_CachedFinishBox.gameObject != zone.gameObject) m_CachedFinishBox = zone.GetComponent<BoxCollider>();
+            return m_CachedFinishBox;
+        }
+
+        private BoxCollider GetCachedCarBox()
+        {
+            if (m_CachedCarBox == null || m_CachedCarOwner != m_VehicleController)
+            {
+                m_CachedCarOwner = m_VehicleController;
+                m_CachedCarBox = m_VehicleController.GetComponent<BoxCollider>();
+                if (m_CachedCarBox == null) m_CachedCarBox = m_VehicleController.GetComponentInChildren<BoxCollider>();
+            }
+            return m_CachedCarBox;
+        }
+
         private ParkingZoneTrigger ActiveZoneForStep(int stepIndex)
         {
             if (stepIndex == ForwardSlalomStepIndex) return m_ForwardFinishZone;
@@ -365,9 +402,14 @@ namespace PrimerVolante.Lessons
         {
             if (zone == null || vehicle == null) return false;
 
-            BoxCollider zoneBox = zone.GetComponent<BoxCollider>();
             BoxCollider carBox = vehicle.GetComponent<BoxCollider>();
             if (carBox == null) carBox = vehicle.GetComponentInChildren<BoxCollider>();
+            return OverlapsZone(zone.GetComponent<BoxCollider>(), carBox);
+        }
+
+        /// <summary>Igual que <see cref="OverlapsZone(ParkingZoneTrigger, VehicleController)"/> con los colliders ya resueltos.</summary>
+        public static bool OverlapsZone(BoxCollider zoneBox, BoxCollider carBox)
+        {
             if (zoneBox == null || carBox == null) return false;
 
             GetOrientedRect(zoneBox, out Vector2 zc, out Vector2 zr, out Vector2 zf, out Vector2 zh);
@@ -392,15 +434,22 @@ namespace PrimerVolante.Lessons
             Vector2 centerA, Vector2 rightA, Vector2 forwardA, Vector2 halfA,
             Vector2 centerB, Vector2 rightB, Vector2 forwardB, Vector2 halfB)
         {
+            // Cuatro ejes candidatos sin array: se evalúa por frame en Quest y no debe generar basura.
             Vector2 delta = centerB - centerA;
-            Vector2[] axes = { rightA, forwardA, rightB, forwardB };
-            foreach (Vector2 axis in axes)
-            {
-                float radiusA = halfA.x * Mathf.Abs(Vector2.Dot(rightA, axis)) + halfA.y * Mathf.Abs(Vector2.Dot(forwardA, axis));
-                float radiusB = halfB.x * Mathf.Abs(Vector2.Dot(rightB, axis)) + halfB.y * Mathf.Abs(Vector2.Dot(forwardB, axis));
-                if (Mathf.Abs(Vector2.Dot(delta, axis)) > radiusA + radiusB) return false;
-            }
-            return true;
+            return !SeparatedOnAxis(rightA, delta, rightA, forwardA, halfA, rightB, forwardB, halfB) &&
+                   !SeparatedOnAxis(forwardA, delta, rightA, forwardA, halfA, rightB, forwardB, halfB) &&
+                   !SeparatedOnAxis(rightB, delta, rightA, forwardA, halfA, rightB, forwardB, halfB) &&
+                   !SeparatedOnAxis(forwardB, delta, rightA, forwardA, halfA, rightB, forwardB, halfB);
+        }
+
+        private static bool SeparatedOnAxis(
+            Vector2 axis, Vector2 delta,
+            Vector2 rightA, Vector2 forwardA, Vector2 halfA,
+            Vector2 rightB, Vector2 forwardB, Vector2 halfB)
+        {
+            float radiusA = halfA.x * Mathf.Abs(Vector2.Dot(rightA, axis)) + halfA.y * Mathf.Abs(Vector2.Dot(forwardA, axis));
+            float radiusB = halfB.x * Mathf.Abs(Vector2.Dot(rightB, axis)) + halfB.y * Mathf.Abs(Vector2.Dot(forwardB, axis));
+            return Mathf.Abs(Vector2.Dot(delta, axis)) > radiusA + radiusB;
         }
 
         public void AutoDiscoverReferences()

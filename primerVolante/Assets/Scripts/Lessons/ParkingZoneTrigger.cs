@@ -158,30 +158,20 @@ namespace PrimerVolante.Lessons
             // 3. Paragolpes trasero (centro)
             // 4. Esquinas delanteras (izquierda y derecha)
             // 5. Esquinas traseras (izquierda y derecha)
-            Vector3[] testPoints = new Vector3[]
-            {
-                carCenterWorld,
-                carCenterWorld + carFwd * (carHalfLength * 0.92f), // Frente
-                carCenterWorld - carFwd * (carHalfLength * 0.92f), // Trasera
-                carCenterWorld + carFwd * (carHalfLength * 0.88f) + carRight * (carHalfWidth * 0.88f), // Delantera Der
-                carCenterWorld + carFwd * (carHalfLength * 0.88f) - carRight * (carHalfWidth * 0.88f), // Delantera Izq
-                carCenterWorld - carFwd * (carHalfLength * 0.88f) + carRight * (carHalfWidth * 0.88f), // Trasera Der
-                carCenterWorld - carFwd * (carHalfLength * 0.88f) - carRight * (carHalfWidth * 0.88f)  // Trasera Izq
-            };
+            // Sin array: las lecciones consultan esto en cada frame y no debe generar basura (Quest).
+            return IsPointInside(carCenterWorld, zoneCenter, halfWidth, halfLength) &&
+                   IsPointInside(carCenterWorld + carFwd * (carHalfLength * 0.92f), zoneCenter, halfWidth, halfLength) && // Frente
+                   IsPointInside(carCenterWorld - carFwd * (carHalfLength * 0.92f), zoneCenter, halfWidth, halfLength) && // Trasera
+                   IsPointInside(carCenterWorld + carFwd * (carHalfLength * 0.88f) + carRight * (carHalfWidth * 0.88f), zoneCenter, halfWidth, halfLength) && // Delantera Der
+                   IsPointInside(carCenterWorld + carFwd * (carHalfLength * 0.88f) - carRight * (carHalfWidth * 0.88f), zoneCenter, halfWidth, halfLength) && // Delantera Izq
+                   IsPointInside(carCenterWorld - carFwd * (carHalfLength * 0.88f) + carRight * (carHalfWidth * 0.88f), zoneCenter, halfWidth, halfLength) && // Trasera Der
+                   IsPointInside(carCenterWorld - carFwd * (carHalfLength * 0.88f) - carRight * (carHalfWidth * 0.88f), zoneCenter, halfWidth, halfLength);  // Trasera Izq
+        }
 
-            foreach (Vector3 pt in testPoints)
-            {
-                Vector3 localPt = transform.InverseTransformPoint(pt);
-                float dx = Mathf.Abs(localPt.x - zoneCenter.x);
-                float dz = Mathf.Abs(localPt.z - zoneCenter.z);
-
-                if (dx > halfWidth || dz > halfLength)
-                {
-                    return false;
-                }
-            }
-
-            return true;
+        private bool IsPointInside(Vector3 worldPoint, Vector3 zoneCenter, float halfWidth, float halfLength)
+        {
+            Vector3 localPt = transform.InverseTransformPoint(worldPoint);
+            return Mathf.Abs(localPt.x - zoneCenter.x) <= halfWidth && Mathf.Abs(localPt.z - zoneCenter.z) <= halfLength;
         }
 
         /// <summary>
