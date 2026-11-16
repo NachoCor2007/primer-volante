@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: LessonData_07
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonDefinitionSO
   lessonId: LESSON_07
-  lessonTitle: "Lecci\xF3n 7: Dominio del Volante y Vallas"
+  lessonTitle: "Lecci\xF3n 7: Dominio del Volante y Slalom entre Conos"
   steps:
   - {fileID: 11400000, guid: 7a070001000000000000000000000001, type: 2}
   - {fileID: 11400000, guid: 7a070002000000000000000000000002, type: 2}

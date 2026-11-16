@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c08a250539fc03546a951f514f400827, type: 3}
   m_Name: Lesson07_Step04_StopAndShiftReverse
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
-  stepTitle: Slalom hacia Adelante entre Vallas
-  instructionText: "Avanza a velocidad moderada (10-15 km/h) esquivando las vallas en zig-zag con giros progresivos de volante. Al finalizar, det\xE9n el veh\xEDculo por completo dentro de la d\xE1rsena amarilla."
+  stepTitle: Slalom hacia Adelante entre Conos
+  instructionText: "Avanza despacio (5-10 km/h) haciendo zigzag entre los conos: pasa cada uno por el lado libre de cada valla, sin tocar nada. Al final, det\xE9n el auto con el auto completo dentro del recuadro amarillo."
   completionMode: 1
   requiredAction: 64
   actionNumericParameter: 0
   allowedControls: -1
-  highlightTargetName: ParkingZone_ForwardFinish
+  highlightTargetName: 
   ambienceIntensity: 2

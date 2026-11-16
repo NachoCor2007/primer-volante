@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Lesson07_Step06_ReverseSlalom
   m_EditorClassIdentifier: Assembly-CSharp::PrimerVolante.Lessons.LessonStepSO
   stepTitle: Slalom en Reversa con Espejos
-  instructionText: "Retrocede despacio aplicando la regla del medio auto: observa con atenci\xF3n el espejo del lado de la valla y, cuando veas que pas\xF3 la mitad del auto, invierte el volante para esquivar la siguiente hasta detenerte en la d\xE1rsena de inicio."
+  instructionText: "Retrocede despacio (5-10 km/h) aplicando la regla del medio auto: observa con atenci\xF3n el espejo del lado del cono y, cuando veas que pas\xF3 la mitad del auto, invierte el volante para esquivar el siguiente por el lado libre de cada valla. Det\xE9n el auto con el auto completo dentro del recuadro amarillo de inicio."
   completionMode: 1
   requiredAction: 65
   actionNumericParameter: 0
   allowedControls: -1
-  highlightTargetName: ParkingZone_Start
+  highlightTargetName: 
   ambienceIntensity: 2
