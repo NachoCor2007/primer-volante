@@ -31,6 +31,7 @@ namespace PrimerVolante.Testing.Editor
             yield return Suite("HeadlightKnobIcons", HeadlightKnobIconsVerification.RunVerification);
             yield return Suite("HeadPoseSession", HeadPoseSessionVerification.RunVerification);
             yield return Suite("InfractionManager", InfractionManagerVerification.RunVerification);
+            yield return Suite("InfractionSummary", InfractionSummaryVerification.RunVerification);
             yield return Suite("InfractionWarning", InfractionWarningVerification.RunVerification);
             yield return Suite("InteractableHighlighter", InteractableHighlighterVerification.RunVerification);
             yield return Suite("Lesson01", () => Lesson01Verification.RunVerification());
