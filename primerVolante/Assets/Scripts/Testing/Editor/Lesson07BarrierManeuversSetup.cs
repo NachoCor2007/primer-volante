@@ -5,6 +5,8 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.Splines;
+using Unity.Mathematics;
 using PrimerVolante.Environment;
 using PrimerVolante.Lessons;
 using PrimerVolante.VR;
@@ -13,11 +15,13 @@ namespace PrimerVolante.Testing.Editor
 {
     /// <summary>
     /// Herramienta de Editor automatizada e idempotente para configurar la Lección 7:
-    /// "Dominio del Volante y Maniobras con Vallas (Slalom y Reversa con Espejos)".
+    /// "Dominio del Volante y Slalom entre Conos (Slalom y Reversa con Espejos)".
     /// - Clona de forma segura Lesson_01_BasicDriving.unity a Assets/Scenes/Lessons/Lesson_07_BarrierManeuvers.unity.
     /// - Genera los ScriptableObjects didácticos (LessonData_07.asset y los 7 pasos).
-    /// - Construye el circuito de slalom con vallas alternadas (LessonBarrier.prefab) y conos de advertencia.
-    /// - Configura las dársenas de inicio (Z ≈ 14.3) y de llegada (Z ≈ 84) con recuadros amarillos en el piso.
+    /// - Construye la pista: fila recta de 6 conos (X=60), vallas transversales alternadas que obligan el zigzag y un
+    ///   corredor de vallas (LessonBoundary) alrededor; todo guardado en la escena (nada se arma en runtime).
+    /// - Configura los recuadros amarillos de inicio (Z = 14.3) y de llegada (Z = 84), de 3.6 x 7 m.
+    /// - Agrega las zonas de exención de contramano y de giro sin señalizar sobre toda la pista.
     /// - Ensambla el Lesson07BarrierManeuversController en la escena.
     /// - Cumple estrictamente la regla de cero APIs obsoletas (AGENTS.md).
     /// </summary>
@@ -54,8 +58,7 @@ namespace PrimerVolante.Testing.Editor
             Scene scene = SceneManager.GetActiveScene();
             if (scene.IsValid() && scene.path == TARGET_SCENE_PATH)
             {
-                GameObject startZone = GameObject.Find(START_ZONE_NAME);
-                bool needsUpdate = startZone == null || startZone.transform.position.z > 50f || GameObject.Find(SLALOM_ROOT_NAME) == null;
+                bool needsUpdate = GameObject.Find(START_ZONE_NAME) == null || GameObject.Find(SLALOM_ROOT_NAME) == null;
                 if (needsUpdate)
                 {
                     Debug.Log("[Lesson07BarrierManeuversSetup] 🔄 Auto-ejecutando SetupLesson07() en escena activa...");
@@ -75,7 +78,22 @@ namespace PrimerVolante.Testing.Editor
         public const string CONE_PREFAB_PATH = "Assets/SimplePoly City - Low Poly Assets/Prefab/Props/Props_Traffic cone.prefab";
         public const string YELLOW_MATERIAL_PATH = "Assets/Environment/Materials/M_Parking_YellowZone.mat";
 
-        public const string SLALOM_ROOT_NAME = "Slalom_Barriers";
+        public const string SLALOM_ROOT_NAME = "Slalom_Course";
+        public const string LEGACY_SLALOM_ROOT_NAME = "Slalom_Barriers";
+        public const string EXEMPT_ZONE_NAME = "Slalom_ExemptZone";
+        public const string CORRIDOR_NAME = "Corridor";
+
+        // Geometría de la pista (mundo). La calzada va de X 53.05 a 66.95 con el eje en X=60.
+        public const float CONE_X = 60f;
+        public static readonly float[] ConeZs = { 24f, 34f, 44f, 54f, 64f, 74f };
+        public const float CORRIDOR_LEFT_X = 55.5f;
+        public const float CORRIDOR_RIGHT_X = 64.5f;
+        public const float CORRIDOR_START_Z = 8f;
+        public const float CORRIDOR_END_Z = 90f;
+        public const float CONE_CLEARANCE = 0.3f;     // hueco entre el extremo de la valla transversal y el eje del cono
+        public static readonly Vector3 START_ZONE_CENTER = new Vector3(62.4f, 0.05f, 14.3f);
+        public static readonly Vector3 FORWARD_ZONE_CENTER = new Vector3(57.6f, 0.05f, 84f);
+        public static readonly Vector3 ZONE_SIZE = new Vector3(3.6f, 2f, 7f);
         public const string START_ZONE_NAME = "ParkingZone_Start";
         public const string FORWARD_FINISH_ZONE_NAME = "ParkingZone_ForwardFinish";
 
@@ -111,7 +129,7 @@ namespace PrimerVolante.Testing.Editor
             GameObject car09 = GameObject.Find("Car09");
             if (car09 != null)
             {
-                car09.transform.position = new Vector3(63.5f, 0.02f, 14.3f);
+                car09.transform.position = new Vector3(START_ZONE_CENTER.x, car09.transform.position.y, START_ZONE_CENTER.z);
                 car09.transform.rotation = Quaternion.identity;
                 EditorUtility.SetDirty(car09);
             }
@@ -139,11 +157,14 @@ namespace PrimerVolante.Testing.Editor
             GameObject startHighlight, forwardHighlight;
             BuildParkingZones(scene, out startZone, out forwardZone, out startHighlight, out forwardHighlight);
 
-            // 8. Construir las Vallas de Slalom en zig-zag alternado
-            List<LessonBarrier> barriers = BuildSlalomBarriers(scene);
+            // 8. Construir la pista: conos, vallas transversales y corredor
+            BuildSlalomCourse(scene, out List<ObstacleCollisionDetector> cones, out List<LessonBarrier> transverse, out List<LessonBoundary> boundaries);
+
+            // 8b. Zonas de exención de contramano / giro sin señalizar sobre toda la pista
+            BuildExemptZone(scene);
 
             // 9. Configurar Lesson07BarrierManeuversController
-            SetupController(scene, startZone, forwardZone, startHighlight, forwardHighlight, barriers);
+            SetupController(scene, startZone, forwardZone, startHighlight, forwardHighlight, cones, transverse, boundaries);
 
             // 10. Asegurar escena en EditorBuildSettings
             EnsureSceneInBuildSettings();
@@ -197,14 +218,14 @@ namespace PrimerVolante.Testing.Editor
                     CockpitControlFlags.All,
                     "VRGearShifter"),
 
-                // Paso 4: Slalom hacia Adelante entre Vallas
+                // Paso 4: Slalom hacia Adelante entre Conos
                 CreateOrUpdateStep("Lesson07_Step04_StopAndShiftReverse",
-                    "Slalom hacia Adelante entre Vallas",
-                    "Avanza a velocidad moderada (10-15 km/h) esquivando las vallas en zig-zag con giros progresivos de volante. Al finalizar, detén el vehículo por completo dentro de la dársena amarilla.",
+                    "Slalom hacia Adelante entre Conos",
+                    "Avanza despacio (5-10 km/h) haciendo zigzag entre los conos: pasa cada uno por el lado libre de cada valla, sin tocar nada. Al final, detén el auto con el auto completo dentro del recuadro amarillo.",
                     LessonStepCompletionMode.ActionRequired,
                     LessonActionType.SlalomForwardComplete,
                     CockpitControlFlags.All,
-                    "ParkingZone_ForwardFinish"),
+                    ""),
 
                 // Paso 5: Detención y Cambio a Reversa
                 CreateOrUpdateStep("Lesson07_Step05_MirrorHalfCarRule",
@@ -218,11 +239,11 @@ namespace PrimerVolante.Testing.Editor
                 // Paso 6: Slalom en Reversa con Espejos
                 CreateOrUpdateStep("Lesson07_Step06_ReverseSlalom",
                     "Slalom en Reversa con Espejos",
-                    "Retrocede despacio aplicando la regla del medio auto: observa con atención el espejo del lado de la valla y, cuando veas que pasó la mitad del auto, invierte el volante para esquivar la siguiente hasta detenerte en la dársena de inicio.",
+                    "Retrocede despacio (5-10 km/h) aplicando la regla del medio auto: observa con atención el espejo del lado del cono y, cuando veas que pasó la mitad del auto, invierte el volante para esquivar el siguiente por el lado libre de cada valla. Detén el auto con el auto completo dentro del recuadro amarillo de inicio.",
                     LessonStepCompletionMode.ActionRequired,
                     LessonActionType.SlalomReverseComplete,
                     CockpitControlFlags.All,
-                    "ParkingZone_Start"),
+                    ""),
 
                 // Paso 7: Asegurar el Vehículo
                 CreateOrUpdateStep("Lesson07_Step07_SecureVehicle",
@@ -242,7 +263,7 @@ namespace PrimerVolante.Testing.Editor
             }
 
             lesson.lessonId = "LESSON_07";
-            lesson.lessonTitle = "Lección 7: Dominio del Volante y Vallas";
+            lesson.lessonTitle = "Lección 7: Dominio del Volante y Slalom entre Conos";
             lesson.steps = steps;
 
             EditorUtility.SetDirty(lesson);
@@ -311,68 +332,43 @@ namespace PrimerVolante.Testing.Editor
         {
             Material yellowMat = AssetDatabase.LoadAssetAtPath<Material>(YELLOW_MATERIAL_PATH);
 
-            // 1. Dársena de Inicio / Retorno en Reversa (Z ≈ 14.3, X = 63.5)
-            GameObject startObj = GameObject.Find(START_ZONE_NAME);
-            if (startObj == null)
+            startZone = BuildZone(scene, START_ZONE_NAME, START_ZONE_CENTER, 30f, yellowMat, "GroundVisual_StartYellow", out startHighlight);
+            forwardZone = BuildZone(scene, FORWARD_FINISH_ZONE_NAME, FORWARD_ZONE_CENTER, 35f, yellowMat, "GroundVisual_ForwardYellow", out forwardHighlight);
+        }
+
+        // Recuadro de 3.6 x 7 m: BoxCollider trigger + ParkingZoneTrigger + quad amarillo del mismo tamaño que el collider.
+        private static ParkingZoneTrigger BuildZone(Scene scene, string zoneName, Vector3 center, float maxAlignmentDeg,
+            Material yellowMat, string visualName, out GameObject highlight)
+        {
+            GameObject obj = GameObject.Find(zoneName);
+            if (obj == null)
             {
-                startObj = new GameObject(START_ZONE_NAME);
-                Undo.RegisterCreatedObjectUndo(startObj, "Create Start Parking Zone");
-                SceneManager.MoveGameObjectToScene(startObj, scene);
+                obj = new GameObject(zoneName);
+                Undo.RegisterCreatedObjectUndo(obj, "Create " + zoneName);
+                SceneManager.MoveGameObjectToScene(obj, scene);
             }
-            startObj.transform.position = new Vector3(63.5f, 0.05f, 14.3f);
-            startObj.transform.rotation = Quaternion.identity;
+            obj.transform.SetPositionAndRotation(center, Quaternion.identity);
 
-            BoxCollider startBox = startObj.GetComponent<BoxCollider>();
-            if (startBox == null) startBox = startObj.AddComponent<BoxCollider>();
-            startBox.isTrigger = true;
-            startBox.center = Vector3.zero;
-            startBox.size = new Vector3(4.2f, 2.0f, 6.5f);
+            BoxCollider box = obj.GetComponent<BoxCollider>();
+            if (box == null) box = obj.AddComponent<BoxCollider>();
+            box.isTrigger = true;
+            box.center = Vector3.zero;
+            box.size = ZONE_SIZE;
 
-            startZone = startObj.GetComponent<ParkingZoneTrigger>();
-            if (startZone == null) startZone = startObj.AddComponent<ParkingZoneTrigger>();
-            var soStart = new SerializedObject(startZone);
-            SerializedProperty propStartType = soStart.FindProperty("m_StationType");
-            if (propStartType != null) propStartType.enumValueIndex = (int)ParkingStationType.ParallelRight;
-            SerializedProperty propStartSpeed = soStart.FindProperty("m_MaxStopSpeedKmh");
-            if (propStartSpeed != null) propStartSpeed.floatValue = 1.5f;
-            SerializedProperty propStartAngle = soStart.FindProperty("m_MaxAlignmentAngleDeg");
-            if (propStartAngle != null) propStartAngle.floatValue = 30f;
-            soStart.ApplyModifiedProperties();
+            ParkingZoneTrigger zone = obj.GetComponent<ParkingZoneTrigger>();
+            if (zone == null) zone = obj.AddComponent<ParkingZoneTrigger>();
+            var so = new SerializedObject(zone);
+            SerializedProperty type = so.FindProperty("m_StationType");
+            if (type != null) type.enumValueIndex = (int)ParkingStationType.ParallelRight;
+            SerializedProperty speed = so.FindProperty("m_MaxStopSpeedKmh");
+            if (speed != null) speed.floatValue = 1.5f;
+            SerializedProperty angle = so.FindProperty("m_MaxAlignmentAngleDeg");
+            if (angle != null) angle.floatValue = maxAlignmentDeg;
+            so.ApplyModifiedProperties();
 
-            startHighlight = EnsureGroundVisual(startObj.transform, "GroundVisual_StartYellow", new Vector3(4.0f, 6.0f, 1f), yellowMat);
-
-            // 2. Dársena de Llegada del Slalom hacia Adelante (Z ≈ 84.0, X = 60.0)
-            GameObject forwardObj = GameObject.Find(FORWARD_FINISH_ZONE_NAME);
-            if (forwardObj == null)
-            {
-                forwardObj = new GameObject(FORWARD_FINISH_ZONE_NAME);
-                Undo.RegisterCreatedObjectUndo(forwardObj, "Create Forward Finish Parking Zone");
-                SceneManager.MoveGameObjectToScene(forwardObj, scene);
-            }
-            forwardObj.transform.position = new Vector3(60.0f, 0.05f, 84.0f);
-            forwardObj.transform.rotation = Quaternion.identity;
-
-            BoxCollider forwardBox = forwardObj.GetComponent<BoxCollider>();
-            if (forwardBox == null) forwardBox = forwardObj.AddComponent<BoxCollider>();
-            forwardBox.isTrigger = true;
-            forwardBox.center = Vector3.zero;
-            forwardBox.size = new Vector3(5.0f, 2.0f, 7.0f);
-
-            forwardZone = forwardObj.GetComponent<ParkingZoneTrigger>();
-            if (forwardZone == null) forwardZone = forwardObj.AddComponent<ParkingZoneTrigger>();
-            var soForward = new SerializedObject(forwardZone);
-            SerializedProperty propForwardType = soForward.FindProperty("m_StationType");
-            if (propForwardType != null) propForwardType.enumValueIndex = (int)ParkingStationType.ParallelRight;
-            SerializedProperty propForwardSpeed = soForward.FindProperty("m_MaxStopSpeedKmh");
-            if (propForwardSpeed != null) propForwardSpeed.floatValue = 1.5f;
-            SerializedProperty propForwardAngle = soForward.FindProperty("m_MaxAlignmentAngleDeg");
-            if (propForwardAngle != null) propForwardAngle.floatValue = 35f;
-            soForward.ApplyModifiedProperties();
-
-            forwardHighlight = EnsureGroundVisual(forwardObj.transform, "GroundVisual_ForwardYellow", new Vector3(4.5f, 6.5f, 1f), yellowMat);
-
-            EditorUtility.SetDirty(startZone);
-            EditorUtility.SetDirty(forwardZone);
+            highlight = EnsureGroundVisual(obj.transform, visualName, new Vector3(ZONE_SIZE.x, ZONE_SIZE.z, 1f), yellowMat);
+            EditorUtility.SetDirty(zone);
+            return zone;
         }
 
         private static GameObject EnsureGroundVisual(Transform parent, string name, Vector3 scale, Material mat)
@@ -405,79 +401,138 @@ namespace PrimerVolante.Testing.Editor
             return quad;
         }
 
-        private static List<LessonBarrier> BuildSlalomBarriers(Scene scene)
+        private static void BuildSlalomCourse(Scene scene,
+            out List<ObstacleCollisionDetector> cones, out List<LessonBarrier> transverse, out List<LessonBoundary> boundaries)
         {
+            cones = new List<ObstacleCollisionDetector>();
+            transverse = new List<LessonBarrier>();
+            boundaries = new List<LessonBoundary>();
+
             GameObject barrierPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(BARRIER_PREFAB_PATH);
             GameObject conePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(CONE_PREFAB_PATH);
-
-            if (barrierPrefab == null)
+            if (barrierPrefab == null || conePrefab == null)
             {
-                Debug.LogError($"[Lesson07BarrierManeuversSetup] ❌ No se encontró prefab de valla: {BARRIER_PREFAB_PATH}");
-                return new List<LessonBarrier>();
+                Debug.LogError($"[Lesson07BarrierManeuversSetup] ❌ Faltan prefabs: valla={barrierPrefab != null} cono={conePrefab != null}");
+                return;
             }
 
-            GameObject root = GameObject.Find(SLALOM_ROOT_NAME);
-            if (root != null)
+            // Idempotente: se borra la pista vieja (y la de vallas alternadas anterior) y se recrea.
+            foreach (string oldName in new[] { SLALOM_ROOT_NAME, LEGACY_SLALOM_ROOT_NAME })
             {
-                Undo.DestroyObjectImmediate(root);
+                GameObject old = GameObject.Find(oldName);
+                if (old != null) Undo.DestroyObjectImmediate(old);
             }
 
-            root = new GameObject(SLALOM_ROOT_NAME);
-            Undo.RegisterCreatedObjectUndo(root, "Create Slalom Barriers Root");
+            var root = new GameObject(SLALOM_ROOT_NAME);
+            Undo.RegisterCreatedObjectUndo(root, "Create Slalom Course");
             SceneManager.MoveGameObjectToScene(root, scene);
 
-            var barrierList = new List<LessonBarrier>();
-
-            // Especificaciones del circuito de slalom en zig-zag:
-            // Calle recta de asfalto entre Z=14.3 y Z=84.0. Centro de calzada en X=60. Cordones en X=53 y X=67.
-            // Alternamos valla izquierda (bloquea X ~ 54..58, paso abierto a la derecha X ~ 59..66)
-            // y valla derecha (bloquea X ~ 62..66, paso abierto a la izquierda X ~ 54..61).
-            var slalomSpecs = new (string name, Vector3 pos, float yaw, Vector3 coneOffset)[]
+            // Conos sobre el eje de la calzada y vallas transversales que cierran el lado opuesto al de paso:
+            // cono 1 se pasa por la derecha (valla desde la pared izquierda), cono 2 por la izquierda, y así.
+            for (int i = 0; i < ConeZs.Length; i++)
             {
-                // Valla 1: Izquierda en Z=28 (obliga a abrirse a la derecha en carril derecho)
-                ("Slalom_Barrier_01_Left", new Vector3(56.5f, 0f, 28.0f), 0f, new Vector3(2.0f, 0f, 0f)),
+                float z = ConeZs[i];
+                GameObject cone = (GameObject)PrefabUtility.InstantiatePrefab(conePrefab, root.transform);
+                cone.name = $"Cone_{i + 1:00}";
+                cone.transform.SetPositionAndRotation(new Vector3(CONE_X, 0f, z), Quaternion.identity);
+                ObstacleCollisionDetector detector = cone.GetComponentInChildren<ObstacleCollisionDetector>(true);
+                if (detector != null) cones.Add(detector);
+                else Debug.LogError($"[Lesson07BarrierManeuversSetup] ❌ {cone.name} no tiene ObstacleCollisionDetector");
 
-                // Valla 2: Derecha en Z=42 (obliga a abrirse a la izquierda en carril izquierdo)
-                ("Slalom_Barrier_02_Right", new Vector3(63.5f, 0f, 42.0f), 0f, new Vector3(-2.0f, 0f, 0f)),
+                bool passRight = i % 2 == 0;
+                string side = passRight ? "Left" : "Right";
+                float wallX = passRight ? CORRIDOR_LEFT_X : CORRIDOR_RIGHT_X;
+                float endX = passRight ? CONE_X - CONE_CLEARANCE : CONE_X + CONE_CLEARANCE;
 
-                // Valla 3: Izquierda en Z=56 (obliga a abrirse a la derecha en carril derecho)
-                ("Slalom_Barrier_03_Left", new Vector3(56.5f, 0f, 56.0f), 0f, new Vector3(2.0f, 0f, 0f)),
+                var group = new GameObject($"Transverse_{i + 1:00}_{side}");
+                group.transform.SetParent(root.transform, false);
 
-                // Valla 4: Derecha en Z=70 (obliga a abrirse a la izquierda hacia la dársena de meta)
-                ("Slalom_Barrier_04_Right", new Vector3(63.5f, 0f, 70.0f), 0f, new Vector3(-2.0f, 0f, 0f))
-            };
-
-            foreach (var spec in slalomSpecs)
-            {
-                GameObject bObj = (GameObject)PrefabUtility.InstantiatePrefab(barrierPrefab, root.transform);
-                bObj.name = spec.name;
-                bObj.transform.position = spec.pos;
-                bObj.transform.rotation = Quaternion.Euler(0f, spec.yaw, 0f);
-
-                LessonBarrier lb = bObj.GetComponentInChildren<LessonBarrier>(true);
-                if (lb != null)
+                // Dos piezas que cubren de la pared al extremo, sin superponerse entre sí ni con el cono.
+                float span = Mathf.Abs(endX - wallX);
+                float pieceWidth = span * 0.5f;
+                float dir = passRight ? 1f : -1f;
+                for (int p = 0; p < 2; p++)
                 {
-                    barrierList.Add(lb);
-                }
+                    GameObject piece = (GameObject)PrefabUtility.InstantiatePrefab(barrierPrefab, group.transform);
+                    piece.name = p == 0 ? "Piece_A" : "Piece_B";
+                    float centerX = wallX + dir * (pieceWidth * (p + 0.5f));
+                    piece.transform.SetPositionAndRotation(new Vector3(centerX, 0f, z), Quaternion.identity);
 
-                // Agregar cono de tráfico en el extremo de la valla para delimitación visual
-                if (conePrefab != null)
-                {
-                    GameObject cone = (GameObject)PrefabUtility.InstantiatePrefab(conePrefab, bObj.transform);
-                    cone.name = "Cone_Tip";
-                    cone.transform.localPosition = spec.coneOffset;
-                    cone.transform.localRotation = Quaternion.identity;
+                    // Largo natural del sólido en X (mundo): se ajusta la escala X para que mida exactamente pieceWidth.
+                    BoxCollider solid = piece.GetComponent<BoxCollider>();
+                    float natural = solid != null ? solid.bounds.size.x : 0f;
+                    if (natural > 0.01f)
+                    {
+                        Vector3 scale = piece.transform.localScale;
+                        scale.x *= pieceWidth / natural;
+                        piece.transform.localScale = scale;
+                    }
+
+                    LessonBarrier lb = piece.GetComponentInChildren<LessonBarrier>(true);
+                    if (lb != null) transverse.Add(lb);
                 }
             }
 
-            Debug.Log($"[Lesson07BarrierManeuversSetup] 🚧 {barrierList.Count} vallas de slalom instaladas en zig-zag.");
-            return barrierList;
+            // Corredor: cuatro tramos (dos paredes y dos tapas) con LessonBoundary, cada uno con su spline recta.
+            var corridor = new GameObject(CORRIDOR_NAME);
+            corridor.transform.SetParent(root.transform, false);
+            AddBoundary(corridor.transform, "Wall_Left", barrierPrefab, new Vector3(CORRIDOR_LEFT_X, 0f, CORRIDOR_START_Z), new Vector3(CORRIDOR_LEFT_X, 0f, CORRIDOR_END_Z), boundaries);
+            AddBoundary(corridor.transform, "Wall_Right", barrierPrefab, new Vector3(CORRIDOR_RIGHT_X, 0f, CORRIDOR_START_Z), new Vector3(CORRIDOR_RIGHT_X, 0f, CORRIDOR_END_Z), boundaries);
+            AddBoundary(corridor.transform, "Cap_South", barrierPrefab, new Vector3(CORRIDOR_LEFT_X, 0f, CORRIDOR_START_Z), new Vector3(CORRIDOR_RIGHT_X, 0f, CORRIDOR_START_Z), boundaries);
+            AddBoundary(corridor.transform, "Cap_North", barrierPrefab, new Vector3(CORRIDOR_LEFT_X, 0f, CORRIDOR_END_Z), new Vector3(CORRIDOR_RIGHT_X, 0f, CORRIDOR_END_Z), boundaries);
+
+            Debug.Log($"[Lesson07BarrierManeuversSetup] 🚧 Pista: {cones.Count} conos, {transverse.Count} piezas transversales, {boundaries.Count} tramos de corredor.");
+        }
+
+        private static void AddBoundary(Transform parent, string boundaryName, GameObject barrierPrefab, Vector3 from, Vector3 to, List<LessonBoundary> boundaries)
+        {
+            var go = new GameObject(boundaryName);
+            go.transform.SetParent(parent, false);
+
+            var container = go.AddComponent<SplineContainer>();
+            var spline = new Spline(new[] { new BezierKnot(new float3(from.x, from.y, from.z)), new BezierKnot(new float3(to.x, to.y, to.z)) }, false);
+            spline.SetTangentMode(TangentMode.Linear);
+            container.Splines = new List<Spline> { spline };
+
+            var boundary = go.AddComponent<LessonBoundary>();
+            var so = new SerializedObject(boundary);
+            so.FindProperty("m_BarrierPrefab").objectReferenceValue = barrierPrefab;
+            so.FindProperty("m_SplineIndex").intValue = 0;
+            so.ApplyModifiedProperties();
+
+            if (!boundary.TryRebuildBarriers()) Debug.LogError($"[Lesson07BarrierManeuversSetup] ❌ No se pudieron generar las vallas de {boundaryName}");
+            boundaries.Add(boundary);
+        }
+
+        // Una sola zona (capa LaneZone, trigger) con ambas exenciones: sin control de contramano ni de giro sin señalizar.
+        private static void BuildExemptZone(Scene scene)
+        {
+            GameObject old = GameObject.Find(EXEMPT_ZONE_NAME);
+            if (old != null) Undo.DestroyObjectImmediate(old);
+
+            var go = new GameObject(EXEMPT_ZONE_NAME);
+            Undo.RegisterCreatedObjectUndo(go, "Create Slalom Exempt Zone");
+            SceneManager.MoveGameObjectToScene(go, scene);
+
+            float minX = 53f, maxX = 67f, minZ = 5f, maxZ = 93f;
+            go.transform.position = new Vector3((minX + maxX) * 0.5f, 1f, (minZ + maxZ) * 0.5f);
+
+            var box = go.AddComponent<BoxCollider>();
+            box.isTrigger = true;
+            box.size = new Vector3(maxX - minX, 4f, maxZ - minZ);
+
+            int layer = LayerMask.NameToLayer(RoadLaneZone.LayerName);
+            if (layer >= 0) go.layer = layer;
+            else Debug.LogError($"[Lesson07BarrierManeuversSetup] ❌ No existe la capa {RoadLaneZone.LayerName}");
+
+            go.AddComponent<WrongWayExemptZone>();
+            go.AddComponent<TurnSignalExemptZone>();
         }
 
         private static void SetupController(Scene scene,
             ParkingZoneTrigger startZone, ParkingZoneTrigger forwardZone,
             GameObject startHighlight, GameObject forwardHighlight,
-            List<LessonBarrier> barriers)
+            List<ObstacleCollisionDetector> cones, List<LessonBarrier> transverse, List<LessonBoundary> boundaries)
         {
             GameObject ctrlObj = GameObject.Find("Lesson07_Controller");
             if (ctrlObj == null)
@@ -500,16 +555,22 @@ namespace PrimerVolante.Testing.Editor
             so.FindProperty("m_StartZoneHighlight").objectReferenceValue = startHighlight;
             so.FindProperty("m_ForwardZoneHighlight").objectReferenceValue = forwardHighlight;
 
-            SerializedProperty barriersProp = so.FindProperty("m_SlalomBarriers");
-            barriersProp.ClearArray();
-            for (int i = 0; i < barriers.Count; i++)
-            {
-                barriersProp.InsertArrayElementAtIndex(i);
-                barriersProp.GetArrayElementAtIndex(i).objectReferenceValue = barriers[i];
-            }
+            AssignList(so.FindProperty("m_Cones"), cones);
+            AssignList(so.FindProperty("m_TransverseBarriers"), transverse);
+            AssignList(so.FindProperty("m_Boundaries"), boundaries);
 
             so.ApplyModifiedProperties();
             EditorUtility.SetDirty(ctrl);
+        }
+
+        private static void AssignList<T>(SerializedProperty prop, List<T> items) where T : UnityEngine.Object
+        {
+            prop.ClearArray();
+            for (int i = 0; i < items.Count; i++)
+            {
+                prop.InsertArrayElementAtIndex(i);
+                prop.GetArrayElementAtIndex(i).objectReferenceValue = items[i];
+            }
         }
 
         private static void EnsureSceneInBuildSettings()
@@ -592,8 +653,8 @@ namespace PrimerVolante.Testing.Editor
                 if (slalomRoot == null) failures.Add($"Falta el contenedor {SLALOM_ROOT_NAME}.");
                 else
                 {
-                    int count = slalomRoot.transform.childCount;
-                    if (count < 4) failures.Add($"Se esperaban al menos 4 vallas en slalom (hay {count}).");
+                    int count = slalomRoot.GetComponentsInChildren<ObstacleCollisionDetector>(true).Length;
+                    if (count != ConeZs.Length) failures.Add($"Se esperaban {ConeZs.Length} conos en el slalom (hay {count}).");
                 }
             }
 
